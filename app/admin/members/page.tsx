@@ -1,5 +1,4 @@
 
-import DashboardLayout from "@/components/superAdmin/DashboardLayout";
 import MembersPageMain from "@/components/superAdmin/members/MembersPageMain";
 import { authOptions } from "@/libs/auth";
 import { MembersResponse, MembersStatsResponse } from "@/store/api/membersApi";
@@ -47,11 +46,7 @@ export default async function AdminMembersPage() {
   const accessToken = (session?.user as { accessToken?: string } | undefined)?.accessToken;
 
   if (!accessToken) {
-    return (
-      <DashboardLayout>
-        <MembersPageMain initialData={null} initialStats={null} />
-      </DashboardLayout>
-    );
+    return <MembersPageMain initialData={null} initialStats={null} />;
   }
 
   const [initialData, initialStats] = await Promise.all([
@@ -59,9 +54,5 @@ export default async function AdminMembersPage() {
     getInitialMemberStats(accessToken),
   ]);
 
-  return (
-    <DashboardLayout>
-      <MembersPageMain initialData={initialData} initialStats={initialStats} />
-    </DashboardLayout>
-  )
+  return <MembersPageMain initialData={initialData} initialStats={initialStats} />
 }

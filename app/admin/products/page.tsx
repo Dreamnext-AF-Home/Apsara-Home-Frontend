@@ -1,4 +1,3 @@
-import DashboardLayout from '@/components/superAdmin/DashboardLayout'
 import ProductsPageMain from '@/components/superAdmin/products/ProductsPageMain'
 import { authOptions } from '@/libs/auth'
 import { normalizeProductsResponse, ProductsResponse } from '@/store/api/productsApi'
@@ -31,9 +30,5 @@ async function getInitialProducts(): Promise<ProductsResponse | null> {
 export default async function AdminProductsPage() {
   const initialData = await getInitialProducts()
 
-  return (
-    <DashboardLayout>
-      <ProductsPageMain initialData={initialData} />
-    </DashboardLayout>
-  )
+  return <ProductsPageMain initialData={initialData} />
 }
