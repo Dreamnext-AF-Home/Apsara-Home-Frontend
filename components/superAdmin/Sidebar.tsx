@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useLogoutMutation } from '@/store/api/authApi'
+import { useEffect } from 'react'
 
 interface SubItem { label: string; path: string }
 interface NavItem {
@@ -161,6 +162,7 @@ const navItems: NavItem[] = [
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { data: session } = useSession()
   const [openMenus, setOpenMenus] = useState<string[]>([])
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -189,6 +191,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   const isActive = (path: string) => pathname === path
   const isChildActive = (children?: SubItem[]) => children?.some(c => pathname === c.path) ?? false
+
+  useEffect(() => {
+    const criticalRoutes = [
+      '/admin/dashboard',
+      '/admin/members',
+      '/admin/products',
+      '/admin/products/categories',
+    ]
+    criticalRoutes.forEach((route) => router.prefetch(route))
+  }, [router])
 
   return (
     <>
@@ -274,7 +286,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     )}
                   </button>
                 ) : (
-                  <Link href={item.path ?? '#'} onClick={() => isOpen && onClose()}
+                  <Link href={item.path ?? '#'} prefetch onClick={() => isOpen && onClose()}
                     title={isCollapsed ? item.label : undefined}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group relative
                       ${active ? 'bg-teal-500/15 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}
@@ -300,7 +312,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       >
                         <div className="ml-4 mt-0.5 pl-3 border-l border-slate-700 py-1 space-y-0.5">
                           {item.children?.map((child) => (
-                            <Link key={child.path} href={child.path} onClick={() => isOpen && onClose()}
+                            <Link key={child.path} href={child.path} prefetch onClick={() => isOpen && onClose()}
                               className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all duration-200
                                 ${isActive(child.path) ? 'text-teal-400 font-semibold' : 'text-slate-500 hover:text-slate-200'}
                               `}
