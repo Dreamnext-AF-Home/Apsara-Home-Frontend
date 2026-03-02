@@ -18,6 +18,10 @@ interface RegisterPayload {
   province?: string
   region?: string
   zip_code?: string
+  gender?: 'male' | 'female' | 'other'
+  occupation?: string
+  work_location?: 'local' | 'overseas'
+  country?: string
 }
 
 interface RegisterResponse {

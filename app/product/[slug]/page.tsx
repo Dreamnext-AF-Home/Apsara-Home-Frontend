@@ -5,7 +5,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ProductPageClient from '@/components/product/ProductPageClient';
 import ProductTabs from '@/components/product/ProductTabs';
-import { categoryProducts, categoryMeta, getProductBySlug, type CategoryProduct } from '@/libs/CategoryData';
+import { categoryMeta, type CategoryProduct } from '@/libs/CategoryData';
 import RelatedProducts from '@/components/product/RelatedProduct';
 import StickyAddToCart from '@/components/product/StickyAddToCart';
 import ProductQA from '@/components/product/ProductQA';
@@ -39,7 +39,12 @@ const ChevronRight = () => (
   </svg>
 );
 
-const slugify = (value: string) => value.toLowerCase().trim().replace(/\s+/g, '-');
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 
 const normalizeCategorySlug = (rawUrl: string | null | undefined, fallbackName: string) => {
   const source = (rawUrl ?? '').trim();
@@ -185,11 +190,16 @@ async function getProductPageData(slug: string): Promise<ProductPageData | null>
   if (!apiUrl) return null;
 
   try {
-    const [categoriesRes, productsRes] = await Promise.all([
+    const [categoriesRes, productRes, productsRes] = await Promise.all([
       fetch(`${apiUrl}/api/categories?page=1&per_page=100`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         next: { revalidate: 300 },
+      }),
+      fetch(`${apiUrl}/api/products/slug/${encodeURIComponent(slug)}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        next: { revalidate: 60 },
       }),
       fetch(`${apiUrl}/api/products?page=1&per_page=100&status=1`, {
         method: 'GET',
@@ -198,13 +208,14 @@ async function getProductPageData(slug: string): Promise<ProductPageData | null>
       }),
     ]);
 
-    if (!categoriesRes.ok || !productsRes.ok) return null;
+    if (!categoriesRes.ok || !productRes.ok || !productsRes.ok) return null;
 
     const categories = extractCategories(await categoriesRes.json());
-    const products = extractProducts(await productsRes.json()).map((p) => toLooseRecord(p));
-
-    const target = products.find((p) => slugify(String(p.name ?? p.pd_name ?? '')) === slug);
+    const productJson = (await productRes.json()) as { product?: Product };
+    const target = productJson.product ? toLooseRecord(productJson.product) : null;
     if (!target) return null;
+
+    const products = extractProducts(await productsRes.json()).map((p) => toLooseRecord(p));
 
     const categorySlug = getCategorySlugFromProduct(target, categories);
     const matchedCategory = categories.find((c) => normalizeCategorySlug(c.url, c.name) === categorySlug);
@@ -235,46 +246,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
 
   const dynamicData = await getProductPageData(slug);
-
-  if (!dynamicData) {
-    const fallback = getProductBySlug(slug);
-    if (!fallback) return notFound();
-
-    const { product, category } = fallback;
-    const categoryLabel = categoryMeta[category]?.label ?? category;
-    const relatedProducts = categoryProducts[category]
-      .filter((p) => p.name.toLowerCase().replace(/\s+/g, '-') !== slug)
-      .slice(0, 4);
-
-    return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <StickyAddToCart product={product} />
-        <TopBar />
-        <Navbar />
-        <main className="flex-1">
-          <div className="bg-gray-50 border-b border-gray-100">
-            <div className="container mx-auto px-4 py-3">
-              <nav className="flex items-center gap-1.5 text-xs text-gray-400">
-                <Link href="/" className="hover:text-orange-500 transition-colors font-medium">Home</Link>
-                <ChevronRight />
-                <Link href={`/category/${category}`} className="hover:text-orange-500 transition-colors">{categoryLabel}</Link>
-                <ChevronRight />
-                <span className="text-slate-600 font-semibold truncate max-w-48">{product.name}</span>
-              </nav>
-            </div>
-          </div>
-          <div className="container mx-auto px-4 py-10">
-            <ProductPageClient product={product} categoryLabel={categoryLabel} />
-            <ProductTabs product={product} />
-            <RelatedProducts products={relatedProducts} category={category} />
-            <ProductQA />
-            <CompleteTheLook currentCategory={category} />
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  if (!dynamicData) return notFound();
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

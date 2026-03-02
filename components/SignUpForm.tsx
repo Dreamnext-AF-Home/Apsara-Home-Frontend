@@ -44,6 +44,10 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         firstName: '',
         lastName: '',
         middleName: '',
+        gender: '',
+        occupation: '',
+        workLocation: 'local',
+        country: '',
         email: '',
         password: '',
         confirmPassword: '',
@@ -56,7 +60,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         agreeTerms: false,
     })
 
-    const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         setForm(f => ({ ...f, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -79,6 +83,10 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             username: form.username,
             referred_by: form.referredBy,
             birth_date: form.birthDate,
+            gender: form.gender === '' ? undefined : (form.gender as 'male' | 'female' | 'other'),
+            occupation: form.occupation,
+            work_location: form.workLocation as 'local' | 'overseas',
+            country: form.workLocation === 'overseas' ? form.country : 'Philippines',
             address: form.address,
             barangay: ph.address.barangay,
             city: ph.address.city,
@@ -165,6 +173,59 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
                         <label className={labelClass}>Email Address <span className="text-orange-400">*</span></label>
                         <input type="email" placeholder="Enter email" required
                             value={form.email} onChange={set('email')} className={inputClass} />
+                    </div>
+                </div>
+
+                {/* Gender + Occupation */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className={labelClass}>Gender</label>
+                        <SelectWrapper>
+                            <select
+                                className={selectClass}
+                                value={form.gender}
+                                onChange={set('gender')}
+                            >
+                                <option value="" className="bg-slate-800">- Select Gender -</option>
+                                <option value="male" className="bg-slate-800">Male</option>
+                                <option value="female" className="bg-slate-800">Female</option>
+                                <option value="other" className="bg-slate-800">Other</option>
+                            </select>
+                        </SelectWrapper>
+                    </div>
+                    <div>
+                        <label className={labelClass}>Occupation</label>
+                        <input type="text" placeholder="e.g. Engineer, Nurse, OFW"
+                            value={form.occupation} onChange={set('occupation')} className={inputClass} />
+                    </div>
+                </div>
+
+                {/* Work Location + Country */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className={labelClass}>Work Location</label>
+                        <SelectWrapper>
+                            <select
+                                className={selectClass}
+                                value={form.workLocation}
+                                onChange={set('workLocation')}
+                            >
+                                <option value="local" className="bg-slate-800">Local (Philippines)</option>
+                                <option value="overseas" className="bg-slate-800">Overseas</option>
+                            </select>
+                        </SelectWrapper>
+                    </div>
+                    <div>
+                        <label className={labelClass}>Country {form.workLocation === 'overseas' ? <span className="text-orange-400">*</span> : null}</label>
+                        <input
+                            type="text"
+                            placeholder={form.workLocation === 'overseas' ? 'e.g. UAE, Saudi Arabia, Japan' : 'Philippines'}
+                            value={form.workLocation === 'overseas' ? form.country : 'Philippines'}
+                            onChange={set('country')}
+                            className={inputClass}
+                            disabled={form.workLocation !== 'overseas'}
+                            required={form.workLocation === 'overseas'}
+                        />
                     </div>
                 </div>
 

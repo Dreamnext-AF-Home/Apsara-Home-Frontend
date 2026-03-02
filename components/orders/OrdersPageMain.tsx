@@ -1,37 +1,45 @@
 'use client';
 
-import { MOCK_ORDERS, TABS } from "@/types/Data";
+import { TABS } from "@/types/Data";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Icon from "./Icons";
 import OrderCard from "./OrderCard";
+import { useSession } from "next-auth/react";
+import { useGetCheckoutHistoryQuery } from "@/store/api/paymentApi";
 
 type TabKey = typeof TABS[number]['key'];
 
 
 const OrdersPageMain = () => {
   const router = useRouter();
+  const { status: authStatus } = useSession();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [search, setSearch] = useState('');
+  const { data, isLoading, isError } = useGetCheckoutHistoryQuery(undefined, {
+    skip: authStatus !== 'authenticated',
+  });
+  const orders = data?.orders ?? [];
 
   const filtered = useMemo(() => {
-    let list = MOCK_ORDERS;
+    let list = orders;
     if (activeTab !== 'all') list = list.filter((o) => o.status === activeTab || (activeTab === 'shipped' && o.status === 'out_for_delivery'));
     if (search.trim()) list = list.filter((o) => o.order_number.toLocaleLowerCase().includes(search.toLowerCase()) || o.items.some((i) => i.name.toLowerCase().includes(search.toLowerCase())))
     return list;
-  }, [activeTab, search]);
+  }, [activeTab, search, orders]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      all: MOCK_ORDERS.length
+      all: orders.length
     };
-    MOCK_ORDERS.forEach((o) => {
+    orders.forEach((o) => {
       const key = o.status === 'out_for_delivery' ? 'shipped' : o.status;
       counts[key] = (counts[key] ?? 0) + 1
     })
     return counts
-  }, [])
+  }, [orders])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -49,7 +57,7 @@ const OrdersPageMain = () => {
           <div className="flex items-end justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">My Orders</h1>
-              <p>{MOCK_ORDERS.length} total{MOCK_ORDERS.length !== 1 ? 's' : ''}</p>
+              <p>{orders.length} total{orders.length !== 1 ? 's' : ''}</p>
             </div>
             <button
               type="button"
@@ -106,9 +114,38 @@ const OrdersPageMain = () => {
             )
           })}
         </div>
+        {authStatus !== 'authenticated' && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          >
+            Sign in required to view your checkout history.
+          </motion.div>
+        )}
+
+        {isError && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            Failed to load your order history.
+          </motion.div>
+        )}
+
         {/* ORDER LIST */}
         <AnimatePresence mode="wait">
-          {filtered.length > 0 ? (
+          {isLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-gray-200 bg-white p-8 text-center"
+            >
+              <p className="text-sm text-gray-500">Loading your order history...</p>
+            </motion.div>
+          ) : filtered.length > 0 ? (
             <motion.div
               key={activeTab + search}
               initial={{ opacity: 0, y: 6 }}
@@ -141,12 +178,12 @@ const OrdersPageMain = () => {
                   onClick={() => { 
                     setSearch(''); 
                     setActiveTab('all'); 
-                    router.push('/');
+                    router.push(authStatus === 'authenticated' ? '/' : '/login');
                   }}
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 hover:bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors"
                 >
                   <Icon.ShoppingBag className="h-4 w-4" />
-                  Start Shopping
+                  {authStatus === 'authenticated' ? 'Start Shopping' : 'Go to Login'}
                 </button>
               </motion.div>
             </>

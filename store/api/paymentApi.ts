@@ -14,6 +14,14 @@ export interface CreateCheckoutSessionPayload {
   description: string
   payment_method: CheckoutPaymentMethod
   customer?: CheckoutCustomerPayload
+  order?: {
+    product_name?: string
+    product_image?: string
+    quantity?: number
+    selected_color?: string | null
+    selected_size?: string | null
+    selected_type?: string | null
+  }
 }
 
 export interface CreateCheckoutSessionResponse {
@@ -26,6 +34,40 @@ export interface VerifyCheckoutSessionResponse {
   status: string | null
   payment_intent_id: string | null
   raw?: Record<string, unknown>
+}
+
+export type CustomerOrderStatus =
+  | 'pending'
+  | 'processing'
+  | 'shipped'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'cancelled'
+  | 'refunded'
+
+export interface CustomerOrderItem {
+  id: number
+  name: string
+  image: string
+  quantity: number
+  price: number
+}
+
+export interface CustomerOrder {
+  id: number
+  order_number: string
+  status: CustomerOrderStatus
+  items: CustomerOrderItem[]
+  total: number
+  shipping_fee: number
+  payment_method: string
+  shipping_address: string
+  created_at: string
+  estimated_delivery?: string | null
+}
+
+export interface CheckoutHistoryResponse {
+  orders: CustomerOrder[]
 }
 
 export const paymentApi = baseApi.injectEndpoints({
@@ -43,10 +85,18 @@ export const paymentApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
+    getCheckoutHistory: builder.query<CheckoutHistoryResponse, void>({
+      query: () => ({
+        url: '/api/orders/history',
+        method: 'GET',
+      }),
+      providesTags: ['Orders'],
+    }),
   }),
 })
 
 export const {
   useCreateCheckoutSessionMutation,
   useLazyVerifyCheckoutSessionQuery,
+  useGetCheckoutHistoryQuery,
 } = paymentApi

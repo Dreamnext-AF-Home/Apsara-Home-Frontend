@@ -3,6 +3,8 @@ export interface GuestForm {
   email: string;
   phone: string;
   address: string;
+  region: string;
+  barangay: string;
   city: string;
   province: string;
   zip: string;

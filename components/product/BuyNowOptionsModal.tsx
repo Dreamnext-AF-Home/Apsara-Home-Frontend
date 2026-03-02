@@ -125,6 +125,14 @@ const BuyNowOptionsModal = ({
               name: customerName,
             }
           : undefined,
+        order: {
+          product_name: product.name,
+          product_image: product.image,
+          quantity,
+          selected_color: selectedColor ?? null,
+          selected_size: selectedSize ?? null,
+          selected_type: selectedType ?? null,
+        },
       }).unwrap();
 
       if (!data.checkout_url) {
@@ -173,10 +181,10 @@ const BuyNowOptionsModal = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-6 overflow-y-auto"
           >
             <div
-              className="mx-auto w-full max-w-5xl rounded-3xl bg-white shadow-2xl overflow-hidden"
+              className="mx-auto w-full max-w-5xl rounded-3xl bg-white shadow-2xl max-h-[calc(100vh-1.5rem)] sm:max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}

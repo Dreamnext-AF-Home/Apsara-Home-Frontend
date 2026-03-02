@@ -8,7 +8,7 @@ import { TRACK_STEPS } from "@/types/Data";
 import formatDate from "@/helpers/FormatDate";
 import formatPrice from "@/helpers/FormatPrice";
 
-type OrderStatus = 'pending' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'refunded';
+type OrderStatus = 'pending' | 'processing' | 'packed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'refunded';
 
 type OrderItem = {
     id: number;
@@ -28,12 +28,13 @@ type Order = {
     payment_method: string;
     shipping_address: string;
     created_at: string;
-    estimated_delivery?: string;
+    estimated_delivery?: string | null;
 };
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; badge: string; dot: string; step: number }> = {
     pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-400', step: 1 },
     processing: { label: 'Processing', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', step: 2 },
+    packed: { label: 'Packed', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', step: 3 },
     shipped: { label: 'Shipped', badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', step: 3 },
     out_for_delivery: { label: 'Out for Delivery', badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500', step: 4 },
     delivered: { label: 'Delivered', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', step: 5 },
@@ -47,7 +48,7 @@ interface OrderCardProps {
 
 const OrderCard = ({ order }: OrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
-  const cfg = STATUS_CONFIG[order.status];
+  const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
   const previewItems = order.items.slice(0, 3);
   const extraCount = order.items.length - 3;
   const isActive = !['cancelled', 'refunded', 'delivered'].includes(order.status);

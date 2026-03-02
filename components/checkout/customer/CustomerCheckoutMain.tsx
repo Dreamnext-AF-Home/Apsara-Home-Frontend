@@ -7,7 +7,7 @@ import TopBar from "@/components/layout/TopBar";
 import { GuestForm, FormErrors, CustomerCheckoutData, PaymentMethod } from "@/types/CustomerCheckout/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import CustomerCheckoutContactForm from "./CustomerCheckoutContactForm";
 import CustomerCheckoutAddressForm from "./CustomerCheckoutAddressForm";
 import CustomerCheckoutPaymentMethod from "./CustomerCheckoutPaymentMethod";
@@ -20,12 +20,27 @@ const defaultForm: GuestForm = {
     email: '',
     phone: '',
     address: '',
+    region: '',
+    barangay: '',
     city: '',
     province: '',
     zip: '',
     referral_code: ''
 
 }
+
+const REQUIRED_FIELD_ORDER: Array<keyof GuestForm> = [
+    'name',
+    'email',
+    'phone',
+    'address',
+    'region',
+    'province',
+    'city',
+    'barangay',
+];
+
+
 const CustomerCheckoutMain = () => {
     const router = useRouter();
 
@@ -49,10 +64,10 @@ const CustomerCheckoutMain = () => {
         }
     }, [router]);
 
-    const setField = (key: keyof GuestForm, value: string) => {
+    const setField = useCallback((key: keyof GuestForm, value: string) => {
         setForm(prev => ({ ...prev, [key]: value }))
         setErrors(prev => ({ ...prev, [key]: undefined }))
-    }
+    }, [])
 
     const validate = (): FormErrors => {
         const e: FormErrors = {};
@@ -61,14 +76,42 @@ const CustomerCheckoutMain = () => {
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
         if (!form.phone.trim()) e.phone = 'Required';
         if (!form.address.trim()) e.address = 'Required';
+        if (!form.region.trim()) e.region = 'Required';
+        if (!form.barangay.trim()) e.barangay = 'Required';
+        if (!form.city.trim()) e.city = 'Required';
         if (!form.province.trim()) e.province = 'Required';
         return e;
     }
+
+    const focusFirstErrorField = useCallback((validationErrors: FormErrors) => {
+        const firstErrorKey = REQUIRED_FIELD_ORDER.find((key) => Boolean(validationErrors[key]));
+        if (!firstErrorKey) return;
+
+        const target = document.querySelector<HTMLElement>(`[data-error-field="${firstErrorKey}"]`);
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.animate(
+            [
+                { transform: 'translateX(0px)' },
+                { transform: 'translateX(-8px)' },
+                { transform: 'translateX(8px)' },
+                { transform: 'translateX(-5px)' },
+                { transform: 'translateX(5px)' },
+                { transform: 'translateX(0px)' },
+            ],
+            { duration: 420, easing: 'ease-in-out' }
+        );
+
+        const control = target.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input, select, textarea');
+        control?.focus({ preventScroll: true });
+    }, []);
 
     const handleSubmit = async () => {
         const errs = validate();
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
+            requestAnimationFrame(() => focusFirstErrorField(errs));
             return;
         }
 
@@ -87,7 +130,15 @@ const CustomerCheckoutMain = () => {
                     name: form.name,
                     email: form.email,
                     phone: form.phone,
-                    address: `${form.address}, ${form.city}, ${form.province}${form.zip ? `${form.zip}` : ''}`,
+                    address: `${form.address}, ${form.barangay}, ${form.city}, ${form.province}, ${form.region}${form.zip ? ` ${form.zip}` : ''}`,
+                },
+                order: {
+                    product_name: checkoutData.product.name,
+                    product_image: checkoutData.product.image,
+                    quantity: checkoutData.quantity,
+                    selected_color: checkoutData.selectedColor ?? null,
+                    selected_size: checkoutData.selectedSize ?? null,
+                    selected_type: checkoutData.selectedType ?? null,
                 },
             }).unwrap();
 

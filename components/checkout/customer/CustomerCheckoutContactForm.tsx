@@ -8,11 +8,11 @@ interface CustomerCheckoutContactFormProps {
     setField: (key: keyof GuestForm, value: string) => void;
 }
 
-const Field = ({ label, value, onChange, placeholder, type = 'text', required = false, error }: {
+const Field = ({ label, value, onChange, placeholder, type = 'text', required = false, error, fieldKey }: {
     label: string; value: string; onChange: (v: string) => void;
-    placeholder: string; type?: string; required?: boolean; error?: string;
+    placeholder: string; type?: string; required?: boolean; error?: string; fieldKey?: keyof GuestForm;
 }) => (
-    <div>
+    <div data-error-field={fieldKey} className="transition-transform duration-200">
         <label className="block text-xs font-semibold text-slate-600 mb-1.5">
             {label}{required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
@@ -39,10 +39,10 @@ const CustomerCheckoutContactForm = ({
             </h2>
             <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Field label="Full Name" value={form.name} onChange={v => setField('name', v)} placeholder="Enter Full Name" required error={errors.name} />
-                    <Field label="Email" value={form.email} onChange={v => setField('email', v)} placeholder="Enter Email" required error={errors.email} />
+                    <Field label="Full Name" value={form.name} onChange={v => setField('name', v)} placeholder="Enter Full Name" required error={errors.name} fieldKey="name" />
+                    <Field label="Email" value={form.email} onChange={v => setField('email', v)} placeholder="Enter Email" required error={errors.email} fieldKey="email" />
                 </div>
-                <Field label="Phone Number" value={form.phone} onChange={v => setField('phone', v)} placeholder="Enter Phone Number" required error={errors.phone} />
+                <Field label="Phone Number" value={form.phone} onChange={v => setField('phone', v)} placeholder="Enter Phone Number" required error={errors.phone} fieldKey="phone" />
 
                 {/* DIVIDER */}
                 <div className="flex items-center gap-3 pt-1">
