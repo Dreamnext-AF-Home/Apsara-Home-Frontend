@@ -17,7 +17,7 @@ interface MembersPageMainProps {
 }
 
 const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPageMainProps) => {
-    const { data: session, status: authStatus } = useSession()
+    const { status: authStatus } = useSession()
     const searchParams = useSearchParams()
     const [search, setSearch] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -43,8 +43,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
         return () => clearTimeout(timeout)
     }, [search])
 
-    const hasAccessToken = Boolean(session?.user?.accessToken)
-    const shouldSkipMembersQuery = authStatus !== 'authenticated' || !hasAccessToken
+    const shouldSkipMembersQuery = authStatus === 'unauthenticated'
     const isUsingDefaultView =
         page === 1 &&
         debouncedSearch === '' &&
@@ -148,27 +147,20 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
                     Failed to load members list from customer data.
                 </div>
             ) : isLoading && !effectiveData ? (
-                <div className="space-y-4 animate-pulse">
-                    <div className="rounded-2xl border border-slate-100 bg-white p-4">
-                        <div className="h-4 w-40 rounded bg-slate-200 mb-3" />
-                        <div className="h-10 w-full rounded-xl bg-slate-200" />
+                <div className="rounded-2xl border border-slate-100 bg-white p-4 animate-pulse">
+                    <div className="grid grid-cols-9 gap-3 mb-3">
+                        {Array.from({ length: 9 }).map((_, index) => (
+                            <div key={index} className="h-3 rounded bg-slate-200" />
+                        ))}
                     </div>
-
-                    <div className="rounded-2xl border border-slate-100 bg-white p-4">
-                        <div className="grid grid-cols-9 gap-3 mb-3">
-                            {Array.from({ length: 9 }).map((_, index) => (
-                                <div key={index} className="h-3 rounded bg-slate-200" />
-                            ))}
-                        </div>
-                        <div className="space-y-3">
-                            {Array.from({ length: 8 }).map((_, rowIndex) => (
-                                <div key={rowIndex} className="grid grid-cols-9 gap-3">
-                                    {Array.from({ length: 9 }).map((_, colIndex) => (
-                                        <div key={colIndex} className="h-8 rounded bg-slate-100" />
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
+                    <div className="space-y-3">
+                        {Array.from({ length: 8 }).map((_, rowIndex) => (
+                            <div key={rowIndex} className="grid grid-cols-9 gap-3">
+                                {Array.from({ length: 9 }).map((_, colIndex) => (
+                                    <div key={colIndex} className="h-8 rounded bg-slate-100" />
+                                ))}
+                            </div>
+                        ))}
                     </div>
                 </div>
             ) : (

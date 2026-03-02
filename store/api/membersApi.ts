@@ -48,10 +48,12 @@ export const membersApi = baseApi.injectEndpoints({
           tier: params?.tier,
         },
       }),
+      keepUnusedDataFor: 300,
       providesTags: ['Members'],
     }),
     getMembersStats: builder.query<MembersStatsResponse, void>({
       query: () => '/api/admin/members/stats',
+      keepUnusedDataFor: 300,
       providesTags: ['Members'],
     }),
   }),

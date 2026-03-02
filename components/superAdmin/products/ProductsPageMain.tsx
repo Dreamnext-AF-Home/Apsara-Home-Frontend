@@ -115,7 +115,20 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       />
 
       {authStatus === 'loading' ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Loading your session...</div>
+        <div className="space-y-4 animate-pulse">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4">
+            <div className="grid grid-cols-9 gap-3 mb-3">
+              {Array.from({ length: 9 }).map((_, i) => <div key={i} className="h-3 rounded bg-slate-200"/>)}
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, ri) => (
+                <div key={ri} className="grid grid-cols-9 gap-3">
+                  {Array.from({ length: 9 }).map((_, ci) => <div key={ci} className="h-8 rounded bg-slate-100"/>)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       ) : authStatus === 'unauthenticated' ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Please sign in first to load products.</div>
       ) : isError ? (

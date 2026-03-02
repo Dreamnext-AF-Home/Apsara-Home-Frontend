@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useLogoutMutation } from '@/store/api/authApi'
-import { useEffect } from 'react'
+import { membersApi } from '@/store/api/membersApi'
+import { useAppDispatch } from '@/store/hooks'
 
 interface SubItem { label: string; path: string }
 interface NavItem {
@@ -163,6 +164,7 @@ const navItems: NavItem[] = [
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const dispatch = useAppDispatch()
   const { data: session } = useSession()
   const [openMenus, setOpenMenus] = useState<string[]>([])
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -201,6 +203,21 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     ]
     criticalRoutes.forEach((route) => router.prefetch(route))
   }, [router])
+
+  const prefetchMembersData = () => {
+    dispatch(
+      membersApi.endpoints.getMembers.initiate(
+        { page: 1, perPage: 25 },
+        { subscribe: false, forceRefetch: false }
+      )
+    )
+    dispatch(
+      membersApi.endpoints.getMembersStats.initiate(undefined, {
+        subscribe: false,
+        forceRefetch: false,
+      })
+    )
+  }
 
   return (
     <>
@@ -312,7 +329,15 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       >
                         <div className="ml-4 mt-0.5 pl-3 border-l border-slate-700 py-1 space-y-0.5">
                           {item.children?.map((child) => (
-                            <Link key={child.path} href={child.path} prefetch onClick={() => isOpen && onClose()}
+                            <Link
+                              key={child.path}
+                              href={child.path}
+                              prefetch
+                              onMouseEnter={() => child.path === '/admin/members' && prefetchMembersData()}
+                              onClick={() => {
+                                if (child.path === '/admin/members') prefetchMembersData()
+                                if (isOpen) onClose()
+                              }}
                               className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all duration-200
                                 ${isActive(child.path) ? 'text-teal-400 font-semibold' : 'text-slate-500 hover:text-slate-200'}
                               `}
