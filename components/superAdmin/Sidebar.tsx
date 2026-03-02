@@ -188,7 +188,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('accessToken')
     }
-    await signOut({ callbackUrl: '/' })
+    await signOut({ callbackUrl: '/admin/login' })
   }
 
   const isActive = (path: string) => pathname === path

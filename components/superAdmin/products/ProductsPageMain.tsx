@@ -151,8 +151,8 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       ) : (
         <div className="space-y-2">
           {isFetching && (
-            <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full w-1/3 animate-pulse rounded-full bg-teal-500"/>
+            <div className="relative h-0.5 w-full overflow-hidden bg-teal-100/60">
+              <div className="animate-loading-sweep absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-transparent via-teal-500 to-transparent" />
             </div>
           )}
           {selectedIds.length > 0 && (

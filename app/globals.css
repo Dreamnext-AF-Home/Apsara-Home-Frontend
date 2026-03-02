@@ -39,3 +39,12 @@ body {
 .loading-dot {
   animation: loading-dot 1.2s ease-in-out infinite;
 }
+
+@keyframes loading-sweep {
+  0% { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
+}
+
+.animate-loading-sweep {
+  animation: loading-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
