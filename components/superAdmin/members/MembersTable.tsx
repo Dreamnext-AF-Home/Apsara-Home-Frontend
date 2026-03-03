@@ -1,15 +1,9 @@
 'use client'
 
-import { Member, MemberTier } from "@/types/members/types"
+import { Member } from "@/types/members/types"
 import { motion, AnimatePresence } from "framer-motion"
 import MembersStatusBadge from "./MembersStatusBadge"
-
-const tierConfig: Record<MemberTier, { className: string; dot: string }> = {
-  Bronze:   { className: 'bg-amber-100  text-amber-700',  dot: 'bg-amber-400'  },
-  Silver:   { className: 'bg-slate-100  text-slate-600',  dot: 'bg-slate-400'  },
-  Gold:     { className: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-400' },
-  Platinum: { className: 'bg-purple-100 text-purple-700', dot: 'bg-purple-400' },
-}
+import TierBadge from "@/components/ui/TierBadge"
 
 const avatarColors = [
   'bg-teal-500', 'bg-blue-500', 'bg-purple-500', 'bg-pink-500',
@@ -74,7 +68,6 @@ const MembersTable = ({
           <tbody className="divide-y divide-slate-50">
             <AnimatePresence>
               {rows.map((member, index) => {
-                const tier = tierConfig[member.tier]
                 return (
                   <motion.tr
                     key={member.id}
@@ -104,10 +97,7 @@ const MembersTable = ({
 
                     {/* Tier */}
                     <td className="px-5 py-3.5 hidden sm:table-cell">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${tier.className}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${tier.dot}`} />
-                        {member.tier}
-                      </span>
+                      <TierBadge tier={member.tier} />
                     </td>
 
                     {/* Orders */}

@@ -1,69 +1,81 @@
 'use client';
 
-import { useCart } from "@/context/CartContext";
-import { CategoryProduct } from "@/libs/CategoryData";
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import Image from 'next/image';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useCart } from '@/context/CartContext';
+import { CategoryProduct } from '@/libs/CategoryData';
 
 interface StickyAddToCartProps {
-    product: CategoryProduct;
+  product: CategoryProduct;
 }
 
 const StickyAddToCart = ({ product }: StickyAddToCartProps) => {
-    const [visible, setVisible] = useState(false);
-    const { addToCart } = useCart();
+  const [visible, setVisible] = useState(false);
+  const { addToCart } = useCart();
+  const { data: session } = useSession();
+  const role = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase();
+  const canSeePv = role === '' || role === 'customer' || role === 'member' || role === 'affiliate';
+  const displayPv = Number(product.prodpv ?? 0);
 
-    useEffect(() => {
-        const handler = () => setVisible(window.scrollY > 500);
-        window.addEventListener('scroll', handler);
-        return () => window.removeEventListener('scroll', handler);
-    }, []);
+  useEffect(() => {
+    const handler = () => setVisible(window.scrollY > 500);
+    window.addEventListener('scroll', handler);
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
-    const handleAddToCart = () => {
-        addToCart({
-            id: product.name.toLowerCase().replace(/\s+/g, '-'),
-            name: product.name,
-            price: product.price,
-            image: product.image,
-        });
-    };
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.name.toLowerCase().replace(/\s+/g, '-'),
+      name: product.name,
+      price: product.price,
+      image: product.image,
+    });
+  };
 
-    return (
-        <AnimatePresence>
-            {visible && (
-                <motion.div
-                    initial={{ y: -80, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -80, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-md"
-                >
-                    <div className="container mx-auto px-4 py-2.5 flex items-center gap-3">
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-50 shrink-0">
-                            <Image src={product.image} alt={product.name} fill className="object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-800 truncate">{product.name}</p>
-                            <p className="text-orange-500 font-bold text-sm">₱{product.price.toLocaleString()}</p>
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                            <button
-                                onClick={handleAddToCart}
-                                className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors"
-                            >
-                                <span className="hidden sm:inline">Add to Cart</span>
-                                <span className="sm:hidden">Cart</span>
-                            </button>
-                            <button className="bg-slate-900 hover:bg-slate-800 text-white px-3 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors">
-                                Buy Now
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ y: -80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -80, opacity: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="fixed left-0 right-0 top-0 z-50 border-b border-gray-200 bg-white shadow-md"
+        >
+          <div className="container mx-auto flex items-center gap-3 px-4 py-2.5">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-50">
+              <Image src={product.image} alt={product.name} fill className="object-cover" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-slate-800">{product.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-orange-500">PHP {product.price.toLocaleString()}</p>
+                {canSeePv && (
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                    PV {displayPv.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button
+                onClick={handleAddToCart}
+                className="rounded-xl bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-600 active:bg-orange-700 sm:px-5 sm:text-sm"
+              >
+                <span className="hidden sm:inline">Add to Cart</span>
+                <span className="sm:hidden">Cart</span>
+              </button>
+              <button className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 sm:px-5 sm:text-sm">
+                Buy Now
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 };
 
 export default StickyAddToCart;

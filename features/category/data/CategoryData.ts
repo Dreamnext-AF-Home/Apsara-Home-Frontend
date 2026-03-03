@@ -1,7 +1,9 @@
 export interface CategoryProduct {
+    id?: number;
     name: string;
     type?: number;
     price: number;
+    prodpv?: number;
     originalPrice?: number;
     image: string;
     images?: string[];

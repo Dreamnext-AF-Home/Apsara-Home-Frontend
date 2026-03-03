@@ -134,6 +134,9 @@ const CustomerCheckoutMain = () => {
                 },
                 order: {
                     product_name: checkoutData.product.name,
+                    product_id: checkoutData.product.id,
+                    product_sku: checkoutData.product.sku ?? null,
+                    product_pv: checkoutData.product.prodpv ?? 0,
                     product_image: checkoutData.product.image,
                     quantity: checkoutData.quantity,
                     selected_color: checkoutData.selectedColor ?? null,

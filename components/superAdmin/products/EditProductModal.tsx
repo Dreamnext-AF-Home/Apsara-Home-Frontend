@@ -18,6 +18,7 @@ interface FormState {
   pd_description: string
   pd_price_srp: string
   pd_price_dp: string
+  pd_prodpv: string
   pd_qty: string
   pd_weight: string
   pd_psweight: string
@@ -110,7 +111,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
 
   const [form, setForm] = useState<FormState>({
     pd_name: '', pd_catid: '', pd_description: '', pd_price_srp: '',
-    pd_price_dp: '', pd_qty: '', pd_weight: '', pd_psweight: '',
+    pd_price_dp: '', pd_prodpv: '', pd_qty: '', pd_weight: '', pd_psweight: '',
     pd_pslenght: '', pd_psheight: '', pd_parent_sku: '', pd_type: '0',
     pd_musthave: false, pd_bestseller: false, pd_salespromo: false, pd_verified: true, pd_status: '0',
   })
@@ -152,6 +153,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
       pd_description: product.description ?? '',
       pd_price_srp: String(product.priceSrp ?? ''),
       pd_price_dp: String(product.priceDp ?? ''),
+      pd_prodpv: String(product.prodpv ?? ''),
       pd_qty: String(product.qty ?? ''),
       pd_weight: String(product.weight ?? ''),
       pd_psweight: '',
@@ -303,6 +305,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
     if (!form.pd_name.trim()) e.pd_name = 'Product name is required'
     if (!form.pd_catid.trim()) e.pd_catid = 'Category is required'
     if (!form.pd_price_srp.trim() || isNaN(Number(form.pd_price_srp))) e.pd_price_srp = 'Valid SRP price is required'
+    if (form.pd_prodpv && isNaN(Number(form.pd_prodpv))) e.pd_prodpv = 'Must be a valid number'
     return e
   }
 
@@ -371,6 +374,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
       pd_catid: Number(form.pd_catid),
       pd_price_srp: Number(form.pd_price_srp),
       pd_price_dp: form.pd_price_dp ? Number(form.pd_price_dp) : undefined,
+      pd_prodpv: form.pd_prodpv ? Number(form.pd_prodpv) : undefined,
       pd_qty: form.pd_qty ? Number(form.pd_qty) : undefined,
       pd_weight: form.pd_weight ? Number(form.pd_weight) : undefined,
       pd_parent_sku: form.pd_parent_sku.trim() || undefined,
@@ -609,9 +613,10 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {textField('SRP Price (₱)', 'pd_price_srp', 'number', '0.00', true)}
                     {textField('DP Price (₱)', 'pd_price_dp', 'number', '0.00')}
+                    {textField('PV Value', 'pd_prodpv', 'number', '0')}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

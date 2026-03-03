@@ -8,6 +8,7 @@ export interface Product {
   catsubid: number
   priceSrp: number
   priceDp: number
+  prodpv?: number
   qty: number
   weight: number
   type: number
@@ -57,6 +58,7 @@ export interface CreateProductPayload {
   pd_catsubid?: number
   pd_price_srp: number
   pd_price_dp?: number
+  pd_prodpv?: number
   pd_qty?: number
   pd_weight?: number
   pd_psweight?: number
@@ -144,6 +146,10 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
 
   return {
     ...input,
+    prodpv:
+      typeof input.prodpv === 'number'
+        ? input.prodpv
+        : (typeof input.pd_prodpv === 'number' ? input.pd_prodpv : (typeof input.pd_prodpv === 'string' ? Number(input.pd_prodpv) : 0)),
     image: primaryImage ?? images[0] ?? null,
     images,
     variants: parsedVariants,

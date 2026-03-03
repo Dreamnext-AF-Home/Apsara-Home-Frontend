@@ -6,15 +6,17 @@ let tokenPromise: Promise<string | undefined> | null = null
 let cachedAt = 0
 const TOKEN_CACHE_TTL_MS = 30_000
 
+export const clearAccessTokenCache = () => {
+    cachedAccessToken = undefined
+    tokenPromise = null
+    cachedAt = 0
+    if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('accessToken')
+    }
+}
+
 const resolveAccessToken = async (): Promise<string | undefined> => {
     if (typeof window === 'undefined') return undefined
-
-    const localToken = window.localStorage.getItem('accessToken') ?? undefined
-    if (localToken) {
-        cachedAccessToken = localToken
-        cachedAt = Date.now()
-        return localToken
-    }
 
     if (cachedAccessToken && Date.now() - cachedAt < TOKEN_CACHE_TTL_MS) {
         return cachedAccessToken
@@ -24,9 +26,15 @@ const resolveAccessToken = async (): Promise<string | undefined> => {
         tokenPromise = getSession()
             .then((session) => {
                 const token = (session?.user as { accessToken?: string } | undefined)?.accessToken
-                cachedAccessToken = token
+                if (token) {
+                    cachedAccessToken = token
+                    cachedAt = Date.now()
+                    return token
+                }
+
+                cachedAccessToken = undefined
                 cachedAt = Date.now()
-                return token
+                return undefined
             })
             .finally(() => {
                 tokenPromise = null
@@ -55,6 +63,6 @@ const baseQuery = fetchBaseQuery({
 export const baseApi = createApi({
     reducerPath: 'api',
     baseQuery,
-    tagTypes: ['User', 'Members', 'Products', 'Categories', 'Orders'],
+    tagTypes: ['User', 'Members', 'Products', 'Categories', 'Orders', 'Encashment', 'AdminUsers'],
     endpoints: () => ({}),
 })

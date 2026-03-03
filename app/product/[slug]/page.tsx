@@ -109,6 +109,7 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
   const name = String(row.name ?? row.pd_name ?? 'Untitled Product');
   const srp = toNumber(row.priceSrp ?? row.pd_price_srp ?? 0);
   const dp = toNumber(row.priceDp ?? row.pd_price_dp ?? 0);
+  const prodpv = toNumber(row.prodpv ?? row.pd_prodpv ?? 0);
   const isOnSale = Boolean(row.salespromo ?? row.pd_salespromo);
   const price = isOnSale && dp > 0 ? dp : srp;
   const rawImage = (row.image ?? row.pd_image) as string | null | undefined;
@@ -150,6 +151,7 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
     name,
     type: toNumber(row.type ?? row.pd_type),
     price,
+    prodpv,
     originalPrice: isOnSale && dp > 0 && srp > dp ? srp : undefined,
     image: resolveImageUrl(rawImage, apiUrl),
     images,

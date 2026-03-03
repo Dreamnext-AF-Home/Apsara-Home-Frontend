@@ -6,13 +6,16 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 're
 import Loading from '../Loading';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import TIER_MAP from './TierMap';
+import TierBadge from '@/components/ui/TierBadge';
+import { MemberTier } from '@/types/members/types';
 import Icon from './Icons';
 import getPasswordStrength from './GetPasswordStrength';
 import fadeUp from './FadeUp';
 import PasswordInput from './PasswordInput';
 import Toggle from './Toggle';
 import getActivityIcon from './GetActivityIcon';
+import EncashmentTab from './EncashmentTab';
+import WalletTab from './WalletTab';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,7 +36,7 @@ type PreferencesState = {
   currency: 'PHP' | 'USD';
 };
 
-type Tab = 'profile' | 'security' | 'preferences' | 'activity';
+type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'encashment' | 'activity';
 
 type AlertMsg = { type: 'success' | 'error'; text: string };
 
@@ -140,8 +143,7 @@ const ProfilePage = () => {
   };
 
   // Static data (connect to real API as pages are built)
-  const loyaltyTier = 'Silver';
-  const tierCfg = TIER_MAP[loyaltyTier] ?? TIER_MAP.Silver;
+  const loyaltyTier: MemberTier = 'Home Builder';
 
   const accountStats = [
     { label: 'Orders', value: '14', Icon: Icon.Package, onClick: () => router.push('/orders') },
@@ -181,6 +183,8 @@ const ProfilePage = () => {
     { key: 'profile', label: 'Profile', Icon: Icon.User },
     { key: 'security', label: 'Security', Icon: Icon.Shield },
     { key: 'preferences', label: 'Preferences', Icon: Icon.Bell },
+    { key: 'wallet', label: 'Wallet', Icon: Icon.Activity },
+    { key: 'encashment', label: 'Encashment', Icon: Icon.Bag },
     { key: 'activity', label: 'Activity', Icon: Icon.Activity },
   ];
 
@@ -251,10 +255,7 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Loyalty badge */}
-                <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${tierCfg.badge}`}>
-                  <span>{tierCfg.emoji}</span>
-                  {tierCfg.label} Member
-                </span>
+                <TierBadge tier={loyaltyTier} className="px-3 py-1" />
               </div>
 
               {/* Profile completion */}
@@ -754,6 +755,30 @@ const ProfilePage = () => {
               )}
 
               {/* ── Activity tab ── */}
+              {activeTab === 'wallet' && (
+                <motion.div
+                  key="wallet"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <WalletTab />
+                </motion.div>
+              )}
+
+              {activeTab === 'encashment' && (
+                <motion.div
+                  key="encashment"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <EncashmentTab />
+                </motion.div>
+              )}
+
               {activeTab === 'activity' && (
                 <motion.div key="activity" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
                   <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-6">

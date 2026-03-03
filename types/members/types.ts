@@ -1,6 +1,11 @@
 export type MemberStatus = 'active' | 'pending' | 'blocked' | 'kyc_review';
 
-export type MemberTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+export type MemberTier =
+  | 'Home Starter'
+  | 'Home Builder'
+  | 'Home Stylist'
+  | 'Lifestyle Consultant'
+  | 'Lifestyle Elite';
 
 export interface Member {
   id: number;

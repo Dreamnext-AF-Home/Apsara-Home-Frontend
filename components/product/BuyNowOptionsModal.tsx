@@ -127,6 +127,9 @@ const BuyNowOptionsModal = ({
           : undefined,
         order: {
           product_name: product.name,
+          product_id: typeof product.id === 'number' ? product.id : undefined,
+          product_sku: product.sku ?? null,
+          product_pv: typeof product.prodpv === 'number' ? product.prodpv : 0,
           product_image: product.image,
           quantity,
           selected_color: selectedColor ?? null,

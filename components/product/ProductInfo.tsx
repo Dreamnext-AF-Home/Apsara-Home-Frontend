@@ -7,6 +7,7 @@ import { motion } from "framer-motion"
 import { useEffect, useMemo, useState } from "react";
 import StarRating from "../ui/StarRating";
 import BuyNowOptionsModal from "./BuyNowOptionsModal";
+import { useSession } from "next-auth/react";
 
 const CartIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -73,6 +74,10 @@ const buildVariantGroupKey = (variant: VariantOption, index: number) => {
 
 const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }: ProductInfoProps) => {
     const { addToCart } = useCart();
+    const { data: session } = useSession();
+    const role = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase();
+    const canSeePv = role === '' || role === 'customer' || role === 'member' || role === 'affiliate';
+    const displayPv = Number(product.prodpv ?? 0);
     const [quantity, setQuantity] = useState(1);
     const [selectedColor, setSelectedColor] = useState('');
     const [added, setAdded] = useState(false);
@@ -291,6 +296,12 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                     </>
                 )}
             </div>
+
+            {canSeePv && (
+                <div className="inline-flex items-center self-start rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                    PV {displayPv.toLocaleString()}
+                </div>
+            )}
 
             <div className="h-px bg-gray-100" />
 

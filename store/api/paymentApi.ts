@@ -16,6 +16,9 @@ export interface CreateCheckoutSessionPayload {
   customer?: CheckoutCustomerPayload
   order?: {
     product_name?: string
+    product_id?: number
+    product_sku?: string | null
+    product_pv?: number
     product_image?: string
     quantity?: number
     selected_color?: string | null

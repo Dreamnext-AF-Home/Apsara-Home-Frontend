@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { useSession } from 'next-auth/react'
 import {
   AdminFulfillmentStatus,
   useApproveAdminOrderMutation,
@@ -14,12 +15,16 @@ const FILTER_LABELS: Record<string, string> = {
   all: 'All Orders',
   pending: 'Pending Approval',
   processing: 'Processing',
+  paid: 'Paid',
   packed: 'Packed',
   shipped: 'Shipped',
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
   refunded: 'Refunded',
+  returned_refunded: 'Returned / Refunded',
+  failed_payments: 'Failed Payments',
+  order_history: 'Order History',
   completed: 'Completed',
 }
 
@@ -59,14 +64,40 @@ const formatMoney = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value || 0)
 
+const formatDateTime = (value?: string | null) => {
+  if (!value) return 'N/A'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'N/A'
+  return new Intl.DateTimeFormat('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
+const formatDuration = (minutes: number | null | undefined) => {
+  if (minutes == null) return '-'
+  const hrs = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hrs <= 0) return `${mins}m`
+  return `${hrs}h ${mins}m`
+}
+
 interface Props {
   initialFilter?: string
 }
 
 export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
+  const { data: session } = useSession()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [overdueFirst, setOverdueFirst] = useState(true)
+  const role = (session?.user?.role ?? '').toLowerCase()
+  const canApprove = role === 'super_admin' || role === 'admin'
+  const canTrack = canApprove || role === 'csr'
 
   const effectiveFilter = useMemo(() => {
     const normalized = initialFilter
@@ -76,17 +107,15 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
       .replace(/-/g, '_')
 
     const aliases: Record<string, string> = {
-      paid: 'processing',
       returned: 'refunded',
       returned_refunded: 'refunded',
-      order_history: 'completed',
-      history: 'completed',
+      history: 'order_history',
       deliverd: 'delivered',
       outfordelivery: 'out_for_delivery',
     }
 
     const mapped = aliases[normalized] ?? normalized
-    const supported = ['all', 'pending', 'processing', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'completed']
+    const supported = ['all', 'pending', 'processing', 'paid', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded', 'returned_refunded', 'failed_payments', 'order_history', 'completed']
     return supported.includes(mapped) ? mapped : 'all'
   }, [initialFilter])
 
@@ -100,6 +129,21 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
   const [approveOrder] = useApproveAdminOrderMutation()
   const [rejectOrder] = useRejectAdminOrderMutation()
   const [updateStatus] = useUpdateAdminOrderStatusMutation()
+
+  const visibleOrders = useMemo(() => {
+    const list = [...(data?.orders ?? [])]
+    if (!overdueFirst) return list
+
+    return list.sort((a, b) => {
+      const aOver = a.sla?.state === 'overdue' ? 1 : 0
+      const bOver = b.sla?.state === 'overdue' ? 1 : 0
+      if (aOver !== bOver) return bOver - aOver
+
+      const aOverMin = a.sla?.overdue_minutes ?? 0
+      const bOverMin = b.sla?.overdue_minutes ?? 0
+      return bOverMin - aOverMin
+    })
+  }, [data?.orders, overdueFirst])
 
   const handleApprove = async (id: number) => {
     setBusyId(id)
@@ -149,7 +193,17 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400 transition-all"
           />
           <div className="flex items-center justify-end text-xs text-slate-500">
-            {FILTER_LABELS[effectiveFilter] ?? 'All Orders'}
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={overdueFirst}
+                onChange={(e) => setOverdueFirst(e.target.checked)}
+                className="accent-teal-600"
+              />
+              <span>Overdue first</span>
+            </label>
+            <span className="mx-2">•</span>
+            <span>{FILTER_LABELS[effectiveFilter] ?? 'All Orders'}</span>
           </div>
         </div>
 
@@ -169,6 +223,12 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
             ))}
           </div>
         ) : null}
+
+        <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
+          Role: <span className="font-semibold">{role || 'staff'}</span>
+          {!canApprove ? ' • Approval actions are disabled for this role.' : ''}
+          {!canTrack ? ' • Fulfillment tracking is disabled for this role.' : ''}
+        </div>
       </div>
 
       {isError ? (
@@ -199,25 +259,34 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr className="text-left text-xs text-slate-500">
                     <th className="px-4 py-3 font-semibold">Checkout</th>
+                    <th className="px-4 py-3 font-semibold">Date</th>
                     <th className="px-4 py-3 font-semibold">Customer</th>
                     <th className="px-4 py-3 font-semibold">Product</th>
                     <th className="px-4 py-3 font-semibold">Amount</th>
                     <th className="px-4 py-3 font-semibold">Approval</th>
+                    <th className="px-4 py-3 font-semibold">SLA</th>
                     <th className="px-4 py-3 font-semibold">Tracking</th>
                     <th className="px-4 py-3 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.orders?.length ? (
-                    data.orders.map((order) => {
+                  {visibleOrders?.length ? (
+                    visibleOrders.map((order) => {
                       const isBusy = busyId === order.id
-                      const canApprove = order.approval_status === 'pending_approval'
+                      const canApproveThisOrder = canApprove && order.approval_status === 'pending_approval'
+                      const canTrackThisOrder = canTrack && order.approval_status === 'approved'
 
                       return (
                         <tr key={order.id} className="border-b border-slate-50 last:border-b-0">
                           <td className="px-4 py-3">
                             <p className="text-sm font-semibold text-slate-800">{order.checkout_id}</p>
                             <p className="text-xs text-slate-500 mt-0.5">{order.payment_status}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm text-slate-800">{formatDateTime(order.created_at)}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Paid: {formatDateTime(order.paid_at)}
+                            </p>
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-sm text-slate-800">{order.customer_name || 'N/A'}</p>
@@ -237,8 +306,34 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                             </span>
                           </td>
                           <td className="px-4 py-3">
+                            {order.sla?.state === 'overdue' ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex px-2 py-1 rounded-full border text-xs font-semibold bg-red-50 text-red-700 border-red-200">
+                                  Overdue
+                                </span>
+                                <p className="text-[11px] text-red-600">+{formatDuration(order.sla?.overdue_minutes)}</p>
+                              </div>
+                            ) : order.sla?.state === 'due_soon' ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex px-2 py-1 rounded-full border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200">
+                                  Due Soon
+                                </span>
+                                <p className="text-[11px] text-amber-700">Left: {formatDuration(order.sla?.remaining_minutes)}</p>
+                              </div>
+                            ) : order.sla?.state === 'on_track' ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex px-2 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200">
+                                  On Track
+                                </span>
+                                <p className="text-[11px] text-slate-500">Elapsed: {formatDuration(order.sla?.elapsed_minutes)}</p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400">No SLA</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
                             <select
-                              disabled={isBusy || order.approval_status !== 'approved'}
+                              disabled={isBusy || !canTrackThisOrder}
                               value={order.fulfillment_status}
                               onChange={(e) => handleStatusChange(order.id, e.target.value as AdminFulfillmentStatus)}
                               className="px-2.5 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 bg-white disabled:opacity-50"
@@ -253,14 +348,14 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <button
-                                disabled={isBusy || !canApprove}
+                                disabled={isBusy || !canApproveThisOrder}
                                 onClick={() => handleApprove(order.id)}
                                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white disabled:opacity-50"
                               >
                                 Approve
                               </button>
                               <button
-                                disabled={isBusy || !canApprove}
+                                disabled={isBusy || !canApproveThisOrder}
                                 onClick={() => handleReject(order.id)}
                                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white disabled:opacity-50"
                               >
@@ -273,7 +368,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-500">
+                      <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-500">
                         No orders found for this filter.
                       </td>
                     </tr>

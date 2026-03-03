@@ -21,7 +21,7 @@ const defaultForm: AddMemberForm = {
   name: '',
   email: '',
   status: 'pending',
-  tier: 'Bronze',
+  tier: 'Home Starter',
 }
 
 export default function AddMemberModal({ isOpen, onClose, onSubmit }: AddMemberModalProps) {
@@ -175,10 +175,11 @@ export default function AddMemberModal({ isOpen, onClose, onSubmit }: AddMemberM
                       onChange={(e) => setForm(p => ({ ...p, tier: e.target.value as MemberTier }))}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400 transition-all cursor-pointer"
                     >
-                      <option value="Bronze">🥉 Bronze</option>
-                      <option value="Silver">🥈 Silver</option>
-                      <option value="Gold">🥇 Gold</option>
-                      <option value="Platinum">💎 Platinum</option>
+                      <option value="Home Starter">🏠 Home Starter</option>
+                      <option value="Home Builder">🧱 Home Builder</option>
+                      <option value="Home Stylist">✨ Home Stylist</option>
+                      <option value="Lifestyle Consultant">📈 Lifestyle Consultant</option>
+                      <option value="Lifestyle Elite">💎 Lifestyle Elite</option>
                     </select>
                   </div>
                 </div>

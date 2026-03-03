@@ -9,6 +9,7 @@ import { signOut, useSession } from 'next-auth/react'
 import { useLogoutMutation } from '@/store/api/authApi'
 import { membersApi } from '@/store/api/membersApi'
 import { useAppDispatch } from '@/store/hooks'
+import { clearAccessTokenCache } from '@/store/api/baseApi'
 
 interface SubItem { label: string; path: string }
 interface NavItem {
@@ -66,15 +67,15 @@ const navItems: NavItem[] = [
       { label: 'All Orders', path: '/admin/orders' },
       { label: 'Pending', path: '/admin/orders/pending' },
       { label: 'Processing', path: '/admin/orders/processing' },
-      { label: 'Paid', path: '/admin/orders/processing' },
+      { label: 'Paid', path: '/admin/orders/paid' },
       { label: 'Packed', path: '/admin/orders/packed' },
       { label: 'Shipped', path: '/admin/orders/shipped' },
       { label: 'Out for Delivery', path: '/admin/orders/out_for_delivery' },
       { label: 'Delivered', path: '/admin/orders/delivered' },
       { label: 'Cancelled', path: '/admin/orders/cancelled' },
-      { label: 'Returned / Refunded', path: '/admin/orders/refunded' },
-      { label: 'Failed Payments', path: '/admin/orders/pending' },
-      { label: 'Order History', path: '/admin/orders/completed' },
+      { label: 'Returned / Refunded', path: '/admin/orders/returned_refunded' },
+      { label: 'Failed Payments', path: '/admin/orders/failed_payments' },
+      { label: 'Order History', path: '/admin/orders/order_history' },
     ],
   },
   {
@@ -82,7 +83,33 @@ const navItems: NavItem[] = [
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
     children: [
       { label: 'All Requests', path: '/admin/encashment' },
-      { label: 'Pending', path: '/admin/encashment/pending' },
+      { label: 'Queue / Pending', path: '/admin/encashment/pending' },
+      { label: 'Ready for Release', path: '/admin/encashment/approved_by_admin' },
+      { label: 'Released', path: '/admin/encashment/released' },
+      { label: 'Rejected', path: '/admin/encashment/rejected' },
+      { label: 'Failed Payouts', path: '/admin/encashment/failed' },
+    ],
+  },
+  {
+    id: 'accounting', label: 'Accounting',
+    icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-2.21 0-4 1.12-4 2.5S9.79 13 12 13s4 1.12 4 2.5S14.21 18 12 18s-4-1.12-4-2.5M12 6v12" /></svg>,
+    children: [
+      { label: 'Dashboard', path: '/admin/accounting' },
+      { label: 'Release Center', path: '/admin/encashment/approved_by_admin' },
+      { label: 'Disbursement History', path: '/admin/accounting/disbursement-history' },
+      { label: 'Reconciliation', path: '/admin/accounting/reconciliation' },
+      { label: 'Invoices', path: '/admin/accounting/invoices' },
+      { label: 'Audit Trail', path: '/admin/accounting/audit' },
+      { label: 'Reports', path: '/admin/accounting/reports' },
+      { label: 'Settings', path: '/admin/accounting/settings' },
+    ],
+  },
+  {
+    id: 'finance', label: 'Finance Office',
+    icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v12m6-6H6M4 7h16M4 17h16" /></svg>,
+    children: [
+      { label: 'Dashboard', path: '/admin/finance' },
+      { label: 'Release Center', path: '/admin/encashment/approved_by_admin' },
       { label: 'Released', path: '/admin/encashment/released' },
     ],
   },
@@ -171,7 +198,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const [logoutApi] = useLogoutMutation()
   const displayName = session?.user?.name?.trim() || 'Admin'
   const displayEmail = session?.user?.email?.trim() || 'admin@afhome.com'
-  const displayRole = formatRole(session?.user?.role)
+  const rawRole = String(session?.user?.role ?? '').toLowerCase()
+  const userLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
+  const isAccounting = rawRole === 'accounting' || userLevelId === 5
+  const isFinanceOfficer = rawRole === 'finance_officer' || userLevelId === 6
+  const displayRole = isAccounting ? 'Accounting' : isFinanceOfficer ? 'Finance Officer' : formatRole(session?.user?.role)
+  const role = isAccounting ? 'accounting' : isFinanceOfficer ? 'finance_officer' : rawRole
   const displayInitials = getInitials(displayName)
   const avatarSrc = session?.user?.image
 
@@ -185,14 +217,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     } catch (error) {
       console.log(error)
     }
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('accessToken')
-    }
+    clearAccessTokenCache()
     await signOut({ callbackUrl: '/admin/login' })
   }
 
   const isActive = (path: string) => pathname === path
   const isChildActive = (children?: SubItem[]) => children?.some(c => pathname === c.path) ?? false
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (isAccounting) return item.id === 'accounting' || item.id === 'encashment'
+    if (isFinanceOfficer) return item.id === 'finance' || item.id === 'encashment'
+    return true
+  })
 
   useEffect(() => {
     const criticalRoutes = [
@@ -274,16 +310,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5" style={{ scrollbarWidth: 'none' }}>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const hasChildren = !!item.children?.length
-            const menuOpen = openMenus.includes(item.id)
+            const menuOpen = isAccounting ? true : openMenus.includes(item.id)
             const active = item.path ? isActive(item.path) : isChildActive(item.children)
 
             return (
               <div key={item.id}>
                 {hasChildren ? (
                   <button
-                    onClick={() => !isCollapsed && toggleMenu(item.id)}
+                    onClick={() => !isCollapsed && !isAccounting && toggleMenu(item.id)}
                     title={isCollapsed ? item.label : undefined}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group relative
                       ${active ? 'bg-teal-500/15 text-teal-400' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'}
@@ -295,7 +331,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       <>
                         <span className="flex-1 text-left font-medium">{item.label}</span>
                         {item.badge && <span className="bg-teal-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold min-w-[20px] text-center">{item.badge}</span>}
-                        <svg className={`w-4 h-4 shrink-0 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        {!isAccounting && (
+                          <svg className={`w-4 h-4 shrink-0 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        )}
                       </>
                     )}
                     {isCollapsed && (

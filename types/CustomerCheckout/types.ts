@@ -12,6 +12,9 @@ export interface GuestForm {
 }
 
 export interface CustomerCheckoutProduct {
+  id?: number;
+  sku?: string;
+  prodpv?: number;
   name: string;
   image: string;
   price: number;

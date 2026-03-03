@@ -33,6 +33,14 @@ export interface AdminOrder {
   paid_at?: string | null
   created_at?: string | null
   updated_at?: string | null
+  sla?: {
+    key: string
+    state: 'on_track' | 'due_soon' | 'overdue' | 'no_sla'
+    target_minutes: number | null
+    elapsed_minutes: number | null
+    remaining_minutes: number | null
+    overdue_minutes: number | null
+  }
 }
 
 export interface AdminOrdersResponse {
