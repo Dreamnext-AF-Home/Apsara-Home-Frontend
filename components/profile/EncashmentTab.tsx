@@ -16,6 +16,16 @@ const money = new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 2,
 });
 
+const formatCooldownRemaining = (minutes: number) => {
+  const totalMinutes = Math.max(0, Math.ceil(Number(minutes || 0)));
+  if (totalMinutes <= 0) return '0m';
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hours <= 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+};
+
 const statusStyle: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -359,7 +369,7 @@ const EncashmentTab = () => {
               )}
               {eligibility.remaining_cooldown_minutes > 0 && (
                 <p className="text-xs text-amber-700 mt-0.5">
-                  Cooldown remaining: {eligibility.remaining_cooldown_minutes} minute(s)
+                  Cooldown remaining: {formatCooldownRemaining(eligibility.remaining_cooldown_minutes)}
                 </p>
               )}
             </div>
