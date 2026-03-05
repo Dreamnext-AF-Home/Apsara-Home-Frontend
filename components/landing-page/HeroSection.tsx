@@ -108,7 +108,7 @@ export default function HeroSection() {
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] as const }}
               className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-white font-medium leading-tight mb-6 md:mb-8 tracking-tight"
             >
               Earn From Home.{' '}
@@ -120,7 +120,7 @@ export default function HeroSection() {
             <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] as const }}
               className="text-white/90 text-base sm:text-lg md:text-2xl font-body mb-8 leading-relaxed max-w-2xl md:mx-0"
             >
               AF Home is a home and lifestyle affiliate ecosystem where you earn commissions, enjoy lifetime discounts, and grow with a community.
@@ -128,7 +128,7 @@ export default function HeroSection() {
             <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.8, delay: 0.45, ease: [0.16, 1, 0.3, 1] as const }}
               className="inline-block text-white font-medium text-base md:text-xl mb-10 bg-white/5 backdrop-blur-sm px-6 py-2 rounded-full border border-white/10"
             >
               No inventory. No capital. Just real products, real earnings.
@@ -136,7 +136,7 @@ export default function HeroSection() {
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
               className="flex flex-col sm:flex-row gap-4 w-auto justify-start items-start"
             >
               <motion.a
@@ -186,3 +186,4 @@ export default function HeroSection() {
     </section>
   );
 }
+

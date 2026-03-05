@@ -47,7 +47,7 @@ export default function Newsletter() {
               transition={{
                 duration: 0.5,
                 delay: 0.2,
-                ease: [0.34, 1.56, 0.64, 1],
+                ease: [0.34, 1.56, 0.64, 1] as const,
               }}
               className="w-16 h-16 mx-auto mb-6 bg-af-forest/10 rounded-full flex items-center justify-center"
             >
@@ -144,3 +144,4 @@ export default function Newsletter() {
     </section>
   );
 }
+

@@ -34,3 +34,4 @@ export default function SkeletonLoader({ count = 8 }: SkeletonLoaderProps) {
     </div>
   );
 }
+

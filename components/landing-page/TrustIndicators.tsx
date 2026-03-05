@@ -44,7 +44,7 @@ export default function TrustIndicators() {
               transition={{
                 duration: 0.5,
                 delay: index * 0.1,
-                ease: [0.16, 1, 0.3, 1],
+                ease: [0.16, 1, 0.3, 1] as const,
               }}
               whileHover={{ y: -4 }}
               className="text-center p-6 rounded-2xl bg-af-cream/50"
@@ -74,3 +74,4 @@ export default function TrustIndicators() {
     </section>
   );
 }
+

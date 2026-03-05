@@ -31,13 +31,13 @@ export default function ProductCard({
       transition={{
         duration: 0.6,
         delay: index * 0.1,
-        ease: [0.16, 1, 0.3, 1],
+        ease: [0.16, 1, 0.3, 1] as const,
       }}
       className="group relative"
     >
       <motion.div
         whileHover={{ y: -8 }}
-        transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] as const }}
         className="bg-white rounded-2xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-shadow duration-500"
       >
         {/* Image Container */}
@@ -47,7 +47,7 @@ export default function ProductCard({
             alt={product.name}
             className="w-full h-full object-cover"
             whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
           />
 
           {/* Badges */}
@@ -113,3 +113,4 @@ export default function ProductCard({
     </motion.div>
   );
 }
+

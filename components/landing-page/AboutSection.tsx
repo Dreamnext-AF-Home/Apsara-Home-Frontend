@@ -10,7 +10,7 @@ export default function AboutSection() {
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] as const }}
             className="relative"
           >
             <div className="grid grid-cols-2 gap-4">
@@ -66,7 +66,7 @@ export default function AboutSection() {
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] as const }}
           >
             <span className="font-mono text-orange-500 text-sm tracking-widest uppercase mb-4 block">
               Our Story
@@ -123,3 +123,4 @@ export default function AboutSection() {
     </section>
   );
 }
+

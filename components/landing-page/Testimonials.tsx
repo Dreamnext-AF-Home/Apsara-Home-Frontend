@@ -60,7 +60,7 @@ export default function Testimonials() {
               transition={{
                 duration: 0.6,
                 delay: index * 0.15,
-                ease: [0.16, 1, 0.3, 1],
+                ease: [0.16, 1, 0.3, 1] as const,
               }}
               whileHover={{ y: -8 }}
               className="relative bg-af-cream rounded-3xl p-8 shadow-soft hover:shadow-soft-lg transition-all duration-500"
@@ -138,3 +138,4 @@ export default function Testimonials() {
     </section>
   );
 }
+
