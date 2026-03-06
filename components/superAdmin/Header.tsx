@@ -25,6 +25,17 @@ const formatRole = (role?: string | null) => {
     return role.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
+type DateRangePreset = 'this_month' | 'last_month' | 'last_30_days' | 'this_year' | 'last_year' | 'custom';
+
+const DATE_RANGE_OPTIONS: { value: DateRangePreset; label: string }[] = [
+    { value: 'this_month', label: 'This Month' },
+    { value: 'last_month', label: 'Last Month' },
+    { value: 'last_30_days', label: 'Last 30 Days' },
+    { value: 'this_year', label: 'This Year' },
+    { value: 'last_year', label: 'Last Year' },
+    { value: 'custom', label: 'Custom Range' },
+];
+
 const Header = ({ onMenuClick }: HeaderProps) => {
     const [notifOpen, setNotifOpen] = useState(false);
     const [userOpen, setUserOpen] = useState(false);
@@ -34,6 +45,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [headerSearch, setHeaderSearch] = useState(searchParams.get('q') ?? '');
+    const [selectedRange, setSelectedRange] = useState<DateRangePreset>('this_month');
+    const [customStart, setCustomStart] = useState(searchParams.get('from') ?? '');
+    const [customEnd, setCustomEnd] = useState(searchParams.get('to') ?? '');
     const {
         data: notifications,
         isLoading: isNotifLoading,
@@ -51,6 +65,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
     useEffect(() => {
         setHeaderSearch(searchParams.get('q') ?? '');
+        const queryRange = searchParams.get('range') as DateRangePreset | null;
+        setSelectedRange(queryRange && DATE_RANGE_OPTIONS.some((opt) => opt.value === queryRange) ? queryRange : 'this_month');
+        setCustomStart(searchParams.get('from') ?? '');
+        setCustomEnd(searchParams.get('to') ?? '');
     }, [searchParams]);
 
     useEffect(() => {
@@ -72,6 +90,24 @@ const Header = ({ onMenuClick }: HeaderProps) => {
         const query = params.toString();
         router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     };
+
+    const updateDateRangeParams = (range: DateRangePreset, from?: string, to?: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('range', range);
+        if (range === 'custom') {
+            if (from) params.set('from', from);
+            else params.delete('from');
+            if (to) params.set('to', to);
+            else params.delete('to');
+        } else {
+            params.delete('from');
+            params.delete('to');
+        }
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    };
+
+    const isDashboardPage = pathname?.startsWith('/admin/dashboard');
 
     return (
         <header className="h-16 bg-white border-b border-slate-100 flex items-center px-4 gap-4 shrink-0 sticky top-0 z-10">
@@ -105,14 +141,62 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-xs text-slate-500 font-medium">
-                        {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                </div>
+                {isDashboardPage && (
+                    <div className="hidden md:flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <select
+                                value={selectedRange}
+                                onChange={(e) => {
+                                    const nextRange = e.target.value as DateRangePreset;
+                                    setSelectedRange(nextRange);
+                                    if (nextRange !== 'custom') {
+                                        updateDateRangeParams(nextRange);
+                                    }
+                                }}
+                                className="bg-transparent text-xs text-slate-600 font-medium focus:outline-none"
+                            >
+                                {DATE_RANGE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Today</span>
+                            <span className="text-xs text-slate-600 font-medium">
+                                {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                        </div>
+                        {selectedRange === 'custom' && (
+                            <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <input
+                                    type="date"
+                                    value={customStart}
+                                    onChange={(e) => setCustomStart(e.target.value)}
+                                    className="text-xs text-slate-600 bg-transparent focus:outline-none"
+                                />
+                                <span className="text-xs text-slate-400">to</span>
+                                <input
+                                    type="date"
+                                    value={customEnd}
+                                    onChange={(e) => setCustomEnd(e.target.value)}
+                                    className="text-xs text-slate-600 bg-transparent focus:outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => updateDateRangeParams('custom', customStart, customEnd)}
+                                    className="px-2 py-0.5 text-[11px] font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700 transition-colors"
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="relative">
                     <button
