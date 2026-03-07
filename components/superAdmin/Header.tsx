@@ -2,11 +2,15 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useGetAdminNotificationsQuery } from "@/store/api/adminNotificationsApi";
+import {
+    useGetAdminNotificationsQuery,
+    useMarkAdminNotificationReadMutation,
+    useMarkAllAdminNotificationsReadMutation,
+} from "@/store/api/adminNotificationsApi";
+import Pusher from "pusher-js";
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -35,11 +39,27 @@ const DATE_RANGE_OPTIONS: { value: DateRangePreset; label: string }[] = [
     { value: 'last_year', label: 'Last Year' },
     { value: 'custom', label: 'Custom Range' },
 ];
+const formatRelativeTime = (value?: string | null) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const diffMs = Date.now() - date.getTime();
+    if (diffMs < 0) return 'just now';
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+};
 
 const Header = ({ onMenuClick }: HeaderProps) => {
     const [notifOpen, setNotifOpen] = useState(false);
     const [userOpen, setUserOpen] = useState(false);
-    const [muted, setMuted] = useState(false);
     const { data: session } = useSession();
     const router = useRouter();
     const pathname = usePathname();
@@ -54,14 +74,17 @@ const Header = ({ onMenuClick }: HeaderProps) => {
         isError: isNotifError,
         refetch: refetchNotifs,
     } = useGetAdminNotificationsQuery(undefined, {
-        pollingInterval: 30000,
+        pollingInterval: 10000,
         refetchOnFocus: true,
     });
-    const unreadCount = muted ? 0 : (notifications?.unread_count ?? 0);
+    const [markNotificationRead] = useMarkAdminNotificationReadMutation();
+    const [markAllNotificationsRead] = useMarkAllAdminNotificationsReadMutation();
+    const unreadCount = notifications?.unread_count ?? 0;
     const displayName = session?.user?.name?.trim() || 'Admin';
     const displayRole = formatRole(session?.user?.role);
     const displayInitials = getInitials(displayName);
     const avatarSrc = session?.user?.image;
+    const accessToken = session?.user?.accessToken;
 
     useEffect(() => {
         setHeaderSearch(searchParams.get('q') ?? '');
@@ -72,10 +95,64 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     }, [searchParams]);
 
     useEffect(() => {
-        if ((notifications?.unread_count ?? 0) > 0) {
-            setMuted(false);
+        const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+        const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+        const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '');
+
+        if (!pusherKey || !pusherCluster || !apiBaseUrl || !accessToken) {
+            return;
         }
-    }, [notifications?.generated_at, notifications?.unread_count]);
+
+        const pusher = new Pusher(pusherKey, {
+            cluster: pusherCluster,
+            channelAuthorization: {
+                endpoint: `${apiBaseUrl}/api/admin/realtime/pusher/auth`,
+                transport: 'ajax',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/json',
+                },
+            },
+        });
+
+        const channel = pusher.subscribe('private-admin-orders');
+        const onOrderCreated = () => {
+            refetchNotifs();
+        };
+        const onNotificationCreated = () => {
+            refetchNotifs();
+        };
+
+        channel.bind('order.created', onOrderCreated);
+        channel.bind('notification.created', onNotificationCreated);
+
+        return () => {
+            channel.unbind('order.created', onOrderCreated);
+            channel.unbind('notification.created', onNotificationCreated);
+            pusher.unsubscribe('private-admin-orders');
+            pusher.disconnect();
+        };
+    }, [accessToken, refetchNotifs]);
+
+    const handleNotificationClick = async (id: string, href: string) => {
+        try {
+            await markNotificationRead(id).unwrap();
+        } catch {
+            // Navigate even if read-state update fails; polling/realtime will reconcile state.
+        } finally {
+            setNotifOpen(false);
+            router.push(href);
+        }
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            await markAllNotificationsRead().unwrap();
+            await refetchNotifs();
+        } catch {
+            // Keep UI stable; next poll/realtime event will refresh the feed.
+        }
+    };
 
     const handleHeaderSearchChange = (value: string) => {
         setHeaderSearch(value);
@@ -223,43 +300,55 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100"
+                                className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50"
                             >
                                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 z-10 overflow-hidden">
                                     <span className="font-semibold text-slate-800 text-sm">Notifications</span>
                                     <button
-                                        onClick={() => setMuted(true)}
+                                        onClick={handleMarkAllNotificationsRead}
                                         className="text-xs text-teal-600 font-medium hover:underline"
                                     >
                                         Mark all read
                                     </button>
                                 </div>
-                                {isNotifLoading ? (
-                                    <div className="px-4 py-3 text-sm text-slate-500">Loading notifications...</div>
-                                ) : isNotifError ? (
-                                    <div className="px-4 py-3 text-sm text-red-600">Failed to load notifications.</div>
-                                ) : notifications?.items?.length ? (
-                                    notifications.items.map((notif) => (
-                                        <Link
-                                            key={notif.id}
-                                            href={notif.href}
-                                            onClick={() => setNotifOpen(false)}
-                                            className={`flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer ${notif.count > 0 ? 'bg-teal-50/40' : ''}`}
-                                        >
-                                            <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${notif.count > 0 ? 'bg-teal-500' : 'bg-slate-200'}`} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm text-slate-700 font-medium">{notif.title}</p>
-                                                <p className="text-xs text-slate-500 mt-0.5">{notif.description}</p>
-                                            </div>
-                                            <span className="text-xs font-semibold text-slate-500">{notif.count}</span>
-                                        </Link>
-                                    ))
-                                ) : (
-                                    <div className="px-4 py-3 text-sm text-slate-500">No notifications right now.</div>
-                                )}
+                                <div className="max-h-80 overflow-y-auto overscroll-contain">
+                                    {isNotifLoading ? (
+                                        <div className="px-4 py-3 text-sm text-slate-500">Loading notifications...</div>
+                                    ) : isNotifError ? (
+                                        <div className="px-4 py-3 text-sm text-red-600">Failed to load notifications.</div>
+                                    ) : notifications?.items?.length ? (
+                                        notifications.items.map((notif) => {
+                                            const isNew = !notif.is_read;
+                                            return (
+                                            <button
+                                                key={notif.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    handleNotificationClick(notif.id, notif.href);
+                                                }}
+                                                className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer ${isNew ? 'bg-teal-50/40' : ''}`}
+                                            >
+                                                <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${isNew ? 'bg-teal-500' : 'bg-slate-200'}`} />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-slate-700 font-medium">{notif.title}</p>
+                                                    <p className="text-xs text-slate-500 mt-0.5">{notif.description}</p>
+                                                    {formatRelativeTime(notif.updated_at) && (
+                                                        <p className="text-[11px] text-slate-400 mt-1">{formatRelativeTime(notif.updated_at)}</p>
+                                                    )}
+                                                </div>
+                                                {notif.type ? (
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{notif.type.replace(/_/g, ' ')}</span>
+                                                ) : null}
+                                            </button>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="px-4 py-3 text-sm text-slate-500">No notifications right now.</div>
+                                    )}
+                                </div>
                                 <div className="px-4 py-2.5 border-t border-slate-100 text-center">
                                     <p className="text-[11px] text-slate-400">
-                                        Auto-refresh every 30 seconds
+                                        Realtime updates enabled (with 10-second polling fallback)
                                     </p>
                                     {notifications?.generated_at ? (
                                         <p className="text-[11px] text-slate-400 mt-0.5">

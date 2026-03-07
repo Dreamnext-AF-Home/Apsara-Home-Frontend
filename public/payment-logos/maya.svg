@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="32" viewBox="0 0 96 32" fill="none">
+  <rect x="0.5" y="0.5" width="95" height="31" rx="8" fill="white"/>
+  <rect x="0.5" y="0.5" width="95" height="31" rx="8" stroke="#E5E7EB"/>
+  <rect x="17" y="9" width="40" height="14" rx="3" fill="#00A859"/>
+  <text x="37" y="19" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="white">maya</text>
+</svg>

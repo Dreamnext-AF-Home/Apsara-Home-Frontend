@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { Product, ProductVariant, useUpdateProductMutation, CreateProductPayload } from '@/store/api/productsApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 interface EditProductModalProps {
   product: Product | null
@@ -401,10 +402,13 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
 
     try {
       await updateProduct({ id: product.id, data: payload }).unwrap()
+      showSuccessToast('Product updated successfully.')
       onClose()
     } catch (err: unknown) {
       const ex = err as { data?: { message?: string } }
-      setServerError(ex?.data?.message ?? 'Failed to update product.')
+      const message = ex?.data?.message ?? 'Failed to update product.'
+      setServerError(message)
+      showErrorToast(message)
     }
   }
 

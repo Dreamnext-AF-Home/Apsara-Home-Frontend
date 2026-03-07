@@ -152,9 +152,15 @@ const navItems: NavItem[] = [
     id: 'webpages', label: 'Web Pages',
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" /></svg>,
     children: [
-      { label: 'Home Page', path: '/admin/webpages/home' },
-      { label: 'Banners', path: '/admin/webpages/banners' },
-      { label: 'Announcements', path: '/admin/webpages/announcements' },
+      { label: 'Home Slider', path: '/admin/webpages/home-slider' },
+      { label: 'Assembly Guides', path: '/admin/webpages/assembly-guides' },
+      { label: 'Photo Gallery', path: '/admin/webpages/photo-gallery' },
+      { label: 'Video Gallery', path: '/admin/webpages/video-gallery' },
+      { label: 'Blogs', path: '/admin/webpages/blogs' },
+      { label: 'Testimonial', path: '/admin/webpages/testimonial' },
+      { label: 'Branches', path: '/admin/webpages/branches' },
+      { label: 'F.A.Q', path: '/admin/webpages/faq' },
+      { label: 'Announcement', path: '/admin/webpages/announcement' },
     ],
   },
   {

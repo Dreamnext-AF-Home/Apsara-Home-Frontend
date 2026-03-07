@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMeQuery, useUpdateProfileMutation } from '@/store/api/userApi';
+import { useMeQuery, useReferralTreeQuery, useUpdateProfileMutation } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -43,6 +43,7 @@ const ProfilePage = () => {
   const router = useRouter();
   const { data: session } = useSession();
   const { data } = useMeQuery();
+  const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery();
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
@@ -126,6 +127,12 @@ const ProfilePage = () => {
   const referralLink = referralCode
     ? `${siteOrigin}/login?ref=${encodeURIComponent(referralCode)}`
     : '';
+  const verificationBadgeClass = (status?: string) => {
+    if (status === 'verified') return 'bg-emerald-100 text-emerald-700';
+    if (status === 'pending_review') return 'bg-amber-100 text-amber-700';
+    if (status === 'blocked') return 'bg-red-100 text-red-700';
+    return 'bg-slate-100 text-slate-600';
+  };
 
   const completion = useMemo(() => {
     if (isVerified) return 100;
@@ -336,6 +343,14 @@ const ProfilePage = () => {
     }
   };
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push('/');
+  };
+
 
   return (
     <motion.section
@@ -347,6 +362,17 @@ const ProfilePage = () => {
       <div className="container mx-auto px-4 py-8 md:py-10 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mb-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
+            aria-label="Go back"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
             <span>Account</span>
             <Icon.ChevronRight className="h-3 w-3" />
@@ -526,6 +552,67 @@ const ProfilePage = () => {
                         {referralMsg.text}
                       </p>
                     )}
+
+                    <div className="mt-4 border-t border-purple-200 pt-3">
+                      <p className="text-xs font-bold text-purple-700 mb-2">Affiliate Tree</p>
+
+                      {isReferralTreeLoading ? (
+                        <p className="text-xs text-purple-600">Loading your network...</p>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-3 gap-2 mb-3">
+                            <div className="rounded-lg border border-purple-200 bg-white px-2 py-1.5 text-center">
+                              <p className="text-[10px] text-purple-600">Direct</p>
+                              <p className="text-xs font-bold text-purple-800">{referralTree?.summary?.direct_count ?? 0}</p>
+                            </div>
+                            <div className="rounded-lg border border-purple-200 bg-white px-2 py-1.5 text-center">
+                              <p className="text-[10px] text-purple-600">Level 2</p>
+                              <p className="text-xs font-bold text-purple-800">{referralTree?.summary?.second_level_count ?? 0}</p>
+                            </div>
+                            <div className="rounded-lg border border-purple-200 bg-white px-2 py-1.5 text-center">
+                              <p className="text-[10px] text-purple-600">Total</p>
+                              <p className="text-xs font-bold text-purple-800">{referralTree?.summary?.total_network ?? 0}</p>
+                            </div>
+                          </div>
+
+                          {(referralTree?.children?.length ?? 0) > 0 ? (
+                            <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                              {referralTree?.children?.map((node) => (
+                                <div key={node.id} className="rounded-lg border border-purple-200 bg-white px-2.5 py-2">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-semibold text-slate-800 truncate">
+                                      {node.name}
+                                      {node.username ? ` (@${node.username})` : ''}
+                                    </p>
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${verificationBadgeClass(node.verification_status)}`}>
+                                      {node.verification_status}
+                                    </span>
+                                  </div>
+
+                                  {(node.children?.length ?? 0) > 0 && (
+                                    <div className="mt-2 space-y-1 pl-2 border-l-2 border-purple-100">
+                                      {node.children?.map((child) => (
+                                        <div key={child.id} className="flex items-center justify-between gap-2">
+                                          <p className="text-[11px] text-slate-600 truncate">
+                                            {child.name}
+                                            {child.username ? ` (@${child.username})` : ''}
+                                          </p>
+                                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${verificationBadgeClass(child.verification_status)}`}>
+                                            {child.verification_status}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-purple-600">No referrals yet.</p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

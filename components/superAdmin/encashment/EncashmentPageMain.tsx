@@ -11,6 +11,7 @@ import {
   useRejectAdminEncashmentMutation,
   useReleaseAdminEncashmentMutation,
 } from '@/store/api/encashmentApi'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 const FILTER_LABELS: Record<string, string> = {
   all: 'All Requests',
@@ -173,11 +174,15 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
     const notes = actionModal.notes.trim()
     if (!id) return
     if (notes.length < 5) {
-      setActionMessage({ type: 'error', text: 'Action note is required (minimum 5 characters).' })
+      const msg = 'Action note is required (minimum 5 characters).'
+      setActionMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
       return
     }
     if (actionModal.action === 'release' && !actionModal.proofUrl) {
-      setActionMessage({ type: 'error', text: 'Screenshot proof is required before release.' })
+      const msg = 'Screenshot proof is required before release.'
+      setActionMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
       return
     }
 
@@ -185,7 +190,9 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
     try {
       if (actionModal.action === 'approve') {
         await approveRequest({ id, notes }).unwrap()
-        setActionMessage({ type: 'success', text: 'Request approved successfully.' })
+        const msg = 'Request approved successfully.'
+        setActionMessage({ type: 'success', text: msg })
+        showSuccessToast(msg)
       } else if (actionModal.action === 'release') {
         await releaseRequest({
           id,
@@ -193,10 +200,14 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
           proof_url: actionModal.proofUrl,
           proof_public_id: actionModal.proofPublicId || undefined,
         }).unwrap()
-        setActionMessage({ type: 'success', text: 'Request released successfully.' })
+        const msg = 'Request released successfully.'
+        setActionMessage({ type: 'success', text: msg })
+        showSuccessToast(msg)
       } else {
         await rejectRequest({ id, notes }).unwrap()
-        setActionMessage({ type: 'success', text: 'Request rejected successfully.' })
+        const msg = 'Request rejected successfully.'
+        setActionMessage({ type: 'success', text: msg })
+        showSuccessToast(msg)
       }
       closeActionModal()
     } catch (err: unknown) {
@@ -207,7 +218,9 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
           : actionModal.action === 'release'
           ? 'Failed to release request.'
           : 'Failed to reject request.'
-      setActionMessage({ type: 'error', text: apiErr?.data?.message || fallback })
+      const msg = apiErr?.data?.message || fallback
+      setActionMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
     } finally {
       setBusyId(null)
     }
@@ -236,10 +249,14 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
         proofPublicId: result.public_id ?? '',
         proofFileName: file.name,
       }))
-      setActionMessage({ type: 'success', text: 'Proof uploaded successfully.' })
+      const msg = 'Proof uploaded successfully.'
+      setActionMessage({ type: 'success', text: msg })
+      showSuccessToast(msg)
     } catch (err: unknown) {
       const error = err as { message?: string }
-      setActionMessage({ type: 'error', text: error?.message || 'Failed to upload proof.' })
+      const msg = error?.message || 'Failed to upload proof.'
+      setActionMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
     } finally {
       setIsUploadingProof(false)
     }

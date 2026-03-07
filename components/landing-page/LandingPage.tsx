@@ -7,7 +7,6 @@ import Header from "@/components/landing-page/Header";
 import HeroSection from "@/components/landing-page/HeroSection";
 import ExperienceSection from "@/components/landing-page/ExperienceSection";
 import QuickViewModal from "@/components/landing-page/QuickViewModal";
-import TrustIndicators from "@/components/landing-page/TrustIndicators";
 import Testimonials from "@/components/landing-page/Testimonials";
 import Newsletter from "@/components/landing-page/Newsletter";
 import Footer from "@/components/landing-page/Footer";
@@ -50,7 +49,6 @@ export default function LandingPage() {
       <main>
         <HeroSection />
         <ExperienceSection />
-        <TrustIndicators />
         <HowItWorksSection />
         <ProductsBrandsSection />
         <CommissionSection />

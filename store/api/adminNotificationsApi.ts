@@ -4,11 +4,15 @@ export type AdminNotificationSeverity = 'info' | 'warning' | 'critical' | 'succe
 
 export interface AdminNotificationItem {
   id: string
+  type?: string
   title: string
   description: string
   count: number
+  is_read?: boolean
   severity: AdminNotificationSeverity
   href: string
+  updated_at?: string | null
+  payload?: Record<string, unknown> | null
 }
 
 export interface AdminNotificationsResponse {
@@ -26,7 +30,25 @@ export const adminNotificationsApi = baseApi.injectEndpoints({
       }),
       providesTags: ['AdminNotifications'],
     }),
+    markAdminNotificationRead: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/api/admin/orders/notifications/${id}/read`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['AdminNotifications'],
+    }),
+    markAllAdminNotificationsRead: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: '/api/admin/orders/notifications/read-all',
+        method: 'POST',
+      }),
+      invalidatesTags: ['AdminNotifications'],
+    }),
   }),
 })
 
-export const { useGetAdminNotificationsQuery } = adminNotificationsApi
+export const {
+  useGetAdminNotificationsQuery,
+  useMarkAdminNotificationReadMutation,
+  useMarkAllAdminNotificationsReadMutation,
+} = adminNotificationsApi

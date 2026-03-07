@@ -10,6 +10,7 @@ import {
   useRejectAdminOrderMutation,
   useUpdateAdminOrderStatusMutation,
 } from '@/store/api/adminOrdersApi'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 const FILTER_LABELS: Record<string, string> = {
   all: 'All Orders',
@@ -164,6 +165,10 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
     setBusyId(id)
     try {
       await approveOrder({ id }).unwrap()
+      showSuccessToast('Order approved successfully.')
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to approve order.')
     } finally {
       setBusyId(null)
     }
@@ -173,6 +178,10 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
     setBusyId(id)
     try {
       await rejectOrder({ id }).unwrap()
+      showSuccessToast('Order rejected successfully.')
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to reject order.')
     } finally {
       setBusyId(null)
     }
@@ -182,6 +191,10 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
     setBusyId(id)
     try {
       await updateStatus({ id, status }).unwrap()
+      showSuccessToast(`Order status updated to ${status.replace(/_/g, ' ')}.`)
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to update order status.')
     } finally {
       setBusyId(null)
     }

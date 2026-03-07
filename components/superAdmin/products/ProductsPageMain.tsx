@@ -8,6 +8,7 @@ import ProductsToolbar from './ProductsToolbar'
 import ProductsTable from './ProductsTable'
 import AddProductModal from './AddProductModal'
 import EditProductModal from './EditProductModal'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 interface ProductsPageMainProps {
   initialData?: ProductsResponse | null
@@ -56,8 +57,9 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     try {
       await deleteProduct(id).unwrap()
       setSelectedIds((prev) => prev.filter((item) => item !== id))
+      showSuccessToast('Product deleted successfully.')
     } catch {
-      // fail silently
+      showErrorToast('Failed to delete product.')
     } finally {
       setDeletingIds((prev) => prev.filter((item) => item !== id))
     }
@@ -84,8 +86,9 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     try {
       await Promise.all(idsToDelete.map((id) => deleteProduct(id).unwrap()))
       setSelectedIds([])
+      showSuccessToast(`${idsToDelete.length} product(s) deleted successfully.`)
     } catch {
-      // fail silently
+      showErrorToast('Failed to delete selected products.')
     } finally {
       setDeletingIds((prev) => prev.filter((id) => !idsToDelete.includes(id)))
     }

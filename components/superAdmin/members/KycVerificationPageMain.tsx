@@ -9,6 +9,7 @@ import {
   useGetMembersKycQuery,
   useRejectMemberKycMutation,
 } from '@/store/api/membersApi'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 const FILTER_LABELS: Record<string, string> = {
   pending_review: 'Pending Review',
@@ -86,7 +87,9 @@ export default function KycVerificationPageMain() {
     if (!actionModal.id) return
     const notes = actionModal.notes.trim()
     if (actionModal.action === 'reject' && notes.length < 5) {
-      setMessage({ type: 'error', text: 'Rejection note is required (minimum 5 characters).' })
+      const msg = 'Rejection note is required (minimum 5 characters).'
+      setMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
       return
     }
 
@@ -95,15 +98,21 @@ export default function KycVerificationPageMain() {
     try {
       if (actionModal.action === 'approve') {
         await approveKyc({ id: actionModal.id, notes: notes || undefined }).unwrap()
-        setMessage({ type: 'success', text: 'KYC request approved successfully.' })
+        const msg = 'KYC request approved successfully.'
+        setMessage({ type: 'success', text: msg })
+        showSuccessToast(msg)
       } else {
         await rejectKyc({ id: actionModal.id, notes }).unwrap()
-        setMessage({ type: 'success', text: 'KYC request rejected.' })
+        const msg = 'KYC request rejected.'
+        setMessage({ type: 'success', text: msg })
+        showSuccessToast(msg)
       }
       closeActionModal()
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } }
-      setMessage({ type: 'error', text: apiErr?.data?.message || 'Failed to update KYC request.' })
+      const msg = apiErr?.data?.message || 'Failed to update KYC request.'
+      setMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
     } finally {
       setBusyId(null)
     }
@@ -450,4 +459,3 @@ export default function KycVerificationPageMain() {
     </div>
   )
 }
-

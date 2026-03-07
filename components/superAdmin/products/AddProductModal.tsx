@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useCreateProductMutation, CreateProductPayload } from '@/store/api/productsApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -356,10 +357,13 @@ export default function AddProductModal({ isOpen, onClose }: AddProductModalProp
 
     try {
       await createProduct(payload).unwrap()
+      showSuccessToast('Product added successfully.')
       handleClose()
     } catch (err: unknown) {
       const ex = err as { data?: { message?: string } }
-      setServerError(ex?.data?.message ?? 'Failed to create product. Please try again.')
+      const message = ex?.data?.message ?? 'Failed to create product. Please try again.'
+      setServerError(message)
+      showErrorToast(message)
     }
   }
 

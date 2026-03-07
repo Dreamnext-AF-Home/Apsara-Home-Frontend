@@ -22,6 +22,8 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
   }
 
   const { product, quantity, selectedColor, selectedSize, selectedType, subtotal, handlingFee, total } = checkoutData;
+  const unitPv = Number(product.prodpv ?? 0);
+  const totalPv = unitPv * quantity;
 
   return (
     <div className="space-y-4">
@@ -50,6 +52,14 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
           <div className="flex justify-between text-slate-500">
             <span>Subtotal ({quantity}x)</span>
             <span className="font-semibold text-slate-700">PHP {subtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-slate-500">
+            <span>PV per item</span>
+            <span className="font-semibold text-blue-700">{unitPv.toLocaleString()} PV</span>
+          </div>
+          <div className="flex justify-between text-slate-500">
+            <span>Total PV</span>
+            <span className="font-semibold text-blue-700">{totalPv.toLocaleString()} PV</span>
           </div>
           <div className="flex justify-between text-slate-500">
             <div className="flex items-center gap-1.5">

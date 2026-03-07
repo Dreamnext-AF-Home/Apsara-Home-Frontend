@@ -9,6 +9,7 @@ import {
   useGetAdminUsersQuery,
   useUpdateAdminUserMutation,
 } from '@/store/api/adminUsersApi'
+import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 const ROLE_OPTIONS = [
   { value: 1, label: 'Super Admin' },
@@ -66,15 +67,20 @@ export default function AdminUsersPageMain() {
 
     try {
       await createAdminUser(createForm).unwrap()
-      setMessage({ type: 'success', text: 'Admin account created successfully.' })
+      const msg = 'Admin account created successfully.'
+      setMessage({ type: 'success', text: msg })
+      showSuccessToast(msg)
       setCreateForm(initialCreateForm)
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } }
       const firstValidation = apiErr?.data?.errors ? Object.values(apiErr.data.errors)[0]?.[0] : undefined
+      const msg =
+        firstValidation || apiErr?.data?.message || 'Failed to create admin account.'
       setMessage({
         type: 'error',
-        text: firstValidation || apiErr?.data?.message || 'Failed to create admin account.',
+        text: msg,
       })
+      showErrorToast(msg)
     }
   }
 
@@ -103,16 +109,21 @@ export default function AdminUsersPageMain() {
         user_level_id: editForm.user_level_id,
         password: editForm.password.trim() || undefined,
       }).unwrap()
-      setMessage({ type: 'success', text: `Updated account for ${editTarget.username}.` })
+      const msg = `Updated account for ${editTarget.username}.`
+      setMessage({ type: 'success', text: msg })
+      showSuccessToast(msg)
       setEditTarget(null)
       setEditForm(initialCreateForm)
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } }
       const firstValidation = apiErr?.data?.errors ? Object.values(apiErr.data.errors)[0]?.[0] : undefined
+      const msg =
+        firstValidation || apiErr?.data?.message || 'Failed to update admin account.'
       setMessage({
         type: 'error',
-        text: firstValidation || apiErr?.data?.message || 'Failed to update admin account.',
+        text: msg,
       })
+      showErrorToast(msg)
     } finally {
       setBusyUpdateId(null)
     }
@@ -125,10 +136,14 @@ export default function AdminUsersPageMain() {
     setBusyUpdateId(row.id)
     try {
       await deleteAdminUser({ id: row.id }).unwrap()
-      setMessage({ type: 'success', text: `Deleted account ${row.username}.` })
+      const msg = `Deleted account ${row.username}.`
+      setMessage({ type: 'success', text: msg })
+      showSuccessToast(msg)
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } }
-      setMessage({ type: 'error', text: apiErr?.data?.message || 'Failed to delete admin account.' })
+      const msg = apiErr?.data?.message || 'Failed to delete admin account.'
+      setMessage({ type: 'error', text: msg })
+      showErrorToast(msg)
     } finally {
       setBusyUpdateId(null)
     }

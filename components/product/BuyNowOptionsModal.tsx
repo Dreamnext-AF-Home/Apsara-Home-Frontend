@@ -100,6 +100,8 @@ const BuyNowOptionsModal = ({
   useEffect(() => { setNotice(''); }, [selectedMethod, selectedOnlineBank, selectedCardBrand]);
 
   const subtotal = useMemo(() => product.price * quantity, [product.price, quantity]);
+  const unitPv = useMemo(() => Number(product.prodpv ?? 0), [product.prodpv]);
+  const totalPv = useMemo(() => unitPv * quantity, [unitPv, quantity]);
   const handlingFee = subtotal >= 5000 ? 0 : 99;
   const total = subtotal + handlingFee;
   const router = useRouter();
@@ -267,6 +269,14 @@ const BuyNowOptionsModal = ({
                       <div className="flex justify-between items-center text-slate-500">
                         <span>Subtotal ({quantity} item{quantity > 1 ? 's' : ''})</span>
                         <span className="font-semibold text-slate-700">₱{subtotal.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span>PV per item</span>
+                        <span className="font-semibold text-blue-700">{unitPv.toLocaleString()} PV</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span>Total PV</span>
+                        <span className="font-semibold text-blue-700">{totalPv.toLocaleString()} PV</span>
                       </div>
                       <div className="flex justify-between items-center text-slate-500">
                         <div className="flex items-center gap-1.5">

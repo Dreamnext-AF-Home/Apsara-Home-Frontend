@@ -7,6 +7,7 @@ import Footer from "@/components/layout/Footer"
 import Navbar from "@/components/layout/Navbar"
 import TopBar from "@/components/layout/TopBar"
 import TrustBar from "@/components/layout/TrustBar"
+import DynamicWebContent from "@/components/sections/DynamicWebContent"
 import FeaturedSections from "@/components/sections/FeaturedSections"
 import HeroSection from "@/components/sections/HeroSection"
 import NewsLetter from "@/components/sections/NewsLetter"
@@ -18,6 +19,7 @@ const ShopPage = () => {
       <TopBar />
       <Navbar />
       <TrustBar />
+      <DynamicWebContent />
       <HeroSection />
       <FeaturedSections />
       <PromoBenners />

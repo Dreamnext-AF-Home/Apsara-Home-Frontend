@@ -16,22 +16,6 @@ const CartIcon = () => (
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
     </svg>
 );
-const TruckIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 5v3h-7V8z" />
-        <circle cx="5.5" cy="18.5" r="1.5" /><circle cx="18.5" cy="18.5" r="1.5" />
-    </svg>
-);
-const ShieldIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-);
-const ReturnIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-3.51" />
-    </svg>
-);
 const ShareIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
@@ -89,6 +73,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const [variantClicked, setVariantClicked] = useState(false);
     const [wishlisted, setWishlisted] = useState(false);
     const [buyOptionsOpen, setBuyOptionsOpen] = useState(false);
+    const [paymentLogoMissing, setPaymentLogoMissing] = useState(false);
 
     const variantOptions = useMemo(
         () =>
@@ -456,45 +441,45 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 
             <div>
                 <p className="text-xs text-gray-400 mb-2 font-medium">We accept:</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {/* GCash */}
-                    <div className="flex items-center justify-center bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm h-8">
-                        <svg width="52" height="16" viewBox="0 0 52 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="8" cy="8" r="8" fill="#007DFF" />
-                            <text x="8" y="12" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold" fontFamily="Arial">G</text>
-                            <text x="28" y="12" textAnchor="middle" fill="#007DFF" fontSize="9" fontWeight="bold" fontFamily="Arial">GCash</text>
-                        </svg>
-                    </div>
-                    {/* Maya */}
-                    <div className="flex items-center justify-center bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm h-8">
-                        <svg width="42" height="16" viewBox="0 0 42 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="42" height="16" rx="3" fill="#14A44D" />
-                            <text x="21" y="12" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold" fontFamily="Arial" letterSpacing="0.5">maya</text>
-                        </svg>
-                    </div>
-                    {/* Visa */}
-                    <div className="flex items-center justify-center bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm h-8">
-                        <svg width="38" height="14" viewBox="0 0 38 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <text x="1" y="12" fill="#1A1F71" fontSize="13" fontWeight="900" fontFamily="Arial" fontStyle="italic" letterSpacing="-0.5">VISA</text>
-                        </svg>
-                    </div>
-                    {/* Mastercard */}
-                    <div className="flex items-center justify-center bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm h-8">
-                        <svg width="34" height="22" viewBox="0 0 34 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="11" r="10" fill="#EB001B" />
-                            <circle cx="22" cy="11" r="10" fill="#F79E1B" />
-                            <path d="M17 4.8a10 10 0 0 1 0 12.4A10 10 0 0 1 17 4.8z" fill="#FF5F00" />
-                        </svg>
-                    </div>
-                    {/* COD */}
-                    <div className="flex items-center justify-center gap-1 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm h-8">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                            <rect x="2" y="6" width="20" height="12" rx="2" />
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M6 12h.01M18 12h.01" />
-                        </svg>
-                        <span className="text-[10px] font-bold text-green-700">COD</span>
-                    </div>
+                <div className="flex items-center">
+                    {!paymentLogoMissing ? (
+                        <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src="/Images/paymentsLogo/paymentsLogo.png"
+                                alt="Supported payment methods"
+                                className="h-8 md:h-10 w-auto"
+                                loading="lazy"
+                                decoding="async"
+                                onError={() => setPaymentLogoMissing(true)}
+                            />
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {[
+                                { src: '/payment-logos/gcash.svg', alt: 'GCash' },
+                                { src: '/payment-logos/maya.svg', alt: 'Maya' },
+                                { src: '/payment-logos/visa.svg', alt: 'Visa' },
+                                { src: '/payment-logos/mastercard.svg', alt: 'Mastercard' },
+                                // { src: '/payment-logos/cod.svg', alt: 'Cash on Delivery' },
+                                { src: '/payment-logos/bpi.svg', alt: 'BPI' },
+                                { src: '/payment-logos/bdo.svg', alt: 'BDO' },
+                                { src: '/payment-logos/landbank.svg', alt: 'LandBank' },
+                                { src: '/payment-logos/unionbank.svg', alt: 'UnionBank' },
+                            ].map((payment) => (
+                                <div key={payment.alt} className="h-8">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={payment.src}
+                                        alt={payment.alt}
+                                        className="h-8 w-auto"
+                                        loading="lazy"
+                                        decoding="async"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -527,20 +512,6 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </motion.button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                {[
-                    { icon: <TruckIcon />, label: 'Free Shipping', sub: 'On orders ₱5k+' },
-                    { icon: <ShieldIcon />, label: '1 Year Warranty', sub: 'Manufacturer' },
-                    { icon: <ReturnIcon />, label: '30-Day Returns', sub: 'Easy returns' },
-                ].map(b => (
-                    <div key={b.label} className="flex flex-col items-center gap-1 bg-gray-50 rounded-2xl p-2.5 sm:p-3 text-center">
-                        <span className="text-orange-500">{b.icon}</span>
-                        <span className="text-[10px] sm:text-xs font-semibold text-slate-700 leading-tight">{b.label}</span>
-                        <span className="text-[9px] sm:text-[10px] text-gray-400">{b.sub}</span>
-                    </div>
-                ))}
-            </div>
-
             <BuyNowOptionsModal
                 isOpen={buyOptionsOpen}
                 onClose={() => setBuyOptionsOpen(false)}
@@ -556,4 +527,3 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 };
 
 export default ProductInfo;
-
