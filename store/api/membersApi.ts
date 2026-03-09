@@ -75,6 +75,7 @@ export interface MemberKycResponse {
   counts: {
     all: number
     pending_review: number
+    on_hold: number
     approved: number
     rejected: number
   }
