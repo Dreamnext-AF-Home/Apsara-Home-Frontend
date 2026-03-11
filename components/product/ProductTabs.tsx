@@ -1,7 +1,8 @@
 'use client';
 
 import { CategoryProduct } from "@/libs/CategoryData";
-import { mockReviews, mockSpecs } from "@/libs/MockProductData";
+import { mockReviews } from "@/libs/MockProductData";
+import { displayColorName } from "@/libs/colorUtils";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import StarRating from "../ui/StarRating";
@@ -72,61 +73,58 @@ const ProductTabs = ({ product, defaultTab = 'description', onTabChange }: Produ
                     className="py-6 sm:py-8"
                 >
                     {activeTab === 'description' && (
-                        <div className="max-w-2xl space-y-4 text-gray-600 text-sm leading-relaxed">
+                        <div className="max-w-2xl text-gray-600 text-sm leading-relaxed">
                             {product.description ? (
                                 <div
                                     className="text-sm text-gray-600 rich-content"
                                     dangerouslySetInnerHTML={{ __html: product.description }}
                                 />
                             ) : (
-                                <>
-                                    <p>
-                                        Experience the perfect blend of comfort and style with the{' '}
-                                        <strong className="text-slate-800">{product.name}</strong>. Crafted with
-                                        premium materials and built to last, this piece is designed to elevate any
-                                        space in your home.
-                                    </p>
-                                    <p>
-                                        Whether you&apos;re furnishing your living room, bedroom, or dining area,
-                                        this piece fits seamlessly into modern, Scandinavian, and contemporary
-                                        design styles.
-                                    </p>
-                                </>
+                                <p className="text-gray-400 italic">No description available.</p>
                             )}
-                            <ul className="space-y-2.5 mt-4">
-                                {[
-                                    'Premium quality materials for long-lasting durability',
-                                    'Ergonomic design for maximum comfort',
-                                    'Easy to assemble with included hardware',
-                                    'Available in multiple color options',
-                                    'Suitable for both residential and commercial use',
-                                ].map(f => (
-                                    <li key={f} className="flex items-start gap-2.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" className="shrink-0 mt-0.5">
-                                            <polyline points="20 6 9 17 4 12" />
-                                        </svg>
-                                        <span>{f}</span>
-                                    </li>
-                                ))}
-                            </ul>
                         </div>
                     )}
 
                     {activeTab === 'specs' && (
                         <div className="max-w-lg">
-                            <div className="border border-gray-100 rounded-2xl overflow-hidden">
-                                {mockSpecs.map((spec, index) => (
-                                    <div
-                                        key={spec.label}
-                                        className={`flex items-center justify-between px-4 sm:px-5 py-3.5 text-sm gap-4 ${
-                                            index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
-                                        }`}
-                                    >
-                                        <span className="font-semibold text-slate-700 w-32 sm:w-40 shrink-0">{spec.label}</span>
-                                        <span className="text-gray-500 text-right">{spec.value}</span>
+                            {(() => {
+                                const dimParts: string[] = []
+                                if (product.pswidth  && product.pswidth  > 0) dimParts.push(`W: ${product.pswidth} cm`)
+                                if (product.pslenght && product.pslenght > 0) dimParts.push(`D: ${product.pslenght} cm`)
+                                if (product.psheight && product.psheight > 0) dimParts.push(`H: ${product.psheight} cm`)
+                                const dimensions = dimParts.length > 0 ? dimParts.join(' × ') : null
+
+                                const colorSet = new Set<string>()
+                                product.variants?.forEach(v => { if (v.color) colorSet.add(displayColorName(v.color, v.colorHex)) })
+                                const colorOptions = colorSet.size > 0 ? [...colorSet].join(', ') : null
+
+                                const rows = [
+                                    product.material                          ? { label: 'Material',          value: product.material }         : null,
+                                    dimensions                                ? { label: 'Dimensions',         value: dimensions }                : null,
+                                    product.weight && product.weight > 0      ? { label: 'Weight Capacity',   value: `${product.weight} kg` }   : null,
+                                    product.assemblyRequired                  ? { label: 'Assembly Required',  value: 'Yes' }                    : null,
+                                    product.warranty                          ? { label: 'Warranty',           value: product.warranty }          : null,
+                                    colorOptions                              ? { label: 'Color Options',       value: colorOptions }              : null,
+                                ].filter(Boolean) as { label: string; value: string }[]
+
+                                return rows.length > 0 ? (
+                                    <div className="border border-gray-100 rounded-2xl overflow-hidden">
+                                        {rows.map((spec, index) => (
+                                            <div
+                                                key={spec.label}
+                                                className={`flex items-center justify-between px-4 sm:px-5 py-3.5 text-sm gap-4 ${
+                                                    index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+                                                }`}
+                                            >
+                                                <span className="font-semibold text-slate-700 w-36 sm:w-44 shrink-0">{spec.label}</span>
+                                                <span className="text-gray-500 text-right">{spec.value}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                ) : (
+                                    <p className="text-gray-400 italic text-sm">No specifications available.</p>
+                                )
+                            })()}
                         </div>
                     )}
 

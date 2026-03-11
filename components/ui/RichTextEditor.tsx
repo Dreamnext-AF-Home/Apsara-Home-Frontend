@@ -4,7 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 /* ── Toolbar button ── */
 function ToolBtn({
@@ -100,6 +100,8 @@ interface RichTextEditorProps {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder = 'Describe this product…' }: RichTextEditorProps) {
+  const [isEmpty, setIsEmpty] = useState(!value)
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -110,7 +112,8 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Describ
     content: value || '',
     onUpdate({ editor }) {
       const html = editor.getHTML()
-      // treat empty editor as empty string
+      const empty = editor.isEmpty
+      setIsEmpty(empty)
       onChange(html === '<p></p>' ? '' : html)
     },
     editorProps: {
@@ -127,6 +130,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Describ
     const incoming = value || ''
     if (current !== incoming) {
       editor.commands.setContent(incoming, { emitUpdate: false })
+      setIsEmpty(!incoming || incoming === '<p></p>')
     }
   }, [value, editor])
 
@@ -156,7 +160,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Describ
 
       {/* Editor area */}
       <div className="relative">
-        {editor.isEmpty && (
+        {isEmpty && (
           <p className="absolute top-2.5 left-3.5 text-sm text-slate-400 pointer-events-none select-none">
             {placeholder}
           </p>

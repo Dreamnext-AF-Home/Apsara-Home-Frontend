@@ -4,6 +4,7 @@ export interface Product {
   id: number
   name: string
   description?: string | null
+  specifications?: string | null
   catid: number
   catsubid: number
   priceSrp: number
@@ -12,8 +13,12 @@ export interface Product {
   qty: number
   weight: number
   psweight?: number
+  pswidth?: number
   pslenght?: number
   psheight?: number
+  material?: string | null
+  assemblyRequired?: boolean
+  warranty?: string | null
   type: number
   musthave: boolean
   bestseller: boolean
@@ -65,9 +70,14 @@ export interface CreateProductPayload {
   pd_qty?: number
   pd_weight?: number
   pd_psweight?: number
+  pd_pswidth?: number
   pd_pslenght?: number
   pd_psheight?: number
   pd_description?: string
+  pd_specifications?: string
+  pd_material?: string
+  pd_warranty?: string
+  pd_assembly_required?: boolean
   pd_parent_sku?: string
   pd_type?: number
   pd_musthave?: boolean
@@ -150,6 +160,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
 
   return {
     ...input,
+    specifications: typeof input.specifications === 'string' ? input.specifications : null,
     prodpv:
       typeof input.prodpv === 'number'
         ? input.prodpv

@@ -10,6 +10,7 @@ export interface MeResponse {
     account_status?: number;
     lock_status?: number;
     verification_status?: 'verified' | 'pending_review' | 'not_verified' | 'blocked';
+    email_verified?: boolean;
 }
 
 export interface UpdateProfilePayload {

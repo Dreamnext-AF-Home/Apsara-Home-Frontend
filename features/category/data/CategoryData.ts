@@ -30,6 +30,13 @@ export interface CategoryProduct {
     bestseller?: boolean;
     salespromo?: boolean;
     weight?: number;
+    psweight?: number;
+    pswidth?: number;
+    pslenght?: number;
+    psheight?: number;
+    material?: string;
+    assemblyRequired?: boolean;
+    warranty?: string;
 }
 
 export const categoryProducts: Record<string, CategoryProduct[]> = {

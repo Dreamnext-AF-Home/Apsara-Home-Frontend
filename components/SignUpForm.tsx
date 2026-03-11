@@ -7,6 +7,7 @@ import Loading from './Loading'
 import { usePhAddress } from '@/hooks/usePhAddress'
 import { useSearchParams } from 'next/navigation'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
+import OtpVerification from './auth/OtpVerification'
 
 const EyeIcon = ({ open }: { open: boolean }) => open
     ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
@@ -29,6 +30,99 @@ const containsBlockedWord = (value: string) => {
     })
 }
 
+const getPasswordStrength = (password: string) => {
+    let score = 0
+
+    if (password.length >= 8) score += 1
+    if (/[A-Z]/.test(password)) score += 1
+    if (/[a-z]/.test(password)) score += 1
+    if (/[0-9]/.test(password)) score += 1
+    if (/[^A-Za-z0-9]/.test(password)) score += 1
+    if (password.length >= 12) score += 1
+
+    if (password.length === 0) {
+        return {
+            score: 0,
+            label: 'Enter a password',
+            color: 'bg-white/10',
+            textColor: 'text-white/50',
+            width: '0%',
+        }
+    }
+
+    if (score <= 2) {
+        return {
+            score,
+            label: 'Weak password',
+            color: 'bg-red-400',
+            textColor: 'text-red-300',
+            width: '33%',
+        }
+    }
+
+    if (score <= 4) {
+        return {
+            score,
+            label: 'Medium strength',
+            color: 'bg-yellow-400',
+            textColor: 'text-yellow-300',
+            width: '66%',
+        }
+    }
+
+    return {
+        score,
+        label: 'Strong password',
+        color: 'bg-emerald-400',
+        textColor: 'text-emerald-300',
+        width: '100%',
+    }
+}
+
+const passwordChecks = (password: string) => ([
+    {
+        label: 'At least 8 characters',
+        passed: password.length >= 8,
+    },
+    {
+        label: 'At least one uppercase letter',
+        passed: /[A-Z]/.test(password),
+    },
+    {
+        label: 'At least one lowercase letter',
+        passed: /[a-z]/.test(password),
+    },
+    {
+        label: 'At least one number',
+        passed: /[0-9]/.test(password),
+    },
+    {
+        label: 'At least one special character',
+        passed: /[^A-Za-z0-9]/.test(password),
+    },
+])
+
+const normalizeReferralValue = (value: string) => {
+    const trimmed = value.trim()
+
+    if (trimmed === '') return ''
+
+    try {
+        const url = new URL(trimmed)
+        const fromQuery = (url.searchParams.get('ref') ?? url.searchParams.get('referred_by') ?? '').trim()
+        if (fromQuery !== '') return fromQuery
+
+        const segments = url.pathname.split('/').filter(Boolean)
+        if (segments.length > 0) {
+            return segments[segments.length - 1]
+        }
+    } catch {
+        return trimmed
+    }
+
+    return trimmed
+}
+
 const SelectWrapper = ({ children }: { children: React.ReactNode }) => (
     <div className="relative">
         {children}
@@ -47,9 +141,14 @@ interface SignUpFormProps {
 export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     const searchParams = useSearchParams()
     const [register, { isLoading }] = useRegisterMutation()
+
     const [showPass, setShowPass] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [error, setError] = useState('')
+    const [step, setStep] = useState<'form' | 'otp'>('form')
+    const [otp, setOtp] = useState('')
+    const [verificationToken, setVerificationToken] = useState('')
+    const [pendingEmail, setPendingEmail] = useState('')
     const errorRef = useRef<HTMLDivElement | null>(null)
 
     const ph = usePhAddress()
@@ -74,20 +173,31 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         agreeTerms: false,
     })
 
+    const passwordStrength = getPasswordStrength(form.password)
+    const passwordRequirements = passwordChecks(form.password)
+
     const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         setForm(f => ({ ...f, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
     useEffect(() => {
-        const ref = (searchParams.get('ref') ?? searchParams.get('referred_by') ?? '').trim()
+        const ref = normalizeReferralValue(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '')
         if (!ref) return
         setForm((prev) => (prev.referredBy ? prev : { ...prev, referredBy: ref }))
     }, [searchParams])
+
 
     const showError = (message: string) => {
         setError(message)
         requestAnimationFrame(() => {
             errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         })
+    }
+
+    const resetOtpStep = () => {
+        setStep('form')
+        setOtp('')
+        setVerificationToken('')
+        setPendingEmail('')
     }
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -115,7 +225,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             password_confirmation: form.confirmPassword,
             phone: form.phone,
             username: form.username,
-            referred_by: form.referredBy,
+            referred_by: normalizeReferralValue(form.referredBy),
             birth_date: form.birthDate,
             gender: form.gender === '' ? undefined : (form.gender as 'male' | 'female' | 'other'),
             occupation: form.occupation,
@@ -139,8 +249,12 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             return
         }
 
-        showSuccessToast('Registration successful. You can now sign in.')
-        onSwitchToLogin()
+        setVerificationToken(result.data.verification_token)
+        setPendingEmail(result.data.email || form.email)
+        setOtp('')
+        setStep('otp')
+        setError('')
+        showSuccessToast('A 4-digit verification code was sent to your email.')
     }
 
     return (
@@ -151,8 +265,23 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             transition={{ duration: 0.25 }}
         >
             <h2 className="text-2xl font-bold text-white mb-1">Let&apos;s Get Started!</h2>
-            <p className="text-white/70 text-sm mb-6">Please enter your details to start your online application</p>
+            <p className="text-white/70 text-sm mb-6">
+                {step === 'otp'
+                    ? 'Enter the 4-digit code we sent to your email to finish your registration.'
+                    : 'Please enter your details to start your online application'}
+            </p>
 
+            {step === 'otp' ? (
+                <OtpVerification 
+                    email={pendingEmail}
+                    verificationToken={verificationToken}
+                    onSuccess={() => {
+                        resetOtpStep()
+                        onSwitchToLogin()
+                    }}
+                    onBack={resetOtpStep}
+                />
+            ) : (
             <form onSubmit={handleRegister} className="space-y-4">
                 {error && (
                     <div ref={errorRef} className="bg-red-500/20 border border-red-400/20 rounded-xl px-4 py-2.5 text-sm text-red-300">
@@ -285,9 +414,9 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
                         <label className={labelClass}>Referred By <span className="text-orange-400">*</span></label>
                         <input 
                             type="text" 
-                            placeholder="Referral code"
+                            placeholder="Referral code or link"
                             value={form.referredBy} 
-                            onChange={set('referredBy')} 
+                            onChange={(e) => setForm((prev) => ({ ...prev, referredBy: e.target.value }))} 
                             className={inputClass} 
                             required
                         />
@@ -433,6 +562,32 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
                                 <EyeIcon open={showPass} />
                             </button>
                         </div>
+                        <div className="mt-2 space-y-1.5">
+                            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                                    style={{ width: passwordStrength.width }}
+                                />
+                            </div>
+                            <p className={`text-[11px] font-medium ${passwordStrength.textColor}`}>
+                                {passwordStrength.label}
+                            </p>
+                            <div className="grid grid-cols-1 gap-1 pt-1">
+                                {passwordRequirements.map((item) => (
+                                    <p
+                                        key={item.label}
+                                        className={`text-[11px] flex items-center gap-2 ${
+                                            item.passed ? 'text-emerald-300' : 'text-white/55'
+                                        }`}
+                                    >
+                                        <span className={`inline-block h-1.5 w-1.5 rounded-full ${
+                                            item.passed ? 'bg-emerald-400' : 'bg-white/25'
+                                        }`} />
+                                        {item.label}
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label className={labelClass}>Confirm Password <span className="text-orange-400">*</span></label>
@@ -479,13 +634,14 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
                     {isLoading ? (
                         <>
                             <Loading size={14} />
-                            <span>Creating Account...</span>
+                            <span>SENDING OTP...</span>
                         </>
                     ) : (
-                        <span>REGISTER</span>
+                        <span>SIGN UP</span>
                     )}
                 </button>
             </form>
+            )}
         </motion.div>
     )
 }

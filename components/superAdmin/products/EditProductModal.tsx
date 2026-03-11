@@ -8,6 +8,7 @@ import { Product, ProductVariant, useUpdateProductMutation, CreateProductPayload
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import RichTextEditor from '@/components/ui/RichTextEditor'
+import { hexToColorName } from '@/libs/colorUtils'
 
 /* ─── types ──────────────────────────────────────────────── */
 
@@ -26,8 +27,12 @@ interface FormState {
   pd_qty: string
   pd_weight: string
   pd_psweight: string
+  pd_pswidth: string
   pd_pslenght: string
   pd_psheight: string
+  pd_material: string
+  pd_warranty: string
+  pd_assembly_required: boolean
   pd_parent_sku: string
   pd_type: string
   pd_musthave: boolean
@@ -192,7 +197,9 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
   const [form, setForm] = useState<FormState>({
     pd_name: '', pd_catid: '', pd_description: '', pd_price_srp: '',
     pd_price_dp: '', pd_prodpv: '', pd_qty: '', pd_weight: '', pd_psweight: '',
-    pd_pslenght: '', pd_psheight: '', pd_parent_sku: '', pd_type: '0',
+    pd_pswidth: '', pd_pslenght: '', pd_psheight: '',
+    pd_material: '', pd_warranty: '', pd_assembly_required: false,
+    pd_parent_sku: '', pd_type: '0',
     pd_musthave: false, pd_bestseller: false, pd_salespromo: false, pd_verified: true, pd_status: '0',
   })
   const [errors,             setErrors]             = useState<Errors>({})
@@ -229,8 +236,12 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
       pd_qty:        String(product.qty      ?? ''),
       pd_weight:     String(product.weight   ?? ''),
       pd_psweight:   String(row.psweight  ?? row.pd_psweight  ?? ''),
+      pd_pswidth:    String(row.pswidth   ?? row.pd_pswidth   ?? ''),
       pd_pslenght:   String(row.pslenght  ?? row.pd_pslenght  ?? ''),
       pd_psheight:   String(row.psheight  ?? row.pd_psheight  ?? ''),
+      pd_material:   String(row.material  ?? row.pd_material  ?? ''),
+      pd_warranty:   String(row.warranty  ?? row.pd_warranty  ?? ''),
+      pd_assembly_required: Boolean(row.assemblyRequired ?? row.pd_assembly_required),
       pd_parent_sku: generateSkuFromName(product.name ?? '', product.id),
       pd_type:       String(product.type   ?? 0),
       pd_musthave:   product.musthave    ?? false,
@@ -364,6 +375,7 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
     if (form.pd_qty      && isNaN(Number(form.pd_qty)))                e.pd_qty       = 'Must be a valid number'
     if (form.pd_weight   && isNaN(Number(form.pd_weight)))             e.pd_weight    = 'Must be a valid number'
     if (form.pd_psweight && isNaN(Number(form.pd_psweight)))           e.pd_psweight  = 'Must be a valid number'
+    if (form.pd_pswidth  && isNaN(Number(form.pd_pswidth)))            e.pd_pswidth   = 'Must be a valid number'
     if (form.pd_pslenght && isNaN(Number(form.pd_pslenght)))           e.pd_pslenght  = 'Must be a valid number'
     if (form.pd_psheight && isNaN(Number(form.pd_psheight)))           e.pd_psheight  = 'Must be a valid number'
     return e
@@ -435,8 +447,12 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
       pd_qty:         form.pd_qty       ? Number(form.pd_qty)       : undefined,
       pd_weight:      form.pd_weight    ? Number(form.pd_weight)    : undefined,
       pd_psweight:    form.pd_psweight  ? Number(form.pd_psweight)  : undefined,
+      pd_pswidth:     form.pd_pswidth   ? Number(form.pd_pswidth)   : undefined,
       pd_pslenght:    form.pd_pslenght  ? Number(form.pd_pslenght)  : undefined,
       pd_psheight:    form.pd_psheight  ? Number(form.pd_psheight)  : undefined,
+      pd_material:    form.pd_material.trim()  || undefined,
+      pd_warranty:    form.pd_warranty.trim()  || undefined,
+      pd_assembly_required: form.pd_assembly_required,
       pd_parent_sku:  form.pd_parent_sku.trim() || undefined,
       pd_type:        Number(form.pd_type),
       pd_musthave:    form.pd_musthave,
@@ -444,9 +460,9 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
       pd_salespromo:  form.pd_salespromo,
       pd_verified:    form.pd_verified,
       pd_status:      Number(form.pd_status),
-      pd_image:       finalImageUrls[0] ?? undefined,
-      pd_images:      finalImageUrls.length > 0 ? finalImageUrls : undefined,
-      pd_variants:    hasVariants ? expandedVariants : [],
+      pd_image:           finalImageUrls[0] ?? undefined,
+      pd_images:          finalImageUrls.length > 0 ? finalImageUrls : undefined,
+      pd_variants:        hasVariants ? expandedVariants : [],
     }
 
     try {
@@ -679,6 +695,35 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
                     />
                   </Field>
 
+                  {/* ── Section: Product Details ── */}
+                  <SectionLabel>Product Details</SectionLabel>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Material">
+                      <input type="text" value={form.pd_material} onChange={e => set('pd_material', e.target.value)} placeholder="e.g. Solid Wood & Fabric" className={inputCls()}/>
+                    </Field>
+                    <Field label="Warranty">
+                      <input type="text" value={form.pd_warranty} onChange={e => set('pd_warranty', e.target.value)} placeholder="e.g. 1 Year Limited Warranty" className={inputCls()}/>
+                    </Field>
+                  </div>
+                  <Field label="Assembly Required">
+                    <button
+                      type="button"
+                      onClick={() => set('pd_assembly_required', !form.pd_assembly_required)}
+                      className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border-2 transition-all ${
+                        form.pd_assembly_required
+                          ? 'border-teal-300 bg-teal-50'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <span className={`text-sm font-semibold ${form.pd_assembly_required ? 'text-teal-700' : 'text-slate-500'}`}>
+                        {form.pd_assembly_required ? 'Yes — Assembly Required' : 'No Assembly Required'}
+                      </span>
+                      <div className={`relative h-5 w-9 rounded-full transition-colors ${form.pd_assembly_required ? 'bg-teal-500' : 'bg-slate-200'}`}>
+                        <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.pd_assembly_required ? 'left-4' : 'left-0.5'}`}/>
+                      </div>
+                    </button>
+                  </Field>
+
                   {/* ── Section: Pricing ── */}
                   <SectionLabel>Pricing</SectionLabel>
                   <div className="grid grid-cols-3 gap-3">
@@ -704,12 +749,17 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
                     </Field>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <Field label="Length (cm)" error={errors.pd_pslenght}>
+                    <Field label="Width / W (cm)" error={errors.pd_pswidth}>
+                      <input type="number" value={form.pd_pswidth} onChange={e => set('pd_pswidth', e.target.value)} placeholder="0" className={inputCls(!!errors.pd_pswidth)}/>
+                    </Field>
+                    <Field label="Depth / D (cm)" error={errors.pd_pslenght}>
                       <input type="number" value={form.pd_pslenght} onChange={e => set('pd_pslenght', e.target.value)} placeholder="0" className={inputCls(!!errors.pd_pslenght)}/>
                     </Field>
-                    <Field label="Height (cm)" error={errors.pd_psheight}>
+                    <Field label="Height / H (cm)" error={errors.pd_psheight}>
                       <input type="number" value={form.pd_psheight} onChange={e => set('pd_psheight', e.target.value)} placeholder="0" className={inputCls(!!errors.pd_psheight)}/>
                     </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <Field label="Package Weight (kg)" error={errors.pd_psweight}>
                       <input type="number" value={form.pd_psweight} onChange={e => set('pd_psweight', e.target.value)} placeholder="0.00" className={inputCls(!!errors.pd_psweight)}/>
                     </Field>
@@ -883,9 +933,17 @@ export default function EditProductModal({ product, onClose }: EditProductModalP
                                       <input
                                         type="color"
                                         value={newColorInputs[index]?.hex ?? '#94a3b8'}
-                                        onChange={e => setNewColorInputs(prev => ({
-                                          ...prev, [index]: { ...(prev[index] ?? { name: '' }), hex: e.target.value },
-                                        }))}
+                                        onChange={e => {
+                                          const hex = e.target.value
+                                          const currentName = newColorInputs[index]?.name ?? ''
+                                          setNewColorInputs(prev => ({
+                                            ...prev,
+                                            [index]: {
+                                              hex,
+                                              name: currentName.trim() ? currentName : hexToColorName(hex),
+                                            },
+                                          }))
+                                        }}
                                         className="h-8 w-8 shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 cursor-pointer"
                                       />
                                       <input

@@ -26,6 +26,26 @@ interface RegisterPayload {
 
 interface RegisterResponse {
   message: string
+  requires_otp: boolean
+  verification_token: string
+  email: string
+}
+
+interface VerifyRegisterOtpPayload {
+  verification_token: string
+  otp: string
+}
+
+interface VerifyRegisterOtpResponse {
+  message: string
+}
+
+interface ResendRegisterOtpPayload {
+  verification_token: string
+}
+
+interface ResendRegisterOtpResponse {
+  message: string
 }
 
 interface LogoutResponse {
@@ -61,6 +81,22 @@ export const authApi = baseApi.injectEndpoints({
       }),
     }),
 
+    verifyRegisterOtp: builder.mutation<VerifyRegisterOtpResponse, VerifyRegisterOtpPayload>({
+      query: (body) => ({
+        url: '/api/auth/register/verify-otp',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    resendRegisterOtp: builder.mutation<ResendRegisterOtpResponse, ResendRegisterOtpPayload>({
+      query: (body) => ({
+        url: '/api/auth/register/resend-otp',
+        method: 'POST',
+        body,
+      }),
+    }),
+
     logout: builder.mutation<LogoutResponse, void>({
       query: () => ({
         url: '/api/auth/logout',
@@ -79,4 +115,10 @@ export const authApi = baseApi.injectEndpoints({
   }),
 })
 
-export const { useRegisterMutation, useLogoutMutation, useAdminLoginMutation } = authApi
+export const {
+  useRegisterMutation,
+  useVerifyRegisterOtpMutation,
+  useResendRegisterOtpMutation,
+  useLogoutMutation,
+  useAdminLoginMutation,
+} = authApi

@@ -693,7 +693,13 @@ const ProfilePage = () => {
                   <h2 className="text-base font-bold text-slate-900">
                     {form.name || 'AF Home User'}
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">{form.email}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                    {form.email}
+                    {data?.email_verified
+                      ? <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5 leading-none">&#10003; Verified</span>
+                      : <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5 leading-none">&#9888; Not Verified</span>
+                    }
+                  </p>
                   {form.username && (
                     <span className="inline-block text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono font-medium mt-1">
                       @{form.username}
@@ -962,13 +968,18 @@ const ProfilePage = () => {
                       {[
                         { field: 'name' as const, label: 'Full Name', type: 'text', placeholder: 'Enter your full name', disabled: false },
                         { field: 'username' as const, label: 'Username', type: 'text', placeholder: 'e.g. raf_home', disabled: false },
-                        { field: 'email' as const, label: 'Email Address', type: 'email', placeholder: 'Email', disabled: true },
+                        { field: 'email' as const, label: 'Email Address', type: 'email', placeholder: 'Email', disabled: true, isEmail: true },
                         { field: 'phone' as const, label: 'Phone Number', type: 'tel', placeholder: '09XXXXXXXXX', disabled: false },
-                      ].map(({ field, label, type, placeholder, disabled }) => (
+                      ].map(({ field, label, type, placeholder, disabled, isEmail }) => (
                         <div key={field} className="space-y-1.5">
-                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
                             {label}
-                            {disabled && (
+                            {isEmail && (
+                              data?.email_verified
+                                ? <span className="normal-case tracking-normal font-semibold text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5 leading-none">&#10003; Verified</span>
+                                : <span className="normal-case tracking-normal font-semibold text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5 leading-none">&#9888; Not Verified</span>
+                            )}
+                            {disabled && !isEmail && (
                               <span className="normal-case tracking-normal font-normal text-[11px] text-slate-400 ml-1">(cannot change)</span>
                             )}
                           </label>

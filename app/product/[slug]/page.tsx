@@ -202,6 +202,14 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
     image: resolveImageUrl(rawImage, apiUrl),
     images,
     description: (row.description ?? row.pd_description) as string | undefined,
+    weight: toNumber(row.weight ?? row.pd_weight),
+    psweight: toNumber(row.psweight ?? row.pd_psweight),
+    pswidth: toNumber(row.pswidth ?? row.pd_pswidth),
+    pslenght: toNumber(row.pslenght ?? row.pd_pslenght),
+    psheight: toNumber(row.psheight ?? row.pd_psheight),
+    material: (row.material ?? row.pd_material) as string | undefined,
+    assemblyRequired: Boolean(row.assemblyRequired ?? row.pd_assembly_required),
+    warranty: (row.warranty ?? row.pd_warranty) as string | undefined,
     sku: String(row.sku ?? row.pd_parent_sku ?? '').trim() || undefined,
     stock: Number(row.qty ?? row.pd_qty ?? 0),
     variants,
@@ -248,7 +256,7 @@ async function getProductPageData(slug: string): Promise<ProductPageData | null>
       fetch(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: { revalidate: 60 },
+        cache: 'no-store',
       }),
       fetch(`${apiUrl}/api/products?page=1&per_page=100&status=1`, {
         method: 'GET',

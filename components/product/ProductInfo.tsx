@@ -3,6 +3,7 @@
 import { useCart } from "@/context/CartContext";
 import { CategoryProduct } from "@/libs/CategoryData";
 import { mockReviews } from "@/libs/MockProductData";
+import { displayColorName } from "@/libs/colorUtils";
 import { motion } from "framer-motion"
 import { useEffect, useMemo, useState } from "react";
 import StarRating from "../ui/StarRating";
@@ -168,7 +169,10 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 
     const getVariantLabel = (variant: VariantOption, index: number) => {
         if (variant.sku && variant.sku.trim().length > 0) return variant.sku;
-        const parts = [variant.color, variant.size].filter(Boolean);
+        const parts = [
+            variant.color ? displayColorName(variant.color, variant.colorHex) : null,
+            variant.size,
+        ].filter(Boolean);
         if (parts.length > 0) return parts.join(' / ');
         return `Variant ${index + 1}`;
     };
@@ -404,7 +408,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
             {hasRealVariants && variantClicked && colorOptions.length > 0 && (
                 <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold text-slate-700">
-                        Color: <span className="text-orange-500">{effectiveSelectedColor}</span>
+                        Color: <span className="text-orange-500">{displayColorName(effectiveSelectedColor)}</span>
                     </span>
                     <div className="flex gap-2.5">
                         {colorOptions.map(c => (
