@@ -427,7 +427,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
           if (!res.ok) throw new Error(json.error ?? 'Upload failed')
           uploaded.push(json.url)
         }
-        finalImageUrls = [...existingImageUrls, ...uploaded]
+        finalImageUrls = uploaded
         setUploadedUrls(uploaded)
       } catch (err: unknown) {
         setImageError((err as Error).message ?? 'Image upload failed.')
@@ -437,7 +437,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       setIsUploading(false)
     }
     if (imageFiles.length > 0 && uploadedUrls.length > 0) {
-      finalImageUrls = [...existingImageUrls, ...uploadedUrls]
+      finalImageUrls = uploadedUrls
     }
 
     const imagesChanged =
