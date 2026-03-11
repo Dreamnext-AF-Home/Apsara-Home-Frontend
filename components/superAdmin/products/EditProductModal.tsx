@@ -146,6 +146,57 @@ const buildVariantSku = (baseSku: string, index: number) => {
   return base ? `${base}-V${seq}` : `VAR-V${seq}`
 }
 
+const normalizeNumberField = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed ? Number(trimmed) : null
+}
+
+const normalizeTextField = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+const normalizeFormForComparison = (form: FormState) => ({
+  pd_name: form.pd_name.trim(),
+  pd_catid: Number(form.pd_catid),
+  pd_description: normalizeTextField(form.pd_description),
+  pd_price_srp: Number(form.pd_price_srp),
+  pd_price_dp: normalizeNumberField(form.pd_price_dp),
+  pd_prodpv: normalizeNumberField(form.pd_prodpv),
+  pd_qty: normalizeNumberField(form.pd_qty),
+  pd_weight: normalizeNumberField(form.pd_weight),
+  pd_psweight: normalizeNumberField(form.pd_psweight),
+  pd_pswidth: normalizeNumberField(form.pd_pswidth),
+  pd_pslenght: normalizeNumberField(form.pd_pslenght),
+  pd_psheight: normalizeNumberField(form.pd_psheight),
+  pd_material: normalizeTextField(form.pd_material),
+  pd_warranty: normalizeTextField(form.pd_warranty),
+  pd_assembly_required: form.pd_assembly_required,
+  pd_parent_sku: normalizeTextField(form.pd_parent_sku),
+  pd_type: Number(form.pd_type),
+  pd_musthave: form.pd_musthave,
+  pd_bestseller: form.pd_bestseller,
+  pd_salespromo: form.pd_salespromo,
+  pd_verified: form.pd_verified,
+  pd_status: Number(form.pd_status),
+})
+
+const normalizeVariantsForComparison = (variants: VariantFormState[]) =>
+  variants.map((variant) => ({
+    id: variant.id ?? null,
+    pv_sku: variant.pv_sku.trim(),
+    pv_colors: variant.pv_colors.map((color) => ({
+      name: color.name.trim(),
+      hex: color.hex.trim().toLowerCase(),
+    })),
+    pv_size: variant.pv_size.trim(),
+    pv_price_srp: normalizeNumberField(variant.pv_price_srp),
+    pv_price_dp: normalizeNumberField(variant.pv_price_dp),
+    pv_qty: normalizeNumberField(variant.pv_qty),
+    pv_status: Number(variant.pv_status),
+    pv_images: variant.pv_images.filter(Boolean),
+  }))
+
 /* ─── small components ───────────────────────────────────── */
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -209,6 +260,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const [imagePreviews,      setImagePreviews]      = useState<string[]>([])
   const [existingImageUrls,  setExistingImageUrls]  = useState<string[]>([])
   const [initialImageUrls,   setInitialImageUrls]   = useState<string[]>([])
+  const [initialForm,        setInitialForm]        = useState<FormState | null>(null)
+  const [initialVariants,    setInitialVariants]    = useState<VariantFormState[]>([])
   const [isUploading,        setIsUploading]        = useState(false)
   const [uploadedUrls,       setUploadedUrls]       = useState<string[]>([])
   const [imageError,         setImageError]         = useState('')
@@ -228,7 +281,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   useEffect(() => {
     if (!product) return
     const row = product as Product & Record<string, unknown>
-    setForm({
+    const nextForm = {
       pd_name:       product.name        ?? '',
       pd_catid:      String(product.catid ?? ''),
       pd_description:product.description ?? '',
@@ -251,14 +304,18 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       pd_salespromo: product.salespromo  ?? false,
       pd_verified:   product.verified    ?? true,
       pd_status:     String(product.status ?? 0),
-    })
+    }
+    setForm(nextForm)
+    setInitialForm(nextForm)
     const existing = Array.isArray(product.images) && product.images.length > 0
       ? product.images.filter((img): img is string => Boolean(img))
       : (product.image ? [product.image] : [])
     setExistingImageUrls(existing)
     setInitialImageUrls(existing)
+    const nextVariants = Array.isArray(product.variants) ? product.variants.map(mapVariantToForm) : []
+    setInitialVariants(nextVariants)
     setImageFiles([]); setImagePreviews([]); setUploadedUrls([])
-    setVariants(Array.isArray(product.variants) ? product.variants.map(mapVariantToForm) : [])
+    setVariants(nextVariants)
     setNewColorInputs({})
     setErrors({}); setServerError(''); setImageError('')
   }, [product])
@@ -411,6 +468,20 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
     if (hasVariants && expandedVariants.length === 0) {
       setServerError('At least one variant is required when Has Variants is enabled.')
+      return
+    }
+
+    const baseChanged =
+      JSON.stringify(normalizeFormForComparison(form)) !== JSON.stringify(normalizeFormForComparison(initialForm ?? form))
+    const variantsChanged =
+      JSON.stringify(normalizeVariantsForComparison(variants)) !== JSON.stringify(normalizeVariantsForComparison(initialVariants))
+    const existingImagesChanged =
+      existingImageUrls.length !== initialImageUrls.length ||
+      existingImageUrls.some((url, index) => url !== initialImageUrls[index])
+
+    if (!baseChanged && !variantsChanged && !existingImagesChanged && imageFiles.length === 0) {
+      showSuccessToast('No changes detected.')
+      onClose()
       return
     }
 

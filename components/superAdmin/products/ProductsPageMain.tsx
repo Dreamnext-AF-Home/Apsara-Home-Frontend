@@ -49,6 +49,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   const [editProduct,     setEditProduct]     = useState<Product | null>(null)
   const [deletingIds,     setDeletingIds]     = useState<number[]>([])
   const [selectedIds,     setSelectedIds]     = useState<number[]>([])
+  const [useInitialData,  setUseInitialData]  = useState(Boolean(initialData))
   const perPage = 25
 
   useEffect(() => {
@@ -70,7 +71,14 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
 
   const [deleteProduct] = useDeleteProductMutation()
 
+  useEffect(() => {
+    if (data) {
+      setUseInitialData(false)
+    }
+  }, [data])
+
   const handleProductsSaved = () => {
+    setUseInitialData(false)
     if (page !== 1) {
       setPage(1)
     } else {
@@ -80,8 +88,17 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     void refetchInactiveCount()
   }
 
-  const products = useMemo(() => data?.products ?? initialData?.products ?? [], [data?.products, initialData?.products])
-  const meta     = useMemo(() => data?.meta ?? initialData?.meta,                [data?.meta,     initialData?.meta])
+  const products = useMemo(() => {
+    if (data?.products) return data.products
+    if (useInitialData) return initialData?.products ?? []
+    return []
+  }, [data?.products, initialData?.products, useInitialData])
+
+  const meta = useMemo(() => {
+    if (data?.meta) return data.meta
+    if (useInitialData) return initialData?.meta
+    return undefined
+  }, [data?.meta, initialData?.meta, useInitialData])
 
   /* Low-stock count from current page */
   const lowStockCount = useMemo(() => products.filter(p => p.qty > 0 && p.qty <= 5).length, [products])
