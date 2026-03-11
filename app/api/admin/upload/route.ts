@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME
+const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY
+const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET
+
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: cloudinaryCloudName,
+  api_key: cloudinaryApiKey,
+  api_secret: cloudinaryApiSecret,
 })
 
 export async function POST(req: NextRequest) {
   try {
+    if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
+      return NextResponse.json(
+        { error: 'Cloudinary is not configured on this deployment.' },
+        { status: 500 }
+      )
+    }
+
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     const folderType = String(formData.get('folder') ?? 'products').toLowerCase()
