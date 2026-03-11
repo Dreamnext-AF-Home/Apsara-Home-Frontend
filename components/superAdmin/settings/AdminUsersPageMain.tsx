@@ -18,12 +18,20 @@ type CreateForm = {
   name: string
   username: string
   email: string
-  password: string
   user_level_id: number
 }
 
+type EditForm = CreateForm & {
+  password: string
+}
+
 const initialForm: CreateForm = {
-  name: '', username: '', email: '', password: '', user_level_id: 2,
+  name: '', username: '', email: '', user_level_id: 2,
+}
+
+const initialEditForm: EditForm = {
+  ...initialForm,
+  password: '',
 }
 
 /* ─── config ─────────────────────────────────────────────── */
@@ -305,8 +313,8 @@ function RoleCardGrid({ value, onChange }: { value: number; onChange: (v: number
 function EditModal({
   target, form, busy, onChange, onSubmit, onClose,
 }: {
-  target: AdminUserItem; form: CreateForm; busy: boolean
-  onChange: (patch: Partial<CreateForm>) => void
+  target: AdminUserItem; form: EditForm; busy: boolean
+  onChange: (patch: Partial<EditForm>) => void
   onSubmit: (e: React.SyntheticEvent) => void
   onClose: () => void
 }) {
@@ -393,11 +401,9 @@ export default function AdminUsersPageMain() {
   const [search,          setSearch]          = useState('')
   const [page,            setPage]            = useState(1)
   const [createForm,      setCreateForm]      = useState<CreateForm>(initialForm)
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [confirmError,    setConfirmError]    = useState('')
   const [busyUpdateId,    setBusyUpdateId]    = useState<number | null>(null)
   const [editTarget,      setEditTarget]      = useState<AdminUserItem | null>(null)
-  const [editForm,        setEditForm]        = useState<CreateForm>(initialForm)
+  const [editForm,        setEditForm]        = useState<EditForm>(initialEditForm)
 
   const { data, isLoading, isError } = useGetAdminUsersQuery({
     search: search.trim() || undefined, page, perPage: 15,
@@ -410,16 +416,10 @@ export default function AdminUsersPageMain() {
 
   const handleCreate = async (e: React.SyntheticEvent) => {
     e.preventDefault()
-    if (createForm.password !== confirmPassword) {
-      setConfirmError('Passwords do not match')
-      return
-    }
-    setConfirmError('')
     try {
       await createAdminUser(createForm).unwrap()
-      showSuccessToast('Admin account created successfully.')
+      showSuccessToast('Admin invite sent successfully.')
       setCreateForm(initialForm)
-      setConfirmPassword('')
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } }
       const msg = (apiErr?.data?.errors ? Object.values(apiErr.data.errors)[0]?.[0] : undefined)
@@ -445,7 +445,7 @@ export default function AdminUsersPageMain() {
       }).unwrap()
       showSuccessToast(`Updated account for ${editTarget.username}.`)
       setEditTarget(null)
-      setEditForm(initialForm)
+      setEditForm(initialEditForm)
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } }
       const msg = (apiErr?.data?.errors ? Object.values(apiErr.data.errors)[0]?.[0] : undefined)
@@ -512,8 +512,8 @@ export default function AdminUsersPageMain() {
             )}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-800">Create Admin Account</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Fill in the details below to add a new administrator</p>
+            <h2 className="text-sm font-bold text-slate-800">Invite Admin Account</h2>
+            <p className="text-xs text-slate-400 mt-0.5">The invited user will receive an email to verify the account and set their password.</p>
           </div>
         </div>
 
@@ -541,27 +541,6 @@ export default function AdminUsersPageMain() {
             required icon={<MailIcon />}
           />
 
-          {/* Security */}
-          <SectionLabel>Security</SectionLabel>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <InputField
-                label="Password" type="password" placeholder="Minimum 8 characters"
-                value={createForm.password}
-                onChange={v => setCreateForm(p => ({ ...p, password: v }))}
-                required icon={<LockIcon />}
-              />
-              <PasswordStrengthBar password={createForm.password} />
-            </div>
-            <InputField
-              label="Confirm Password" type="password" placeholder="Re-enter password"
-              value={confirmPassword}
-              onChange={v => { setConfirmPassword(v); if (confirmError) setConfirmError('') }}
-              required icon={<LockIcon />}
-              error={confirmError}
-            />
-          </div>
-
           {/* Role */}
           <SectionLabel>Role & Permissions</SectionLabel>
           <RoleCardGrid
@@ -587,7 +566,7 @@ export default function AdminUsersPageMain() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
-                Create Account
+                Send Invite
               </>
             )}
           </button>
@@ -751,7 +730,7 @@ export default function AdminUsersPageMain() {
             busy={busyUpdateId === editTarget.id}
             onChange={patch => setEditForm(prev => ({ ...prev, ...patch }))}
             onSubmit={handleEditSubmit}
-            onClose={() => { setEditTarget(null); setEditForm(initialForm) }}
+            onClose={() => { setEditTarget(null); setEditForm(initialEditForm) }}
           />
         )}
       </AnimatePresence>

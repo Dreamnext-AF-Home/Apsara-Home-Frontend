@@ -31,7 +31,6 @@ export interface CreateAdminUserPayload {
   name: string
   username: string
   email: string
-  password: string
   user_level_id: number
 }
 
@@ -58,7 +57,7 @@ export const adminUsersApi = baseApi.injectEndpoints({
       }),
       providesTags: ['AdminUsers'],
     }),
-    createAdminUser: builder.mutation<{ message: string; user: AdminUserItem }, CreateAdminUserPayload>({
+    createAdminUser: builder.mutation<{ message: string }, CreateAdminUserPayload>({
       query: (body) => ({
         url: '/api/admin/users',
         method: 'POST',
