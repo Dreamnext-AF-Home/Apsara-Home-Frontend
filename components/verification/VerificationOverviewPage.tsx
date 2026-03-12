@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { useMeQuery } from '@/store/api/userApi';
 
 const requirementItems = [
@@ -60,8 +61,20 @@ export default function VerificationOverviewPage() {
               </p>
             </div>
 
-            <div className={`inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium ${statusClass}`}>
-              {statusText}
+            <div className="flex flex-col items-start gap-4 lg:items-end">
+              <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+                <Image
+                  src="/Images/af_home_logo.png"
+                  alt="AF Home"
+                  width={132}
+                  height={44}
+                  className="h-9 w-auto object-contain"
+                  priority
+                />
+              </div>
+              <div className={`inline-flex items-center rounded-full border px-4 py-2 text-sm font-medium ${statusClass}`}>
+                {statusText}
+              </div>
             </div>
           </div>
         </motion.div>
