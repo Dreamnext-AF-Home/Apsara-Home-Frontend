@@ -10,6 +10,7 @@ import AddProductModal from './AddProductModal'
 import EditProductModal from './EditProductModal'
 import BulkEditProductsModal from './BulkEditProductsModal'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
+import { revalidateStorefront } from '@/libs/revalidateStorefront'
 
 interface ProductsPageMainProps {
   initialData?: ProductsResponse | null
@@ -81,6 +82,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
 
   const handleProductsSaved = () => {
     setUseInitialData(false)
+    void revalidateStorefront()
     if (page !== 1) {
       setPage(1)
     } else {
@@ -118,6 +120,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     setDeletingIds(prev => [...prev, id])
     try {
       await deleteProduct(id).unwrap()
+      await revalidateStorefront()
       setSelectedIds(prev => prev.filter(item => item !== id))
       showSuccessToast('Product deleted successfully.')
     } catch {
@@ -143,6 +146,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     setDeletingIds(prev => Array.from(new Set([...prev, ...ids])))
     try {
       await Promise.all(ids.map(id => deleteProduct(id).unwrap()))
+      await revalidateStorefront()
       setSelectedIds([])
       showSuccessToast(`${ids.length} product(s) deleted successfully.`)
     } catch {

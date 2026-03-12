@@ -4,7 +4,7 @@ import type { Product, ProductsResponse } from '@/store/api/productsApi';
 import { buildPageMetadata } from '@/app/seo';
 
 export const metadata = buildPageMetadata({ title: 'Category Details', description: 'Browse the Category Details page on AF Home.', path: '/category/[slug]' });
-export const dynamic = 'force-dynamic';
+export const revalidate = 120;
 
 interface ApiCategoriesResponse {
   categories?: Category[];
@@ -169,7 +169,10 @@ async function getCategoryProducts(slug: string): Promise<{ label?: string; prod
     const categoriesRes = await fetch(`${apiUrl}/api/categories`, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      next: {
+        revalidate,
+        tags: ['storefront:categories', `storefront:category:${slug.toLowerCase()}`],
+      },
     });
 
     if (!categoriesRes.ok) {
@@ -200,7 +203,10 @@ async function getCategoryProducts(slug: string): Promise<{ label?: string; prod
     const productsRes = await fetch(productsUrl.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      cache: 'no-store',
+      next: {
+        revalidate,
+        tags: ['storefront:products', `storefront:category:${slug.toLowerCase()}`],
+      },
     });
 
     if (!productsRes.ok) {
