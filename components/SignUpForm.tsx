@@ -8,6 +8,7 @@ import { usePhAddress } from '@/hooks/usePhAddress'
 import { useSearchParams } from 'next/navigation'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import OtpVerification from './auth/OtpVerification'
+import { clearStoredReferralCode, getStoredReferralCode, normalizeReferralCode } from '@/libs/referral'
 
 const EyeIcon = ({ open }: { open: boolean }) => open
     ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
@@ -102,27 +103,6 @@ const passwordChecks = (password: string) => ([
     },
 ])
 
-const normalizeReferralValue = (value: string) => {
-    const trimmed = value.trim()
-
-    if (trimmed === '') return ''
-
-    try {
-        const url = new URL(trimmed)
-        const fromQuery = (url.searchParams.get('ref') ?? url.searchParams.get('referred_by') ?? '').trim()
-        if (fromQuery !== '') return fromQuery
-
-        const segments = url.pathname.split('/').filter(Boolean)
-        if (segments.length > 0) {
-            return segments[segments.length - 1]
-        }
-    } catch {
-        return trimmed
-    }
-
-    return trimmed
-}
-
 const SelectWrapper = ({ children }: { children: React.ReactNode }) => (
     <div className="relative">
         {children}
@@ -180,7 +160,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         setForm(f => ({ ...f, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
     useEffect(() => {
-        const ref = normalizeReferralValue(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '')
+        const ref = normalizeReferralCode(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '') || getStoredReferralCode()
         if (!ref) return
         setForm((prev) => (prev.referredBy ? prev : { ...prev, referredBy: ref }))
     }, [searchParams])
@@ -225,7 +205,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             password_confirmation: form.confirmPassword,
             phone: form.phone,
             username: form.username,
-            referred_by: normalizeReferralValue(form.referredBy),
+            referred_by: normalizeReferralCode(form.referredBy),
             birth_date: form.birthDate,
             gender: form.gender === '' ? undefined : (form.gender as 'male' | 'female' | 'other'),
             occupation: form.occupation,
@@ -276,6 +256,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
                     email={pendingEmail}
                     verificationToken={verificationToken}
                     onSuccess={() => {
+                        clearStoredReferralCode()
                         resetOtpStep()
                         onSwitchToLogin()
                     }}

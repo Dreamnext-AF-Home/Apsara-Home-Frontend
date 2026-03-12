@@ -13,6 +13,7 @@ import CustomerCheckoutAddressForm from "./CustomerCheckoutAddressForm";
 import CustomerCheckoutPaymentMethod from "./CustomerCheckoutPaymentMethod";
 import CustomerCheckoutOrderSummary from "./CustomerCheckoutOrderSummary";
 import { useCreateCheckoutSessionMutation } from "@/store/api/paymentApi";
+import { getStoredReferralCode } from "@/libs/referral";
 
 
 const defaultForm: GuestForm = {
@@ -64,6 +65,12 @@ const CustomerCheckoutMain = () => {
             router.replace('/');
         }
     }, [router]);
+
+    useEffect(() => {
+        const storedReferral = getStoredReferralCode();
+        if (!storedReferral) return;
+        setForm((prev) => (prev.referred_by ? prev : { ...prev, referred_by: storedReferral }));
+    }, []);
 
     const setField = useCallback((key: keyof GuestForm, value: string) => {
         setForm(prev => ({ ...prev, [key]: value }))

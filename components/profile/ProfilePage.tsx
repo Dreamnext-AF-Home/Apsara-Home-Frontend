@@ -139,7 +139,7 @@ const ProfilePage = () => {
   const siteOrigin = configuredAppUrl || runtimeOrigin || 'http://localhost:3000';
   const referralCode = (form.username || data?.username || '').trim();
   const referralLink = referralCode
-    ? `${siteOrigin}/login?ref=${encodeURIComponent(referralCode)}`
+    ? `${siteOrigin}/ref/${encodeURIComponent(referralCode)}`
     : '';
   const verificationBadgeClass = (status?: string) => {
     if (status === 'verified') return 'bg-emerald-100 text-emerald-700';
