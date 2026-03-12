@@ -7,11 +7,13 @@ import Image from 'next/image'
 import { useCart } from '@/context/CartContext'
 import { useSession, signOut } from 'next-auth/react'
 import { useLogoutMutation } from '@/store/api/authApi'
+import { baseApi, clearAccessTokenCache } from '@/store/api/baseApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { useGetPublicProductsQuery } from '@/store/api/productsApi'
 import { useMeQuery } from '@/store/api/userApi'
 import { useGetCustomerNotificationsQuery } from '@/store/api/customerNotificationsApi'
 import { useRouter } from 'next/navigation'
+import { useAppDispatch } from '@/store/hooks'
 
 type NavLink = {
   label: string;
@@ -141,6 +143,7 @@ export default function Navbar() {
   const [megaSearch, setMegaSearch] = useState('')
   const [mobileSearch, setMobileSearch] = useState('')
   const { cartCount, setIsOpen } = useCart()
+  const dispatch = useAppDispatch()
   const { data: session, status } = useSession();
   const { data: meData } = useMeQuery(undefined, { skip: status !== 'authenticated' })
   const [logoutApi] = useLogoutMutation();
@@ -152,17 +155,19 @@ export default function Navbar() {
   const isLoggedIn = status === 'authenticated'
   const user = session?.user
   const avatarUrl = meData?.avatar_url || user?.image || null
+  const customerNotificationCacheKey = meData?.id ?? user?.id ?? 'guest'
   const {
     data: notificationsData,
     isLoading: isNotificationsLoading,
     isError: isNotificationsError,
     refetch: refetchNotifications,
-  } = useGetCustomerNotificationsQuery(undefined, {
+  } = useGetCustomerNotificationsQuery(customerNotificationCacheKey, {
     skip: !isLoggedIn,
     pollingInterval: 30000,
     refetchOnFocus: true,
   })
   const unreadNotificationCount = notifMuted ? 0 : (notificationsData?.unread_count ?? 0)
+  const visibleCustomerNotifications = (notificationsData?.items ?? []).filter((item) => item.count > 0)
 
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
@@ -350,6 +355,18 @@ export default function Navbar() {
     setActiveSearchField(null)
   }
 
+  const handleCustomerLogout = async (callbackUrl: string) => {
+    try {
+      await logoutApi().unwrap()
+    } catch {
+      // Best-effort backend logout only.
+    }
+
+    clearAccessTokenCache()
+    dispatch(baseApi.util.resetApiState())
+    await signOut({ callbackUrl })
+  }
+
   return (
     <motion.header
       initial={{ y: -80 }}
@@ -496,8 +513,8 @@ export default function Navbar() {
                             <div className="px-4 py-3 text-sm text-gray-500">Loading notifications...</div>
                           ) : isNotificationsError ? (
                             <div className="px-4 py-3 text-sm text-red-600">Failed to load notifications.</div>
-                          ) : notificationsData?.items?.length ? (
-                            notificationsData.items.map((item) => (
+                          ) : visibleCustomerNotifications.length ? (
+                            visibleCustomerNotifications.map((item) => (
                               <Link
                                 key={item.id}
                                 href={item.href}
@@ -588,7 +605,7 @@ export default function Navbar() {
                           My Orders
                         </Link>
                         <button
-                          onClick={() => signOut({ callbackUrl: '/shop'})}
+                          onClick={() => handleCustomerLogout('/shop')}
                           disabled={isLoggingOut}
                           className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-60"
                         >
@@ -910,7 +927,7 @@ export default function Navbar() {
                     My Profile
                   </Link>
                   <button
-                    onClick={() => signOut({ callbackUrl: "/"})}
+                    onClick={() => handleCustomerLogout('/')}
                     disabled={isLoggingOut}
                     className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-60"
                   >

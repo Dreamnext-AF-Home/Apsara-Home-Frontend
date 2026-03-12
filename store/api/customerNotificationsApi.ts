@@ -19,7 +19,7 @@ export interface CustomerNotificationsResponse {
 
 export const customerNotificationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getCustomerNotifications: builder.query<CustomerNotificationsResponse, void>({
+    getCustomerNotifications: builder.query<CustomerNotificationsResponse, string | number | void>({
       query: () => ({
         url: '/api/notifications/customer',
         method: 'GET',
