@@ -3,6 +3,7 @@ import type { Category } from '@/store/api/categoriesApi';
 import { buildPageMetadata } from '@/app/seo';
 
 export const metadata = buildPageMetadata({ title: 'Category', description: 'Browse the Category page on AF Home.', path: '/category' });
+export const dynamic = 'force-dynamic';
 
 interface ApiCategoriesResponse {
   categories?: Category[];
@@ -31,7 +32,7 @@ async function getFirstCategorySlug(): Promise<string> {
     const res = await fetch(`${apiUrl}/api/categories`, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
 
     if (!res.ok) return 'chairs-stools';

@@ -15,6 +15,7 @@ import CompleteTheLook from '@/components/product/CompleteTheLook';
 import type { Category } from '@/store/api/categoriesApi';
 import type { Product } from '@/store/api/productsApi';
 import { buildPageMetadata } from '@/app/seo';
+export const dynamic = 'force-dynamic';
 
 type LooseRecord = Record<string, unknown>;
 const toLooseRecord = (value: unknown): LooseRecord => value as LooseRecord;
@@ -251,7 +252,7 @@ async function getProductPageData(slug: string): Promise<ProductPageData | null>
       fetch(`${apiUrl}/api/categories?page=1&per_page=100`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: { revalidate: 300 },
+        cache: 'no-store',
       }),
       fetch(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
         method: 'GET',
@@ -261,7 +262,7 @@ async function getProductPageData(slug: string): Promise<ProductPageData | null>
       fetch(`${apiUrl}/api/products?page=1&per_page=100&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: { revalidate: 120 },
+        cache: 'no-store',
       }),
     ]);
 
