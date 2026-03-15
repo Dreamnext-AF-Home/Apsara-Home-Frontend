@@ -66,7 +66,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   const hasToken = Boolean(session?.user?.accessToken)
   const skip     = authStatus !== 'authenticated' || !hasToken
 
-  const { data, isLoading, isFetching, isError, refetch: refetchProducts } = useGetProductsQuery(
+  const { data, isLoading, isFetching, isError, error, refetch: refetchProducts } = useGetProductsQuery(
     {
       page,
       perPage,
@@ -194,6 +194,29 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     [products, selectedIds],
   )
 
+  const loadErrorMessage = useMemo(() => {
+    if (!error || typeof error !== 'object') {
+      return 'Failed to load products. Please try again.'
+    }
+
+    if ('status' in error && error.status === 401) {
+      return 'Your session may have expired. Please sign in again.'
+    }
+
+    if ('data' in error && error.data && typeof error.data === 'object' && 'message' in error.data) {
+      const message = error.data.message
+      if (typeof message === 'string' && message.trim().length > 0) {
+        return message
+      }
+    }
+
+    if ('error' in error && typeof error.error === 'string' && error.error.trim().length > 0) {
+      return error.error
+    }
+
+    return 'Failed to load products. Please try again.'
+  }, [error])
+
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
@@ -279,7 +302,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       ) : authStatus === 'unauthenticated' ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Please sign in first to load products.</div>
       ) : isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">Failed to load products. Please try again.</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadErrorMessage}</div>
       ) : isLoading && !data && !initialData ? (
         <SkeletonTable />
       ) : (

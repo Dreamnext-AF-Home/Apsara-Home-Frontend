@@ -59,6 +59,74 @@ const Field = ({ label, value, onChange, placeholder, required = false, error, f
     </div>
 );
 
+function AddressCard({
+    address,
+    active,
+    settingDefault,
+    onSelect,
+    onMakeDefault,
+}: {
+    address: CustomerAddress;
+    active: boolean;
+    settingDefault: boolean;
+    onSelect: (address: CustomerAddress) => void;
+    onMakeDefault: (address: CustomerAddress) => Promise<void>;
+}) {
+    return (
+        <div
+            className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${active
+                ? 'border-orange-300 bg-orange-50 shadow-sm'
+                : 'border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/50'
+                }`}
+        >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                    <button
+                        type="button"
+                        onClick={() => onSelect(address)}
+                        className="flex items-start gap-3 text-left flex-1"
+                    >
+                        <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center ${active ? 'border-orange-500' : 'border-slate-300'}`}>
+                            {active ? <div className="h-2.5 w-2.5 rounded-full bg-orange-500" /> : null}
+                        </div>
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-bold text-slate-900">{address.full_name}</p>
+                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                    {address.address_type || 'Address'}
+                                </span>
+                                {address.is_default ? (
+                                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                                        Default
+                                    </span>
+                                ) : null}
+                            </div>
+                            <p className="text-sm text-slate-600 mt-1">{address.phone}</p>
+                            <p className="text-sm text-slate-600 mt-1 leading-relaxed">{address.full_address}</p>
+                            {address.notes ? (
+                                <p className="text-xs text-slate-500 mt-2">Note: {address.notes}</p>
+                            ) : null}
+                        </div>
+                    </button>
+                </div>
+
+                {!address.is_default ? (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            void onMakeDefault(address);
+                        }}
+                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white"
+                    >
+                        {settingDefault ? 'Saving...' : 'Make default'}
+                    </button>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
 export default function CustomerCheckoutAddressForm({
     form,
     errors,
@@ -71,6 +139,7 @@ export default function CustomerCheckoutAddressForm({
     const [createAddress, { isLoading: creatingAddress }] = useCreateCustomerAddressMutation();
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalView, setModalView] = useState<'list' | 'add'>('list');
     const [actionError, setActionError] = useState('');
     const [draft, setDraft] = useState<CheckoutAddressDraft>(emptyAddressDraft);
 
@@ -103,7 +172,6 @@ export default function CustomerCheckoutAddressForm({
         if (currentSelection) return;
 
         const nextAddress = addresses.find(address => address.is_default) ?? addresses[0];
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedAddressId(nextAddress.id);
         applyAddressToForm(nextAddress);
     }, [addresses, applyAddressToForm, isLoggedIn, selectedAddressId]);
@@ -112,7 +180,6 @@ export default function CustomerCheckoutAddressForm({
         if (!isModalOpen) return;
 
         ph.reset();
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActionError('');
         setDraft({
             ...emptyAddressDraft,
@@ -122,9 +189,8 @@ export default function CustomerCheckoutAddressForm({
     }, [form.name, form.phone, isModalOpen, ph]);
 
     useEffect(() => {
-        if (!isModalOpen) return;
+        if (!isModalOpen || modalView !== 'add') return;
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDraft(prev => ({
             ...prev,
             region: ph.address.region,
@@ -132,7 +198,14 @@ export default function CustomerCheckoutAddressForm({
             city: ph.address.city,
             barangay: ph.address.barangay,
         }));
-    }, [isModalOpen, ph.address.region, ph.address.province, ph.address.city, ph.address.barangay, ph.noProvince]);
+    }, [isModalOpen, modalView, ph.address.region, ph.address.province, ph.address.city, ph.address.barangay, ph.noProvince]);
+
+    useEffect(() => {
+        if (!isModalOpen) return;
+        if (addresses.length === 0) {
+            setModalView('add');
+        }
+    }, [addresses.length, isModalOpen]);
 
     const selectedAddress = useMemo(
         () => addresses.find(address => address.id === selectedAddressId) ?? null,
@@ -143,16 +216,29 @@ export default function CustomerCheckoutAddressForm({
         setDraft(prev => ({ ...prev, [key]: value }));
     };
 
+    const openAddressList = () => {
+        setModalView('list');
+        setIsModalOpen(true);
+    };
+
+    const openAddAddress = () => {
+        setModalView('add');
+        setIsModalOpen(true);
+    };
+
     const handleSelect = (address: CustomerAddress) => {
         setSelectedAddressId(address.id);
         applyAddressToForm(address);
         setActionError('');
+        setIsModalOpen(false);
     };
 
     const handleMakeDefault = async (address: CustomerAddress) => {
         try {
             await setDefaultAddress(address.id).unwrap();
-            handleSelect({ ...address, is_default: true });
+            setSelectedAddressId(address.id);
+            applyAddressToForm(address);
+            setActionError('');
         } catch {
             setActionError('Unable to set that address as default right now.');
         }
@@ -204,7 +290,6 @@ export default function CustomerCheckoutAddressForm({
                         error={errors.address}
                         fieldKey="address"
                     />
-
                     <div data-error-field="region" className="transition-transform duration-200">
                         <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                             Region<span className="text-red-500 ml-0.5">*</span>
@@ -329,14 +414,23 @@ export default function CustomerCheckoutAddressForm({
                         </h2>
                         <p className="text-xs text-slate-500 mt-1">Your default address is preselected. You can switch or add another one here.</p>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setIsModalOpen(true)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-100 transition-colors"
-                    >
-                        <span className="text-base leading-none">+</span>
-                        Add another address
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={openAddressList}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                            Change address
+                        </button>
+                        <button
+                            type="button"
+                            onClick={openAddAddress}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-600 hover:bg-orange-100 transition-colors"
+                        >
+                            <span className="text-base leading-none">+</span>
+                            Add new
+                        </button>
+                    </div>
                 </div>
 
                 {isLoading ? (
@@ -347,68 +441,49 @@ export default function CustomerCheckoutAddressForm({
                     <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50 px-4 py-8 text-center">
                         <p className="text-sm font-semibold text-slate-800">No saved shipping address yet</p>
                         <p className="text-xs text-slate-500 mt-1">Add your first shipping address so we can use it for this checkout.</p>
+                        <button
+                            type="button"
+                            onClick={openAddAddress}
+                            className="mt-4 inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+                        >
+                            Add shipping address
+                        </button>
                     </div>
-                ) : (
-                    <div className="space-y-3">
-                        {addresses.map(address => {
-                            const active = address.id === selectedAddressId;
-                            return (
-                                <button
-                                    key={address.id}
-                                    type="button"
-                                    onClick={() => handleSelect(address)}
-                                    className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${active
-                                        ? 'border-orange-300 bg-orange-50 shadow-sm'
-                                        : 'border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/50'
-                                        }`}
-                                >
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div className="flex items-start gap-3">
-                                            <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center ${active ? 'border-orange-500' : 'border-slate-300'}`}>
-                                                {active ? <div className="h-2.5 w-2.5 rounded-full bg-orange-500" /> : null}
-                                            </div>
-                                            <div>
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="text-sm font-bold text-slate-900">{address.full_name}</p>
-                                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                                                        {address.address_type || 'Address'}
-                                                    </span>
-                                                    {address.is_default ? (
-                                                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                                                            Default
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                                <p className="text-sm text-slate-600 mt-1">{address.phone}</p>
-                                                <p className="text-sm text-slate-600 mt-1 leading-relaxed">{address.full_address}</p>
-                                                {address.notes ? (
-                                                    <p className="text-xs text-slate-500 mt-2">Note: {address.notes}</p>
-                                                ) : null}
-                                            </div>
-                                        </div>
+                ) : selectedAddress ? (
+                    <div className="rounded-[28px] border border-orange-200 bg-linear-to-br from-orange-50 via-white to-amber-50 px-5 py-5 shadow-sm">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-orange-500">Deliver To</p>
+                                    {selectedAddress.is_default ? (
+                                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                                            Default
+                                        </span>
+                                    ) : null}
+                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                                        {selectedAddress.address_type || 'Address'}
+                                    </span>
+                                </div>
+                                <p className="mt-3 text-base font-bold text-slate-900">{selectedAddress.full_name}</p>
+                                <p className="mt-1 text-sm font-medium text-slate-600">{selectedAddress.phone}</p>
+                                <p className="mt-2 text-sm leading-relaxed text-slate-600">{selectedAddress.full_address}</p>
+                                {selectedAddress.notes ? (
+                                    <p className="mt-2 text-xs text-slate-500">Note: {selectedAddress.notes}</p>
+                                ) : null}
+                            </div>
 
-                                        {!address.is_default ? (
-                                            <span
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    void handleMakeDefault(address);
-                                                }}
-                                                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white"
-                                            >
-                                                {settingDefault ? 'Saving...' : 'Make default'}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                </button>
-                            );
-                        })}
+                            <div className="rounded-2xl border border-orange-100 bg-white/90 px-3 py-2 text-right">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Saved addresses</p>
+                                <p className="text-lg font-bold text-slate-900">{addresses.length}</p>
+                            </div>
+                        </div>
                     </div>
-                )}
+                ) : null}
 
                 {selectedAddress ? (
                     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Selected for this order</p>
-                        <p className="text-sm font-semibold text-slate-900 mt-2">{selectedAddress.full_name} · {selectedAddress.phone}</p>
+                        <p className="text-sm font-semibold text-slate-900 mt-2">{selectedAddress.full_name} - {selectedAddress.phone}</p>
                         <p className="text-sm text-slate-600 mt-1">{selectedAddress.full_address}</p>
                     </div>
                 ) : null}
@@ -419,121 +494,179 @@ export default function CustomerCheckoutAddressForm({
                     </div>
                 ) : null}
             </div>
-
             {isModalOpen ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
                     <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col">
                         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-100">
                             <div>
                                 <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-orange-500">Shipping Address</p>
-                                <h3 className="text-xl font-bold text-slate-900 mt-1">Add another address</h3>
-                                <p className="text-sm text-slate-500 mt-1">This will be available to select during checkout.</p>
+                                <h3 className="text-xl font-bold text-slate-900 mt-1">
+                                    {modalView === 'list' ? 'Choose shipping address' : 'Add another address'}
+                                </h3>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    {modalView === 'list'
+                                        ? 'Pick from your saved addresses or switch to add a new one.'
+                                        : 'This will be available to select during checkout.'}
+                                </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsModalOpen(false)}
                                 className="h-10 w-10 rounded-full border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors"
                             >
-                                ×
+                                x
                             </button>
                         </div>
 
                         <div className="overflow-y-auto px-6 py-5 space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <Field label="Recipient Name" value={draft.full_name} onChange={v => updateDraft('full_name', v)} placeholder="Full name" required />
-                                <Field label="Phone Number" value={draft.phone} onChange={v => updateDraft('phone', v)} placeholder="09XXXXXXXXX" required />
-                            </div>
-
-                            <Field label="Street / House No." value={draft.address} onChange={v => updateDraft('address', v)} placeholder="Street, building, house no." required />
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Region<span className="text-red-500 ml-0.5">*</span></label>
-                                <select
-                                    value={ph.regionCode}
-                                    onChange={(e) => {
-                                        const option = e.target.options[e.target.selectedIndex];
-                                        ph.setRegion(e.target.value, option.text);
-                                    }}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                            <div className="flex flex-wrap gap-2 rounded-2xl bg-slate-100 p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalView('list')}
+                                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${modalView === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    <option value="">- Select Region -</option>
-                                    {ph.regions.map(region => (
-                                        <option key={region.code} value={region.code}>{region.name}</option>
-                                    ))}
-                                </select>
+                                    Saved addresses
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setModalView('add')}
+                                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${modalView === 'add' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Add new
+                                </button>
                             </div>
 
-                            {!ph.noProvince ? (
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Province<span className="text-red-500 ml-0.5">*</span></label>
-                                    <select
-                                        value={ph.provinceCode}
-                                        disabled={!ph.regionCode || ph.loadingProvinces}
-                                        onChange={(e) => {
-                                            const option = e.target.options[e.target.selectedIndex];
-                                            ph.setProvince(e.target.value, option.text);
-                                        }}
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
-                                    >
-                                        <option value="">{ph.loadingProvinces ? 'Loading provinces...' : '- Select Province -'}</option>
-                                        {ph.provinces.map(province => (
-                                            <option key={province.code} value={province.code}>{province.name}</option>
+                            {modalView === 'list' ? (
+                                addresses.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50 px-4 py-8 text-center">
+                                        <p className="text-sm font-semibold text-slate-800">No saved addresses yet</p>
+                                        <p className="text-xs text-slate-500 mt-1">Add one now so you can use it for this order.</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalView('add')}
+                                            className="mt-4 inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+                                        >
+                                            Add address
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {addresses.map(address => (
+                                            <AddressCard
+                                                key={address.id}
+                                                address={address}
+                                                active={address.id === selectedAddressId}
+                                                settingDefault={settingDefault}
+                                                onSelect={handleSelect}
+                                                onMakeDefault={handleMakeDefault}
+                                            />
                                         ))}
-                                    </select>
+                                    </div>
+                                )
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <Field label="Recipient Name" value={draft.full_name} onChange={v => updateDraft('full_name', v)} placeholder="Full name" required />
+                                        <Field label="Phone Number" value={draft.phone} onChange={v => updateDraft('phone', v)} placeholder="09XXXXXXXXX" required />
+                                    </div>
+
+                                    <Field label="Street / House No." value={draft.address} onChange={v => updateDraft('address', v)} placeholder="Street, building, house no." required />
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Region<span className="text-red-500 ml-0.5">*</span></label>
+                                        <select
+                                            value={ph.regionCode}
+                                            onChange={(e) => {
+                                                const option = e.target.options[e.target.selectedIndex];
+                                                ph.setRegion(e.target.value, option.text);
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
+                                        >
+                                            <option value="">- Select Region -</option>
+                                            {ph.regions.map(region => (
+                                                <option key={region.code} value={region.code}>{region.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {!ph.noProvince ? (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Province<span className="text-red-500 ml-0.5">*</span></label>
+                                            <select
+                                                value={ph.provinceCode}
+                                                disabled={!ph.regionCode || ph.loadingProvinces}
+                                                onChange={(e) => {
+                                                    const option = e.target.options[e.target.selectedIndex];
+                                                    ph.setProvince(e.target.value, option.text);
+                                                }}
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
+                                            >
+                                                <option value="">{ph.loadingProvinces ? 'Loading provinces...' : '- Select Province -'}</option>
+                                                {ph.provinces.map(province => (
+                                                    <option key={province.code} value={province.code}>{province.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    ) : null}
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1.5">City / Municipality<span className="text-red-500 ml-0.5">*</span></label>
+                                            <select
+                                                value={ph.cityCode}
+                                                disabled={ph.noProvince ? !ph.regionCode : (!ph.provinceCode || ph.loadingCities)}
+                                                onChange={(e) => {
+                                                    const option = e.target.options[e.target.selectedIndex];
+                                                    ph.setCity(e.target.value, option.text);
+                                                }}
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
+                                            >
+                                                <option value="">{ph.loadingCities || ph.loadingProvinces ? 'Loading cities...' : '- Select City / Municipality -'}</option>
+                                                {ph.cities.map(city => (
+                                                    <option key={city.code} value={city.code}>{city.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Barangay<span className="text-red-500 ml-0.5">*</span></label>
+                                            <select
+                                                value={draft.barangay}
+                                                disabled={!ph.cityCode || ph.loadingBarangays}
+                                                onChange={(e) => ph.setBarangay(e.target.value)}
+                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
+                                            >
+                                                <option value="">{ph.loadingBarangays ? 'Loading barangays...' : '- Select Barangay -'}</option>
+                                                {ph.barangays.map(barangay => (
+                                                    <option key={barangay.code} value={barangay.name}>{barangay.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <Field label="ZIP Code" value={draft.zip_code} onChange={v => updateDraft('zip_code', v)} placeholder="e.g. 1100" />
+                                        <Field label="Address Type" value={draft.address_type} onChange={v => updateDraft('address_type', v)} placeholder="Home / Office" />
+                                    </div>
+
+                                    <Field label="Notes" value={draft.notes} onChange={v => updateDraft('notes', v)} placeholder="Landmark or delivery notes" />
+
+                                    <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={draft.set_default}
+                                            onChange={(e) => updateDraft('set_default', e.target.checked)}
+                                            className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-200"
+                                        />
+                                        <span className="text-sm text-slate-700 font-medium">Set this as my default shipping address</span>
+                                    </label>
+                                </>
+                            )}
+
+                            {actionError ? (
+                                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                    {actionError}
                                 </div>
                             ) : null}
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">City / Municipality<span className="text-red-500 ml-0.5">*</span></label>
-                                    <select
-                                        value={ph.cityCode}
-                                        disabled={ph.noProvince ? !ph.regionCode : (!ph.provinceCode || ph.loadingCities)}
-                                        onChange={(e) => {
-                                            const option = e.target.options[e.target.selectedIndex];
-                                            ph.setCity(e.target.value, option.text);
-                                        }}
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
-                                    >
-                                        <option value="">{ph.loadingCities || ph.loadingProvinces ? 'Loading cities...' : '- Select City / Municipality -'}</option>
-                                        {ph.cities.map(city => (
-                                            <option key={city.code} value={city.code}>{city.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Barangay<span className="text-red-500 ml-0.5">*</span></label>
-                                    <select
-                                        value={draft.barangay}
-                                        disabled={!ph.cityCode || ph.loadingBarangays}
-                                        onChange={(e) => ph.setBarangay(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
-                                    >
-                                        <option value="">{ph.loadingBarangays ? 'Loading barangays...' : '- Select Barangay -'}</option>
-                                        {ph.barangays.map(barangay => (
-                                            <option key={barangay.code} value={barangay.name}>{barangay.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <Field label="ZIP Code" value={draft.zip_code} onChange={v => updateDraft('zip_code', v)} placeholder="e.g. 1100" />
-                                <Field label="Address Type" value={draft.address_type} onChange={v => updateDraft('address_type', v)} placeholder="Home / Office" />
-                            </div>
-
-                            <Field label="Notes" value={draft.notes} onChange={v => updateDraft('notes', v)} placeholder="Landmark or delivery notes" />
-
-                            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <input
-                                    type="checkbox"
-                                    checked={draft.set_default}
-                                    onChange={(e) => updateDraft('set_default', e.target.checked)}
-                                    className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-200"
-                                />
-                                <span className="text-sm text-slate-700 font-medium">Set this as my default shipping address</span>
-                            </label>
                         </div>
 
                         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
@@ -544,14 +677,16 @@ export default function CustomerCheckoutAddressForm({
                             >
                                 Cancel
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => void handleCreateAddress()}
-                                disabled={creatingAddress}
-                                className="px-5 py-2.5 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60"
-                            >
-                                {creatingAddress ? 'Saving...' : 'Save Address'}
-                            </button>
+                            {modalView === 'add' ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCreateAddress()}
+                                    disabled={creatingAddress}
+                                    className="px-5 py-2.5 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60"
+                                >
+                                    {creatingAddress ? 'Saving...' : 'Save Address'}
+                                </button>
+                            ) : null}
                         </div>
                     </div>
                 </div>
