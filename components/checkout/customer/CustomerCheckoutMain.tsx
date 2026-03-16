@@ -76,7 +76,6 @@ const CustomerCheckoutMain = () => {
 
     const form = useMemo<GuestForm>(() => ({
         ...defaultForm,
-        referred_by: storedReferral,
         ...(isLoggedIn ? {
             name: meData?.name || '',
             email: meData?.email || '',
@@ -89,6 +88,7 @@ const CustomerCheckoutMain = () => {
             zip: meData?.zip_code || '',
         } : {}),
         ...formOverrides,
+        referred_by: formOverrides.referred_by || storedReferral,
     }), [formOverrides, isLoggedIn, meData, storedReferral]);
 
     useEffect(() => {
