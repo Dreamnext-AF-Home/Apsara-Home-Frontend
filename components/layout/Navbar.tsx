@@ -439,15 +439,32 @@ export default function Navbar() {
   }
 
   const handleCustomerLogout = async (callbackUrl: string) => {
-    try {
-      await logoutApi().unwrap()
-    } catch {
-      // Best-effort backend logout only.
-    }
+    if (isLoggingOut) return
 
-    clearAccessTokenCache()
-    dispatch(baseApi.util.resetApiState())
-    await signOut({ callbackUrl })
+    setIsLoggingOut(true)
+    setProfileMenuOpen(false)
+    setNotifMenuOpen(false)
+
+    try {
+      try {
+        await logoutApi().unwrap()
+      } catch {
+        // Best-effort backend logout only.
+      }
+
+      clearAccessTokenCache()
+      dispatch(baseApi.util.resetApiState())
+
+      const result = await signOut({
+        redirect: false,
+        callbackUrl,
+      })
+
+      router.replace(result?.url || callbackUrl)
+      router.refresh()
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -675,39 +692,121 @@ export default function Navbar() {
                   <AnimatePresence>
                     {profileMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 6 }}
+                        initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.97 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-100 bg-white shadow-lg shadow-black/10 overflow-hidden z-50"
+                        className="absolute right-0 mt-2 w-64 rounded-2xl border border-gray-100 bg-white shadow-xl shadow-black/10 overflow-hidden z-50"
                       >
-                        <Link
-                          href="/profile"
-                          onClick={() => setProfileMenuOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          My Profile
-                        </Link>
-                        <Link
-                          href="/orders"
-                          onClick={() => setProfileMenuOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          My Orders
-                        </Link>
-                        <button
-                          onClick={() => handleCustomerLogout('/shop')}
-                          disabled={isLoggingOut}
-                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-60"
-                        >
-                          {isLoggingOut && (
-                            <svg className="animate-spin h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                            </svg>
-                          )}
-                          {isLoggingOut ? 'Logging out...' : 'Logout'}
-                        </button>
+                        {/* User info header */}
+                        <div className="px-4 py-4 bg-linear-to-br from-orange-50 to-amber-50 border-b border-orange-100">
+                          <div className="flex items-center gap-3">
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={user?.name || 'Profile'}
+                                className="h-11 w-11 rounded-full object-cover ring-2 ring-white shadow"
+                              />
+                            ) : (
+                              <span className="flex items-center justify-center h-11 w-11 rounded-full bg-orange-500 text-white text-sm font-bold uppercase ring-2 ring-white shadow">
+                                {user?.name?.charAt(0) ?? 'U'}
+                              </span>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {user?.name ?? 'User'}
+                              </p>
+                              {user?.email && (
+                                <p className="text-xs text-gray-500 truncate mt-0.5">
+                                  {user.email}
+                                </p>
+                              )}
+                              <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 text-[10px] font-semibold">
+                                <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                                Active
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Menu items */}
+                        <div className="py-1.5">
+                          <Link
+                            href="/profile"
+                            onClick={() => setProfileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          >
+                            <span className="flex items-center justify-center h-7 w-7 rounded-lg bg-gray-100 group-hover:bg-orange-100 transition-colors shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 group-hover:text-orange-600 transition-colors">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                            </span>
+                            <div>
+                              <p className="font-medium">My Profile</p>
+                              <p className="text-xs text-gray-400">View & edit your info</p>
+                            </div>
+                          </Link>
+
+                          <Link
+                            href="/orders"
+                            onClick={() => setProfileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          >
+                            <span className="flex items-center justify-center h-7 w-7 rounded-lg bg-gray-100 group-hover:bg-orange-100 transition-colors shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 group-hover:text-orange-600 transition-colors">
+                                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <path d="M16 10a4 4 0 0 1-8 0" />
+                              </svg>
+                            </span>
+                            <div>
+                              <p className="font-medium">My Orders</p>
+                              <p className="text-xs text-gray-400">Track your purchases</p>
+                            </div>
+                          </Link>
+
+                          <Link
+                            href="/wishlist"
+                            onClick={() => setProfileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          >
+                            <span className="flex items-center justify-center h-7 w-7 rounded-lg bg-gray-100 group-hover:bg-orange-100 transition-colors shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500 group-hover:text-orange-600 transition-colors">
+                                <path d="m12 21-1.45-1.32C5.4 15.36 2 12.28 2 8.5A4.5 4.5 0 0 1 6.5 4 5 5 0 0 1 12 6.09 5 5 0 0 1 17.5 4 4.5 4.5 0 0 1 22 8.5c0 3.78-3.4 6.86-8.55 11.18z" />
+                              </svg>
+                            </span>
+                            <div>
+                              <p className="font-medium">Wishlist</p>
+                              <p className="text-xs text-gray-400">Your saved items</p>
+                            </div>
+                          </Link>
+                        </div>
+
+                        {/* Logout */}
+                        <div className="border-t border-gray-100 py-1.5">
+                          <button
+                            onClick={() => handleCustomerLogout('/shop')}
+                            disabled={isLoggingOut}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60 group"
+                          >
+                            <span className="flex items-center justify-center h-7 w-7 rounded-lg bg-red-50 group-hover:bg-red-100 transition-colors shrink-0">
+                              {isLoggingOut ? (
+                                <svg className="animate-spin h-3.5 w-3.5 text-red-500" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
+                                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                  <polyline points="16 17 21 12 16 7" />
+                                  <line x1="21" y1="12" x2="9" y2="12" />
+                                </svg>
+                              )}
+                            </span>
+                            <p className="font-medium">{isLoggingOut ? 'Logging out...' : 'Logout'}</p>
+                          </button>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>

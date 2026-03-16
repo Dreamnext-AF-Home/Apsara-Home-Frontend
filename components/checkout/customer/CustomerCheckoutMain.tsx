@@ -258,6 +258,7 @@ const CustomerCheckoutMain = () => {
                                 checkoutData={checkoutData}
                                 loading={loading}
                                 onSubmit={handleSubmit}
+                                isLoggedIn={isLoggedIn}
                             />
                         </div>
                     </div>
