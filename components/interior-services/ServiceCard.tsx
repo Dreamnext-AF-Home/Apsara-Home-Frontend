@@ -16,20 +16,23 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         <motion.div
       variants={staggerItem}
       onClick={onClick}
-      className="group relative cursor-pointer rounded-[4px] overflow-hidden"
+      className="group relative cursor-pointer rounded-[6px] overflow-hidden"
       style={{
         border: isActive
-          ? `1px solid ${service.accentColor}50`
-          : "1px solid rgba(255,255,255,0.07)",
+          ? `1px solid ${service.accentColor}60`
+          : "1px solid rgba(99,102,241,0.1)",
         background: isActive
-          ? `linear-gradient(135deg, ${service.accentColor}10 0%, rgba(255,255,255,0.02) 100%)`
-          : "rgba(255,255,255,0.02)",
+          ? `linear-gradient(135deg, ${service.accentColor}08 0%, rgba(255,255,255,0.95) 100%)`
+          : "rgba(255,255,255,0.9)",
+        boxShadow: isActive
+          ? `0 8px 32px ${service.accentColor}18`
+          : "0 2px 12px rgba(79,70,229,0.04)",
       }}
       whileHover={{ y: -6, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
       animate={{
         boxShadow: isActive
           ? `0 20px 60px ${service.accentColor}18, 0 0 0 1px ${service.accentColor}30`
-          : "0 0 0 transparent",
+          : "0 2px 12px rgba(79,70,229,0.04)",
       }}
       transition={{ duration: 0.4 }}
     >
@@ -41,7 +44,7 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         }}
         transition={{ duration: 0.3 }}
       />
- 
+
       {/* Active indicator dot */}
       <AnimatePresence>
         {isActive && (
@@ -62,7 +65,7 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
           </motion.div>
         )}
       </AnimatePresence>
- 
+
       <div className="p-7">
         {/* Icon */}
         <motion.div
@@ -73,16 +76,16 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         >
           {service.icon}
         </motion.div>
- 
+
         {/* Index number */}
         <div
           className="font-['Cormorant_Garamond'] text-[2.8rem] font-light leading-none mb-3 select-none"
-          style={{ color: `${service.accentColor}20` }}
+          style={{ color: `${service.accentColor}25` }}
         >
           {String(index + 1).padStart(2, "0")}
         </div>
- 
-        <h3 className="font-['Cormorant_Garamond'] text-xl font-medium text-stone-200 mb-1 tracking-wide">
+
+        <h3 className="font-['Cormorant_Garamond'] text-xl font-medium text-slate-800 mb-1 tracking-wide">
           {service.title}
         </h3>
         <p
@@ -91,20 +94,20 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         >
           {service.tagline}
         </p>
-        <p className="text-[0.82rem] text-stone-500 leading-relaxed mb-5">
+        <p className="text-[0.82rem] text-slate-500 leading-relaxed mb-5">
           {service.description}
         </p>
- 
+
         {/* Features */}
         <div className="flex flex-col gap-2">
           {service.features.map((feature) => (
             <div key={feature} className="flex items-center gap-2.5">
               <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: service.accentColor }} />
-              <span className="text-[0.75rem] text-stone-500">{feature}</span>
+              <span className="text-[0.75rem] text-slate-500">{feature}</span>
             </div>
           ))}
         </div>
- 
+
         {/* Bottom CTA */}
         <motion.div
           className="mt-6 flex items-center gap-2 text-[0.68rem] tracking-[0.14em] uppercase"

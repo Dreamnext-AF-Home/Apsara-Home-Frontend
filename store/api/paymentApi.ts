@@ -7,6 +7,7 @@ export interface CheckoutCustomerPayload {
   email?: string
   phone?: string
   address?: string
+  referred_by?: string
 }
 
 export interface CreateCheckoutSessionPayload {
@@ -73,6 +74,16 @@ export interface CheckoutHistoryResponse {
   orders: CustomerOrder[]
 }
 
+export interface GuestTrackOrderResponse {
+  order: CustomerOrder & {
+    customer_name: string
+    courier?: string | null
+    tracking_no?: string | null
+    shipment_status?: string | null
+    shipped_at?: string | null
+  }
+}
+
 export const paymentApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createCheckoutSession: builder.mutation<CreateCheckoutSessionResponse, CreateCheckoutSessionPayload>({
@@ -95,6 +106,16 @@ export const paymentApi = baseApi.injectEndpoints({
       }),
       providesTags: ['Orders'],
     }),
+    trackGuestOrder: builder.query<GuestTrackOrderResponse, { orderNumber: string; contact: string }>({
+      query: ({ orderNumber, contact }) => ({
+        url: '/api/orders/track',
+        method: 'GET',
+        params: {
+          order_number: orderNumber,
+          contact,
+        },
+      }),
+    }),
   }),
 })
 
@@ -102,4 +123,5 @@ export const {
   useCreateCheckoutSessionMutation,
   useLazyVerifyCheckoutSessionQuery,
   useGetCheckoutHistoryQuery,
+  useLazyTrackGuestOrderQuery,
 } = paymentApi

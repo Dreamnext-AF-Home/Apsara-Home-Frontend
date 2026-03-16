@@ -38,6 +38,7 @@ export interface Product {
 export interface ProductVariant {
   id?: number
   sku?: string
+  name?: string
   color?: string
   colorHex?: string
   size?: string
@@ -96,6 +97,7 @@ export interface CreateProductPayload {
 
 export interface CreateProductVariantPayload {
   pv_sku?: string
+  pv_name?: string
   pv_color?: string
   pv_color_hex?: string
   pv_size?: string
@@ -152,6 +154,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
         return {
           id: typeof row.id === 'number' ? row.id : undefined,
           sku: typeof row.sku === 'string' ? row.sku : undefined,
+          name: typeof row.name === 'string' ? row.name : (typeof row.pv_name === 'string' ? row.pv_name : undefined),
           color: typeof row.color === 'string' ? row.color : undefined,
           colorHex: typeof row.colorHex === 'string' ? row.colorHex : undefined,
           size: typeof row.size === 'string' ? row.size : undefined,
@@ -198,10 +201,17 @@ export const normalizeProductsResponse = (response: ProductsResponse | Record<st
   const rawProducts = Array.isArray((response as ProductsResponse).products)
     ? (response as ProductsResponse).products
     : []
+  const normalizedProducts = rawProducts.map((product) => normalizeProduct(product as Product & Record<string, unknown>))
+  const uniqueProducts = Array.from(
+    normalizedProducts.reduce((map, product) => {
+      map.set(product.id, product)
+      return map
+    }, new Map<number, Product>()).values(),
+  )
 
   return {
     ...(response as ProductsResponse),
-    products: rawProducts.map((product) => normalizeProduct(product as Product & Record<string, unknown>)),
+    products: uniqueProducts,
   }
 }
 

@@ -79,15 +79,15 @@ const StepContact = ({ form, onChange }: StepContactProps) => {
 
       <motion.div variants={staggerItem} className="flex items-start gap-3 pt-2">
         <div
-          className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border border-[#BFA07A]/40"
-          style={{ background: "rgba(191,160,122,0.1)" }}
+          className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border border-indigo-300"
+          style={{ background: "rgba(99,102,241,0.08)" }}
         >
-          <span className="text-[9px] text-[#BFA07A]">✓</span>
+          <span className="text-[9px] text-indigo-500">✓</span>
         </div>
-        <p className="text-[0.72rem] leading-relaxed text-stone-500">
+        <p className="text-[0.72rem] leading-relaxed text-slate-400">
           I agree that AF Home may contact me regarding my enquiry. My information
           will never be shared with third parties. Read our{" "}
-          <span className="cursor-pointer text-[#BFA07A] hover:underline">Privacy Policy</span>.
+          <span className="cursor-pointer text-indigo-500 hover:underline">Privacy Policy</span>.
         </p>
       </motion.div>
     </motion.div>

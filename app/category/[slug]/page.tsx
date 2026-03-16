@@ -17,13 +17,14 @@ interface DisplayProduct {
   id?: number;
   name: string;
   price: number;
-  priceDp?: number;
+  priceMember?: number;
   prodpv?: number;
   originalPrice?: number;
   image: string;
   images?: string[];
   badge?: string;
   verified?: boolean;
+  stock?: number;
 }
 
 const slugify = (value: string) => value.toLowerCase().trim().replace(/\s+/g, '-');
@@ -98,6 +99,25 @@ const toStringArray = (value: unknown): string[] => {
   return [];
 };
 
+const resolveDisplayStock = (
+  baseStock: number,
+  variants?: Array<{ qty?: number; status?: number }>,
+): number => {
+  if (!variants || variants.length === 0) return baseStock;
+
+  const activeVariants = variants.filter((variant) => {
+    if (variant.status == null) return true;
+    return Number(variant.status) === 1;
+  });
+
+  if (activeVariants.length === 0) return 0;
+
+  const hasVariantQty = activeVariants.some((variant) => typeof variant.qty === 'number');
+  if (!hasVariantQty) return baseStock;
+
+  return activeVariants.reduce((sum, variant) => sum + Math.max(0, Number(variant.qty ?? 0)), 0);
+};
+
 const extractCategories = (json: unknown): Category[] => {
   const source = json as { categories?: unknown; data?: unknown };
   const direct = asArray<Category>(source?.categories);
@@ -133,10 +153,22 @@ const mapProductToDisplay = (product: Product | LooseRecord, apiUrl?: string): D
   const row = toLooseRecord(product);
   const name = String(row.name ?? row.pd_name ?? 'Untitled Product');
   const srp = toNumber(row.priceSrp ?? row.pd_price_srp ?? 0);
-  const dp = toNumber(row.priceDp ?? row.pd_price_dp ?? 0);
+  const member = toNumber(row.priceMember ?? row.pd_price_member ?? 0);
   const prodpv = toNumber(row.prodpv ?? row.pd_prodpv ?? 0);
-  const isOnSale = toBoolean(row.salespromo ?? row.pd_salespromo);
-  const price = isOnSale && dp > 0 ? dp : srp;
+  const price = srp;
+  const rawVariants = Array.isArray(row.variants)
+    ? row.variants
+    : Array.isArray(row.pd_variants)
+      ? row.pd_variants
+      : [];
+  const variants = rawVariants.map((item) => {
+    const variant = toLooseRecord(item);
+    return {
+      qty: toNumber(variant.qty ?? variant.pv_qty ?? 0),
+      status: toNumber(variant.status ?? variant.pv_status ?? 1),
+    };
+  });
+  const stock = resolveDisplayStock(toNumber(row.qty ?? row.pd_qty ?? 0), variants);
 
   let badge: string | undefined;
   if (toBoolean(row.salespromo ?? row.pd_salespromo)) badge = 'SALE';
@@ -151,13 +183,14 @@ const mapProductToDisplay = (product: Product | LooseRecord, apiUrl?: string): D
     id: toNumber(row.id ?? row.pd_id ?? 0) || undefined,
     name,
     price,
-    priceDp: dp > 0 ? dp : undefined,
+    priceMember: member > 0 ? member : undefined,
     prodpv,
-    originalPrice: isOnSale && dp > 0 && srp > dp ? srp : undefined,
+    originalPrice: undefined,
     image: resolveImageUrl(rawImage, apiUrl),
     images: rawImages.map((item) => resolveImageUrl(item, apiUrl)),
     badge,
     verified,
+    stock,
   };
 };
 

@@ -95,14 +95,22 @@ const BookingSection = ({ id }: { id?: string }) => {
       ref={ref}
       className="relative overflow-hidden py-32"
       style={{
-        background: "linear-gradient(180deg, #0d0c0a 0%, #111009 50%, #0d0c0a 100%)",
+        background: "linear-gradient(180deg, #EEF2FF 0%, #F5F7FF 50%, #EEF2FF 100%)",
       }}
     >
+      {/* Futuristic glow orb */}
       <div
-        className="absolute top-0 right-0 h-[600px] w-[600px] rounded-full opacity-30 pointer-events-none"
+        className="absolute top-0 right-0 h-[600px] w-[600px] rounded-full opacity-60 pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(191,160,122,0.05) 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 65%)",
           transform: "translate(30%, -30%)",
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full opacity-40 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 65%)",
+          transform: "translate(-30%, 30%)",
         }}
       />
 
@@ -116,7 +124,7 @@ const BookingSection = ({ id }: { id?: string }) => {
               custom={0}
             >
               <SectionLabel>Book a Consultation</SectionLabel>
-              <h2 className="mb-5 font-['Cormorant_Garamond'] text-[clamp(2.4rem,4vw,3.8rem)] font-light leading-[1.08] text-stone-100">
+              <h2 className="mb-5 font-['Cormorant_Garamond'] text-[clamp(2.4rem,4vw,3.8rem)] font-light leading-[1.08] text-slate-900">
                 Begin Your
                 <br />
                 <em style={{ fontStyle: "italic" }}>Project</em>
@@ -124,7 +132,7 @@ const BookingSection = ({ id }: { id?: string }) => {
             </motion.div>
 
             <motion.p
-              className="mb-10 max-w-sm text-[0.87rem] leading-relaxed text-stone-400"
+              className="mb-10 max-w-sm text-[0.87rem] leading-relaxed text-slate-500"
               initial="hidden"
               animate={isInView ? "visible" : "hidden"}
               variants={fadeUp}
@@ -148,29 +156,29 @@ const BookingSection = ({ id }: { id?: string }) => {
                 { icon: "◻", title: "Transparent Pricing", desc: "Clear proposals before any work begins with no surprise costs." },
               ].map((item) => (
                 <div key={item.title} className="flex items-start gap-4">
-                  <div className="mt-0.5 shrink-0 text-lg" style={{ color: "#BFA07A" }}>
+                  <div className="mt-0.5 shrink-0 text-lg text-indigo-500">
                     {item.icon}
                   </div>
                   <div>
-                    <div className="mb-1 text-[0.82rem] font-medium text-stone-300">{item.title}</div>
-                    <div className="text-[0.75rem] leading-relaxed text-stone-500">{item.desc}</div>
+                    <div className="mb-1 text-[0.82rem] font-medium text-slate-700">{item.title}</div>
+                    <div className="text-[0.75rem] leading-relaxed text-slate-400">{item.desc}</div>
                   </div>
                 </div>
               ))}
             </motion.div>
 
             <motion.div
-              className="mt-12 border-t border-white/[0.06] pt-8"
+              className="mt-12 border-t border-slate-200 pt-8"
               initial="hidden"
               animate={isInView ? "visible" : "hidden"}
               variants={fadeUp}
               custom={0.5}
             >
-              <p className="mb-2 text-[0.7rem] uppercase tracking-[0.1em] text-stone-600">
+              <p className="mb-2 text-[0.7rem] uppercase tracking-[0.1em] text-slate-400">
                 Prefer to call?
               </p>
-              <p className="text-[0.9rem] text-stone-300">+63 912 345 6789</p>
-              <p className="mt-1 text-[0.75rem] text-stone-500">Mon – Sat, 9am – 6pm PHT</p>
+              <p className="text-[0.9rem] text-slate-700">+63 912 345 6789</p>
+              <p className="mt-1 text-[0.75rem] text-slate-400">Mon – Sat, 9am – 6pm PHT</p>
             </motion.div>
           </div>
 
@@ -181,11 +189,12 @@ const BookingSection = ({ id }: { id?: string }) => {
             custom={0.15}
           >
             <div
-              className="overflow-hidden rounded-[6px]"
+              className="overflow-hidden rounded-[8px]"
               style={{
-                border: "1px solid rgba(255,255,255,0.07)",
-                background: "rgba(255,255,255,0.02)",
-                backdropFilter: "blur(8px)",
+                border: "1px solid rgba(99,102,241,0.15)",
+                background: "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(16px)",
+                boxShadow: "0 4px 40px rgba(79,70,229,0.06), 0 1px 0 rgba(255,255,255,0.8) inset",
               }}
             >
               {submitted ? (
@@ -203,10 +212,10 @@ const BookingSection = ({ id }: { id?: string }) => {
                       transition={{ duration: 0.3 }}
                       className="mb-6"
                     >
-                      <h3 className="font-['Cormorant_Garamond'] text-[1.4rem] font-light leading-tight text-stone-100">
+                      <h3 className="font-['Cormorant_Garamond'] text-[1.4rem] font-light leading-tight text-slate-900">
                         {stepLabels[currentStep - 1]}
                       </h3>
-                      <div className="mt-2 h-px w-8 bg-[#BFA07A]/50" />
+                      <div className="mt-2 h-px w-8 bg-indigo-500/60" />
                     </motion.div>
                   </AnimatePresence>
 
@@ -216,7 +225,7 @@ const BookingSection = ({ id }: { id?: string }) => {
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -4 }}
-                        className="mb-5 rounded-[4px] border border-red-500/20 bg-red-500/10 px-4 py-3 text-[0.74rem] text-red-200"
+                        className="mb-5 rounded-[4px] border border-red-300/60 bg-red-50 px-4 py-3 text-[0.74rem] text-red-600"
                       >
                         {stepError}
                       </motion.div>
@@ -238,7 +247,7 @@ const BookingSection = ({ id }: { id?: string }) => {
                     </motion.div>
                   </AnimatePresence>
 
-                  <div className="mt-8 flex items-center justify-between border-t border-white/[0.06] pt-6">
+                  <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
                     <div>
                       {currentStep > 1 && <GhostButton onClick={handleBack}>← Back</GhostButton>}
                     </div>
@@ -246,7 +255,7 @@ const BookingSection = ({ id }: { id?: string }) => {
                   </div>
 
                   <div className="mt-4 text-center">
-                    <span className="text-[0.65rem] tracking-[0.1em] text-stone-600">
+                    <span className="text-[0.65rem] tracking-[0.1em] text-slate-400">
                       Step {currentStep} of {FORM_STEPS.length}
                     </span>
                   </div>

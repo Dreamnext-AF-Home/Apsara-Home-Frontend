@@ -38,7 +38,7 @@ const StepReview = ({ form, onChange }: StepReviewProps) => {
             rows={5}
           />
         </FormField>
-        <p className="text-[0.68rem] text-stone-600 mt-2">
+        <p className="text-[0.68rem] text-slate-400 mt-2">
           The more detail you share, the better we can prepare for your consultation.
         </p>
       </motion.div>
@@ -46,11 +46,17 @@ const StepReview = ({ form, onChange }: StepReviewProps) => {
       <motion.div variants={staggerItem}>
         <FormField label="Upload Inspiration Photos or Floor Plan">
           <label
-            className="flex cursor-pointer flex-col items-center justify-center rounded-[4px] border border-dashed border-[#BFA07A]/25 bg-white/[0.02] px-5 py-7 text-center transition-colors hover:border-[#BFA07A]/45"
+            className="flex cursor-pointer flex-col items-center justify-center rounded-[4px] px-5 py-7 text-center transition-colors"
+            style={{
+              border: "1.5px dashed rgba(99,102,241,0.3)",
+              background: "rgba(99,102,241,0.02)",
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)")}
+            onMouseOut={(e) => (e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)")}
           >
-            <span className="mb-2 text-xl text-[#BFA07A]">+</span>
-            <span className="text-[0.78rem] text-stone-300">Choose up to a few reference files</span>
-            <span className="mt-1 text-[0.68rem] text-stone-500">JPG, PNG, PDF, moodboard screenshots</span>
+            <span className="mb-2 text-xl text-indigo-500">+</span>
+            <span className="text-[0.78rem] text-slate-600">Choose up to a few reference files</span>
+            <span className="mt-1 text-[0.68rem] text-slate-400">JPG, PNG, PDF, moodboard screenshots</span>
             <input
               type="file"
               accept=".jpg,.jpeg,.png,.webp,.pdf"
@@ -64,7 +70,7 @@ const StepReview = ({ form, onChange }: StepReviewProps) => {
               {uploadedFiles.map((fileName) => (
                 <span
                   key={fileName}
-                  className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[0.68rem] text-stone-300"
+                  className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[0.68rem] text-indigo-600"
                 >
                   {fileName}
                 </span>
@@ -73,26 +79,29 @@ const StepReview = ({ form, onChange }: StepReviewProps) => {
           )}
         </FormField>
       </motion.div>
- 
+
       {/* Review summary card */}
       <motion.div
         variants={staggerItem}
-        className="rounded-[4px] overflow-hidden"
+        className="rounded-[6px] overflow-hidden"
         style={{
-          border: "1px solid rgba(191,160,122,0.2)",
-          background: "linear-gradient(135deg, rgba(191,160,122,0.05) 0%, rgba(255,255,255,0.01) 100%)",
+          border: "1px solid rgba(99,102,241,0.15)",
+          background: "linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(255,255,255,0.9) 100%)",
         }}
       >
-        <div className="px-5 py-3.5 border-b border-[#BFA07A]/15 flex items-center justify-between">
-          <span className="text-[0.68rem] tracking-[0.18em] uppercase text-[#BFA07A]">
+        <div
+          className="px-5 py-3.5 border-b flex items-center justify-between"
+          style={{ borderColor: "rgba(99,102,241,0.1)" }}
+        >
+          <span className="text-[0.68rem] tracking-[0.18em] uppercase text-indigo-600">
             Booking Summary
           </span>
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#BFA07A] animate-pulse" />
-            <span className="text-[0.6rem] text-[#BFA07A]/70">Ready to submit</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-[0.6rem] text-indigo-400">Ready to submit</span>
           </div>
         </div>
- 
+
         <div className="px-5">
           <SummaryRow
             label="Service"
@@ -132,16 +141,20 @@ const StepReview = ({ form, onChange }: StepReviewProps) => {
           />
         </div>
       </motion.div>
- 
+
       {/* Commitment note */}
       <motion.div
         variants={staggerItem}
-        className="flex items-start gap-3 p-4 rounded-[3px] bg-white/[0.02] border border-white/[0.05]"
+        className="flex items-start gap-3 p-4 rounded-[4px]"
+        style={{
+          background: "rgba(99,102,241,0.03)",
+          border: "1px solid rgba(99,102,241,0.1)",
+        }}
       >
-        <span className="text-[#BFA07A] text-sm mt-0.5">✦</span>
-        <p className="text-[0.75rem] text-stone-500 leading-relaxed">
+        <span className="text-indigo-500 text-sm mt-0.5">✦</span>
+        <p className="text-[0.75rem] text-slate-500 leading-relaxed">
           By submitting this form you're not committing to any contract. This is simply a consultation request — our team will reach out within{" "}
-          <span className="text-stone-300">24 hours</span> to discuss your project.
+          <span className="text-slate-700">24 hours</span> to discuss your project.
         </p>
       </motion.div>
     </motion.div>

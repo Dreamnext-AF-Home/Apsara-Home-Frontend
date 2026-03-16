@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCart } from '@/context/CartContext';
 import { CategoryProduct } from '@/libs/CategoryData';
-import { useMeQuery } from '@/store/api/userApi';
 
 interface StickyAddToCartProps {
   product: CategoryProduct;
@@ -17,16 +16,16 @@ const StickyAddToCart = ({ product }: StickyAddToCartProps) => {
   const { addToCart } = useCart();
   const { data: session } = useSession();
   const isLoggedIn = Boolean(session?.user);
-  const { data: me } = useMeQuery(undefined, { skip: !isLoggedIn });
   const role = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase();
-  const isVerifiedAccount = (me?.verification_status === 'verified') || (me?.account_status === 1);
-  const canUseMemberPrice = isLoggedIn && isVerifiedAccount;
+  const canUseMemberPrice = isLoggedIn;
   const canSeePv = role === '' || role === 'customer' || role === 'member' || role === 'affiliate';
   const displayPv = Number(product.prodpv ?? 0);
   const srp = Number(product.originalPrice ?? product.price ?? 0);
   const member = Number(product.priceMember ?? 0);
   const hasMemberPrice = member > 0 && member < srp;
   const displayPrice = canUseMemberPrice && hasMemberPrice ? member : srp;
+  const stock = Number(product.stock ?? 0);
+  const isInStock = stock > 0;
 
   useEffect(() => {
     const handler = () => setVisible(window.scrollY > 500);
@@ -35,6 +34,8 @@ const StickyAddToCart = ({ product }: StickyAddToCartProps) => {
   }, []);
 
   const handleAddToCart = () => {
+    if (!isInStock) return;
+
     addToCart({
       id: product.name.toLowerCase().replace(/\s+/g, '-'),
       name: product.name,
@@ -71,12 +72,24 @@ const StickyAddToCart = ({ product }: StickyAddToCartProps) => {
             <div className="flex shrink-0 gap-2">
               <button
                 onClick={handleAddToCart}
-                className="rounded-xl bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-600 active:bg-orange-700 sm:px-5 sm:text-sm"
+                disabled={!isInStock}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors sm:px-5 sm:text-sm ${
+                  isInStock
+                    ? 'bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700'
+                    : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                }`}
               >
                 <span className="hidden sm:inline">Add to Cart</span>
                 <span className="sm:hidden">Cart</span>
               </button>
-              <button className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 sm:px-5 sm:text-sm">
+              <button
+                disabled={!isInStock}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors sm:px-5 sm:text-sm ${
+                  isInStock
+                    ? 'bg-slate-900 text-white hover:bg-slate-800'
+                    : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                }`}
+              >
                 Buy Now
               </button>
             </div>

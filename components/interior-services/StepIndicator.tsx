@@ -26,20 +26,20 @@ const StepIndicator = ({ currentStep, onStepClick }: StepIndicatorProps) => {
                 className="w-8 h-8 rounded-full flex items-center justify-center text-[0.72rem] font-medium transition-all duration-300"
                 animate={{
                   background: isActive
-                    ? "#BFA07A"
+                    ? "#4F46E5"
                     : isCompleted
-                    ? "rgba(191,160,122,0.2)"
-                    : "rgba(255,255,255,0.05)",
+                    ? "rgba(99,102,241,0.15)"
+                    : "rgba(99,102,241,0.06)",
                   border: isActive
-                    ? "1px solid #BFA07A"
+                    ? "1px solid #4F46E5"
                     : isCompleted
-                    ? "1px solid rgba(191,160,122,0.5)"
-                    : "1px solid rgba(255,255,255,0.1)",
+                    ? "1px solid rgba(99,102,241,0.4)"
+                    : "1px solid rgba(99,102,241,0.15)",
                   color: isActive
-                    ? "#0d0c0a"
+                    ? "#ffffff"
                     : isCompleted
-                    ? "#BFA07A"
-                    : "#57534e",
+                    ? "#4F46E5"
+                    : "#94a3b8",
                 }}
                 transition={{ duration: 0.35 }}
               >
@@ -48,19 +48,19 @@ const StepIndicator = ({ currentStep, onStepClick }: StepIndicatorProps) => {
               <span
                 className="text-[0.6rem] tracking-[0.1em] uppercase transition-colors duration-300"
                 style={{
-                  color: isActive ? "#BFA07A" : isCompleted ? "#a8a29e" : "#44403c",
+                  color: isActive ? "#4F46E5" : isCompleted ? "#6366f1" : "#cbd5e1",
                 }}
               >
                 {item.label}
               </span>
             </button>
- 
+
             {/* Connector */}
             {i < FORM_STEPS.length - 1 && (
               <div className="flex-1 mx-3 h-px relative overflow-hidden mb-5">
-                <div className="absolute inset-0 bg-white/[0.07]" />
+                <div className="absolute inset-0 bg-indigo-100" />
                 <motion.div
-                  className="absolute inset-0 bg-[#BFA07A]/50 origin-left"
+                  className="absolute inset-0 bg-indigo-400 origin-left"
                   animate={{ scaleX: isCompleted ? 1 : 0 }}
                   transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 />

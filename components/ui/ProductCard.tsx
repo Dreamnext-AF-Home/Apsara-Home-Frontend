@@ -13,16 +13,17 @@ interface ProductCardProps {
   id?: number;
   name: string;
   price: number;
-  priceDp?: number;
+  priceMember?: number;
   prodpv?: number;
   originalPrice?: number;
   image: string;
   badge?: string;
+  stock?: number;
 }
 
 const FALLBACK_IMAGE = '/Images/HeroSection/chairs_stools.jpg';
 
-const ProductCard = ({ id, name, price, priceDp, prodpv, originalPrice, image, badge }: ProductCardProps) => {
+const ProductCard = ({ id, name, price, priceMember, prodpv, originalPrice, image, badge, stock }: ProductCardProps) => {
   const { addToCart } = useCart();
   const [imageSrc, setImageSrc] = useState(image || FALLBACK_IMAGE);
   const { data: session } = useSession();
@@ -35,9 +36,14 @@ const ProductCard = ({ id, name, price, priceDp, prodpv, originalPrice, image, b
   const safeName = (name || 'Untitled Product').trim();
   const slug = safeName.toLowerCase().replace(/\s+/g, '-');
   const productPath = typeof id === 'number' ? `/product/${slug}-i${id}` : `/product/${slug}`;
-  const displayPrice = Number(priceDp ?? price ?? 0);
-  const strikePrice = Number(originalPrice ?? 0);
+  const srpPrice = Number(price ?? 0);
+  const memberPrice = Number(priceMember ?? 0);
+  const hasMemberPrice = isLoggedIn && memberPrice > 0 && memberPrice < srpPrice;
+  const displayPrice = hasMemberPrice ? memberPrice : srpPrice;
+  const strikePrice = hasMemberPrice ? srpPrice : Number(originalPrice ?? 0);
   const displayPv = Number(prodpv ?? 0);
+  const normalizedStock = Number(stock ?? 0);
+  const isInStock = normalizedStock > 0;
 
   const isWishlisted = typeof id === 'number' && wishlistItems.some(item => item.productId === id);
   const isWishlistPending = isAdding || isRemoving;
@@ -45,6 +51,7 @@ const ProductCard = ({ id, name, price, priceDp, prodpv, originalPrice, image, b
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isInStock) return;
     addToCart({
       id: typeof id === 'number' ? String(id) : slug,
       name: safeName,
@@ -120,13 +127,18 @@ const ProductCard = ({ id, name, price, priceDp, prodpv, originalPrice, image, b
             <button
               type="button"
               onClick={handleAddToCart}
-              className='w-full bg-orange-500 hover:bg-orange-600 active:scale-95 text-white py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg'
+              disabled={!isInStock}
+              className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
+                isInStock
+                  ? 'bg-orange-500 hover:bg-orange-600 active:scale-95 text-white shadow-lg'
+                  : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
-              Add to Cart
+              {isInStock ? 'Add to Cart' : 'Out of Stock'}
             </button>
           </div>
         </div>

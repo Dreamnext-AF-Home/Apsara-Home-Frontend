@@ -35,6 +35,7 @@ const REQUIRED_FIELD_ORDER: Array<keyof GuestForm> = [
     'name',
     'email',
     'phone',
+    'referred_by',
     'address',
     'region',
     'province',
@@ -106,6 +107,7 @@ const CustomerCheckoutMain = () => {
         if (!form.email.trim()) e.email = 'Required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
         if (!form.phone.trim()) e.phone = 'Required';
+        if (!form.referred_by.trim()) e.referred_by = 'Required';
         if (!form.address.trim()) e.address = 'Required';
         if (!form.region.trim()) e.region = 'Required';
         if (!form.barangay.trim()) e.barangay = 'Required';
@@ -162,6 +164,7 @@ const CustomerCheckoutMain = () => {
                     email: form.email,
                     phone: form.phone,
                     address: `${form.address}, ${form.barangay}, ${form.city}, ${form.province}, ${form.region}${form.zip ? ` ${form.zip}` : ''}`,
+                    referred_by: form.referred_by.trim(),
                 },
                 order: {
                     product_name: checkoutData.product.name,
@@ -186,8 +189,26 @@ const CustomerCheckoutMain = () => {
             }
             localStorage.removeItem('guest_checkout');
             window.location.href = data.checkout_url;
-        } catch {
-            alert('Something went wrong');
+        } catch (error) {
+            const apiError = error as {
+                data?: {
+                    message?: string;
+                    errors?: Record<string, string[]>;
+                };
+            };
+
+            const referralError =
+                apiError?.data?.errors?.['customer.referred_by']?.[0]
+                ?? apiError?.data?.errors?.referred_by?.[0];
+
+            if (referralError) {
+                const nextErrors: FormErrors = { referred_by: referralError };
+                setErrors((current) => ({ ...current, ...nextErrors }));
+                requestAnimationFrame(() => focusFirstErrorField(nextErrors));
+                return;
+            }
+
+            alert(apiError?.data?.message || 'Something went wrong');
         }
     }
 

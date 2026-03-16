@@ -50,6 +50,7 @@ interface VariantColor {
 }
 
 interface VariantFormState {
+  pv_name: string
   pv_sku: string
   pv_colors: VariantColor[]
   pv_size: string
@@ -92,7 +93,7 @@ const defaultForm: FormState = {
 type Errors = Partial<Record<keyof FormState, string>>
 
 const emptyVariant = (): VariantFormState => ({
-  pv_sku: '', pv_colors: [], pv_size: '',
+  pv_name: '', pv_sku: '', pv_colors: [], pv_size: '',
   pv_price_srp: '', pv_price_dp: '', pv_price_member: '', pv_qty: '',
   pv_status: '1', pv_images: [],
 })
@@ -152,6 +153,13 @@ const buildVariantSku = (baseSku: string, index: number) => {
   const base = baseSku.trim()
   const seq  = String(index + 1).padStart(2, '0')
   return base ? `${base}-V${seq}` : `VAR-V${seq}`
+}
+
+const toOptionalPositiveNumber = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
 /* ─── small components ───────────────────────────────────── */
@@ -341,19 +349,20 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   }
 
   const expandedVariants = variants
-    .filter(v => v.pv_colors.length > 0 || v.pv_size || v.pv_sku || v.pv_images.length > 0)
+    .filter(v => v.pv_name || v.pv_colors.length > 0 || v.pv_size || v.pv_sku || v.pv_images.length > 0)
     .flatMap((v, index) => {
       const autoSku    = buildVariantSku(form.pd_parent_sku || generateSkuFromName(form.pd_name), index)
       const variantSku = v.pv_sku.trim() || autoSku
-      const baseSrp = form.pd_price_srp ? Number(form.pd_price_srp) : undefined
-      const baseDp = form.pd_price_dp ? Number(form.pd_price_dp) : undefined
-      const baseMember = form.pd_price_member ? Number(form.pd_price_member) : undefined
+      const baseSrp = toOptionalPositiveNumber(form.pd_price_srp)
+      const baseDp = toOptionalPositiveNumber(form.pd_price_dp)
+      const baseMember = toOptionalPositiveNumber(form.pd_price_member)
       const base = {
+        pv_name: v.pv_name.trim() || undefined,
         pv_sku: variantSku,
         pv_size: v.pv_size || undefined,
-        pv_price_srp: v.pv_price_srp ? Number(v.pv_price_srp) : baseSrp,
-        pv_price_dp:  v.pv_price_dp  ? Number(v.pv_price_dp)  : baseDp,
-        pv_price_member: v.pv_price_member ? Number(v.pv_price_member) : baseMember,
+        pv_price_srp: toOptionalPositiveNumber(v.pv_price_srp) ?? baseSrp,
+        pv_price_dp:  toOptionalPositiveNumber(v.pv_price_dp)  ?? baseDp,
+        pv_price_member: toOptionalPositiveNumber(v.pv_price_member) ?? baseMember,
         pv_qty:       v.pv_qty       ? Number(v.pv_qty)       : undefined,
         pv_status:    Number(v.pv_status),
         pv_images:    v.pv_images.length > 0 ? v.pv_images : undefined,
@@ -833,7 +842,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                       <span className="text-[10px] font-bold text-teal-700">{index + 1}</span>
                                     </div>
                                     <p className="text-xs font-bold text-slate-700">
-                                      Variant #{index + 1}
+                                      {variant.pv_name.trim() || `Variant #${index + 1}`}
                                       {variant.pv_size && <span className="text-slate-400 font-normal ml-1">· {variant.pv_size}</span>}
                                       {variant.pv_colors.length > 0 && (
                                         <span className="inline-flex items-center gap-1 ml-2">
@@ -932,8 +941,12 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* Size + SKU */}
-                                  <div className="grid grid-cols-2 gap-2">
+                                  {/* Variant Name + Size + SKU */}
+                                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[11px] font-semibold text-slate-500 block">Variant Name <span className="font-normal text-slate-400">(recommended)</span></label>
+                                      <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder="e.g. Black, Walnut, Black Large" className={variantInputCls}/>
+                                    </div>
                                     <div className="space-y-1">
                                       <label className="text-[11px] font-semibold text-slate-500 block">Size</label>
                                       <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder="e.g. Medium, XL" className={variantInputCls}/>
@@ -948,16 +961,16 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                                     <div className="space-y-1">
                                       <label className="text-[11px] font-semibold text-slate-500 block">SRP Price (₱)</label>
-                                      <input type="number" value={variant.pv_price_srp} onChange={e => setVariant(index, 'pv_price_srp', e.target.value)} placeholder="0.00" className={variantInputCls}/>
+                                      <input type="number" value={variant.pv_price_srp} onChange={e => setVariant(index, 'pv_price_srp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_srp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[11px] font-semibold text-slate-500 block">Dealer Price (₱)</label>
-                                      <input type="number" value={variant.pv_price_dp} onChange={e => setVariant(index, 'pv_price_dp', e.target.value)} placeholder="0.00" className={variantInputCls}/>
+                                      <input type="number" value={variant.pv_price_dp} onChange={e => setVariant(index, 'pv_price_dp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_dp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
                                       <p className="text-[11px] text-slate-500">If blank, main dealer price will be used.</p>
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[11px] font-semibold text-slate-500 block">Member Price (₱)</label>
-                                      <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} placeholder="0.00" className={variantInputCls}/>
+                                      <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} onBlur={e => setVariant(index, 'pv_price_member', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
                                       <p className="text-[11px] text-slate-500">If blank, main member price will be used.</p>
                                     </div>
                                   </div>

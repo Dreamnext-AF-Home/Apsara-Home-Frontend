@@ -667,6 +667,20 @@ export default function Navbar() {
                   )}
                 </button>
 
+                <Link
+                  href="/track-order"
+                  className="hidden lg:flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-100"
+                  title="Track Order"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 17h4V5H2v12h3" />
+                    <path d="M14 8h4l4 4v5h-4" />
+                    <circle cx="7" cy="17" r="2" />
+                    <circle cx="17" cy="17" r="2" />
+                  </svg>
+                  <span>Track Order</span>
+                </Link>
+
                 <div className="relative hidden md:block" ref={profileMenuRef}>
                   <button
                     onClick={() => {
@@ -813,17 +827,33 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-700"
-                title="Sign in"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-                <span className="text-sm font-medium">Sign in</span>
-              </Link>
+              <>
+                <Link
+                  href="/track-order"
+                  className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
+                  title="Track Order"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 17h4V5H2v12h3" />
+                    <path d="M14 8h4l4 4v5h-4" />
+                    <circle cx="7" cy="17" r="2" />
+                    <circle cx="17" cy="17" r="2" />
+                  </svg>
+                  <span className="text-sm font-medium">Track Order</span>
+                </Link>
+
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-700"
+                  title="Sign in"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <span className="text-sm font-medium">Sign in</span>
+                </Link>
+              </>
             )}
 
             <button
@@ -1110,6 +1140,13 @@ export default function Navbar() {
               {isLoggedIn && (
                 <div className="mb-2 rounded-xl border border-gray-100 p-2">
                   <Link
+                    href="/track-order"
+                    className="block px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50 rounded-lg transition-colors"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Track Order
+                  </Link>
+                  <Link
                     href="/profile"
                     className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors"
                     onClick={() => setMobileOpen(false)}
@@ -1133,6 +1170,13 @@ export default function Navbar() {
               )}
               {!isLoggedIn && (
                 <div className="mb-2 rounded-xl border border-gray-100 p-2">
+                  <Link
+                    href="/track-order"
+                    className="block px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-50 rounded-lg transition-colors"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Track Order
+                  </Link>
                   <Link
                     href="/login"
                     className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors"

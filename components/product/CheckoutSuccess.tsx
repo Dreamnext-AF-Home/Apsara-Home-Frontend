@@ -284,6 +284,14 @@ function CheckoutSuccessPage() {
 
             {/* Buttons */}
             <div className="flex flex-col gap-2.5 pt-1">
+              <Link href={`/track-order?order=${encodeURIComponent(result?.checkout_id ?? '')}`}
+                className="w-full py-3 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 font-semibold text-sm text-center transition-all flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 17h4V5H2v12h3m9 0h4m0 0a2 2 0 100 4 2 2 0 000-4zm-10 0a2 2 0 100 4 2 2 0 000-4m10 0V12l-4-4h-4" />
+                </svg>
+                Track This Order
+              </Link>
               <Link href="/"
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-sm text-center transition-all shadow-md shadow-orange-100 flex items-center justify-center gap-2"
               >

@@ -57,8 +57,8 @@ export const SERVICES: ServiceItem[] = [
       "Lighting design system",
       "3D visualization & walkthroughs",
     ],
-    accentColor: "#BFA07A",
-    bgGradient: "from-amber-950/30 to-transparent",
+    accentColor: "#4F46E5",
+    bgGradient: "from-indigo-100/50 to-transparent",
   },
   {
     id: "commercial",
@@ -73,8 +73,8 @@ export const SERVICES: ServiceItem[] = [
       "Acoustic & lighting solutions",
       "Phased delivery management",
     ],
-    accentColor: "#7A9E8A",
-    bgGradient: "from-emerald-950/30 to-transparent",
+    accentColor: "#0EA5E9",
+    bgGradient: "from-sky-100/50 to-transparent",
   },
   {
     id: "renovation",
@@ -89,8 +89,8 @@ export const SERVICES: ServiceItem[] = [
       "Contractor coordination",
       "Budget & timeline oversight",
     ],
-    accentColor: "#A87E6E",
-    bgGradient: "from-orange-950/30 to-transparent",
+    accentColor: "#8B5CF6",
+    bgGradient: "from-violet-100/50 to-transparent",
   },
   {
     id: "styling",
@@ -105,8 +105,8 @@ export const SERVICES: ServiceItem[] = [
       "Plant & biophilic design",
       "Photography-ready staging",
     ],
-    accentColor: "#7A8FA6",
-    bgGradient: "from-sky-950/30 to-transparent",
+    accentColor: "#06B6D4",
+    bgGradient: "from-cyan-100/50 to-transparent",
   },
 ];
 

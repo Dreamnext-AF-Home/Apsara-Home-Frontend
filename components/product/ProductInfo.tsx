@@ -9,7 +9,6 @@ import { useEffect, useMemo, useState } from "react";
 import StarRating from "../ui/StarRating";
 import BuyNowOptionsModal from "./BuyNowOptionsModal";
 import { useSession } from "next-auth/react";
-import { useMeQuery } from "@/store/api/userApi";
 
 const CartIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -74,13 +73,16 @@ const stripHtml = (value: string) =>
         .replace(/[ \t]{2,}/g, ' ')
         .trim();
 
+const toPositiveNumber = (value: unknown): number | undefined => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
 const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }: ProductInfoProps) => {
     const { addToCart } = useCart();
     const { data: session } = useSession();
     const isLoggedIn = Boolean(session?.user);
-    const { data: me } = useMeQuery(undefined, { skip: !isLoggedIn });
-    const isVerifiedAccount = (me?.verification_status === 'verified') || (me?.account_status === 1);
-    const canUseMemberPrice = isLoggedIn && isVerifiedAccount;
+    const canUseMemberPrice = isLoggedIn;
     const displayPv = Number(product.prodpv ?? 0);
     const [quantity, setQuantity] = useState(1);
     const [selectedColor, setSelectedColor] = useState('');
@@ -169,7 +171,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     }, [selectedGroup, effectiveSelectedColor, effectiveSelectedSize]);
 
     const getVariantLabel = (variant: VariantOption, index: number) => {
-        if (variant.sku && variant.sku.trim().length > 0) return variant.sku;
+        if (variant.name && variant.name.trim().length > 0) return variant.name.trim();
         const parts = [
             variant.color ? displayColorName(variant.color, variant.colorHex) : null,
             variant.size,
@@ -182,8 +184,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
         onVariantChange?.(selectedVariant?.images ?? []);
     }, [selectedVariant, onVariantChange]);
 
-    const variantSrp = Number(selectedVariant?.priceSrp ?? product.originalPrice ?? product.price ?? 0);
-    const variantMember = Number(selectedVariant?.priceMember ?? product.priceMember ?? 0);
+    const baseSrp = toPositiveNumber(product.originalPrice) ?? toPositiveNumber(product.price) ?? 0;
+    const variantSrp = toPositiveNumber(selectedVariant?.priceSrp) ?? baseSrp;
+    const variantMember = toPositiveNumber(selectedVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
     const hasMemberPrice = variantMember > 0 && variantMember < variantSrp;
 
     const displayPrice = canUseMemberPrice && hasMemberPrice ? variantMember : variantSrp;
@@ -208,6 +211,8 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const avgRating = (mockReviews.reduce((s, r) => s + r.rating, 0) / mockReviews.length).toFixed(1);
 
     const handleAddToCart = () => {
+        if (!isInStock) return;
+
         for (let i = 0; i < quantity; i++) {
             addToCart({
                 id: product.name.toLocaleLowerCase().replace(/\s+/g, '-'),
@@ -363,11 +368,22 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                         {variantGroups.map((group, index) => {
                             const variant = group.variants[0];
                             const label = getVariantLabel(variant, index);
-                            const variantPrice = (variant.priceMember ?? 0) > 0
-                                ? variant.priceMember
-                                : (variant.priceSrp ?? product.originalPrice ?? product.price);
+                            const ownVariantSrpPrice = toPositiveNumber(variant.priceSrp);
+                            const ownVariantMemberPrice = toPositiveNumber(variant.priceMember);
+                            const variantSrpPrice = ownVariantSrpPrice ?? baseSrp;
+                            const variantMemberPrice = ownVariantMemberPrice ?? toPositiveNumber(product.priceMember) ?? 0;
+                            const variantHasMemberPrice = variantMemberPrice > 0 && variantMemberPrice < variantSrpPrice;
+                            const variantPrice = canUseMemberPrice && variantHasMemberPrice ? variantMemberPrice : variantSrpPrice;
                             const variantThumb = variant.images && variant.images.length > 0 ? variant.images[0] : null;
+                            const variantSwatch = variant.colorHex ?? (variant.color ? '#E5E7EB' : null);
                             const isActive = selectedGroup?.key === group.key;
+                            const hasOwnVariantPrice = Boolean(ownVariantSrpPrice || ownVariantMemberPrice);
+                            const variantMetaParts = variant.size
+                                ? [
+                                    `Size: ${variant.size}`,
+                                    hasOwnVariantPrice ? `Price: ₱${variantPrice.toLocaleString()}` : null,
+                                ].filter(Boolean)
+                                : [];
 
                             return (
                                 <button
@@ -389,6 +405,14 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img src={variantThumb} alt={`${label} image`} className="h-full w-full object-cover" />
                                             </div>
+                                        ) : variantSwatch ? (
+                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white">
+                                                <span
+                                                    className="h-7 w-7 rounded-full border border-slate-200"
+                                                    style={{ backgroundColor: variantSwatch }}
+                                                    aria-hidden="true"
+                                                />
+                                            </div>
                                         ) : (
                                             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-[10px] text-slate-400">
                                                 No Img
@@ -396,9 +420,11 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                                         )}
                                         <div className="min-w-0">
                                             <p className="text-xs font-semibold">{label}</p>
-                                            <p className="mt-1 text-[11px] text-slate-500">
-                                                Size: {variant.size || '-'} · Price: {typeof variantPrice === 'number' ? `₱${variantPrice.toLocaleString()}` : '-'}
-                                            </p>
+                                            {variantMetaParts.length > 0 && (
+                                                <p className="mt-1 text-[11px] text-slate-500">
+                                                    {variantMetaParts.join(' · ')}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </button>
@@ -527,19 +553,29 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 
             <div className="flex flex-col sm:flex-row gap-3">
                 <motion.button
-                    whileTap={{ scale: 0.97 }}
+                    whileTap={{ scale: isInStock ? 0.97 : 1 }}
                     onClick={handleAddToCart}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm transition-all shadow-lg cursor-pointer ${added
-                            ? 'bg-green-500 hover:bg-green-600 shadow-green-200 text-white'
-                            : 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 shadow-orange-200 text-white'
+                    disabled={!isInStock}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm transition-all ${added
+                            ? 'bg-green-500 hover:bg-green-600 shadow-lg shadow-green-200 text-white'
+                            : isInStock
+                                ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 shadow-lg shadow-orange-200 text-white cursor-pointer'
+                                : 'bg-slate-200 text-slate-500 cursor-not-allowed'
                         }`}
                 >
                     {added ? '✓ Added!' : <><CartIcon /> Add to Cart</>}
                 </motion.button>
                 <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    className="flex-1 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-2xl font-semibold text-sm transition-colors shadow-lg shadow-slate-200 cursor-pointer"
-                    onClick={() => setBuyOptionsOpen(true)}
+                    whileTap={{ scale: isInStock ? 0.97 : 1 }}
+                    disabled={!isInStock}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm transition-colors ${isInStock
+                        ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-200 cursor-pointer'
+                        : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    }`}
+                    onClick={() => {
+                        if (!isInStock) return;
+                        setBuyOptionsOpen(true);
+                    }}
                 >
                     Buy Now
                 </motion.button>

@@ -158,6 +158,25 @@ const toStringArray = (value: unknown): string[] => {
   return [];
 };
 
+const resolveDisplayStock = (
+  baseStock: number,
+  variants?: Array<{ qty?: number; status?: number }>,
+): number => {
+  if (!variants || variants.length === 0) return baseStock;
+
+  const activeVariants = variants.filter((variant) => {
+    if (variant.status == null) return true;
+    return Number(variant.status) === 1;
+  });
+
+  if (activeVariants.length === 0) return 0;
+
+  const hasVariantQty = activeVariants.some((variant) => typeof variant.qty === 'number');
+  if (!hasVariantQty) return baseStock;
+
+  return activeVariants.reduce((sum, variant) => sum + Math.max(0, Number(variant.qty ?? 0)), 0);
+};
+
 const extractCategories = (json: unknown): Category[] => {
   const source = json as ApiCategoriesResponse;
   return asArray<Category>(source.categories ?? source.data);
@@ -172,11 +191,9 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
   const id = toNumber(row.id ?? row.pd_id ?? 0);
   const name = String(row.name ?? row.pd_name ?? 'Untitled Product');
   const srp = toNumber(row.priceSrp ?? row.pd_price_srp ?? 0);
-  const dp = toNumber(row.priceDp ?? row.pd_price_dp ?? 0);
   const member = toNumber(row.priceMember ?? row.pd_price_member ?? 0);
   const prodpv = toNumber(row.prodpv ?? row.pd_prodpv ?? 0);
-  const isOnSale = Boolean(row.salespromo ?? row.pd_salespromo);
-  const price = isOnSale && dp > 0 ? dp : srp;
+  const price = srp;
   const rawImage = (row.image ?? row.pd_image) as string | null | undefined;
   const images = toStringArray(row.images ?? row.pd_images).map((item) => resolveImageUrl(item, apiUrl));
 
@@ -200,6 +217,7 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
       return {
         id: typeof variant.id === 'number' ? variant.id : undefined,
         sku: typeof (variant.sku ?? variant.pv_sku) === 'string' ? String(variant.sku ?? variant.pv_sku) : undefined,
+        name: typeof (variant.name ?? variant.pv_name) === 'string' ? String(variant.name ?? variant.pv_name) : undefined,
         color: typeof (variant.color ?? variant.pv_color) === 'string' ? String(variant.color ?? variant.pv_color) : undefined,
         colorHex: typeof (variant.colorHex ?? variant.pv_color_hex) === 'string' ? String(variant.colorHex ?? variant.pv_color_hex) : undefined,
         size: typeof (variant.size ?? variant.pv_size) === 'string' ? String(variant.size ?? variant.pv_size) : undefined,
@@ -213,15 +231,17 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
     })
     : undefined;
 
+  const baseStock = Number(row.qty ?? row.pd_qty ?? 0);
+  const stock = resolveDisplayStock(baseStock, variants);
+
   return {
     id: id > 0 ? id : undefined,
     name,
     type: toNumber(row.type ?? row.pd_type),
     price,
-    priceDp: dp > 0 ? dp : undefined,
     priceMember: member > 0 ? member : undefined,
     prodpv,
-    originalPrice: isOnSale && dp > 0 && srp > dp ? srp : undefined,
+    originalPrice: undefined,
     image: resolveImageUrl(rawImage, apiUrl),
     images,
     description: (row.description ?? row.pd_description) as string | undefined,
@@ -234,7 +254,7 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
     assemblyRequired: Boolean(row.assemblyRequired ?? row.pd_assembly_required),
     warranty: (row.warranty ?? row.pd_warranty) as string | undefined,
     sku: String(row.sku ?? row.pd_parent_sku ?? '').trim() || undefined,
-    stock: Number(row.qty ?? row.pd_qty ?? 0),
+    stock,
     variants,
     badge,
     brand: (row.brand ?? row.brand_name) as string | undefined,

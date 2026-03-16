@@ -10,7 +10,7 @@ const InteriorServicesPageMain = () => {
   return (
     <main
         className="min-h-screen overflow-x-hidden"
-        style={{ background: "#0d0c0a"}}
+        style={{ background: "#F5F7FF"}}
     >
         {/* HERO SECTION */}
         {/* <HeroSection 

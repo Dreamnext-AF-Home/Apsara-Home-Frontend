@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useState } from 'react'
 import { Product } from '@/store/api/productsApi'
 import AdminPagination from '@/components/superAdmin/AdminPagination'
@@ -28,6 +29,19 @@ const statusBadge = (status: number) =>
 
 const formatPrice = (v: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(v)
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const buildProductPath = (product: Product) => {
+  const safeName = (product.name || 'product').trim()
+  const slug = slugify(safeName)
+  return product.id > 0 ? `/product/${slug}-i${product.id}` : `/product/${slug}`
+}
 
 /* ── Stock badge ── */
 function StockBadge({ qty }: { qty: number }) {
@@ -193,6 +207,19 @@ export default function ProductsTable({
                   {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1.5">
+                      <Link
+                        href={buildProductPath(p)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors"
+                        title="View product"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 3h6m0 0v6m0-6L10 14"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5h5M5 5v14h14v-5"/>
+                        </svg>
+                      </Link>
                       <button
                         onClick={e => { e.stopPropagation(); setConfirmId(null); onEdit(p) }}
                         className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"

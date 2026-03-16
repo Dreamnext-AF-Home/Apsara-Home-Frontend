@@ -12,13 +12,14 @@ const SuccessState = ({ firstName }: { firstName: string }) => {
     >
       <div className="relative mb-8">
         <motion.div
-          className="flex h-20 w-20 items-center justify-center rounded-full border border-[#BFA07A]/30"
+          className="flex h-20 w-20 items-center justify-center rounded-full border border-indigo-200"
+          style={{ background: "rgba(99,102,241,0.08)" }}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, type: "spring", stiffness: 200, damping: 15 }}
         >
           <motion.span
-            className="text-2xl text-[#BFA07A]"
+            className="text-2xl text-indigo-500"
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3, duration: 0.4 }}
@@ -27,7 +28,7 @@ const SuccessState = ({ firstName }: { firstName: string }) => {
           </motion.span>
         </motion.div>
         <motion.div
-          className="absolute inset-0 rounded-full border border-[#BFA07A]/20"
+          className="absolute inset-0 rounded-full border border-indigo-300/40"
           animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
         />
@@ -38,13 +39,13 @@ const SuccessState = ({ firstName }: { firstName: string }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.6 }}
       >
-        <h3 className="mb-3 font-['Cormorant_Garamond'] text-3xl font-light text-stone-100">
+        <h3 className="mb-3 font-['Cormorant_Garamond'] text-3xl font-light text-slate-900">
           Enquiry Received
         </h3>
-        <p className="max-w-sm text-[0.87rem] leading-relaxed text-stone-400">
+        <p className="max-w-sm text-[0.87rem] leading-relaxed text-slate-500">
           Thank you{firstName ? `, ${firstName}` : ""}. Your consultation request
           has been prepared and our design team will be in touch within{" "}
-          <span className="text-stone-200">24 hours</span> using the details you
+          <span className="text-slate-800 font-medium">24 hours</span> using the details you
           provided.
         </p>
       </motion.div>
@@ -61,8 +62,8 @@ const SuccessState = ({ firstName }: { firstName: string }) => {
           { icon: "◉", label: "List your must-haves" },
         ].map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-2">
-            <span className="text-sm text-[#BFA07A]">{item.icon}</span>
-            <span className="text-[0.68rem] uppercase tracking-[0.1em] text-stone-500">{item.label}</span>
+            <span className="text-sm text-indigo-500">{item.icon}</span>
+            <span className="text-[0.68rem] uppercase tracking-[0.1em] text-slate-400">{item.label}</span>
           </div>
         ))}
       </motion.div>

@@ -25,14 +25,14 @@ const ServiceSection = ({ id }: { id?: string }) => {
             id={id}
             ref={ref}
             className="relative py-32 overflow-hidden"
-            style={{ background: "#0d0c0a" }}
+            style={{ background: "#F5F7FF" }}
         >
-            {/* Subtle grid texture */}
+            {/* Subtle dot grid texture */}
             <div
-                className="absolute inset-0 opacity-[0.025]"
+                className="absolute inset-0 opacity-[0.4]"
                 style={{
-                    backgroundImage: `linear-gradient(rgba(191,160,122,1) 1px, transparent 1px), linear-gradient(90deg, rgba(191,160,122,1) 1px, transparent 1px)`,
-                    backgroundSize: "60px 60px",
+                    backgroundImage: `radial-gradient(circle, rgba(79,70,229,0.15) 1px, transparent 1px)`,
+                    backgroundSize: "28px 28px",
                 }}
             />
 
@@ -46,13 +46,13 @@ const ServiceSection = ({ id }: { id?: string }) => {
                         custom={0}
                     >
                         <SectionLabel>Our Services</SectionLabel>
-                        <h2 className="font-['Cormorant_Garamond'] text-[clamp(2.4rem,4.5vw,4rem)] font-light text-stone-100 leading-[1.08]">
+                        <h2 className="font-['Cormorant_Garamond'] text-[clamp(2.4rem,4.5vw,4rem)] font-light text-slate-900 leading-[1.08]">
                             Crafted for Every<br />
                             <em style={{ fontStyle: "italic" }}>Space & Vision</em>
                         </h2>
                     </motion.div>
                     <motion.p
-                        className="max-w-[280px] text-[0.82rem] text-stone-500 leading-relaxed hidden lg:block"
+                        className="max-w-[280px] text-[0.82rem] text-slate-500 leading-relaxed hidden lg:block"
                         initial="hidden"
                         animate={isInView ? "visible" : "hidden"}
                         variants={fadeUp}
@@ -87,9 +87,9 @@ const ServiceSection = ({ id }: { id?: string }) => {
                     variants={fadeUp}
                     custom={0.5}
                 >
-                    <div className="border-t border-white/[0.06] pt-16">
+                    <div className="border-t border-slate-200 pt-16">
                         <SectionLabel>How We Work</SectionLabel>
-                        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light text-stone-100 mb-12">
+                        <h2 className="font-['Cormorant_Garamond'] text-3xl font-light text-slate-900 mb-12">
                             The Design Process
                         </h2>
 
@@ -109,7 +109,7 @@ const ServiceSection = ({ id }: { id?: string }) => {
                                             className="absolute top-5 right-0 h-px hidden lg:block"
                                             style={{
                                                 left: "calc(3rem + 8px)",
-                                                background: "linear-gradient(to right, rgba(191,160,122,0.3), rgba(191,160,122,0.05))",
+                                                background: "linear-gradient(to right, rgba(79,70,229,0.4), rgba(79,70,229,0.05))",
                                             }}
                                             initial={{ scaleX: 0, originX: 0 }}
                                             animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}
@@ -117,13 +117,13 @@ const ServiceSection = ({ id }: { id?: string }) => {
                                         />
                                     )}
 
-                                    <div className="font-['Cormorant_Garamond'] text-[2.5rem] font-light text-[#BFA07A]/20 leading-none mb-3 select-none">
+                                    <div className="font-['Cormorant_Garamond'] text-[2.5rem] font-light text-indigo-600/20 leading-none mb-3 select-none">
                                         {step.num}
                                     </div>
-                                    <div className="font-['Cormorant_Garamond'] text-lg text-stone-200 mb-2">
+                                    <div className="font-['Cormorant_Garamond'] text-lg text-slate-800 mb-2">
                                         {step.title}
                                     </div>
-                                    <p className="text-[0.78rem] text-stone-500 leading-relaxed">{step.desc}</p>
+                                    <p className="text-[0.78rem] text-slate-500 leading-relaxed">{step.desc}</p>
                                 </motion.div>
                             ))}
                         </div>

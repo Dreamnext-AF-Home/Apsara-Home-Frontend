@@ -10,7 +10,7 @@ interface StepScheduleProps {
   form: BookingFormData;
   onChange: (field: keyof BookingFormData, value: string | string[]) => void;
 }
- 
+
 const FLEXIBILITY_OPTIONS = [
   { value: "exact", label: "This exact date only" },
   { value: "week", label: "Within the same week" },
@@ -49,18 +49,18 @@ const StepSchedule = ({ form, onChange }: StepScheduleProps) => {
               onChange={(e) => onChange("preferredDate", e.target.value)}
               onFocus={() => setDateFocused(true)}
               onBlur={() => setDateFocused(false)}
-              className="w-full bg-white/[0.03] text-stone-300 text-sm px-4 py-3 rounded-[3px] outline-none transition-all duration-300"
+              className="w-full bg-white text-slate-800 text-sm px-4 py-3 rounded-[4px] outline-none transition-all duration-300"
               style={{
                 border: dateFocused
-                  ? "1px solid rgba(191,160,122,0.7)"
-                  : "1px solid rgba(255,255,255,0.08)",
-                boxShadow: dateFocused ? "0 0 0 3px rgba(191,160,122,0.07)" : "none",
-                colorScheme: "dark",
+                  ? "1px solid rgba(99,102,241,0.7)"
+                  : "1px solid rgba(99,102,241,0.15)",
+                boxShadow: dateFocused ? "0 0 0 3px rgba(99,102,241,0.08)" : "none",
+                colorScheme: "light",
               }}
             />
           </div>
         </FormField>
- 
+
         {/* Preferred time */}
         <FormField label="Preferred Time" required>
           <SelectField
@@ -71,7 +71,7 @@ const StepSchedule = ({ form, onChange }: StepScheduleProps) => {
           />
         </FormField>
       </motion.div>
- 
+
       {/* Flexibility */}
       <motion.div variants={staggerItem}>
         <FormField label="Schedule Flexibility">
@@ -94,10 +94,10 @@ const StepSchedule = ({ form, onChange }: StepScheduleProps) => {
           />
         </FormField>
       </motion.div>
- 
+
       {/* Time slot visual picker */}
       <motion.div variants={staggerItem}>
-        <label className="text-[0.68rem] tracking-[0.14em] uppercase text-stone-400 font-medium block mb-3">
+        <label className="text-[0.68rem] tracking-[0.14em] uppercase text-slate-500 font-medium block mb-3">
           Quick Time Select
         </label>
         <div className="flex flex-wrap gap-2">
@@ -111,10 +111,10 @@ const StepSchedule = ({ form, onChange }: StepScheduleProps) => {
                 className="text-[0.7rem] tracking-wide px-3.5 py-2 rounded-[3px] transition-all duration-250"
                 style={{
                   border: isSelected
-                    ? "1px solid rgba(191,160,122,0.7)"
-                    : "1px solid rgba(255,255,255,0.07)",
-                  background: isSelected ? "rgba(191,160,122,0.12)" : "rgba(255,255,255,0.02)",
-                  color: isSelected ? "#BFA07A" : "#78716c",
+                    ? "1px solid rgba(99,102,241,0.6)"
+                    : "1px solid rgba(99,102,241,0.12)",
+                  background: isSelected ? "rgba(99,102,241,0.1)" : "rgba(255,255,255,0.8)",
+                  color: isSelected ? "#4338ca" : "#94a3b8",
                 }}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
@@ -126,14 +126,18 @@ const StepSchedule = ({ form, onChange }: StepScheduleProps) => {
           })}
         </div>
       </motion.div>
- 
+
       {/* Info note */}
       <motion.div
         variants={staggerItem}
-        className="flex items-start gap-3 p-4 rounded-[3px] bg-[#BFA07A]/05 border border-[#BFA07A]/10"
+        className="flex items-start gap-3 p-4 rounded-[4px] border"
+        style={{
+          background: "rgba(99,102,241,0.04)",
+          borderColor: "rgba(99,102,241,0.15)",
+        }}
       >
-        <span className="text-[#BFA07A] text-sm mt-0.5 flex-shrink-0">ℹ</span>
-        <p className="text-[0.75rem] text-stone-500 leading-relaxed">
+        <span className="text-indigo-500 text-sm mt-0.5 flex-shrink-0">ℹ</span>
+        <p className="text-[0.75rem] text-slate-500 leading-relaxed">
           Our team will confirm your appointment within 24 hours and may suggest an alternative slot if your preferred time is unavailable.
         </p>
       </motion.div>

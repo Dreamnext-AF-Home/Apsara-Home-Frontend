@@ -68,14 +68,15 @@ const StepService = ({ form, onChange }: StepServiceProps) => {
                   key={service.id}
                   type="button"
                   onClick={() => onChange('serviceType', service.id)}
-                  className="relative overflow-hidden rounded-[3px] p-4 text-left transition-all duration-300"
+                  className="relative overflow-hidden rounded-[4px] p-4 text-left transition-all duration-300"
                   style={{
                     border: isSelected
                       ? `1px solid ${service.accentColor}70`
-                      : '1px solid rgba(255,255,255,0.08)',
+                      : '1px solid rgba(99,102,241,0.12)',
                     background: isSelected
-                      ? `linear-gradient(135deg, ${service.accentColor}12 0%, transparent 100%)`
-                      : 'rgba(255,255,255,0.02)',
+                      ? `linear-gradient(135deg, ${service.accentColor}10 0%, rgba(255,255,255,0.9) 100%)`
+                      : 'rgba(255,255,255,0.7)',
+                    boxShadow: isSelected ? `0 4px 16px ${service.accentColor}15` : 'none',
                   }}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
@@ -87,14 +88,14 @@ const StepService = ({ form, onChange }: StepServiceProps) => {
                     </span>
                     <span
                       className="text-[0.82rem] font-medium"
-                      style={{ color: isSelected ? '#e7e5e4' : '#78716c' }}
+                      style={{ color: isSelected ? '#1e293b' : '#94a3b8' }}
                     >
                       {service.title}
                     </span>
                   </div>
                   <p
                     className="text-[0.7rem] leading-relaxed"
-                    style={{ color: isSelected ? '#a8a29e' : '#57534e' }}
+                    style={{ color: isSelected ? '#475569' : '#cbd5e1' }}
                   >
                     {service.tagline}
                   </p>
@@ -107,7 +108,7 @@ const StepService = ({ form, onChange }: StepServiceProps) => {
                       animate={{ scale: 1 }}
                       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     >
-                      <span className="text-[9px] font-bold text-[#0d0c0a]">✓</span>
+                      <span className="text-[9px] font-bold text-white">✓</span>
                     </motion.div>
                   )}
                 </motion.button>
@@ -168,10 +169,10 @@ const StepService = ({ form, onChange }: StepServiceProps) => {
                   className="rounded-full px-3.5 py-2 text-[0.68rem] tracking-[0.08em] uppercase transition-all duration-200"
                   style={{
                     border: isSelected
-                      ? '1px solid rgba(191,160,122,0.7)'
-                      : '1px solid rgba(255,255,255,0.08)',
-                    background: isSelected ? 'rgba(191,160,122,0.12)' : 'rgba(255,255,255,0.02)',
-                    color: isSelected ? '#d6d3d1' : '#78716c',
+                      ? '1px solid rgba(99,102,241,0.6)'
+                      : '1px solid rgba(99,102,241,0.12)',
+                    background: isSelected ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.7)',
+                    color: isSelected ? '#4338ca' : '#94a3b8',
                   }}
                 >
                   {style.label}

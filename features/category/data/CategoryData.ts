@@ -15,6 +15,7 @@ export interface CategoryProduct {
     variants?: Array<{
         id?: number;
         sku?: string;
+        name?: string;
         color?: string;
         colorHex?: string;
         size?: string;
