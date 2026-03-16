@@ -5,6 +5,7 @@
 export interface ServiceItem {
   id: string;
   icon: string;
+  image: string;
   title: string;
   tagline: string;
   description: string;
@@ -47,6 +48,7 @@ export const SERVICES: ServiceItem[] = [
   {
     id: "residential",
     icon: "◈",
+    image: "/Images/FeaturedSection/home_living.jpg",
     title: "Residential Design",
     tagline: "Your home, elevated",
     description:
@@ -57,12 +59,13 @@ export const SERVICES: ServiceItem[] = [
       "Lighting design system",
       "3D visualization & walkthroughs",
     ],
-    accentColor: "#4F46E5",
-    bgGradient: "from-indigo-100/50 to-transparent",
+    accentColor: "#d4a514",
+    bgGradient: "from-amber-100/60 to-transparent",
   },
   {
     id: "commercial",
     icon: "◻",
+    image: "/Images/HeroSection/Dinning_table.jpg",
     title: "Commercial Spaces",
     tagline: "Environments that perform",
     description:
@@ -73,12 +76,13 @@ export const SERVICES: ServiceItem[] = [
       "Acoustic & lighting solutions",
       "Phased delivery management",
     ],
-    accentColor: "#0EA5E9",
-    bgGradient: "from-sky-100/50 to-transparent",
+    accentColor: "#c9891b",
+    bgGradient: "from-yellow-100/60 to-transparent",
   },
   {
     id: "renovation",
     icon: "⌘",
+    image: "/Images/HeroSection/sofas.jpg",
     title: "Renovation & Refresh",
     tagline: "Honor what exists",
     description:
@@ -89,12 +93,13 @@ export const SERVICES: ServiceItem[] = [
       "Contractor coordination",
       "Budget & timeline oversight",
     ],
-    accentColor: "#8B5CF6",
-    bgGradient: "from-violet-100/50 to-transparent",
+    accentColor: "#9c7420",
+    bgGradient: "from-amber-50/70 to-transparent",
   },
   {
     id: "styling",
     icon: "◉",
+    image: "/Images/HeroSection/chairs_stools.jpg",
     title: "Interior Styling",
     tagline: "The finishing layer",
     description:
@@ -105,8 +110,8 @@ export const SERVICES: ServiceItem[] = [
       "Plant & biophilic design",
       "Photography-ready staging",
     ],
-    accentColor: "#06B6D4",
-    bgGradient: "from-cyan-100/50 to-transparent",
+    accentColor: "#1f2937",
+    bgGradient: "from-stone-100/70 to-transparent",
   },
 ];
 

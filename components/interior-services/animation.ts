@@ -92,3 +92,32 @@ export const stepFade: Variants = {
     transition: { duration: 0.3, ease: "easeIn" },
   },
 };
+
+/** Clip-path reveal — great for large headings */
+export const clipReveal: Variants = {
+  hidden: { clipPath: "inset(0 100% 0 0)", opacity: 0 },
+  visible: (delay = 0) => ({
+    clipPath: "inset(0 0% 0 0)",
+    opacity: 1,
+    transition: { duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
+/** Subtle continuous float — for decorative blobs / image panels */
+export const floatY = {
+  animate: {
+    y: [0, -10, 0],
+    transition: { duration: 5, repeat: Infinity, ease: "easeInOut" as const },
+  },
+};
+
+/** Stagger wrapper with a longer child delay — for stat rows etc. */
+export const staggerSlow: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.18,
+      delayChildren: 0.5,
+    },
+  },
+};

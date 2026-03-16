@@ -3,6 +3,7 @@
 import { staggerItem } from "./animation";
 import { ServiceItem } from "./types";
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 
 interface ServiceCardProps {
     service: ServiceItem;
@@ -16,7 +17,7 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         <motion.div
       variants={staggerItem}
       onClick={onClick}
-      className="group relative cursor-pointer rounded-[6px] overflow-hidden"
+      className="group relative cursor-pointer rounded-3xl overflow-hidden"
       style={{
         border: isActive
           ? `1px solid ${service.accentColor}60`
@@ -45,42 +46,52 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         transition={{ duration: 0.3 }}
       />
 
-      {/* Active indicator dot */}
-      <AnimatePresence>
-        {isActive && (
-          <motion.div
-            className="absolute top-4 right-4 w-2 h-2 rounded-full"
-            style={{ background: service.accentColor }}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ background: service.accentColor }}
-              animate={{ scale: [1, 1.8, 1], opacity: [1, 0, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Cover image */}
+      <div className="relative h-44 w-full overflow-hidden">
+        <Image
+          src={service.image}
+          alt={service.title}
+          fill
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        {/* Gradient overlay so content below reads cleanly */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 
-      <div className="p-7">
-        {/* Icon */}
-        <motion.div
-          className="text-2xl mb-4 transition-transform duration-300"
-          style={{ color: service.accentColor }}
-          animate={{ rotate: isActive ? [0, -5, 5, 0] : 0 }}
-          transition={{ duration: 0.5 }}
+        {/* Active indicator dot — moved here on top of image */}
+        <AnimatePresence>
+          {isActive && (
+            <motion.div
+              className="absolute top-3 right-3 w-2 h-2 rounded-full"
+              style={{ background: service.accentColor }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{ background: service.accentColor }}
+                animate={{ scale: [1, 1.8, 1], opacity: [1, 0, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Icon badge over image */}
+        <div
+          className="absolute bottom-3 left-4 text-xl"
+          style={{ color: "white", textShadow: "0 1px 6px rgba(0,0,0,0.4)" }}
         >
           {service.icon}
-        </motion.div>
+        </div>
+      </div>
 
+      <div className="p-6">
         {/* Index number */}
         <div
-          className="font-['Cormorant_Garamond'] text-[2.8rem] font-light leading-none mb-3 select-none"
-          style={{ color: `${service.accentColor}25` }}
+          className="font-['Cormorant_Garamond'] text-[2.4rem] font-light leading-none mb-2 select-none"
+          style={{ color: `${service.accentColor}30` }}
         >
           {String(index + 1).padStart(2, "0")}
         </div>
@@ -102,7 +113,7 @@ const ServiceCard = ({ service, isActive, onClick, index}: ServiceCardProps) => 
         <div className="flex flex-col gap-2">
           {service.features.map((feature) => (
             <div key={feature} className="flex items-center gap-2.5">
-              <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: service.accentColor }} />
+              <div className="w-1 h-1 rounded-full shrink-0" style={{ background: service.accentColor }} />
               <span className="text-[0.75rem] text-slate-500">{feature}</span>
             </div>
           ))}

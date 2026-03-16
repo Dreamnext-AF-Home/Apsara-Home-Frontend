@@ -25,13 +25,13 @@ const ServiceSection = ({ id }: { id?: string }) => {
             id={id}
             ref={ref}
             className="relative py-32 overflow-hidden"
-            style={{ background: "#F5F7FF" }}
+            style={{ background: "linear-gradient(180deg, #fffdf4 0%, #fff8de 52%, #fffdf7 100%)" }}
         >
             {/* Subtle dot grid texture */}
             <div
                 className="absolute inset-0 opacity-[0.4]"
                 style={{
-                    backgroundImage: `radial-gradient(circle, rgba(79,70,229,0.15) 1px, transparent 1px)`,
+                    backgroundImage: `radial-gradient(circle, rgba(212,165,20,0.12) 1px, transparent 1px)`,
                     backgroundSize: "28px 28px",
                 }}
             />
@@ -109,7 +109,7 @@ const ServiceSection = ({ id }: { id?: string }) => {
                                             className="absolute top-5 right-0 h-px hidden lg:block"
                                             style={{
                                                 left: "calc(3rem + 8px)",
-                                                background: "linear-gradient(to right, rgba(79,70,229,0.4), rgba(79,70,229,0.05))",
+                                                background: "linear-gradient(to right, rgba(212,165,20,0.42), rgba(17,17,17,0.06))",
                                             }}
                                             initial={{ scaleX: 0, originX: 0 }}
                                             animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}

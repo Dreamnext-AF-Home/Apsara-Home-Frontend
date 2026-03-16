@@ -8,8 +8,8 @@ import { useState } from "react";
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <div className="h-px w-8 bg-indigo-500" />
-      <span className="text-[0.65rem] tracking-[0.22em] uppercase text-indigo-500 font-medium">
+      <div className="h-px w-8 bg-[#d4a514]" />
+      <span className="text-[0.65rem] tracking-[0.22em] uppercase text-[#9c7420] font-medium">
         {children}
       </span>
     </div>
@@ -30,7 +30,7 @@ export function FormField({
     <div className="flex flex-col gap-2">
       <label className="text-[0.68rem] tracking-[0.14em] uppercase text-slate-500 font-medium">
         {label}
-        {required && <span className="text-indigo-500 ml-1">*</span>}
+        {required && <span className="text-[#d4a514] ml-1">*</span>}
       </label>
       {children}
     </div>
@@ -64,9 +64,9 @@ export function InputField({
       className="w-full bg-white text-slate-800 placeholder:text-slate-300 text-sm px-4 py-3 rounded-[4px] outline-none transition-all duration-300"
       style={{
         border: focused
-          ? "1px solid rgba(99,102,241,0.7)"
-          : "1px solid rgba(99,102,241,0.15)",
-        boxShadow: focused ? "0 0 0 3px rgba(99,102,241,0.08)" : "none",
+          ? "1px solid rgba(212,165,20,0.7)"
+          : "1px solid rgba(15,23,42,0.12)",
+        boxShadow: focused ? "0 0 0 3px rgba(212,165,20,0.12)" : "none",
       }}
     />
   );
@@ -95,10 +95,10 @@ export function SelectField({
         className="w-full bg-white text-sm px-4 py-3 rounded-[4px] outline-none appearance-none transition-all duration-300 cursor-pointer"
         style={{
           color: value ? "#1e293b" : "#94a3b8",
-          border: focused
-            ? "1px solid rgba(99,102,241,0.7)"
-            : "1px solid rgba(99,102,241,0.15)",
-          boxShadow: focused ? "0 0 0 3px rgba(99,102,241,0.08)" : "none",
+        border: focused
+            ? "1px solid rgba(212,165,20,0.7)"
+            : "1px solid rgba(15,23,42,0.12)",
+          boxShadow: focused ? "0 0 0 3px rgba(212,165,20,0.12)" : "none",
         }}
       >
         <option value="" disabled hidden>
@@ -141,9 +141,9 @@ export function TextareaField({
       className="w-full bg-white text-slate-800 placeholder:text-slate-300 text-sm px-4 py-3 rounded-[4px] outline-none resize-none transition-all duration-300"
       style={{
         border: focused
-          ? "1px solid rgba(99,102,241,0.7)"
-          : "1px solid rgba(99,102,241,0.15)",
-        boxShadow: focused ? "0 0 0 3px rgba(99,102,241,0.08)" : "none",
+          ? "1px solid rgba(212,165,20,0.7)"
+          : "1px solid rgba(15,23,42,0.12)",
+        boxShadow: focused ? "0 0 0 3px rgba(212,165,20,0.12)" : "none",
       }}
     />
   );
@@ -166,10 +166,10 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="group relative overflow-hidden bg-indigo-600 text-white text-[0.72rem] tracking-[0.14em] uppercase font-semibold px-7 py-3.5 rounded-[4px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(99,102,241,0.35)] disabled:opacity-40 disabled:cursor-not-allowed"
+      className="group relative overflow-hidden bg-[#111111] text-white text-[0.72rem] tracking-[0.14em] uppercase font-semibold px-7 py-3.5 rounded-[4px] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(17,17,17,0.28)] disabled:opacity-40 disabled:cursor-not-allowed"
     >
       <span className="relative z-10">{children}</span>
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#d4a514] to-[#c9891b] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
     </button>
   );
 }
@@ -185,7 +185,7 @@ export function GhostButton({
   return (
     <button
       onClick={onClick}
-      className="text-[0.72rem] tracking-[0.14em] uppercase text-slate-400 hover:text-indigo-600 transition-colors duration-300 flex items-center gap-2"
+      className="text-[0.72rem] tracking-[0.14em] uppercase text-slate-400 hover:text-[#9c7420] transition-colors duration-300 flex items-center gap-2"
     >
       {children}
     </button>

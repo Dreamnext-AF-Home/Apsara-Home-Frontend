@@ -95,21 +95,21 @@ const BookingSection = ({ id }: { id?: string }) => {
       ref={ref}
       className="relative overflow-hidden py-32"
       style={{
-        background: "linear-gradient(180deg, #EEF2FF 0%, #F5F7FF 50%, #EEF2FF 100%)",
+        background: "linear-gradient(180deg, #fffdf7 0%, #fff8e2 50%, #fffdf5 100%)",
       }}
     >
       {/* Futuristic glow orb */}
       <div
         className="absolute top-0 right-0 h-[600px] w-[600px] rounded-full opacity-60 pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgba(212,165,20,0.12) 0%, transparent 65%)",
           transform: "translate(30%, -30%)",
         }}
       />
       <div
         className="absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full opacity-40 pointer-events-none"
         style={{
-          background: "radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgba(17,17,17,0.06) 0%, transparent 65%)",
           transform: "translate(-30%, 30%)",
         }}
       />
@@ -191,10 +191,10 @@ const BookingSection = ({ id }: { id?: string }) => {
             <div
               className="overflow-hidden rounded-[8px]"
               style={{
-                border: "1px solid rgba(99,102,241,0.15)",
+                border: "1px solid rgba(212,165,20,0.18)",
                 background: "rgba(255,255,255,0.85)",
                 backdropFilter: "blur(16px)",
-                boxShadow: "0 4px 40px rgba(79,70,229,0.06), 0 1px 0 rgba(255,255,255,0.8) inset",
+                boxShadow: "0 12px 40px rgba(212,165,20,0.10), 0 1px 0 rgba(255,255,255,0.8) inset",
               }}
             >
               {submitted ? (
@@ -215,7 +215,7 @@ const BookingSection = ({ id }: { id?: string }) => {
                       <h3 className="font-['Cormorant_Garamond'] text-[1.4rem] font-light leading-tight text-slate-900">
                         {stepLabels[currentStep - 1]}
                       </h3>
-                      <div className="mt-2 h-px w-8 bg-indigo-500/60" />
+                      <div className="mt-2 h-px w-8 bg-[#d4a514]" />
                     </motion.div>
                   </AnimatePresence>
 
