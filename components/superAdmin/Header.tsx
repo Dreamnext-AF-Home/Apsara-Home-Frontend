@@ -357,61 +357,102 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50"
+                                className="absolute right-0 top-full mt-2 w-85 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden"
                             >
-                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 z-10 overflow-hidden">
-                                    <span className="font-semibold text-slate-800 text-sm">Notifications</span>
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-4 py-3 bg-linear-to-r from-teal-50 to-white border-b border-teal-100/60">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-800 text-sm">Notifications</span>
+                                        {unreadCount > 0 && (
+                                            <span className="bg-teal-500 text-white text-[10px] font-bold rounded-full min-w-4.5 h-4.5 px-1 flex items-center justify-center leading-none">
+                                                {unreadCount}
+                                            </span>
+                                        )}
+                                    </div>
                                     <button
                                         onClick={handleMarkAllNotificationsRead}
-                                        className="text-xs text-teal-600 font-medium hover:underline"
+                                        className="text-xs text-teal-600 font-semibold hover:text-teal-700 transition-colors"
                                     >
                                         Mark all read
                                     </button>
                                 </div>
-                                <div className="max-h-80 overflow-y-auto overscroll-contain">
+
+                                {/* List */}
+                                <div className="max-h-80 overflow-y-auto overscroll-contain divide-y divide-slate-50">
                                     {isNotifLoading ? (
-                                        <div className="px-4 py-3 text-sm text-slate-500">Loading notifications...</div>
+                                        <div className="flex flex-col items-center justify-center py-10 gap-3">
+                                            <div className="h-7 w-7 rounded-full border-2 border-teal-200 border-t-teal-500 animate-spin" />
+                                            <p className="text-xs text-slate-400">Loading...</p>
+                                        </div>
                                     ) : isNotifError ? (
-                                        <div className="px-4 py-3 text-sm text-red-600">Failed to load notifications.</div>
+                                        <div className="px-4 py-8 text-center">
+                                            <p className="text-sm text-red-500 font-medium">Failed to load notifications</p>
+                                            <p className="text-xs text-slate-400 mt-1">Please try again later.</p>
+                                        </div>
                                     ) : notifications?.items?.length ? (
                                         notifications.items.map((notif) => {
                                             const isNew = !notif.is_read;
+                                            const severity = notif.severity ?? 'info';
+                                            const sc = severity === 'critical'
+                                                ? { bg: 'bg-red-100', dot: 'bg-red-500', badge: 'bg-red-100 text-red-600', border: 'border-l-red-400' }
+                                                : severity === 'warning'
+                                                ? { bg: 'bg-amber-100', dot: 'bg-amber-500', badge: 'bg-amber-100 text-amber-600', border: 'border-l-amber-400' }
+                                                : severity === 'success'
+                                                ? { bg: 'bg-green-100', dot: 'bg-green-500', badge: 'bg-green-100 text-green-600', border: 'border-l-green-400' }
+                                                : { bg: 'bg-blue-100', dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-600', border: 'border-l-blue-400' };
                                             return (
-                                            <button
-                                                key={notif.id}
-                                                type="button"
-                                            onClick={() => {
-                                                    handleNotificationClick(notif);
-                                                }}
-                                                className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer ${isNew ? 'bg-teal-50/40' : ''}`}
-                                            >
-                                                <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${isNew ? 'bg-teal-500' : 'bg-slate-200'}`} />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm text-slate-700 font-medium">{notif.title}</p>
-                                                    <p className="text-xs text-slate-500 mt-0.5">{notif.description}</p>
-                                                    {formatRelativeTime(notif.updated_at) && (
-                                                        <p className="text-[11px] text-slate-400 mt-1">{formatRelativeTime(notif.updated_at)}</p>
-                                                    )}
-                                                </div>
-                                                {notif.type ? (
-                                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{notif.type.replace(/_/g, ' ')}</span>
-                                                ) : null}
-                                            </button>
+                                                <button
+                                                    key={notif.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleNotificationClick(notif);
+                                                    }}
+                                                    className={`w-full text-left flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors cursor-pointer border-l-2 ${isNew ? `${sc.border} bg-teal-50/20` : 'border-l-transparent'}`}
+                                                >
+                                                    <div className={`shrink-0 mt-0.5 h-8 w-8 rounded-full flex items-center justify-center ${isNew ? sc.bg : 'bg-slate-100'}`}>
+                                                        <div className={`h-2 w-2 rounded-full ${isNew ? sc.dot : 'bg-slate-300'}`} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <p className={`text-sm leading-snug ${isNew ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>{notif.title}</p>
+                                                            {notif.type && (
+                                                                <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 leading-none ${isNew ? sc.badge : 'bg-slate-100 text-slate-400'}`}>
+                                                                    {notif.type.replace(/_/g, ' ')}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{notif.description}</p>
+                                                        {formatRelativeTime(notif.updated_at) && (
+                                                            <p className="text-[11px] text-slate-400 mt-1">{formatRelativeTime(notif.updated_at)}</p>
+                                                        )}
+                                                    </div>
+                                                </button>
                                             );
                                         })
                                     ) : (
-                                        <div className="px-4 py-3 text-sm text-slate-500">No notifications right now.</div>
+                                        <div className="flex flex-col items-center justify-center py-10 gap-3">
+                                            <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                </svg>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-medium text-slate-500">All caught up!</p>
+                                                <p className="text-xs text-slate-400 mt-0.5">No new notifications</p>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="px-4 py-2.5 border-t border-slate-100 text-center">
-                                    <p className="text-[11px] text-slate-400">
-                                        Realtime updates enabled (with 5-second polling fallback)
-                                    </p>
-                                    {notifications?.generated_at ? (
-                                        <p className="text-[11px] text-slate-400 mt-0.5">
-                                            Updated: {notifications.generated_at}
-                                        </p>
-                                    ) : null}
+
+                                {/* Footer */}
+                                <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 flex items-center gap-1.5">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] text-slate-400">Realtime · 5-second polling fallback</p>
+                                        {notifications?.generated_at && (
+                                            <p className="text-[11px] text-slate-400">Updated: {notifications.generated_at}</p>
+                                        )}
+                                    </div>
                                 </div>
                             </motion.div>
                         )}
@@ -435,7 +476,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 className="h-8 w-8 rounded-full object-cover"
                             />
                         ) : (
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                            <div className="h-8 w-8 rounded-full bg-linear-to-br from-teal-400 to-teal-600 flex items-center justify-center">
                                 <span className="text-white font-bold text-xs">{displayInitials}</span>
                             </div>
                         )}

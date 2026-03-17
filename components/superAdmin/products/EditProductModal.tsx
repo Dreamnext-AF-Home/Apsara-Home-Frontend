@@ -1037,23 +1037,37 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                   </div>
                                 </div>
 
-                                <div className="p-4 space-y-4">
-                                  {/* Colors */}
-                                  <div className="space-y-2">
-                                    <label className="text-[11px] font-semibold text-slate-500 block">Colors</label>
+                                <div className="divide-y divide-slate-100">
+
+                                  {/* ── Identity ── */}
+                                  <div className="px-4 py-3.5 space-y-2.5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identity</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Name <span className="font-normal text-slate-400">(recommended)</span></label>
+                                        <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder="e.g. Black Large" className={variantInputCls}/>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Size</label>
+                                        <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder="e.g. Medium, XL" className={variantInputCls}/>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">SKU <span className="font-normal text-slate-400">(optional)</span></label>
+                                        <input value={variant.pv_sku} onChange={e => setVariant(index, 'pv_sku', e.target.value)} placeholder={autoSku} className={variantInputCls}/>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* ── Colors ── */}
+                                  <div className="px-4 py-3.5 space-y-2.5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Colors</p>
                                     {variant.pv_colors.length > 0 && (
                                       <div className="flex flex-wrap gap-1.5">
                                         {variant.pv_colors.map((color, ci) => (
-                                          <span key={ci} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white pl-1 pr-2 py-0.5 shadow-sm text-xs">
+                                          <span key={ci} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white pl-1 pr-2 py-0.5 shadow-sm">
                                             <span className="h-4 w-4 rounded-full shrink-0 border border-slate-200" style={{ backgroundColor: color.hex }}/>
-                                            <span className="text-slate-600 font-medium text-[11px]">
-                                              {color.name !== color.hex ? color.name : color.hex}
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => removeVariantColor(index, ci)}
-                                              className="text-slate-300 hover:text-red-500 transition-colors leading-none ml-0.5"
-                                            >
+                                            <span className="text-slate-600 font-medium text-[11px]">{color.name !== color.hex ? color.name : color.hex}</span>
+                                            <button type="button" onClick={() => removeVariantColor(index, ci)} className="text-slate-300 hover:text-red-500 transition-colors leading-none ml-0.5">
                                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
                                               </svg>
@@ -1062,123 +1076,116 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                         ))}
                                       </div>
                                     )}
-                                    <div className="flex gap-1.5 items-center">
-                                      <input
-                                        type="color"
-                                        value={newColorInputs[index]?.hex ?? '#94a3b8'}
-                                        onChange={e => {
-                                          const hex = e.target.value
-                                          const currentName = newColorInputs[index]?.name ?? ''
-                                          setNewColorInputs(prev => ({
-                                            ...prev,
-                                            [index]: {
-                                              hex,
-                                              name: currentName.trim() ? currentName : hexToColorName(hex),
-                                            },
-                                          }))
-                                        }}
-                                        className="h-8 w-8 shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5 cursor-pointer"
-                                      />
-                                      <input
-                                        type="text"
-                                        value={newColorInputs[index]?.name ?? ''}
-                                        onChange={e => {
-                                          const name = e.target.value
-                                          const matchedHex = colorNameToHex(name)
-                                          setNewColorInputs(prev => ({
-                                            ...prev,
-                                            [index]: {
-                                              ...(prev[index] ?? { hex: '#94a3b8' }),
-                                              name,
-                                              hex: matchedHex ?? prev[index]?.hex ?? '#94a3b8',
-                                            },
-                                          }))
-                                        }}
-                                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addVariantColor(index))}
-                                        placeholder="Color name (e.g. Midnight Blue)"
-                                        className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400"
-                                      />
+                                    <div className="flex gap-2 items-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                                      <label className="shrink-0 cursor-pointer relative group">
+                                        <div
+                                          className="h-9 w-9 rounded-lg border-2 border-white ring-1 ring-slate-200 group-hover:ring-teal-400 transition-all shadow-sm"
+                                          style={{ backgroundColor: newColorInputs[index]?.hex ?? '#94a3b8' }}
+                                        />
+                                        <input
+                                          type="color"
+                                          value={newColorInputs[index]?.hex ?? '#94a3b8'}
+                                          onChange={e => {
+                                            const hex = e.target.value
+                                            const currentName = newColorInputs[index]?.name ?? ''
+                                            setNewColorInputs(prev => ({
+                                              ...prev,
+                                              [index]: { hex, name: currentName.trim() ? currentName : hexToColorName(hex) },
+                                            }))
+                                          }}
+                                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        />
+                                      </label>
+                                      <div className="flex-1 space-y-1">
+                                        <input
+                                          type="text"
+                                          value={newColorInputs[index]?.name ?? ''}
+                                          onChange={e => {
+                                            const name = e.target.value
+                                            const matchedHex = colorNameToHex(name)
+                                            setNewColorInputs(prev => ({
+                                              ...prev,
+                                              [index]: { ...(prev[index] ?? { hex: '#94a3b8' }), name, hex: matchedHex ?? prev[index]?.hex ?? '#94a3b8' },
+                                            }))
+                                          }}
+                                          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addVariantColor(index))}
+                                          placeholder="Color name (e.g. Midnight Blue)"
+                                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400"
+                                        />
+                                        <p className="text-[10px] text-slate-400 px-0.5">Click the swatch to pick a color, or type a name</p>
+                                      </div>
                                       <button
                                         type="button"
                                         onClick={() => addVariantColor(index)}
-                                        className="shrink-0 px-3 py-1.5 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 rounded-lg text-xs font-semibold transition-colors border border-slate-200"
+                                        className="shrink-0 px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg text-xs font-semibold transition-colors border border-teal-200"
                                       >
                                         + Add
                                       </button>
                                     </div>
                                   </div>
 
-                                  {/* Variant Name + Size + SKU */}
-                                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">Variant Name <span className="font-normal text-slate-400">(recommended)</span></label>
-                                      <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder="e.g. Black, Walnut, Black Large" className={variantInputCls}/>
+                                  {/* ── Pricing ── */}
+                                  <div className="px-4 py-3.5 space-y-2.5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pricing</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">SRP (₱)</label>
+                                        <input type="number" value={variant.pv_price_srp} onChange={e => setVariant(index, 'pv_price_srp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_srp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Dealer (₱)</label>
+                                        <input type="number" value={variant.pv_price_dp} onChange={e => setVariant(index, 'pv_price_dp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_dp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Member (₱)</label>
+                                        <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} onBlur={e => setVariant(index, 'pv_price_member', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
+                                      </div>
                                     </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">Size</label>
-                                      <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder="e.g. Medium, XL" className={variantInputCls}/>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">SKU <span className="font-normal text-slate-400">(optional)</span></label>
-                                      <input value={variant.pv_sku} onChange={e => setVariant(index, 'pv_sku', e.target.value)} placeholder={autoSku} className={variantInputCls}/>
-                                    </div>
+                                    <p className="text-[11px] text-slate-400">Leave Dealer and Member prices blank to inherit from the main product pricing.</p>
                                   </div>
 
-                                  {/* SRP + DP */}
-                                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">SRP Price (₱)</label>
-                                      <input type="number" value={variant.pv_price_srp} onChange={e => setVariant(index, 'pv_price_srp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_srp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">Dealer Price (₱)</label>
-                                      <input type="number" value={variant.pv_price_dp} onChange={e => setVariant(index, 'pv_price_dp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_dp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
-                                      <p className="text-[11px] text-slate-500">If blank, main dealer price will be used.</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">Member Price (₱)</label>
-                                      <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} onBlur={e => setVariant(index, 'pv_price_member', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
-                                      <p className="text-[11px] text-slate-500">If blank, main member price will be used.</p>
-                                    </div>
-                                  </div>
-
-                                  {/* Stock + Status */}
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">Stock</label>
-                                      <input type="number" value={variant.pv_qty} onChange={e => setVariant(index, 'pv_qty', e.target.value)} placeholder="0" className={variantInputCls}/>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[11px] font-semibold text-slate-500 block">Status</label>
-                                      <div className="flex items-center p-0.5 bg-slate-100 rounded-lg gap-0.5">
-                                        {[{ value: '1', label: 'Active' }, { value: '0', label: 'Inactive' }].map(opt => (
-                                          <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => setVariant(index, 'pv_status', opt.value)}
-                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                                              variant.pv_status === opt.value
-                                                ? 'bg-white text-slate-700 shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-600'
-                                            }`}
-                                          >
-                                            {opt.label}
-                                          </button>
-                                        ))}
+                                  {/* ── Inventory & Status ── */}
+                                  <div className="px-4 py-3.5 space-y-2.5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inventory & Status</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Stock Quantity</label>
+                                        <input type="number" value={variant.pv_qty} onChange={e => setVariant(index, 'pv_qty', e.target.value)} placeholder="0" className={variantInputCls}/>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Status</label>
+                                        <div className="flex items-center p-0.5 bg-slate-100 rounded-lg gap-0.5">
+                                          {[{ value: '1', label: 'Active' }, { value: '0', label: 'Inactive' }].map(opt => (
+                                            <button
+                                              key={opt.value}
+                                              type="button"
+                                              onClick={() => setVariant(index, 'pv_status', opt.value)}
+                                              className={`flex-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
+                                                variant.pv_status === opt.value
+                                                  ? opt.value === '1'
+                                                    ? 'bg-teal-500 text-white shadow-sm'
+                                                    : 'bg-white text-slate-600 shadow-sm'
+                                                  : 'text-slate-400 hover:text-slate-600'
+                                              }`}
+                                            >
+                                              {opt.label}
+                                            </button>
+                                          ))}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
 
-                                  {/* Variant Images */}
-                                  <div className="border-t border-slate-100 pt-3 space-y-2">
+                                  {/* ── Images ── */}
+                                  <div className="px-4 py-3.5 space-y-2.5">
                                     <div className="flex items-center justify-between">
-                                      <label className="text-[11px] font-semibold text-slate-500">Variant Images</label>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Images</p>
                                       <label className="inline-flex cursor-pointer items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 rounded-lg text-[11px] font-semibold transition-colors">
                                         <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => uploadVariantImages(index, e.target.files)}/>
                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                                         </svg>
-                                        Upload
+                                        Upload Images
                                       </label>
                                     </div>
                                     {variant.pv_images.length > 0 ? (
@@ -1199,9 +1206,16 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                         ))}
                                       </div>
                                     ) : (
-                                      <p className="text-[11px] text-slate-400 italic">No images uploaded yet</p>
+                                      <label className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg border-2 border-dashed border-slate-200 hover:border-teal-400 hover:bg-teal-50/30 transition-colors cursor-pointer">
+                                        <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => uploadVariantImages(index, e.target.files)}/>
+                                        <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                        </svg>
+                                        <p className="text-[11px] text-slate-400">Click to upload variant images</p>
+                                      </label>
                                     )}
                                   </div>
+
                                 </div>
                               </div>
                             )

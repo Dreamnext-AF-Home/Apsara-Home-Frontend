@@ -507,7 +507,11 @@ export default function Navbar() {
                 className="w-full pl-4 pr-11 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all duration-300 placeholder:text-gray-400"
               />
               <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                {showDesktopSearching ? (
+                  <div className="h-[18px] w-[18px] rounded-full border-2 border-orange-300 border-t-orange-500 animate-spin" />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                )}
               </button>
 
               <AnimatePresence>
@@ -519,7 +523,10 @@ export default function Navbar() {
                     className="absolute left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg shadow-black/10 overflow-hidden z-50"
                   >
                     {showDesktopSearching ? (
-                      <div className="px-3 py-3 text-sm text-gray-500">Searching products...</div>
+                      <div className="flex items-center gap-2.5 px-4 py-3.5">
+                        <div className="h-4 w-4 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin shrink-0" />
+                        <p className="text-sm text-gray-500">Searching products...</p>
+                      </div>
                     ) : desktopSuggestions.length > 0 ? (
                       desktopSuggestions.map((product) => (
                         <Link
@@ -592,57 +599,97 @@ export default function Navbar() {
                   <AnimatePresence>
                     {notifMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 6 }}
+                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
                         transition={{ duration: 0.15 }}
-                        className="fixed left-2 right-2 top-16 mt-0 w-auto rounded-xl border border-gray-100 bg-white shadow-lg shadow-black/10 overflow-hidden z-50 sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2 sm:w-[320px] sm:max-w-[calc(100vw-1rem)]"
+                        className="fixed left-2 right-2 top-16 mt-0 w-auto rounded-2xl border border-gray-100 bg-white shadow-xl shadow-black/10 overflow-hidden z-50 sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2 sm:w-[360px] sm:max-w-[calc(100vw-1rem)]"
                       >
-                        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                          <p className="text-sm font-semibold text-gray-800">Notifications</p>
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50 to-white border-b border-orange-100/80">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-gray-900">Notifications</p>
+                            {unreadNotificationCount > 0 && (
+                              <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center leading-none">
+                                {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                              </span>
+                            )}
+                          </div>
                           <button
                             onClick={markAllCustomerNotificationsAsRead}
-                            className="shrink-0 text-xs font-medium text-orange-600 hover:underline"
+                            className="shrink-0 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors"
                           >
                             Mark all read
                           </button>
                         </div>
 
-                        <div className="max-h-[60vh] overflow-y-auto sm:max-h-[52vh]">
+                        {/* List */}
+                        <div className="max-h-[60vh] overflow-y-auto sm:max-h-[52vh] divide-y divide-gray-50">
                           {isNotificationsLoading ? (
-                            <div className="px-4 py-3 text-sm text-gray-500">Loading notifications...</div>
+                            <div className="flex flex-col items-center justify-center py-10 gap-3">
+                              <div className="h-7 w-7 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin" />
+                              <p className="text-xs text-gray-400">Loading...</p>
+                            </div>
                           ) : isNotificationsError ? (
-                            <div className="px-4 py-3 text-sm text-red-600">Failed to load notifications.</div>
+                            <div className="px-4 py-8 text-center">
+                              <p className="text-sm text-red-500 font-medium">Failed to load notifications</p>
+                              <p className="text-xs text-gray-400 mt-1">Please try again later.</p>
+                            </div>
                           ) : visibleCustomerNotifications.length ? (
-                            visibleCustomerNotifications.map((item) => (
-                              <Link
-                                key={item.id}
-                                href={item.href}
-                                onClick={() => {
-                                  markCustomerNotificationAsRead(item)
-                                  setNotifMenuOpen(false)
-                                }}
-                                className={`flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition-colors ${readCustomerNotificationKeys.includes(getCustomerNotificationReadKey(item)) ? '' : 'bg-orange-50/40'}`}
-                              >
-                                <span className={`mt-1 h-2 w-2 rounded-full shrink-0 ${readCustomerNotificationKeys.includes(getCustomerNotificationReadKey(item)) ? 'bg-gray-300' : 'bg-orange-500'}`} />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-gray-800">{item.title}</p>
-                                  <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
-                                  {formatCustomerNotificationTime(item.latest_at) && (
-                                    <p className="text-[11px] text-gray-400 mt-1">
-                                      {formatCustomerNotificationTime(item.latest_at)} PHT
-                                    </p>
-                                  )}
-                                </div>
-                                <span className="text-xs font-semibold text-gray-500">{item.count}</span>
-                              </Link>
-                            ))
+                            visibleCustomerNotifications.map((item) => {
+                              const isRead = readCustomerNotificationKeys.includes(getCustomerNotificationReadKey(item))
+                              return (
+                                <Link
+                                  key={item.id}
+                                  href={item.href}
+                                  onClick={() => {
+                                    markCustomerNotificationAsRead(item)
+                                    setNotifMenuOpen(false)
+                                  }}
+                                  className={`flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-orange-50/60 ${!isRead ? 'bg-orange-50/30' : ''}`}
+                                >
+                                  <div className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold ${
+                                    !isRead ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-400'
+                                  }`}>
+                                    {item.title.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-1.5">
+                                      <p className={`text-sm leading-snug ${!isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-600'}`}>{item.title}</p>
+                                      {!isRead && <span className="shrink-0 mt-1 h-2 w-2 bg-orange-500 rounded-full" />}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{item.description}</p>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      {formatCustomerNotificationTime(item.latest_at) && (
+                                        <span className="text-[11px] text-gray-400">{formatCustomerNotificationTime(item.latest_at)} PHT</span>
+                                      )}
+                                      {item.count > 1 && (
+                                        <span className="text-[11px] bg-orange-100 text-orange-600 font-semibold rounded-full px-1.5 py-0.5 leading-none">×{item.count}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </Link>
+                              )
+                            })
                           ) : (
-                            <div className="px-4 py-3 text-sm text-gray-500">No notifications right now.</div>
+                            <div className="flex flex-col items-center justify-center py-10 gap-3">
+                              <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+                                  <path d="M9 17a3 3 0 0 0 6 0" />
+                                </svg>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-sm font-medium text-gray-500">You&apos;re all caught up!</p>
+                                <p className="text-xs text-gray-400 mt-0.5">No new notifications</p>
+                              </div>
+                            </div>
                           )}
                         </div>
 
-                        <div className="px-4 py-2 border-t border-gray-100">
+                        {/* Footer */}
+                        <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/50 flex items-center gap-1.5">
+                          <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
                           <p className="text-[11px] text-gray-400">Auto-refresh every 30 seconds</p>
                         </div>
                       </motion.div>
@@ -888,7 +935,11 @@ export default function Navbar() {
               className="w-full pl-4 pr-11 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all duration-300 placeholder:text-gray-400"
             />
             <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-orange-500 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              {showMobileSearching ? (
+                <div className="h-4.25 w-4.25 rounded-full border-2 border-orange-300 border-t-orange-500 animate-spin" />
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              )}
             </button>
 
             <AnimatePresence>
@@ -900,7 +951,10 @@ export default function Navbar() {
                   className="absolute left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg shadow-black/10 overflow-hidden z-50"
                 >
                   {showMobileSearching ? (
-                    <div className="px-3 py-3 text-sm text-gray-500">Searching products...</div>
+                    <div className="flex items-center gap-2.5 px-4 py-3.5">
+                      <div className="h-4 w-4 rounded-full border-2 border-orange-200 border-t-orange-500 animate-spin shrink-0" />
+                      <p className="text-sm text-gray-500">Searching products...</p>
+                    </div>
                   ) : mobileSuggestions.length > 0 ? (
                     mobileSuggestions.map((product) => (
                       <Link
