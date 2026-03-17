@@ -165,48 +165,6 @@ export default function CustomerCheckoutAddressForm({
         setField('barangay', ph.address.barangay);
     }, [isLoggedIn, ph.address.region, ph.address.province, ph.address.city, ph.address.barangay, ph.noProvince, setField]);
 
-    useEffect(() => {
-        if (!isLoggedIn || addresses.length === 0) return;
-
-        const currentSelection = addresses.find(address => address.id === selectedAddressId);
-        if (currentSelection) return;
-
-        const nextAddress = addresses.find(address => address.is_default) ?? addresses[0];
-        setSelectedAddressId(nextAddress.id);
-        applyAddressToForm(nextAddress);
-    }, [addresses, applyAddressToForm, isLoggedIn, selectedAddressId]);
-
-    useEffect(() => {
-        if (!isModalOpen) return;
-
-        ph.reset();
-        setActionError('');
-        setDraft({
-            ...emptyAddressDraft,
-            full_name: form.name,
-            phone: form.phone,
-        });
-    }, [form.name, form.phone, isModalOpen, ph]);
-
-    useEffect(() => {
-        if (!isModalOpen || modalView !== 'add') return;
-
-        setDraft(prev => ({
-            ...prev,
-            region: ph.address.region,
-            province: ph.noProvince ? ph.address.region : ph.address.province,
-            city: ph.address.city,
-            barangay: ph.address.barangay,
-        }));
-    }, [isModalOpen, modalView, ph.address.region, ph.address.province, ph.address.city, ph.address.barangay, ph.noProvince]);
-
-    useEffect(() => {
-        if (!isModalOpen) return;
-        if (addresses.length === 0) {
-            setModalView('add');
-        }
-    }, [addresses.length, isModalOpen]);
-
     const selectedAddress = useMemo(
         () => addresses.find(address => address.id === selectedAddressId) ?? null,
         [addresses, selectedAddressId]
@@ -216,12 +174,24 @@ export default function CustomerCheckoutAddressForm({
         setDraft(prev => ({ ...prev, [key]: value }));
     };
 
+    const bootstrapDraft = () => {
+        ph.reset();
+        setActionError('');
+        setDraft({
+            ...emptyAddressDraft,
+            full_name: form.name,
+            phone: form.phone,
+        });
+    };
+
     const openAddressList = () => {
+        bootstrapDraft();
         setModalView('list');
         setIsModalOpen(true);
     };
 
     const openAddAddress = () => {
+        bootstrapDraft();
         setModalView('add');
         setIsModalOpen(true);
     };
@@ -239,24 +209,29 @@ export default function CustomerCheckoutAddressForm({
             setSelectedAddressId(address.id);
             applyAddressToForm(address);
             setActionError('');
-        } catch {
-            setActionError('Unable to set that address as default right now.');
+        } catch (error) {
+            const message = (error as { data?: { message?: string } })?.data?.message;
+            setActionError(message || 'Unable to set that address as default right now.');
         }
     };
 
     const handleCreateAddress = async () => {
-        if (!draft.full_name.trim() || !draft.phone.trim() || !draft.address.trim() || !draft.region.trim() || !draft.province.trim() || !draft.city.trim() || !draft.barangay.trim()) {
+        const normalizedProvince = draft.province.trim() || draft.region.trim();
+        const normalizedFullName = form.name.trim() || draft.full_name.trim();
+        const normalizedPhone = form.phone.trim() || draft.phone.trim();
+
+        if (!normalizedFullName || !normalizedPhone || !draft.address.trim() || !draft.region.trim() || !normalizedProvince || !draft.city.trim() || !draft.barangay.trim()) {
             setActionError('Complete the required shipping address fields first.');
             return;
         }
 
         try {
             const response = await createAddress({
-                full_name: draft.full_name.trim(),
-                phone: draft.phone.trim(),
+                full_name: normalizedFullName,
+                phone: normalizedPhone,
                 address: draft.address.trim(),
                 region: draft.region.trim(),
-                province: draft.province.trim(),
+                province: normalizedProvince,
                 city: draft.city.trim(),
                 barangay: draft.barangay.trim(),
                 zip_code: draft.zip_code.trim(),
@@ -267,11 +242,37 @@ export default function CustomerCheckoutAddressForm({
 
             setSelectedAddressId(response.address.id);
             applyAddressToForm(response.address);
+            setActionError('');
             setIsModalOpen(false);
-        } catch {
-            setActionError('Unable to save the new shipping address right now.');
+        } catch (error) {
+            const apiError = error as { data?: { message?: string; errors?: Record<string, string[]> } };
+            const firstValidationMessage = Object.values(apiError?.data?.errors ?? {})[0]?.[0];
+            setActionError(firstValidationMessage || apiError?.data?.message || 'Unable to save the new shipping address right now.');
         }
     };
+
+    useEffect(() => {
+        if (!isLoggedIn || addresses.length === 0) return;
+
+        const currentSelection = addresses.find(address => address.id === selectedAddressId);
+        if (currentSelection) return;
+
+        const nextAddress = addresses.find(address => address.is_default) ?? addresses[0];
+        if (nextAddress.id === selectedAddressId) return;
+
+        queueMicrotask(() => {
+            setSelectedAddressId(nextAddress.id);
+            applyAddressToForm(nextAddress);
+        });
+    }, [addresses, applyAddressToForm, isLoggedIn, selectedAddressId]);
+
+    useEffect(() => {
+        if (!isModalOpen || addresses.length > 0) return;
+
+        queueMicrotask(() => {
+            setModalView('add');
+        });
+    }, [addresses.length, isModalOpen]);
 
     if (!isLoggedIn) {
         return (
@@ -565,9 +566,13 @@ export default function CustomerCheckoutAddressForm({
                                 )
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <Field label="Recipient Name" value={draft.full_name} onChange={v => updateDraft('full_name', v)} placeholder="Full name" required />
-                                        <Field label="Phone Number" value={draft.phone} onChange={v => updateDraft('phone', v)} placeholder="09XXXXXXXXX" required />
+                                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Recipient details</p>
+                                        <p className="mt-2 text-sm font-semibold text-slate-900">{form.name || 'No recipient name yet'}</p>
+                                        <p className="mt-1 text-sm text-slate-600">{form.phone || 'No phone number yet'}</p>
+                                        <p className="mt-2 text-xs text-slate-500">
+                                            This address will use the customer name and phone already entered in checkout.
+                                        </p>
                                     </div>
 
                                     <Field label="Street / House No." value={draft.address} onChange={v => updateDraft('address', v)} placeholder="Street, building, house no." required />
@@ -578,6 +583,13 @@ export default function CustomerCheckoutAddressForm({
                                             onChange={(e) => {
                                                 const option = e.target.options[e.target.selectedIndex];
                                                 ph.setRegion(e.target.value, option.text);
+                                                setDraft(prev => ({
+                                                    ...prev,
+                                                    region: option.text,
+                                                    province: '',
+                                                    city: '',
+                                                    barangay: '',
+                                                }));
                                             }}
                                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400"
                                         >
@@ -594,12 +606,18 @@ export default function CustomerCheckoutAddressForm({
                                             <select
                                                 value={ph.provinceCode}
                                                 disabled={!ph.regionCode || ph.loadingProvinces}
-                                                onChange={(e) => {
-                                                    const option = e.target.options[e.target.selectedIndex];
-                                                    ph.setProvince(e.target.value, option.text);
-                                                }}
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
-                                            >
+                                            onChange={(e) => {
+                                                const option = e.target.options[e.target.selectedIndex];
+                                                ph.setProvince(e.target.value, option.text);
+                                                setDraft(prev => ({
+                                                    ...prev,
+                                                    province: option.text,
+                                                    city: '',
+                                                    barangay: '',
+                                                }));
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
+                                        >
                                                 <option value="">{ph.loadingProvinces ? 'Loading provinces...' : '- Select Province -'}</option>
                                                 {ph.provinces.map(province => (
                                                     <option key={province.code} value={province.code}>{province.name}</option>
@@ -614,12 +632,17 @@ export default function CustomerCheckoutAddressForm({
                                             <select
                                                 value={ph.cityCode}
                                                 disabled={ph.noProvince ? !ph.regionCode : (!ph.provinceCode || ph.loadingCities)}
-                                                onChange={(e) => {
-                                                    const option = e.target.options[e.target.selectedIndex];
-                                                    ph.setCity(e.target.value, option.text);
-                                                }}
-                                                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
-                                            >
+                                            onChange={(e) => {
+                                                const option = e.target.options[e.target.selectedIndex];
+                                                ph.setCity(e.target.value, option.text);
+                                                setDraft(prev => ({
+                                                    ...prev,
+                                                    city: option.text,
+                                                    barangay: '',
+                                                }));
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
+                                        >
                                                 <option value="">{ph.loadingCities || ph.loadingProvinces ? 'Loading cities...' : '- Select City / Municipality -'}</option>
                                                 {ph.cities.map(city => (
                                                     <option key={city.code} value={city.code}>{city.name}</option>
@@ -632,7 +655,13 @@ export default function CustomerCheckoutAddressForm({
                                             <select
                                                 value={draft.barangay}
                                                 disabled={!ph.cityCode || ph.loadingBarangays}
-                                                onChange={(e) => ph.setBarangay(e.target.value)}
+                                                onChange={(e) => {
+                                                    ph.setBarangay(e.target.value);
+                                                    setDraft(prev => ({
+                                                        ...prev,
+                                                        barangay: e.target.value,
+                                                    }));
+                                                }}
                                                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 disabled:opacity-60"
                                             >
                                                 <option value="">{ph.loadingBarangays ? 'Loading barangays...' : '- Select Barangay -'}</option>

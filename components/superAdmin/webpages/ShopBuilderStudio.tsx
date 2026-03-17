@@ -232,7 +232,7 @@ export default function ShopBuilderStudio() {
     const categorySection = sections.find((section) => section.id === 'category-grid')
     if (!categorySection) return []
     const ids = parseIdList(getFieldValue(categorySection, 'category_ids'))
-    return ids
+    const selected = ids
       .map((id, index) => {
         const category = categories.find((item) => item.id === id)
         if (!category) return null
@@ -244,7 +244,19 @@ export default function ShopBuilderStudio() {
         }
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
-      .slice(0, 4)
+
+    const remaining = categories
+      .filter((category) => !selected.some((item) => item.id === category.id))
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        count: category.product_count ?? 0,
+        image: category.image || fallbackImage,
+      }))
+
+    if (selected.length > 0) return [...selected, ...remaining]
+
+    return remaining
   }, [categories, sections])
 
   const selectedFeatureProducts = useMemo(() => {
@@ -702,6 +714,7 @@ function PreviewCategoryGrid(props: {
   onSelect: (id: BuilderSectionId) => void
   categoryCards: Array<{ id: number; name: string; count: number; image: string }>
 }) {
+  const [offset, setOffset] = useState(0)
   const cards = props.categoryCards.length > 0
     ? props.categoryCards
     : [1, 2, 3, 4].map((index) => ({
@@ -710,14 +723,51 @@ function PreviewCategoryGrid(props: {
         count: 0,
         image: getFieldValue(props.section, `card_${index}_image`) || fallbackImage,
       }))
+  const visibleCards = cards.slice(offset, offset + 4)
+  const canGoLeft = offset > 0
+  const canGoRight = offset + 4 < cards.length
+
+  const moveLeft = () => setOffset((current) => Math.max(0, current - 1))
+  const moveRight = () => setOffset((current) => (current + 4 < cards.length ? current + 1 : current))
 
   return (
     <PreviewSection {...props}>
       <div className="py-6">
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-orange-500">{getFieldValue(props.section, 'eyebrow')}</p>
-        <h3 className="mt-2 text-center text-3xl font-bold text-slate-900">{getFieldValue(props.section, 'heading')}</h3>
+        <div className="relative">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-orange-500">{getFieldValue(props.section, 'eyebrow')}</p>
+          <h3 className="mt-2 text-center text-3xl font-bold text-slate-900">{getFieldValue(props.section, 'heading')}</h3>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              moveLeft()
+            }}
+            disabled={!canGoLeft}
+            className="absolute left-0 top-1/2 hidden h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md md:inline-flex disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              moveRight()
+            }}
+            disabled={!canGoRight}
+            className="absolute right-0 top-1/2 hidden h-10 w-10 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md md:inline-flex disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {cards.map((card) => (
+          {visibleCards.map((card) => (
             <div key={card.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
               <div className="relative h-28">
                 <Image src={card.image} alt={card.name} fill className="object-cover" unoptimized />
@@ -730,6 +780,11 @@ function PreviewCategoryGrid(props: {
             </div>
           ))}
         </div>
+        {cards.length > 4 ? (
+          <p className="mt-3 text-center text-xs text-slate-400">
+            Showing {offset + 1}-{Math.min(offset + 4, cards.length)} of {cards.length} categories
+          </p>
+        ) : null}
       </div>
     </PreviewSection>
   )

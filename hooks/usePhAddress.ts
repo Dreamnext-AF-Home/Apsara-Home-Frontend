@@ -30,18 +30,13 @@ interface UsePhAddressReturn {
     }
 }
 
-const BASE = 'https://psgc.gitlab.io/api'
+const API_BASE = process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? ''
 const listCache = new Map<string, PsgcItem[]>()
 const inflight = new Map<string, Promise<PsgcItem[]>>()
 
-// Regions with no provinces, go directly region -> cities.
-const NO_PROVINCE_REGIONS = [
-    '130000000', // NCR - National Capital Region
-    '140000000', // CAR - Cordillera Administrative Region
-]
-
-const fetchPsgcList = async (path: string): Promise<PsgcItem[]> => {
-    const url = `${BASE}${path}`
+const fetchAddressList = async (path: string, params?: Record<string, string>): Promise<PsgcItem[]> => {
+    const query = new URLSearchParams(params ?? {})
+    const url = `${API_BASE}/api/address/${path}${query.toString() ? `?${query.toString()}` : ''}`
 
     const cached = listCache.get(url)
     if (cached) return cached
@@ -49,9 +44,13 @@ const fetchPsgcList = async (path: string): Promise<PsgcItem[]> => {
     const pending = inflight.get(url)
     if (pending) return pending
 
-    const request = fetch(url)
-        .then((response) => (response.ok ? response.json() : []))
-        .then((data: PsgcItem[]) => data.sort((a, b) => a.name.localeCompare(b.name)))
+    const request = fetch(url, {
+        headers: {
+            Accept: 'application/json',
+        },
+    })
+        .then((response) => (response.ok ? response.json() : { data: [] }))
+        .then((payload: { data?: PsgcItem[] }) => (payload.data ?? []).sort((a, b) => a.name.localeCompare(b.name)))
         .catch(() => [])
         .finally(() => inflight.delete(url))
 
@@ -87,7 +86,7 @@ export function usePhAddress(): UsePhAddressReturn {
     useEffect(() => {
         let active = true
 
-        fetchPsgcList('/regions/').then((data) => {
+        fetchAddressList('regions').then((data) => {
             if (active) setRegions(data)
         })
 
@@ -110,19 +109,10 @@ export function usePhAddress(): UsePhAddressReturn {
         setCities([])
         setBarangays([])
 
-        const isNoProvince = NO_PROVINCE_REGIONS.includes(regionCode)
-        setNoProvince(isNoProvince)
-
         const load = async () => {
-            if (isNoProvince) {
-                const cityList = await fetchPsgcList(`/regions/${regionCode}/cities-municipalities/`)
-                if (active) setCities(cityList)
-                return
-            }
-
-            const provinceList = await fetchPsgcList(`/regions/${regionCode}/provinces/`)
+            const provinceList = await fetchAddressList('provinces', { region_code: regionCode })
             if (!provinceList.length) {
-                const cityList = await fetchPsgcList(`/regions/${regionCode}/cities-municipalities/`)
+                const cityList = await fetchAddressList('cities', { region_code: regionCode })
                 if (active) {
                     setNoProvince(true)
                     setCities(cityList)
@@ -130,7 +120,10 @@ export function usePhAddress(): UsePhAddressReturn {
                 return
             }
 
-            if (active) setProvinces(provinceList)
+            if (active) {
+                setNoProvince(false)
+                setProvinces(provinceList)
+            }
         }
 
         load().finally(() => {
@@ -155,7 +148,7 @@ export function usePhAddress(): UsePhAddressReturn {
         setCities([])
         setBarangays([])
 
-        fetchPsgcList(`/provinces/${provinceCode}/cities-municipalities/`)
+        fetchAddressList('cities', { province_code: provinceCode })
             .then((data) => {
                 if (active) setCities(data)
             })
@@ -180,7 +173,7 @@ export function usePhAddress(): UsePhAddressReturn {
         setLoadingBarangays(true)
         setBarangays([])
 
-        fetchPsgcList(`/cities-municipalities/${cityCode}/barangays/`)
+        fetchAddressList('barangays', { city_code: cityCode })
             .then((data) => {
                 if (active) setBarangays(data)
             })

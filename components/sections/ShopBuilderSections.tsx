@@ -1,19 +1,30 @@
-'use client'
-
 import Image from 'next/image'
 import Link from 'next/link'
-import { useMemo, useRef, useState } from 'react'
 import HeroSection from './HeroSection'
 import FeaturedSections from './FeaturedSections'
 import PromoBenners from './PromoBenners'
 import NewsLetter from './NewsLetter'
-import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
-import { useGetPublicProductsQuery, type Product } from '@/store/api/productsApi'
-import { useGetPublicWebPageItemsQuery, type WebPageItem } from '@/store/api/webPagesApi'
 import ProductCard from '../ui/ProductCard'
+import ShopCategoryCarousel from './ShopCategoryCarousel'
+import ShopNewsletterSignup from './ShopNewsletterSignup'
+import type { Category } from '@/store/api/categoriesApi'
+import type { Product } from '@/store/api/productsApi'
+import type { WebPageItem } from '@/store/api/webPagesApi'
 
 type ShopSectionPayload = {
   fields?: Record<string, string>
+}
+
+type ApiCategoriesResponse = {
+  categories?: Category[]
+}
+
+type ApiProductsResponse = {
+  products?: Product[]
+}
+
+type ApiWebPagesResponse = {
+  items?: WebPageItem[]
 }
 
 const fallbackImage = '/Images/HeroSection/chairs_stools.jpg'
@@ -30,28 +41,52 @@ const parseIdList = (value: string) =>
     .map((item) => Number.parseInt(item.trim(), 10))
     .filter((item) => Number.isFinite(item) && item > 0)
 
-export default function ShopBuilderSections() {
-  const { data, isLoading, isError } = useGetPublicWebPageItemsQuery('shop-builder', {
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-  })
-  const { data: categoriesData } = useGetCategoriesQuery({ per_page: 50, used_only: true }, {
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-  })
-  const { data: productsData } = useGetPublicProductsQuery({ perPage: 100, status: '1' }, {
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    refetchOnReconnect: true,
-  })
-  const items = useMemo(() => data?.items ?? [], [data?.items])
-  const categories = categoriesData?.categories ?? []
-  const products = productsData?.products ?? []
+async function getShopBuilderData() {
+  const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
+  if (!apiUrl) return null
 
-  if (isLoading) return null
-  if (isError || items.length === 0) {
+  try {
+    const [webPagesRes, categoriesRes, productsRes] = await Promise.all([
+      fetch(`${apiUrl}/api/web-pages/shop-builder`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      }),
+      fetch(`${apiUrl}/api/categories?page=1&per_page=100&used_only=1`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      }),
+      fetch(`${apiUrl}/api/products?page=1&per_page=100&status=1`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      }),
+    ])
+
+    if (!webPagesRes.ok || !categoriesRes.ok || !productsRes.ok) return null
+
+    const webPagesJson = (await webPagesRes.json()) as ApiWebPagesResponse
+    const categoriesJson = (await categoriesRes.json()) as ApiCategoriesResponse
+    const productsJson = (await productsRes.json()) as ApiProductsResponse
+
+    return {
+      items: webPagesJson.items ?? [],
+      categories: categoriesJson.categories ?? [],
+      products: productsJson.products ?? [],
+    }
+  } catch {
+    return null
+  }
+}
+
+export default async function ShopBuilderSections() {
+  const data = await getShopBuilderData()
+  const items = data?.items ?? []
+  const categories = data?.categories ?? []
+  const products = data?.products ?? []
+
+  if (!data || items.length === 0) {
     return (
       <>
         <HeroSection />
@@ -69,7 +104,7 @@ export default function ShopBuilderSections() {
   const promoPair = getItemByKey(items, 'promo-pair')
   const newsletter = getItemByKey(items, 'newsletter')
 
-  const categoryCards = parseIdList(getField(categoryGrid, 'category_ids'))
+  const selectedCategoryCards = parseIdList(getField(categoryGrid, 'category_ids'))
     .map((id, index) => {
       const category = categories.find((item) => item.id === id)
       if (!category) return null
@@ -83,15 +118,19 @@ export default function ShopBuilderSections() {
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 
-  const allCategoryCards = categoryCards.length > 0
-    ? categoryCards
-    : categories.map((category) => ({
-        id: category.id,
-        name: category.name,
-        url: category.url,
-        count: category.product_count ?? 0,
-        image: category.image || fallbackImage,
-      }))
+  const remainingCategoryCards = categories
+    .filter((category) => !selectedCategoryCards.some((card) => card.id === category.id))
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      url: category.url,
+      count: category.product_count ?? 0,
+      image: category.image || fallbackImage,
+    }))
+
+  const allCategoryCards = selectedCategoryCards.length > 0
+    ? [...selectedCategoryCards, ...remainingCategoryCards]
+    : remainingCategoryCards
 
   const featuredProducts = parseIdList(getField(featuredCollection, 'product_ids'))
     .map((id) => products.find((item) => item.id === id))
@@ -189,8 +228,6 @@ function CategoryGridSection({
   section: WebPageItem
   categoryCards: Array<{ id: number; name: string; url: string; count: number; image: string }>
 }) {
-  const carouselRef = useRef<HTMLDivElement | null>(null)
-
   const fallbackCards = [1, 2, 3, 4].map((index) => ({
     id: index,
     name: `Category ${index}`,
@@ -199,15 +236,6 @@ function CategoryGridSection({
     image: getField(section, `card_${index}_image`) || fallbackImage,
   }))
   const cards = categoryCards.length > 0 ? categoryCards : fallbackCards
-
-  const scrollCarousel = (direction: 'left' | 'right') => {
-    if (!carouselRef.current) return
-    const amount = Math.min(carouselRef.current.clientWidth * 0.85, 960)
-    carouselRef.current.scrollBy({
-      left: direction === 'left' ? -amount : amount,
-      behavior: 'smooth',
-    })
-  }
 
   return (
     <section className="container mx-auto px-4 py-10">
@@ -220,57 +248,7 @@ function CategoryGridSection({
         </h2>
       </div>
 
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => scrollCarousel('left')}
-          className="absolute left-0 top-1/2 z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-700 shadow-lg backdrop-blur md:inline-flex"
-          aria-label="Scroll categories left"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-
-        <div
-          ref={carouselRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {cards.map((card) => (
-            <Link
-              key={card.id}
-              href={`/category/${card.url}`}
-              className="group relative h-64 min-w-[280px] flex-none snap-start overflow-hidden rounded-2xl shadow-sm transition-shadow duration-500 hover:shadow-xl md:h-80 md:min-w-[320px]"
-            >
-              <Image src={card.image} alt={card.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" unoptimized />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-5">
-                <h3 className="text-lg font-bold leading-tight text-white transition-colors duration-300 group-hover:text-orange-300">{card.name}</h3>
-                <p className="mt-0.5 text-xs text-white/60">{card.count} Products</p>
-                <div className="mt-1 h-0 overflow-hidden transition-all duration-300 group-hover:h-7">
-                  <span className="flex items-center gap-1 text-sm font-semibold text-orange-400">
-                    Shop Now
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => scrollCarousel('right')}
-          className="absolute right-0 top-1/2 z-10 hidden h-12 w-12 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-700 shadow-lg backdrop-blur md:inline-flex"
-          aria-label="Scroll categories right"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      </div>
+      <ShopCategoryCarousel cards={cards} />
     </section>
   )
 }
@@ -398,48 +376,12 @@ function PromoPairSection({ section }: { section: WebPageItem }) {
 }
 
 function NewsletterSection({ section }: { section: WebPageItem }) {
-  const [email, setEmail] = useState('')
-  const [subscribed, setSubscribed] = useState(false)
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault()
-    if (email.trim()) setSubscribed(true)
-  }
-
   return (
-    <section className="bg-slate-900 py-16">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-500/20 px-4 py-1.5 text-sm font-semibold text-orange-400">
-            {getField(section, 'badge') || 'Newsletter'}
-          </div>
-          <h2 className="mb-3 text-3xl font-bold text-white">
-            {getField(section, 'heading') || 'Stay in the Loop'}
-          </h2>
-          <p className="mb-8 text-white/50">
-            {getField(section, 'description') || 'Get exclusive deals, new arrivals and interior tips to your inbox.'}
-          </p>
-
-          {subscribed ? (
-            <div className="rounded-2xl bg-green-500/15 px-6 py-4 font-medium text-green-300">
-              Subscription received. Watch your inbox for AF Home updates.
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="mx-auto flex max-w-md gap-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Enter your email address"
-                className="flex-1 rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40"
-              />
-              <button type="submit" className="rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white">
-                {getField(section, 'button') || 'Subscribe'}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </section>
+    <ShopNewsletterSignup
+      badge={getField(section, 'badge') || 'Newsletter'}
+      heading={getField(section, 'heading') || 'Stay in the Loop'}
+      description={getField(section, 'description') || 'Get exclusive deals, new arrivals and interior tips to your inbox.'}
+      button={getField(section, 'button') || 'Subscribe'}
+    />
   )
 }

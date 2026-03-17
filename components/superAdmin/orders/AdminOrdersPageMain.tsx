@@ -1,14 +1,17 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import {
+  AdminCourier,
   AdminShipmentStatus,
+  useBookAdminOrderCourierMutation,
   useApproveAdminOrderMutation,
   useGetAdminOrdersQuery,
   useRejectAdminOrderMutation,
+  useTrackAdminOrderCourierMutation,
   useUpdateAdminOrderShipmentStatusMutation,
 } from '@/store/api/adminOrdersApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
@@ -41,6 +44,11 @@ const SHIPMENT_STATUS_OPTIONS: Array<{ value: AdminShipmentStatus; label: string
   { value: 'delivered', label: 'Delivered' },
   { value: 'failed_delivery', label: 'Failed Delivery' },
   { value: 'returned_to_sender', label: 'Returned to Sender' },
+]
+
+const COURIER_OPTIONS: Array<{ value: AdminCourier; label: string }> = [
+  { value: 'jnt', label: 'J&T Express' },
+  { value: 'xde', label: 'XDE' },
 ]
 
 const APPROVAL_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
@@ -113,6 +121,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
   const [search,      setSearch]      = useState('')
   const [page,        setPage]        = useState(1)
   const [busyId,      setBusyId]      = useState<number | null>(null)
+  const [courierByOrder, setCourierByOrder] = useState<Record<number, AdminCourier>>({})
   const [overdueFirst, setOverdueFirst] = useState(true)
   const [sortBy,      setSortBy]      = useState<'default' | 'customer_az' | 'amount_low_high'>('default')
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null)
@@ -138,6 +147,8 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
 
   const [approveOrder] = useApproveAdminOrderMutation()
   const [rejectOrder]  = useRejectAdminOrderMutation()
+  const [bookCourier] = useBookAdminOrderCourierMutation()
+  const [trackCourier] = useTrackAdminOrderCourierMutation()
   const [updateShipmentStatus] = useUpdateAdminOrderShipmentStatusMutation()
 
   const visibleOrders = useMemo(() => {
@@ -161,6 +172,21 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
       return 0
     })
   }, [data?.orders, overdueFirst, sortBy])
+
+  useEffect(() => {
+    if (!data?.orders?.length) return
+
+    setCourierByOrder((prev) => {
+      const next = { ...prev }
+      for (const order of data.orders) {
+        const courier = ((order.courier ?? '').toLowerCase() === 'xde' ? 'xde' : 'jnt') as AdminCourier
+        if (!next[order.id]) {
+          next[order.id] = courier
+        }
+      }
+      return next
+    })
+  }, [data?.orders])
 
   useEffect(() => {
     const raw = searchParams.get('highlightOrderId')
@@ -209,10 +235,32 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
   const handleShipmentStatusChange = async (id: number, shipmentStatus: AdminShipmentStatus) => {
     setBusyId(id)
     try {
-      await updateShipmentStatus({ id, shipment_status: shipmentStatus }).unwrap()
+      await updateShipmentStatus({ id, shipment_status: shipmentStatus, courier: courierByOrder[id] ?? 'jnt' }).unwrap()
       showSuccessToast(`Shipment status updated to ${shipmentStatus.replace(/_/g, ' ')}.`)
     } catch (err: unknown) {
       showErrorToast((err as { data?: { message?: string } })?.data?.message || 'Failed to update shipment status.')
+    } finally { setBusyId(null) }
+  }
+
+  const handleBookCourier = async (id: number) => {
+    setBusyId(id)
+    try {
+      const courier = courierByOrder[id] ?? 'jnt'
+      const result = await bookCourier({ id, courier }).unwrap()
+      showSuccessToast(result.message || `${courier.toUpperCase()} shipment booked.`)
+    } catch (err: unknown) {
+      showErrorToast((err as { data?: { message?: string } })?.data?.message || 'Failed to book courier shipment.')
+    } finally { setBusyId(null) }
+  }
+
+  const handleTrackCourier = async (id: number) => {
+    setBusyId(id)
+    try {
+      const courier = courierByOrder[id] ?? 'jnt'
+      const result = await trackCourier({ id, courier }).unwrap()
+      showSuccessToast(result.shipment_status ? `Latest status: ${result.shipment_status.replace(/_/g, ' ')}` : 'Tracking refreshed.')
+    } catch (err: unknown) {
+      showErrorToast((err as { data?: { message?: string } })?.data?.message || 'Failed to refresh courier tracking.')
     } finally { setBusyId(null) }
   }
 
@@ -474,6 +522,16 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                             <div className="space-y-1.5">
                               <select
                                 disabled={isBusy || !canTrackThisOrder}
+                                value={courierByOrder[order.id] ?? (((order.courier ?? '').toLowerCase() === 'xde' ? 'xde' : 'jnt') as AdminCourier)}
+                                onChange={e => setCourierByOrder(prev => ({ ...prev, [order.id]: e.target.value as AdminCourier }))}
+                                className="w-full text-xs border border-slate-200 rounded-xl px-2.5 py-2 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/30 disabled:opacity-50 transition"
+                              >
+                                {COURIER_OPTIONS.map(o => (
+                                  <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                              </select>
+                              <select
+                                disabled={isBusy || !canTrackThisOrder}
                                 value={(order.shipment_status as AdminShipmentStatus | undefined) ?? 'for_pickup'}
                                 onChange={e => handleShipmentStatusChange(order.id, e.target.value as AdminShipmentStatus)}
                                 className="text-xs border border-slate-200 rounded-xl px-2.5 py-2 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/30 disabled:opacity-50 transition"
@@ -482,6 +540,22 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                                   <option key={o.value} value={o.value}>{o.label}</option>
                                 ))}
                               </select>
+                              <div className="flex flex-wrap gap-1.5">
+                                <button
+                                  disabled={isBusy || !canTrackThisOrder}
+                                  onClick={() => handleBookCourier(order.id)}
+                                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                  Book
+                                </button>
+                                <button
+                                  disabled={isBusy || !canTrackThisOrder || !order.tracking_no}
+                                  onClick={() => handleTrackCourier(order.id)}
+                                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                  Track
+                                </button>
+                              </div>
                               {order.courier || order.tracking_no || order.shipment_status ? (
                                 <div className="text-[11px] text-slate-500 leading-relaxed">
                                   {order.courier ? <p className="uppercase">Courier: {order.courier}</p> : null}

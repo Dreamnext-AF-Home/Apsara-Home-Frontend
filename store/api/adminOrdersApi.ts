@@ -20,6 +20,8 @@ export type AdminShipmentStatus =
   | 'failed_delivery'
   | 'returned_to_sender'
 
+export type AdminCourier = 'jnt' | 'xde'
+
 export interface AdminOrder {
   id: number
   customer_id: number
@@ -121,11 +123,35 @@ export const adminOrdersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Orders', 'AdminNotifications'],
     }),
-    updateAdminOrderShipmentStatus: builder.mutation<{ message: string }, { id: number; shipment_status: AdminShipmentStatus }>({
-      query: ({ id, shipment_status }) => ({
+    updateAdminOrderShipmentStatus: builder.mutation<
+      { message: string },
+      { id: number; shipment_status: AdminShipmentStatus; courier?: AdminCourier }
+    >({
+      query: ({ id, shipment_status, courier }) => ({
         url: `/api/admin/orders/${id}/shipment-status`,
         method: 'PATCH',
-        body: { shipment_status },
+        body: { shipment_status, courier },
+      }),
+      invalidatesTags: ['Orders', 'AdminNotifications'],
+    }),
+    bookAdminOrderCourier: builder.mutation<
+      { message: string; tracking_no?: string | null; shipment_status?: string | null },
+      { id: number; courier: AdminCourier; payload?: Record<string, unknown> }
+    >({
+      query: ({ id, courier, payload }) => ({
+        url: `/api/admin/orders/${id}/shipping/${courier}/book`,
+        method: 'POST',
+        body: payload ? { payload } : {},
+      }),
+      invalidatesTags: ['Orders', 'AdminNotifications'],
+    }),
+    trackAdminOrderCourier: builder.mutation<
+      { tracking_no: string; shipment_status?: string | null },
+      { id: number; courier: AdminCourier }
+    >({
+      query: ({ id, courier }) => ({
+        url: `/api/admin/orders/${id}/shipping/${courier}/track`,
+        method: 'GET',
       }),
       invalidatesTags: ['Orders', 'AdminNotifications'],
     }),
@@ -138,4 +164,6 @@ export const {
   useRejectAdminOrderMutation,
   useUpdateAdminOrderStatusMutation,
   useUpdateAdminOrderShipmentStatusMutation,
+  useBookAdminOrderCourierMutation,
+  useTrackAdminOrderCourierMutation,
 } = adminOrdersApi
