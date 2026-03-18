@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Loading from '@/components/Loading'
-import { showErrorToast, showSuccessToast } from '@/libs/toast'
+import { showErrorToast, showInfoToast, showSuccessToast } from '@/libs/toast'
 
 const REMEMBER_USER_EMAIL_KEY = 'afhome_user_login'
 
@@ -21,9 +21,10 @@ const EyeIcon = ({ open }: { open: boolean }) => open
 
 interface LoginFormProps {
     onSwitchToSignUp: () => void;
+    onRequirePasswordChange: () => void;
 }
 
-const LoginForm = ({ onSwitchToSignUp }: LoginFormProps) => {
+const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps) => {
     const router = useRouter();
     const [showPass, setShowPass] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +61,15 @@ const LoginForm = ({ onSwitchToSignUp }: LoginFormProps) => {
                 } else {
                     window.localStorage.removeItem(REMEMBER_USER_EMAIL_KEY)
                 }
+            }
+
+            const session = await getSession()
+            const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired)
+
+            if (passwordChangeRequired) {
+                showInfoToast('Create a new password first before continuing to the shop.')
+                onRequirePasswordChange()
+                return
             }
 
             showSuccessToast('Login successful. Welcome back!')
@@ -120,6 +130,7 @@ const LoginForm = ({ onSwitchToSignUp }: LoginFormProps) => {
                             <EyeIcon open={showPass} />
                         </button>
                     </div>
+                    <p className="mt-1.5 text-[11px] text-white/55">Passwords are case-sensitive.</p>
                 </div>
 
                 <div className="flex items-center justify-between text-xs">

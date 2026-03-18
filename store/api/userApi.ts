@@ -13,10 +13,12 @@ export interface MeResponse {
     region?: string;
     zip_code?: string;
     avatar_url?: string;
+    rank?: number;
     account_status?: number;
     lock_status?: number;
     verification_status?: 'verified' | 'pending_review' | 'on_hold' | 'not_verified' | 'blocked';
     email_verified?: boolean;
+    password_change_required?: boolean;
 }
 
 export interface CustomerAddress {
@@ -66,6 +68,12 @@ export interface UpdateProfilePayload {
     avatar_url?: string;
 }
 
+export interface ChangePasswordPayload {
+    current_password: string;
+    new_password: string;
+    new_password_confirmation: string;
+}
+
 export interface ReferralTreeNode {
     id: number;
     name: string;
@@ -102,6 +110,15 @@ export const userApi = baseApi.injectEndpoints({
             query: (body) => ({
                 url: '/api/auth/me',
                 method: 'PUT',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        changePassword: builder.mutation<{ message: string; user: MeResponse }, ChangePasswordPayload>({
+            query: (body) => ({
+                url: '/api/auth/change-password',
+                method: 'PATCH',
                 body,
             }),
             invalidatesTags: ['User'],
@@ -145,6 +162,7 @@ export const userApi = baseApi.injectEndpoints({
 export const {
     useMeQuery,
     useUpdateProfileMutation,
+    useChangePasswordMutation,
     useReferralTreeQuery,
     useCustomerAddressesQuery,
     useCreateCustomerAddressMutation,

@@ -37,7 +37,7 @@ const ADMIN_SUPPLIER_ALLOWED_PREFIXES = [
   "/admin/suppliers",
 ];
 
-const AUTH_REQUIRED_PREFIXES = ["/profile", "/orders"]
+const AUTH_REQUIRED_PREFIXES = ["/profile", "/orders", "/shop"]
 const SUPPLIER_ALLOWED_PREFIXES = [
   "/supplier/dashboard",
   "/supplier/products",
@@ -71,6 +71,7 @@ export async function proxy(req: NextRequest) {
     req,
     secret: process.env.NEXTAUTH_SECRET,
   });
+  const passwordChangeRequired = Boolean((token as { passwordChangeRequired?: boolean } | null)?.passwordChangeRequired);
 
   const isAdminLoginPage = pathname === "/admin/login";
   const isSupplierPublicPage =
@@ -80,6 +81,7 @@ export async function proxy(req: NextRequest) {
   const isAdminRoute = pathname.startsWith("/admin");
   const isSupplierRoute = pathname.startsWith("/supplier");
   const isAuthRequiredRoute = AUTH_REQUIRED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isLoginPage = pathname === "/login";
 
   if (isAdminLoginPage) {
     const role = String((token as { role?: string } | null)?.role ?? "").toLowerCase();
@@ -200,9 +202,17 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (token && passwordChangeRequired && (pathname.startsWith("/shop") || pathname.startsWith("/orders") || pathname === "/profile" || pathname === "/login")) {
+    if (!isLoginPage) {
+      const passwordUrl = new URL("/login", req.url);
+      passwordUrl.searchParams.set("force-password-change", "1");
+      return NextResponse.redirect(passwordUrl);
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/supplier/:path*", "/profile/:path*", "/orders/:path*"],
+  matcher: ["/admin/:path*", "/supplier/:path*", "/profile/:path*", "/orders/:path*", "/shop/:path*"],
 };

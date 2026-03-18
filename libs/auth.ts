@@ -9,6 +9,7 @@ type TokenUser = {
     userLevelId?: number;
     supplierId?: number | null;
     supplierName?: string | null;
+    passwordChangeRequired?: boolean;
 };
 
 export const authOptions: NextAuthOptions = {
@@ -60,6 +61,7 @@ export const authOptions: NextAuthOptions = {
                         email: data.user.email,
                         accessToken: data.token,
                         role: 'customer',
+                        passwordChangeRequired: Boolean(data.user.password_change_required),
                     }
                 } catch (e) {
                     console.log('[Auth] Fetch error:', e)
@@ -177,7 +179,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 const authUser = user as TokenUser;
                 token.id = authUser.id;
@@ -186,6 +188,13 @@ export const authOptions: NextAuthOptions = {
                 token.userLevelId = authUser.userLevelId;
                 token.supplierId = authUser.supplierId;
                 token.supplierName = authUser.supplierName;
+                token.passwordChangeRequired = authUser.passwordChangeRequired;
+            }
+            if (trigger === 'update' && session) {
+                const nextSession = session as { passwordChangeRequired?: boolean };
+                if (typeof nextSession.passwordChangeRequired === 'boolean') {
+                    token.passwordChangeRequired = nextSession.passwordChangeRequired;
+                }
             }
             return token;
         },
@@ -199,6 +208,7 @@ export const authOptions: NextAuthOptions = {
                 sessionUser.userLevelId = authToken.userLevelId;
                 sessionUser.supplierId = authToken.supplierId;
                 sessionUser.supplierName = authToken.supplierName;
+                sessionUser.passwordChangeRequired = authToken.passwordChangeRequired;
             }
             return session
         }

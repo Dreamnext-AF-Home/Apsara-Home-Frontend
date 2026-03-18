@@ -8,20 +8,33 @@ import { AnimatePresence, motion } from "framer-motion";
 import AuthTabs from "@/components/AuthTabs";
 import LoginForm from "@/components/LoginForm";
 import SignUpForm from "@/components/SignUpForm";
-import { useSearchParams } from "next/navigation";
+import ForcedPasswordChangeForm from "@/components/auth/ForcedPasswordChangeForm";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 
-type Mode = 'login' | 'signup'
+type Mode = 'login' | 'signup' | 'force-password-change'
 
 export default function LoginPageClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<Mode>('login');
+  const { status, data: session } = useSession();
+  const forcePasswordChange = searchParams.get('force-password-change') === '1';
+  const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired);
+  const hasReferral = Boolean(searchParams.get('ref') || searchParams.get('referred_by'));
+  const [manualMode, setManualMode] = useState<'login' | 'signup' | null>(null);
 
   useEffect(() => {
-    const hasReferral = Boolean(searchParams.get('ref') || searchParams.get('referred_by'));
-    if (hasReferral) {
-      setMode('signup');
+    if (status !== 'authenticated') return;
+
+    if (!passwordChangeRequired && !forcePasswordChange) {
+      router.replace('/shop');
     }
-  }, [searchParams]);
+  }, [forcePasswordChange, passwordChangeRequired, router, status]);
+
+  const mode: Mode = passwordChangeRequired || forcePasswordChange
+    ? 'force-password-change'
+    : (manualMode ?? (hasReferral ? 'signup' : 'login'));
+  const handleTabChange = (nextMode: 'login' | 'signup') => setManualMode(nextMode);
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col">
@@ -56,15 +69,24 @@ export default function LoginPageClient() {
           className={`w-full transition-all duration-300 ${mode === 'signup' ? 'max-w-xl' : 'max-w-md'}`}
         >
           <div className="bg-slate-800/85 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-            <AuthTabs mode={mode} setMode={setMode} />
+            {mode !== 'force-password-change' && (
+              <AuthTabs mode={mode === 'signup' ? 'signup' : 'login'} setMode={handleTabChange} />
+            )}
             <AnimatePresence
               mode="wait"
               initial={false}
             >
-              {mode === 'login'
-                ? <LoginForm key="login" onSwitchToSignUp={() => setMode('signup')}/>
-                : <SignUpForm key="signup" onSwitchToLogin={() => setMode('login')}/>
-              }
+              {mode === 'login' ? (
+                <LoginForm
+                  key="login"
+                  onSwitchToSignUp={() => setManualMode('signup')}
+                  onRequirePasswordChange={() => setManualMode('login')}
+                />
+              ) : mode === 'signup' ? (
+                <SignUpForm key="signup" onSwitchToLogin={() => setManualMode('login')} />
+              ) : (
+                <ForcedPasswordChangeForm key="force-password-change" />
+              )}
             </AnimatePresence>
           </div>
         </motion.div>

@@ -13,6 +13,7 @@ declare module 'next-auth' {
             supplierId?: number | null;
             supplierName?: string | null;
             accessToken?: string
+            passwordChangeRequired?: boolean
         }
     }
 }
@@ -25,5 +26,6 @@ declare module 'next-auth/jwt' {
         supplierId?: number | null
         supplierName?: string | null
         accessToken?: string
+        passwordChangeRequired?: boolean
     }
 }

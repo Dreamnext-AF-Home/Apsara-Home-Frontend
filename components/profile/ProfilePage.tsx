@@ -1,13 +1,36 @@
 ﻿'use client';
 
-import { ReferralTreeNode, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation } from '@/store/api/userApi';
+import { ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import TierBadge from '@/components/ui/TierBadge';
 import { MemberTier } from '@/types/members/types';
+
+const TIER_BADGE_IMAGE: Record<MemberTier, string> = {
+  'Home Starter': '/Badge/homeStarter.png',
+  'Home Builder': '/Badge/homeBuilder.png',
+  'Home Stylist': '/Badge/homeStylist.png',
+  'Lifestyle Consultant': '/Badge/lifestyleConsultant.png',
+  'Lifestyle Elite': '/Badge/lifestyleElite.png',
+};
+
+const TIER_COVER: Record<MemberTier, { gradient: string; glow: string; pill: string }> = {
+  'Home Starter':         { gradient: 'from-orange-400 to-amber-500',           glow: 'rgba(251,146,60,0.5)',   pill: 'bg-white/80 text-orange-700 border-orange-200' },
+  'Home Builder':         { gradient: 'from-emerald-400 to-teal-500',           glow: 'rgba(52,211,153,0.5)',   pill: 'bg-white/80 text-emerald-700 border-emerald-200' },
+  'Home Stylist':         { gradient: 'from-sky-400 to-blue-500',               glow: 'rgba(56,189,248,0.5)',   pill: 'bg-white/80 text-sky-700 border-sky-200' },
+  'Lifestyle Consultant': { gradient: 'from-violet-500 to-purple-600',          glow: 'rgba(167,139,250,0.5)',  pill: 'bg-white/80 text-violet-700 border-violet-200' },
+  'Lifestyle Elite':      { gradient: 'from-amber-400 via-orange-400 to-rose-400', glow: 'rgba(251,191,36,0.6)', pill: 'bg-white/80 text-amber-700 border-amber-300' },
+};
+
+const rankToTier = (rank: number): MemberTier => {
+  if (rank >= 5) return 'Lifestyle Elite';
+  if (rank === 4) return 'Lifestyle Consultant';
+  if (rank === 3) return 'Home Stylist';
+  if (rank === 2) return 'Home Builder';
+  return 'Home Starter';
+};
 import Icon from './Icons';
 import getPasswordStrength from './GetPasswordStrength';
 import fadeUp from './FadeUp';
@@ -50,10 +73,11 @@ type TreeStatusFilter = 'all' | 'verified' | 'pending_review' | 'not_verified' |
 const ProfilePage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const { data } = useMeQuery();
   const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery();
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
+  const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
 
@@ -79,6 +103,8 @@ const ProfilePage = () => {
   const [expandedTreeNodes, setExpandedTreeNodes] = useState<Record<number, boolean>>({});
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
   const [treeStatusFilter, setTreeStatusFilter] = useState<TreeStatusFilter>('all');
+  const [referralPage, setReferralPage] = useState(1);
+  const REFERRAL_PAGE_SIZE = 10;
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -153,6 +179,9 @@ const ProfilePage = () => {
       setActiveTab(requestedTab as Tab);
     }
   }, [searchParams]);
+
+  const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired || data?.password_change_required);
+  const passwordChangeRequiredFromQuery = searchParams.get('password-change-required') === '1';
 
   // Auto-dismiss alert messages
   useEffect(() => {
@@ -429,42 +458,61 @@ const ProfilePage = () => {
     const isExpanded = hasTreeFilters ? true : (expandedTreeNodes[node.id] ?? level < 1);
     const vc = verificationColor(node.verification_status);
     const nodeInitials = getNodeInitials(node.name || 'AF');
+    const avatarGradients = [
+      'from-violet-500 to-purple-600',
+      'from-blue-500 to-indigo-600',
+      'from-emerald-500 to-teal-600',
+      'from-rose-500 to-pink-600',
+    ];
+    const avatarGradient = avatarGradients[level % avatarGradients.length];
+
+    const statusLabel =
+      node.verification_status === 'pending_review' ? 'Pending'
+      : node.verification_status === 'not_verified' ? 'Unverified'
+      : node.verification_status === 'verified' ? 'Verified'
+      : node.verification_status === 'blocked' ? 'Blocked'
+      : 'Unverified';
 
     return (
       <div key={`full-${node.id}-${level}`} className="relative">
         {level > 0 && (
-          <span className="pointer-events-none absolute -left-4 top-6 h-px w-4 bg-orange-200" />
+          <span className="pointer-events-none absolute -left-4 top-7 h-px w-4 bg-purple-200" />
         )}
-        <div className={`rounded-2xl border transition-all duration-200 hover:shadow-sm ${level === 0 ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-100 bg-slate-50/60'}`}>
-          <div className="flex items-start gap-3.5 p-4">
+        <div className={`group rounded-2xl border transition-all duration-200 hover:shadow-md ${level === 0 ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-100 bg-slate-50/70'}`}>
+          <div className="flex items-center gap-3 p-3.5">
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm text-white ${level === 0 ? 'bg-gradient-to-br from-orange-400 to-amber-500' : 'bg-gradient-to-br from-slate-300 to-slate-500'}`}>
+              <div className={`h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-sm text-white bg-gradient-to-br ${avatarGradient} shadow-sm`}>
                 {nodeInitials}
               </div>
-              <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${vc.dot}`} />
+              <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${vc.dot}`} />
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-slate-800 truncate">
-                    {node.name || 'Unknown'}
-                    {node.username ? <span className="text-slate-400 font-normal ml-1 text-xs">@{node.username}</span> : null}
-                  </p>
-                  <p className="text-xs text-slate-400 truncate mt-0.5">{node.email || 'No email'}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap leading-tight">
+                    <p className="text-sm font-bold text-slate-800 truncate">{node.name || 'Unknown'}</p>
+                    {node.username && (
+                      <span className="text-[11px] text-slate-400 font-medium shrink-0">@{node.username}</span>
+                    )}
+                    {level > 0 && (
+                      <span className="text-[10px] font-bold text-purple-500 bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded-full shrink-0">L{level + 1}</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{node.email || 'No email'}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${vc.bg} ${vc.text} ${vc.border}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${vc.dot}`} />
-                    {node.verification_status?.replace('_', ' ') ?? 'not verified'}
+                    {statusLabel}
                   </span>
                   {hasChildren && (
                     <button
                       type="button"
                       onClick={() => toggleTreeNode(node.id)}
-                      className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:border-orange-300 hover:bg-orange-50 text-slate-400 hover:text-orange-500 flex items-center justify-center transition-colors"
+                      className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:border-purple-300 hover:bg-purple-50 text-slate-400 hover:text-purple-500 flex items-center justify-center transition-colors"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       <Icon.ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
@@ -473,20 +521,19 @@ const ProfilePage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 mt-2.5 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 border border-orange-100 text-[11px] font-bold text-orange-700">
-                    PV {Number(node.total_earnings ?? 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-[11px] font-semibold text-slate-600">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 border border-amber-100 text-[11px] font-bold text-amber-700">
+                  PV {Number(node.total_earnings ?? 0).toLocaleString()}
+                </span>
+                {(node.children_count ?? children.length) > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-100 text-[11px] font-semibold text-purple-600">
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     {node.children_count ?? children.length} downline
                   </span>
-                </div>
+                )}
                 {node.joined_at && (
                   <span className="text-[11px] text-slate-400">
-                    Joined {new Date(node.joined_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(node.joined_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 )}
               </div>
@@ -495,7 +542,7 @@ const ProfilePage = () => {
         </div>
 
         {hasChildren && isExpanded && (
-          <div className="relative mt-2 ml-6 space-y-2 border-l-2 border-orange-100 pl-4">
+          <div className="relative mt-1.5 ml-6 space-y-1.5 border-l-2 border-purple-100 pl-4 pt-1">
             {children.map((child) => renderReferralNodeFull(child, level + 1))}
           </div>
         )}
@@ -596,21 +643,45 @@ const ProfilePage = () => {
     }
   };
 
-  const handleChangePassword = (e: FormEvent) => {
+  const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
     setPwError(null);
     setPwSuccess(false);
     if (!security.currentPassword) return setPwError('Please enter your current password.');
     if (security.newPassword.length < 8) return setPwError('New password must be at least 8 characters.');
+    if (!/[A-Z]/.test(security.newPassword) || !/[a-z]/.test(security.newPassword) || !/[0-9]/.test(security.newPassword) || !/[^A-Za-z0-9]/.test(security.newPassword)) {
+      return setPwError('New password must include uppercase, lowercase, number, and special character.');
+    }
     if (security.newPassword !== security.confirmPassword) return setPwError('Passwords do not match.');
-    // TODO: wire to real mutation when available
-    setPwSuccess(true);
-    setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setTimeout(() => setPwSuccess(false), 5000);
+
+    try {
+      await changePassword({
+        current_password: security.currentPassword,
+        new_password: security.newPassword,
+        new_password_confirmation: security.confirmPassword,
+      }).unwrap();
+
+      await updateSession?.({ passwordChangeRequired: false });
+      setPwSuccess(true);
+      setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+      if (passwordChangeRequired || passwordChangeRequiredFromQuery) {
+        setTimeout(() => {
+          setPwSuccess(false);
+          router.replace('/shop');
+        }, 1200);
+        return;
+      }
+
+      setTimeout(() => setPwSuccess(false), 5000);
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string; errors?: Record<string, string[]> } };
+      const firstFieldError = Object.values(apiError?.data?.errors ?? {})[0]?.[0];
+      setPwError(firstFieldError || apiError?.data?.message || 'Failed to update password.');
+    }
   };
 
-  // Static data (connect to real API as pages are built)
-  const loyaltyTier: MemberTier = 'Home Builder';
+  const loyaltyTier: MemberTier = rankToTier(data?.rank ?? 0);
 
   const accountStats = [
     { label: 'Orders', value: '14', Icon: Icon.Package, onClick: () => router.push('/orders') },
@@ -753,20 +824,24 @@ const ProfilePage = () => {
               custom={0}
               className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
             >
-              {/* Cover banner */}
-              <div className="h-24 bg-gradient-to-br from-orange-400 to-amber-500 relative overflow-hidden">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage:
-                      'radial-gradient(circle at 20% 60%, rgba(255,255,255,0.18) 0%, transparent 45%), radial-gradient(circle at 80% 25%, rgba(255,255,255,0.12) 0%, transparent 45%)',
-                  }}
-                />
+              {/* Cover banner — tier-specific gradient */}
+              <div className={`h-28 bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} relative overflow-hidden`}>
+                {/* Soft radial light overlay */}
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 20% 60%, rgba(255,255,255,0.2) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 45%)' }} />
+                {/* Badge — top right of cover */}
+                <div className="absolute top-3 right-3 flex flex-col items-center gap-1">
+                  <img
+                    src={TIER_BADGE_IMAGE[loyaltyTier]}
+                    alt={loyaltyTier}
+                    className="h-14 w-14 drop-shadow-lg"
+                  />
+                </div>
               </div>
 
               <div className="px-5 pb-5">
-                {/* Avatar + tier row */}
-                <div className="flex items-start justify-between -mt-8 mb-3">
+                {/* Avatar row */}
+                <div className="flex items-end justify-between -mt-8 mb-4">
+                  {/* Avatar */}
                   <div className="relative group">
                     {isUploadingAvatar && (
                       <span className="pointer-events-none absolute -inset-1 rounded-full border-2 border-transparent border-t-orange-500 border-r-orange-400 animate-spin z-10" />
@@ -795,7 +870,11 @@ const ProfilePage = () => {
                       <Icon.Camera className="h-4 w-4 text-white" />
                     </label>
                   </div>
-                  <TierBadge tier={loyaltyTier} className="px-2.5 py-1 mt-10" />
+
+                  {/* Tier label */}
+                  <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${TIER_COVER[loyaltyTier].pill} mt-10`}>
+                    {loyaltyTier}
+                  </span>
                 </div>
 
                 {/* User info */}
@@ -803,7 +882,7 @@ const ProfilePage = () => {
                   <h2 className="text-base font-bold text-slate-900">
                     {form.name || 'AF Home User'}
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
                     {form.email}
                     {data?.email_verified
                       ? <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-1.5 py-0.5 leading-none">&#10003; Verified</span>
@@ -849,7 +928,7 @@ const ProfilePage = () => {
                       ? 'Fully verified account.'
                       : completion < 60
                       ? 'Fill in your details to unlock all features.'
-                      : 'Almost there - just a few fields left.'}
+                      : 'Almost there — just a few fields left.'}
                   </p>
                 </div>
               </div>
@@ -1161,12 +1240,12 @@ const ProfilePage = () => {
                     <div className="flex items-center justify-between mb-5">
                       <div>
                         <h3 className="text-base font-bold text-slate-900">Saved Addresses</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Your shipping and billing locations.</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Your shipping and billing locations.</p>
                       </div>
                       <button
                         type="button"
                         onClick={handleOpenAddressModal}
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:text-orange-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-orange-50"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-400 hover:text-orange-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-orange-500/10"
                       >
                         {addresses.length ? '+ Edit Address' : '+ Add Address'}
                       </button>
@@ -1213,6 +1292,11 @@ const ProfilePage = () => {
                     <div className="mb-5">
                       <h3 className="text-base font-bold text-slate-900">Change Password</h3>
                       <p className="text-xs text-slate-500 mt-0.5">Use a strong, unique password for your account.</p>
+                      {(passwordChangeRequired || passwordChangeRequiredFromQuery) && (
+                        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                          Your account was signed in using a legacy password. Change it now to continue to the shop page.
+                        </div>
+                      )}
                     </div>
 
                     <AnimatePresence>
@@ -1235,7 +1319,7 @@ const ProfilePage = () => {
                           className="mb-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm bg-emerald-50 text-emerald-700 border border-emerald-100"
                         >
                           <Icon.Check className="h-4 w-4 shrink-0" />
-                          Password changed successfully.
+                          Password changed successfully.{passwordChangeRequired || passwordChangeRequiredFromQuery ? ' Redirecting you to the shop...' : ''}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -1288,10 +1372,10 @@ const ProfilePage = () => {
                     <div className="mt-5 flex justify-end">
                       <button
                         type="submit"
-                        disabled={!security.currentPassword || !security.newPassword || !security.confirmPassword}
+                        disabled={!security.currentPassword || !security.newPassword || !security.confirmPassword || isChangingPassword}
                         className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-orange-200"
                       >
-                        Update Password
+                        {isChangingPassword ? 'Updating Password...' : 'Update Password'}
                       </button>
                     </div>
                   </form>
@@ -1575,15 +1659,15 @@ const ProfilePage = () => {
                             <input
                               type="text"
                               value={treeSearchQuery}
-                              onChange={(e) => setTreeSearchQuery(e.target.value)}
+                              onChange={(e) => { setTreeSearchQuery(e.target.value); setReferralPage(1); }}
                               placeholder="Search name, username, email..."
-                              className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 bg-slate-50 text-slate-700 placeholder-slate-400"
+                              className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-300 bg-slate-50 text-slate-700 placeholder-slate-400"
                             />
                           </div>
                           <select
                             value={treeStatusFilter}
-                            onChange={(e) => setTreeStatusFilter(e.target.value as TreeStatusFilter)}
-                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
+                            onChange={(e) => { setTreeStatusFilter(e.target.value as TreeStatusFilter); setReferralPage(1); }}
+                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-300"
                           >
                             <option value="all">All Status</option>
                             <option value="verified">Verified</option>
@@ -1609,34 +1693,75 @@ const ProfilePage = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between mb-4">
-                          <p className="text-xs text-slate-500">
-                            Showing <span className="font-semibold text-slate-700">{filteredReferralChildren.length}</span> direct referral{filteredReferralChildren.length !== 1 ? 's' : ''}
-                          </p>
-                          {treeSearchQuery && (
-                            <button type="button" onClick={() => setTreeSearchQuery('')} className="text-xs text-orange-500 hover:text-orange-600 font-medium">
-                              Clear search
-                            </button>
-                          )}
-                        </div>
+                        {(() => {
+                          const totalPages = Math.ceil(filteredReferralChildren.length / REFERRAL_PAGE_SIZE);
+                          const pageStart = (referralPage - 1) * REFERRAL_PAGE_SIZE;
+                          const pageEnd = pageStart + REFERRAL_PAGE_SIZE;
+                          const pageItems = filteredReferralChildren.slice(pageStart, pageEnd);
+                          return (
+                            <>
+                              <div className="flex items-center justify-between mb-4">
+                                <p className="text-xs text-slate-500">
+                                  {filteredReferralChildren.length > 0
+                                    ? <>Showing <span className="font-semibold text-slate-700">{pageStart + 1}–{Math.min(pageEnd, filteredReferralChildren.length)}</span> of <span className="font-semibold text-slate-700">{filteredReferralChildren.length}</span> referral{filteredReferralChildren.length !== 1 ? 's' : ''}</>
+                                    : 'No referrals found'
+                                  }
+                                </p>
+                                {(treeSearchQuery || treeStatusFilter !== 'all') && (
+                                  <button type="button" onClick={() => { setTreeSearchQuery(''); setTreeStatusFilter('all'); setReferralPage(1); }} className="text-xs text-purple-500 hover:text-purple-600 font-medium">
+                                    Clear filters
+                                  </button>
+                                )}
+                              </div>
 
-                        {filteredReferralChildren.length > 0 ? (
-                          <div className="space-y-3">
-                            {filteredReferralChildren.map((node) => renderReferralNodeFull(node))}
-                          </div>
-                        ) : (
-                          <div className="py-12 text-center">
-                            <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                              <Icon.Network className="h-6 w-6 text-slate-400" />
-                            </div>
-                            <p className="text-sm font-semibold text-slate-700">
-                              {(referralTree?.children?.length ?? 0) > 0 ? 'No matches found' : 'No referrals yet'}
-                            </p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {(referralTree?.children?.length ?? 0) > 0 ? 'Try a different search or filter' : 'Share your referral link to start building your network'}
-                            </p>
-                          </div>
-                        )}
+                              {pageItems.length > 0 ? (
+                                <>
+                                  <div className="space-y-2">
+                                    {pageItems.map((node) => renderReferralNodeFull(node))}
+                                  </div>
+
+                                  {totalPages > 1 && (
+                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                                      <button
+                                        type="button"
+                                        disabled={referralPage <= 1}
+                                        onClick={() => setReferralPage((p) => Math.max(1, p - 1))}
+                                        className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                      >
+                                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+                                        Prev
+                                      </button>
+                                      <p className="text-xs text-slate-500 font-medium">
+                                        Page <span className="text-slate-800 font-bold">{referralPage}</span> / {totalPages}
+                                      </p>
+                                      <button
+                                        type="button"
+                                        disabled={referralPage >= totalPages}
+                                        onClick={() => setReferralPage((p) => Math.min(totalPages, p + 1))}
+                                        className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 hover:border-purple-300 hover:text-purple-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                      >
+                                        Next
+                                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="py-12 text-center">
+                                  <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                    <Icon.Network className="h-6 w-6 text-slate-400" />
+                                  </div>
+                                  <p className="text-sm font-semibold text-slate-700">
+                                    {(referralTree?.children?.length ?? 0) > 0 ? 'No matches found' : 'No referrals yet'}
+                                  </p>
+                                  <p className="text-xs text-slate-400 mt-1">
+                                    {(referralTree?.children?.length ?? 0) > 0 ? 'Try a different search or filter' : 'Share your referral link to start building your network'}
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </>
                     )}
                   </div>
