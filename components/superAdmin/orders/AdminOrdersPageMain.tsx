@@ -93,6 +93,14 @@ const getInitials = (name?: string | null) => {
   return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
 }
 
+const copyText = async (value: string) => {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    throw new Error('Clipboard is not available in this browser.')
+  }
+
+  await navigator.clipboard.writeText(value)
+}
+
 /* ─── stat card ────────────────────────────────────────────── */
 
 function StatCard({ label, value, bg, text, border, icon }: {
@@ -125,6 +133,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
   const [overdueFirst, setOverdueFirst] = useState(true)
   const [sortBy,      setSortBy]      = useState<'default' | 'customer_az' | 'amount_low_high'>('default')
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null)
+  const [payloadPreview, setPayloadPreview] = useState<{ checkoutId: string; payload: Record<string, unknown> | null } | null>(null)
 
   const role       = (session?.user?.role ?? '').toLowerCase()
   const canApprove = role === 'super_admin' || role === 'admin' || role === 'merchant_admin'
@@ -247,7 +256,17 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
     try {
       const courier = courierByOrder[id] ?? 'jnt'
       const result = await bookCourier({ id, courier }).unwrap()
-      showSuccessToast(result.message || `${courier.toUpperCase()} shipment booked.`)
+      if (result.payload && !result.tracking_no) {
+        setPayloadPreview({
+          checkoutId: visibleOrders.find((order) => order.id === id)?.checkout_id ?? `Order #${id}`,
+          payload: result.payload,
+        })
+      }
+      showSuccessToast(
+        result.tracking_no
+          ? (result.message || `${courier.toUpperCase()} shipment booked.`)
+          : `${courier.toUpperCase()} booking returned no tracking number yet.`,
+      )
     } catch (err: unknown) {
       showErrorToast((err as { data?: { message?: string } })?.data?.message || 'Failed to book courier shipment.')
     } finally { setBusyId(null) }
@@ -557,10 +576,39 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                                 </button>
                               </div>
                               {order.courier || order.tracking_no || order.shipment_status ? (
-                                <div className="text-[11px] text-slate-500 leading-relaxed">
+                                <div className="space-y-2 text-[11px] text-slate-500 leading-relaxed">
                                   {order.courier ? <p className="uppercase">Courier: {order.courier}</p> : null}
-                                  {order.tracking_no ? <p className="font-semibold text-slate-700">Tracking: {order.tracking_no}</p> : null}
+                                  {order.tracking_no ? (
+                                    <div className="rounded-xl border border-teal-200 bg-teal-50 p-2">
+                                      <p className="text-[10px] font-bold uppercase tracking-wide text-teal-700">Tracking Number</p>
+                                      <div className="mt-1 flex items-center gap-2">
+                                        <p className="min-w-0 flex-1 break-all text-sm font-bold text-slate-900">{order.tracking_no}</p>
+                                        <button
+                                          type="button"
+                                          onClick={async () => {
+                                            try {
+                                              await copyText(order.tracking_no as string)
+                                              showSuccessToast('Tracking number copied.')
+                                            } catch (error) {
+                                              const message = error instanceof Error ? error.message : 'Failed to copy tracking number.'
+                                              showErrorToast(message)
+                                            }
+                                          }}
+                                          className="shrink-0 rounded-lg border border-teal-200 bg-white px-2 py-1 text-[10px] font-semibold text-teal-700 transition hover:bg-teal-100"
+                                        >
+                                          Copy
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : null}
                                   {order.shipment_status ? <p className="capitalize">Shipment: {order.shipment_status.replace(/_/g, ' ')}</p> : null}
+                                  <button
+                                    type="button"
+                                    onClick={() => setPayloadPreview({ checkoutId: order.checkout_id, payload: order.shipment_payload ?? null })}
+                                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                                  >
+                                    {order.shipment_payload ? 'View Payload' : 'No Payload Yet'}
+                                  </button>
                                 </div>
                               ) : (
                                 <p className="text-[11px] text-slate-300">
@@ -626,6 +674,37 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
           </div>
         </motion.div>
       )}
+
+      {payloadPreview ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shipment Payload</p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900">{payloadPreview.checkoutId}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPayloadPreview(null)}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-5">
+              {payloadPreview.payload ? (
+                <pre className="max-h-[70vh] overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
+                  {JSON.stringify(payloadPreview.payload, null, 2)}
+                </pre>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  No shipment payload has been saved for this order yet. That usually means the courier booking returned no stored payload, or the row has not been refreshed with one yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

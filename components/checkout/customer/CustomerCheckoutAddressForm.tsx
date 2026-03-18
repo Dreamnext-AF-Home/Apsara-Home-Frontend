@@ -133,7 +133,7 @@ export default function CustomerCheckoutAddressForm({
     setField,
     isLoggedIn = false,
 }: CustomerCheckoutAddressFormProps) {
-    const ph = usePhAddress();
+    const ph = usePhAddress({ source: 'psgc' });
     const { data, isLoading } = useCustomerAddressesQuery(undefined, { skip: !isLoggedIn });
     const [setDefaultAddress, { isLoading: settingDefault }] = useSetDefaultCustomerAddressMutation();
     const [createAddress, { isLoading: creatingAddress }] = useCreateCustomerAddressMutation();
@@ -371,7 +371,7 @@ export default function CustomerCheckoutAddressForm({
                                 Barangay<span className="text-red-500 ml-0.5">*</span>
                             </label>
                             <select
-                                value={form.barangay}
+                                value={ph.address.barangay}
                                 disabled={!ph.cityCode || ph.loadingBarangays}
                                 onChange={(e) => ph.setBarangay(e.target.value)}
                                 className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 transition-all ${errors.barangay ? 'border-red-300 focus:ring-red-200 focus:border-red-400'

@@ -131,7 +131,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     const [pendingEmail, setPendingEmail] = useState('')
     const errorRef = useRef<HTMLDivElement | null>(null)
 
-    const ph = usePhAddress()
+    const ph = usePhAddress({ legacyNoProvinceRegions: true, source: 'psgc' })
 
     const [form, setForm] = useState({
         firstName: '',

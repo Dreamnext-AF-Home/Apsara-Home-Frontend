@@ -35,6 +35,7 @@ export interface AdminOrder {
   courier?: string | null
   tracking_no?: string | null
   shipment_status?: string | null
+  shipment_payload?: Record<string, unknown> | null
   shipped_at?: string | null
   product_name: string
   product_image?: string | null
@@ -135,7 +136,7 @@ export const adminOrdersApi = baseApi.injectEndpoints({
       invalidatesTags: ['Orders', 'AdminNotifications'],
     }),
     bookAdminOrderCourier: builder.mutation<
-      { message: string; tracking_no?: string | null; shipment_status?: string | null },
+      { message: string; tracking_no?: string | null; shipment_status?: string | null; payload?: Record<string, unknown> | null },
       { id: number; courier: AdminCourier; payload?: Record<string, unknown> }
     >({
       query: ({ id, courier, payload }) => ({

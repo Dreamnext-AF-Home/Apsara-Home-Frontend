@@ -177,8 +177,8 @@ function CampaignBannersSection({ section }: { section: WebPageItem }) {
     <section className="container mx-auto px-4 py-6">
       <div className="grid gap-3 md:grid-cols-2">
         {banners.map((banner) => (
-          <Link key={banner.title} href={banner.link} className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 p-5">
-            <Image src={banner.image} alt={banner.title} fill className="object-cover transition-transform duration-700 hover:scale-105" unoptimized />
+          <Link key={banner.title} href={banner.link} className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 p-5">
+            <Image src={banner.image} alt={banner.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 to-slate-900/20" />
             <div className="relative flex min-h-[170px] flex-col justify-end text-white">
               <p className="text-xl font-bold">{banner.title}</p>
