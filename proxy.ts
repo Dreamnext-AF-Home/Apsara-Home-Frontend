@@ -37,7 +37,7 @@ const ADMIN_SUPPLIER_ALLOWED_PREFIXES = [
   "/admin/suppliers",
 ];
 
-const AUTH_REQUIRED_PREFIXES = ["/profile", "/orders", "/shop"]
+const AUTH_REQUIRED_PREFIXES = ["/profile", "/orders"]
 const SUPPLIER_ALLOWED_PREFIXES = [
   "/supplier/dashboard",
   "/supplier/products",
