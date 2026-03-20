@@ -7,6 +7,7 @@ import Navbar from "@/components/layout/Navbar"
 import TopBar from "@/components/layout/TopBar"
 import TrustBar from "@/components/layout/TrustBar"
 import ShopBuilderSections, { type ShopBuilderApiResponse } from "@/components/sections/ShopBuilderSections"
+import { getNavbarCategories } from '@/libs/serverStorefront'
 
 type ApiCategoriesResponse = {
   categories?: ShopBuilderApiResponse['categories']
@@ -61,11 +62,12 @@ async function getShopBuilderData(): Promise<ShopBuilderApiResponse | null> {
 
 const ShopPage = async () => {
   const shopBuilderData = await getShopBuilderData()
+  const navbarCategories = await getNavbarCategories()
 
   return (
     <div>
       <TopBar />
-      <Navbar />
+      <Navbar initialCategories={navbarCategories} />
       <TrustBar />
       <ShopBuilderSections data={shopBuilderData} />
       <Footer />

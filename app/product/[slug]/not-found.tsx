@@ -2,12 +2,14 @@ import Link from 'next/link'
 import TopBar from '@/components/layout/TopBar'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
+import { getNavbarCategories } from '@/libs/serverStorefront'
 
-export default function ProductNotFound() {
+export default async function ProductNotFound() {
+  const navbarCategories = await getNavbarCategories()
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <TopBar />
-      <Navbar />
+      <Navbar initialCategories={navbarCategories} />
       <main className="flex-1">
         <section className="container mx-auto px-4 py-20">
           <div className="max-w-2xl mx-auto text-center rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12">

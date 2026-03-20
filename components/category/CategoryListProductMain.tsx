@@ -8,6 +8,7 @@ import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import ProductCard from '@/components/ui/ProductCard';
 import { CategoryProduct, categoryMeta, categoryProducts, CATEGORY_BRANDS } from '@/libs/CategoryData';
+import type { Category } from '@/store/api/categoriesApi';
 
 const containerVariants = {
     hidden: {},
@@ -91,6 +92,7 @@ interface CategoryListProductMainProps {
     slug: string;
     initialCategoryLabel?: string;
     initialProducts?: CategoryProduct[];
+    initialCategories?: Category[];
 }
 
 const titleFromSlug = (slug: string) =>
@@ -104,6 +106,7 @@ export default function CategoryListProductMain({
     slug,
     initialCategoryLabel,
     initialProducts,
+    initialCategories = [],
 }: CategoryListProductMainProps) {
     const meta = categoryMeta[slug];
     const staticProducts = categoryProducts[slug];
@@ -354,7 +357,7 @@ export default function CategoryListProductMain({
     return (
         <div className="min-h-screen bg-white flex flex-col">
             <TopBar />
-            <Navbar />
+            <Navbar initialCategories={initialCategories} />
 
             <main className="flex-1">
                 {/* Breadcrumb */}

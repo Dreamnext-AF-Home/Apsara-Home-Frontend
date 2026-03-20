@@ -13,6 +13,7 @@ import { TRACK_STEPS } from '@/types/Data';
 import formatDate from '@/helpers/FormatDate';
 import formatPrice from '@/helpers/FormatPrice';
 import { useLazyTrackGuestOrderQuery } from '@/store/api/paymentApi';
+import type { Category } from '@/store/api/categoriesApi';
 
 const STATUS_CONFIG: Record<string, { label: string; badge: string; dot: string; step: number }> = {
   pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-400', step: 1 },
@@ -51,7 +52,7 @@ const getErrorMessage = (error: unknown) => {
   return 'We could not find a matching order. Double-check your order number and email or mobile number.';
 };
 
-export default function GuestTrackOrderPage() {
+export default function GuestTrackOrderPage({ initialCategories = [] }: { initialCategories?: Category[] }) {
   const searchParams = useSearchParams();
   const [lookupOrder, { data, isFetching }] = useLazyTrackGuestOrderQuery();
   const initialOrderNumber = searchParams.get('order') || (typeof window !== 'undefined' ? window.localStorage.getItem('last_checkout_id') || '' : '');
@@ -95,7 +96,7 @@ export default function GuestTrackOrderPage() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff4ea_0%,#fffaf5_35%,#ffffff_72%)] text-slate-900">
       <TopBar />
-      <Navbar />
+      <Navbar initialCategories={initialCategories} />
 
       <main>
         <section className="relative overflow-hidden border-b border-orange-100/70">

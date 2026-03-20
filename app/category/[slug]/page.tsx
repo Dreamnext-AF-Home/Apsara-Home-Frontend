@@ -2,6 +2,7 @@ import CategoryListProductMain from '@/components/category/CategoryListProductMa
 import type { Category } from '@/store/api/categoriesApi';
 import type { Product, ProductsResponse } from '@/store/api/productsApi';
 import { buildPageMetadata } from '@/app/seo';
+import { getNavbarCategories } from '@/libs/serverStorefront';
 
 export const metadata = buildPageMetadata({ title: 'Category Details', description: 'Browse the Category Details page on AF Home.', path: '/category/[slug]' });
 export const dynamic = 'force-dynamic';
@@ -276,12 +277,14 @@ async function getCategoryProducts(slug: string): Promise<{ label?: string; prod
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { label, products } = await getCategoryProducts(slug);
+  const navbarCategories = await getNavbarCategories();
 
   return (
     <CategoryListProductMain
       slug={slug}
       initialCategoryLabel={label}
       initialProducts={products}
+      initialCategories={navbarCategories}
     />
   );
 }

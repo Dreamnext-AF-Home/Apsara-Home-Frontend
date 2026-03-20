@@ -8,7 +8,7 @@ import { useCart } from '@/context/CartContext'
 import { useSession, signOut } from 'next-auth/react'
 import { useLogoutMutation } from '@/store/api/authApi'
 import { baseApi, clearAccessTokenCache } from '@/store/api/baseApi'
-import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
+import type { Category } from '@/store/api/categoriesApi'
 import { useGetPublicProductsQuery } from '@/store/api/productsApi'
 import { useMeQuery } from '@/store/api/userApi'
 import { useGetCustomerNotificationsQuery } from '@/store/api/customerNotificationsApi'
@@ -27,12 +27,7 @@ const navLinks: NavLink[] = [
   {
     label: 'Shop Category',
     href: '/category',
-    dropdown: [
-      'Chairs & Stools',
-      'Dining Table',
-      'Sofas',
-      'TV Rack',
-    ],
+    dropdown: [],
   },
   {
     label: 'Shop By Room',
@@ -128,7 +123,7 @@ const roomIcons: Record<string, React.ReactNode> = {
   ),
 }
 
-export default function Navbar() {
+export default function Navbar({ initialCategories = [] }: { initialCategories?: Category[] }) {
   const router = useRouter()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -146,11 +141,6 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const { data: meData } = useMeQuery(undefined, { skip: status !== 'authenticated' })
   const [logoutApi] = useLogoutMutation();
-  const {
-    data: categoriesData,
-    isLoading: isCategoriesLoading,
-  } = useGetCategoriesQuery({ page: 1, per_page: 100 })
-
   const isLoggedIn = status === 'authenticated'
   const user = session?.user
   const avatarUrl = meData?.avatar_url || user?.image || null
@@ -390,20 +380,11 @@ export default function Navbar() {
 
   const activeLink = navLinks.find((l) => l.label === activeDropdown)
   const shopCategoryItems = useMemo(() => {
-    const fetched = categoriesData?.categories ?? []
-    return fetched.map((category) => {
+    return initialCategories.map((category) => {
       const urlPart = normalizeCategorySlug(category.url, category.name)
       return { label: category.name, href: `/category/${urlPart}` }
     })
-  }, [categoriesData?.categories])
-
-  const shopCategoryFallbackItems = useMemo(() => {
-    const dropdown = navLinks.find((link) => link.label === 'Shop Category')?.dropdown ?? []
-    return dropdown.map((item) => ({
-      label: item,
-      href: `/category/${toSlug(item)}`,
-    }))
-  }, [])
+  }, [initialCategories])
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -1064,9 +1045,7 @@ export default function Navbar() {
                   ? (
                       shopCategoryItems.length > 0
                         ? shopCategoryItems
-                        : (isCategoriesLoading
-                            ? shopCategoryFallbackItems
-                            : [{ label: 'No categories found', href: '#' }])
+                        : [{ label: 'No categories found', href: '#' }]
                     )
                   : activeLink.dropdown.map((item) => ({
                       label: item,
@@ -1250,9 +1229,7 @@ export default function Navbar() {
                       ? (
                           shopCategoryItems.length > 0
                             ? shopCategoryItems
-                            : (isCategoriesLoading
-                                ? shopCategoryFallbackItems
-                                : [{ label: 'No categories found', href: '#' }])
+                            : [{ label: 'No categories found', href: '#' }]
                         )
                       : link.dropdown.map((item) => ({
                           label: item,

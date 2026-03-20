@@ -1,5 +1,8 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
+import { AnimatePresence, motion } from 'framer-motion'
 import HeroSection from './HeroSection'
 import FeaturedSections from './FeaturedSections'
 import PromoBenners from './PromoBenners'
@@ -16,6 +19,11 @@ type ShopSectionPayload = {
 }
 
 const fallbackImage = '/Images/HeroSection/chairs_stools.jpg'
+const fadeUp = {
+  initial: { opacity: 0, y: 28 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, amount: 0.2 },
+}
 
 const getItemByKey = (items: WebPageItem[], key: string) =>
   items.find((item) => String(item.key ?? '').trim() === key)
@@ -141,19 +149,32 @@ function AnnouncementsSection({ section }: { section: WebPageItem }) {
   if (chips.length === 0) return null
 
   return (
-    <section className="bg-white">
+    <motion.section
+      {...fadeUp}
+      transition={{ duration: 0.45 }}
+      className="bg-white"
+    >
       <div className="container mx-auto px-4 py-4">
         <div className="rounded-2xl border border-orange-100 bg-orange-50 px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
-            {chips.map((item) => (
-              <span key={item} className="inline-flex rounded-full border border-orange-100 bg-white px-3 py-1 text-xs font-semibold text-orange-700">
-                {item}
-              </span>
-            ))}
+            <AnimatePresence initial={false}>
+              {chips.map((item, index) => (
+                <motion.span
+                  key={item}
+                  initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                  transition={{ duration: 0.22, delay: index * 0.04 }}
+                  className="inline-flex rounded-full border border-orange-100 bg-white px-3 py-1 text-xs font-semibold text-orange-700"
+                >
+                  {item}
+                </motion.span>
+              ))}
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   )
 }
 
@@ -174,20 +195,34 @@ function CampaignBannersSection({ section }: { section: WebPageItem }) {
   ]
 
   return (
-    <section className="container mx-auto px-4 py-6">
+    <motion.section
+      {...fadeUp}
+      transition={{ duration: 0.5, delay: 0.04 }}
+      className="container mx-auto px-4 py-6"
+    >
       <div className="grid gap-3 md:grid-cols-2">
-        {banners.map((banner) => (
-          <Link key={banner.title} href={banner.link} className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 p-5">
+        <AnimatePresence initial={false}>
+          {banners.map((banner, index) => (
+            <motion.div
+              key={`${banner.title}-${banner.image}`}
+              initial={{ opacity: 0, y: 26, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -18, scale: 0.98 }}
+              transition={{ duration: 0.42, delay: index * 0.08 }}
+            >
+              <Link href={banner.link} className="group relative block overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 p-5">
             <Image src={banner.image} alt={banner.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 to-slate-900/20" />
             <div className="relative flex min-h-[170px] flex-col justify-end text-white">
               <p className="text-xl font-bold">{banner.title}</p>
               <p className="mt-1 max-w-[240px] text-sm text-white/80">{banner.subtitle}</p>
             </div>
-          </Link>
-        ))}
+              </Link>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
-    </section>
+    </motion.section>
   )
 }
 
@@ -208,18 +243,40 @@ function CategoryGridSection({
   const cards = categoryCards.length > 0 ? categoryCards : fallbackCards
 
   return (
-    <section className="container mx-auto px-4 py-10">
-      <div className="mb-8 text-center">
-        <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-orange-500">
+    <motion.section
+      {...fadeUp}
+      transition={{ duration: 0.5, delay: 0.08 }}
+      className="container mx-auto px-4 py-10"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.35 }}
+        transition={{ duration: 0.45 }}
+        className="mb-8 text-center"
+      >
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.35 }}
+          className="mb-2 text-sm font-semibold uppercase tracking-widest text-orange-500"
+        >
           {getField(section, 'eyebrow') || 'Shop by Category'}
-        </p>
-        <h2 className="text-3xl font-bold text-slate-900 md:text-4xl">
+        </motion.p>
+        <motion.h2
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.45, delay: 0.05 }}
+          className="text-3xl font-bold text-slate-900 md:text-4xl"
+        >
           {getField(section, 'heading') || 'Find Your Perfect Furniture'}
-        </h2>
-      </div>
+        </motion.h2>
+      </motion.div>
 
       <ShopCategoryCarousel cards={cards} />
-    </section>
+    </motion.section>
   )
 }
 
@@ -234,10 +291,20 @@ function FeaturedCollectionSection({
   const buttonText = section.button_text || 'Shop Collection'
 
   return (
-    <section className="bg-gray-50 py-16">
+    <motion.section
+      {...fadeUp}
+      transition={{ duration: 0.55, delay: 0.1 }}
+      className="bg-gray-50 py-16"
+    >
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-          <Link href={buttonLink} className="group relative aspect-[4/5] overflow-hidden rounded-3xl">
+          <motion.div
+            initial={{ opacity: 0, x: -34 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.55 }}
+          >
+            <Link href={buttonLink} className="group relative block aspect-[4/5] overflow-hidden rounded-3xl">
             <Image
               src={getField(section, 'lead_image') || '/Images/FeaturedSection/home_living.jpg'}
               alt={getField(section, 'left_heading') || 'Featured collection'}
@@ -260,9 +327,15 @@ function FeaturedCollectionSection({
                 {buttonText}
               </span>
             </div>
-          </Link>
+            </Link>
+          </motion.div>
 
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: 34 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.55, delay: 0.06 }}
+          >
             <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-orange-500">
               {getField(section, 'right_eyebrow') || 'Sale Items'}
             </p>
@@ -271,32 +344,48 @@ function FeaturedCollectionSection({
             </h2>
             <div className="grid grid-cols-2 gap-4">
               {featuredProducts.length > 0 ? (
-                featuredProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.priceSrp}
-                    priceMember={product.priceMember}
-                    prodpv={product.prodpv}
-                    image={product.image || fallbackImage}
-                    stock={product.qty}
-                  />
-                ))
+                <AnimatePresence initial={false}>
+                  {featuredProducts.map((product, index) => (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -12 }}
+                      transition={{ duration: 0.35, delay: index * 0.05 }}
+                    >
+                      <ProductCard
+                        id={product.id}
+                        name={product.name}
+                        price={product.priceSrp}
+                        priceMember={product.priceMember}
+                        prodpv={product.prodpv}
+                        image={product.image || fallbackImage}
+                        stock={product.qty}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               ) : (
                 [1, 2, 3, 4].map((index) => (
-                  <div key={index} className="rounded-2xl bg-white p-3 shadow-sm">
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 18 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.3 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="rounded-2xl bg-white p-3 shadow-sm"
+                  >
                     <div className="aspect-square rounded-2xl bg-gradient-to-br from-slate-100 to-white" />
                     <p className="mt-3 text-sm font-medium text-gray-800">Select product IDs in Shop Builder</p>
                     <p className="mt-1 text-base font-bold text-orange-500">PHP 0</p>
-                  </div>
+                  </motion.div>
                 ))
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
-    </section>
+    </motion.section>
   )
 }
 
@@ -323,10 +412,22 @@ function PromoPairSection({ section }: { section: WebPageItem }) {
   ]
 
   return (
-    <section className="container mx-auto px-4 py-12">
+    <motion.section
+      {...fadeUp}
+      transition={{ duration: 0.5, delay: 0.14 }}
+      className="container mx-auto px-4 py-12"
+    >
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {promos.map((promo) => (
-          <Link key={promo.heading} href={promo.link} className="group relative h-96 overflow-hidden rounded-3xl">
+        <AnimatePresence initial={false}>
+          {promos.map((promo, index) => (
+            <motion.div
+              key={`${promo.heading}-${promo.image}`}
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -18 }}
+              transition={{ duration: 0.42, delay: index * 0.08 }}
+            >
+              <Link href={promo.link} className="group relative block h-96 overflow-hidden rounded-3xl">
             <Image src={promo.image} alt={promo.heading} fill className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
             <div className={`absolute inset-0 bg-gradient-to-t ${promo.tone}`} />
             <div className="absolute inset-0 p-8">
@@ -338,10 +439,12 @@ function PromoPairSection({ section }: { section: WebPageItem }) {
                 </span>
               </div>
             </div>
-          </Link>
-        ))}
+              </Link>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
-    </section>
+    </motion.section>
   )
 }
 

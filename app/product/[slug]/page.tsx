@@ -15,6 +15,7 @@ import CompleteTheLook from '@/components/product/CompleteTheLook';
 import type { Category } from '@/store/api/categoriesApi';
 import type { Product } from '@/store/api/productsApi';
 import { buildPageMetadata } from '@/app/seo';
+import { getNavbarCategories } from '@/libs/serverStorefront';
 export const dynamic = 'force-dynamic';
 
 type LooseRecord = Record<string, unknown>;
@@ -349,6 +350,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const dynamicData = await getProductPageData(slug);
   if (!dynamicData) return notFound();
+  const navbarCategories = await getNavbarCategories();
 
   const canonicalSlug = buildCanonicalProductSlug(dynamicData.product.name, dynamicData.product.id);
   if (slug !== canonicalSlug) {
@@ -359,7 +361,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <div className="min-h-screen bg-white flex flex-col">
       <StickyAddToCart product={dynamicData.product} />
       <TopBar />
-      <Navbar />
+      <Navbar initialCategories={navbarCategories} />
       <main className="flex-1">
         <div className="bg-gray-50 border-b border-gray-100">
           <div className="container mx-auto px-4 py-3">

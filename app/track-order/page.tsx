@@ -1,5 +1,6 @@
 import { buildPageMetadata } from '@/app/seo';
 import GuestTrackOrderPage from '@/components/orders/GuestTrackOrderPage';
+import { getNavbarCategories } from '@/libs/serverStorefront';
 
 export const metadata = buildPageMetadata({
   title: 'Track Order',
@@ -7,6 +8,7 @@ export const metadata = buildPageMetadata({
   path: '/track-order',
 });
 
-export default function TrackOrderPage() {
-  return <GuestTrackOrderPage />;
+export default async function TrackOrderPage() {
+  const navbarCategories = await getNavbarCategories();
+  return <GuestTrackOrderPage initialCategories={navbarCategories} />;
 }

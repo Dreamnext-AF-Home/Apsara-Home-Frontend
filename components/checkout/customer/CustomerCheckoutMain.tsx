@@ -16,6 +16,7 @@ import CustomerCheckoutOrderSummary from "./CustomerCheckoutOrderSummary";
 import { useCreateCheckoutSessionMutation } from "@/store/api/paymentApi";
 import { getStoredReferralCode } from "@/libs/referral";
 import { useMeQuery } from "@/store/api/userApi";
+import type { Category } from '@/store/api/categoriesApi';
 
 const defaultForm: GuestForm = {
     name: '',
@@ -59,7 +60,7 @@ function readStoredReferral(): string {
     return getStoredReferralCode() || '';
 }
 
-const CustomerCheckoutMain = () => {
+const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: Category[] }) => {
     const router = useRouter();
     const { status } = useSession();
     const isLoggedIn = status === 'authenticated';
@@ -223,7 +224,7 @@ const CustomerCheckoutMain = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <TopBar />
-            <Navbar />
+            <Navbar initialCategories={initialCategories} />
             <main className="flex-1">
                 <div className="bg-linear-to-r from-orange-500 to-orange-600 shadow-sm">
                     <div className="container mx-auto px-4 py-4 flex items-center justify-between">
