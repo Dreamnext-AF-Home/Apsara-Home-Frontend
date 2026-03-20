@@ -122,8 +122,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [isReferralQrLoaded, setIsReferralQrLoaded] = useState(false);
-  const [isReferralPanelQrLoaded, setIsReferralPanelQrLoaded] = useState(false);
+  const [referralQrStatus, setReferralQrStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [addressForm, setAddressForm] = useState<AddressFormState>({ address: '', zipCode: '' });
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const referralMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -252,6 +251,12 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const referralLink = referralCode
     ? `${siteOrigin}/ref/${encodeURIComponent(referralCode)}`
     : '';
+  const referralQrUrl = useMemo(
+    () => (referralLink
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(referralLink)}`
+      : ''),
+    [referralLink],
+  );
   const verificationBadgeClass = (status?: string) => {
     if (status === 'verified') return 'bg-emerald-100 text-emerald-700';
     if (status === 'pending_review') return 'bg-amber-100 text-amber-700';
@@ -294,9 +299,41 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   }, [profileData?.avatar_url, form.name, form.phone, isPendingVerification, isVerified]);
 
   useEffect(() => {
-    setIsReferralQrLoaded(false);
-    setIsReferralPanelQrLoaded(false);
-  }, [referralLink]);
+    if (!referralQrUrl) {
+      setReferralQrStatus('idle');
+      return;
+    }
+
+    let isCancelled = false;
+    setReferralQrStatus('loading');
+
+    const preloadImage = new window.Image();
+    preloadImage.decoding = 'async';
+    preloadImage.src = referralQrUrl;
+
+    if (preloadImage.complete) {
+      setReferralQrStatus('ready');
+      return;
+    }
+
+    preloadImage.onload = () => {
+      if (!isCancelled) {
+        setReferralQrStatus('ready');
+      }
+    };
+
+    preloadImage.onerror = () => {
+      if (!isCancelled) {
+        setReferralQrStatus('error');
+      }
+    };
+
+    return () => {
+      isCancelled = true;
+      preloadImage.onload = null;
+      preloadImage.onerror = null;
+    };
+  }, [referralQrUrl]);
 
   const onChange = (field: keyof ProfileFormState) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -984,16 +1021,27 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                         {/* QR Code */}
                         <div className="my-3 flex justify-center">
                           <div className="relative h-36 w-36">
-                            {!isReferralQrLoaded && <QrSkeleton sizeClass="h-36 w-36 p-2" />}
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(referralLink)}`}
-                              alt="Referral QR code"
-                              loading="eager"
-                              onLoad={() => setIsReferralQrLoaded(true)}
-                              className={`h-36 w-36 rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition-opacity duration-300 ${
-                                isReferralQrLoaded ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            />
+                            {referralQrStatus !== 'ready' && <QrSkeleton sizeClass="h-36 w-36 p-2" />}
+                            {referralQrStatus === 'error' ? (
+                              <div className="flex h-36 w-36 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 p-3 text-center shadow-sm">
+                                <p className="text-[11px] font-medium leading-snug text-amber-700">
+                                  QR is still loading.
+                                  <br />
+                                  Try refreshing this tab.
+                                </p>
+                              </div>
+                            ) : (
+                              <img
+                                src={referralQrUrl}
+                                alt="Referral QR code"
+                                loading="eager"
+                                fetchPriority="high"
+                                decoding="async"
+                                className={`h-36 w-36 rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition-opacity duration-300 ${
+                                  referralQrStatus === 'ready' ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                            )}
                           </div>
                         </div>
 
@@ -1654,16 +1702,23 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                       <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-xl bg-orange-50/60 border border-orange-100 mb-5">
                         <div className="shrink-0">
                           <div className="relative h-24 w-24">
-                            {!isReferralPanelQrLoaded && <QrSkeleton sizeClass="h-24 w-24 p-1.5 shadow-sm" />}
-                            <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(referralLink)}`}
-                              alt="Referral QR"
-                              loading="eager"
-                              onLoad={() => setIsReferralPanelQrLoaded(true)}
-                              className={`h-24 w-24 rounded-xl border border-orange-200 bg-white p-1.5 shadow-sm transition-opacity duration-300 ${
-                                isReferralPanelQrLoaded ? 'opacity-100' : 'opacity-0'
-                              }`}
-                            />
+                            {referralQrStatus !== 'ready' && <QrSkeleton sizeClass="h-24 w-24 p-1.5 shadow-sm" />}
+                            {referralQrStatus === 'error' ? (
+                              <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 p-2 text-center shadow-sm">
+                                <p className="text-[9px] font-medium leading-tight text-amber-700">QR unavailable</p>
+                              </div>
+                            ) : (
+                              <img
+                                src={referralQrUrl}
+                                alt="Referral QR"
+                                loading="eager"
+                                fetchPriority="high"
+                                decoding="async"
+                                className={`h-24 w-24 rounded-xl border border-orange-200 bg-white p-1.5 shadow-sm transition-opacity duration-300 ${
+                                  referralQrStatus === 'ready' ? 'opacity-100' : 'opacity-0'
+                                }`}
+                              />
+                            )}
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
