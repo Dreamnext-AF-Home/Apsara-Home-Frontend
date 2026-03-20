@@ -847,16 +847,24 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
               className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
             >
               {/* Cover banner — tier-specific gradient */}
-              <div className={`h-28 bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} relative overflow-hidden`}>
-                {/* Soft radial light overlay */}
-                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 20% 60%, rgba(255,255,255,0.2) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 45%)' }} />
-                {/* Badge — top right of cover */}
-                <div className="absolute top-3 right-3 flex flex-col items-center gap-1">
-                  <img
-                    src={TIER_BADGE_IMAGE[loyaltyTier]}
-                    alt={loyaltyTier}
-                    className="h-14 w-14 drop-shadow-lg"
-                  />
+              <div className={`h-36 bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} relative overflow-hidden`}>
+                {/* Shine overlays */}
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 18% 65%, rgba(255,255,255,0.28) 0%, transparent 55%), radial-gradient(circle at 82% 18%, rgba(255,255,255,0.18) 0%, transparent 50%)' }} />
+                {/* Decorative blur circles */}
+                <div className="absolute -bottom-10 -left-10 h-36 w-36 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+                <div className="absolute -top-6 left-1/3 h-24 w-24 rounded-full bg-white/8 blur-xl pointer-events-none" />
+                {/* Badge — top right with glass frame */}
+                <div className="absolute top-3 right-3 flex flex-col items-center gap-1.5">
+                  <div className="rounded-2xl bg-white/25 backdrop-blur-md p-1.5 border border-white/40 shadow-xl">
+                    <img
+                      src={TIER_BADGE_IMAGE[loyaltyTier]}
+                      alt={loyaltyTier}
+                      className="h-16 w-16 object-contain drop-shadow-lg"
+                    />
+                  </div>
+                  <span className="text-[9px] font-bold text-white tracking-widest uppercase bg-black/25 backdrop-blur-sm rounded-full px-2.5 py-0.5 border border-white/20">
+                    {loyaltyTier.split(' ')[0]}
+                  </span>
                 </div>
               </div>
 
@@ -894,9 +902,10 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                   </div>
 
                   {/* Tier label */}
-                  <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${TIER_COVER[loyaltyTier].pill} mt-10`}>
-                    {loyaltyTier}
-                  </span>
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${TIER_COVER[loyaltyTier].pill} mt-10`}>
+                    <img src={TIER_BADGE_IMAGE[loyaltyTier]} alt={loyaltyTier} className="h-4 w-4 object-contain shrink-0" />
+                    <span className="text-[11px] font-bold">{loyaltyTier}</span>
+                  </div>
                 </div>
 
                 {/* User info */}
@@ -958,88 +967,111 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
               {/* Referral section */}
               {isVerified && (
                 <div className="px-5 pb-5">
-                  <div className="rounded-xl border border-purple-100 bg-purple-50 p-3.5">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <p className="text-xs font-bold text-purple-700">Affiliate Referral QR</p>
-                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">Verified</span>
+                  <div className="rounded-2xl border border-[#2c5f4f]/20 bg-gradient-to-br from-[#2c5f4f]/5 to-[#d4a574]/5 p-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-[#2c5f4f] flex items-center justify-center shrink-0">
+                          <svg className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                            <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                          </svg>
+                        </div>
+                        <p className="text-xs font-bold text-[#2c5f4f]">Affiliate Referral QR</p>
+                      </div>
+                      <span className="rounded-full bg-[#2c5f4f] px-2.5 py-0.5 text-[10px] font-semibold text-white">&#10003; Verified</span>
                     </div>
+
                     {referralLink ? (
                       <>
-                        <div className="my-2 flex justify-center">
-                          <div className="relative h-32 w-32">
-                            {!isReferralQrLoaded && <QrSkeleton sizeClass="h-32 w-32 p-2" />}
+                        {/* QR Code */}
+                        <div className="my-3 flex justify-center">
+                          <div className="relative h-36 w-36">
+                            {!isReferralQrLoaded && <QrSkeleton sizeClass="h-36 w-36 p-2" />}
                             <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(referralLink)}`}
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(referralLink)}`}
                               alt="Referral QR code"
                               loading="eager"
                               onLoad={() => setIsReferralQrLoaded(true)}
-                              className={`h-32 w-32 rounded-lg border border-purple-200 bg-white p-2 transition-opacity duration-300 ${
+                              className={`h-36 w-36 rounded-xl border-2 border-[#2c5f4f]/20 bg-white p-2 shadow-sm transition-opacity duration-300 ${
                                 isReferralQrLoaded ? 'opacity-100' : 'opacity-0'
                               }`}
                             />
                           </div>
                         </div>
-                        <p className="text-[11px] text-purple-600 break-all mb-2">{referralLink}</p>
+
+                        {/* Referral link */}
+                        <div className="mb-3 rounded-xl bg-white border border-[#2c5f4f]/15 px-3 py-2">
+                          <p className="text-[10px] font-medium text-[#2c5f4f]/50 mb-0.5">Your referral link</p>
+                          <p className="text-[11px] text-[#2c5f4f] font-medium break-all leading-snug">{referralLink}</p>
+                        </div>
+
+                        {/* Action buttons */}
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             onClick={handleShareReferralLink}
-                            className="rounded-lg bg-white border border-purple-200 px-2 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#2c5f4f] px-2 py-2 text-xs font-semibold text-white hover:bg-[#234d40] transition-colors shadow-sm"
                           >
+                            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                            </svg>
                             Share
                           </button>
                           <button
                             type="button"
                             onClick={handleCopyReferralLink}
-                            className="rounded-lg bg-white border border-purple-200 px-2 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-white border border-[#2c5f4f]/25 px-2 py-2 text-xs font-semibold text-[#2c5f4f] hover:bg-[#2c5f4f]/5 transition-colors"
                           >
+                            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                              <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                            </svg>
                             Copy Link
                           </button>
                         </div>
                       </>
                     ) : (
-                      <p className="text-xs text-purple-600">Set your username first to generate your referral link.</p>
+                      <p className="text-xs text-[#2c5f4f]/70 py-2">Set your username first to generate your referral link.</p>
                     )}
+
                     {referralMsg && (
                       <p className={`mt-2 text-xs font-medium ${referralMsg.type === 'success' ? 'text-emerald-700' : 'text-red-600'}`}>
                         {referralMsg.text}
                       </p>
                     )}
 
-                    <div className="mt-4 border-t border-purple-200 pt-3">
+                    {/* Network stats */}
+                    <div className="mt-4 border-t border-[#2c5f4f]/10 pt-3.5">
                       <div className="flex items-center justify-between gap-2 mb-3">
-                        <p className="text-xs font-bold text-purple-700">Affiliate Network</p>
+                        <p className="text-xs font-bold text-[#2c5f4f]">Affiliate Network</p>
                         {!isReferralTreeLoading && (
-                          <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">
+                          <span className="text-[10px] font-semibold text-[#d4a574] bg-[#d4a574]/10 border border-[#d4a574]/30 px-2 py-0.5 rounded-full">
                             {referralTree?.summary?.total_network ?? 0} members
                           </span>
                         )}
                       </div>
                       <div className="grid grid-cols-3 gap-2 mb-3">
-                        <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-2 text-center">
-                          <p className="text-[10px] text-indigo-500 font-medium">Direct</p>
-                          <p className="text-sm font-bold text-indigo-800">{referralTree?.summary?.direct_count ?? 0}</p>
+                        <div className="rounded-xl border border-[#2c5f4f]/15 bg-white px-2 py-2.5 text-center">
+                          <p className="text-[10px] text-[#2c5f4f]/60 font-medium mb-0.5">Direct</p>
+                          <p className="text-base font-bold text-[#2c5f4f]">{referralTree?.summary?.direct_count ?? 0}</p>
                         </div>
-                        <div className="rounded-lg border border-purple-100 bg-purple-50 px-2 py-2 text-center">
-                          <p className="text-[10px] text-purple-500 font-medium">Level 2</p>
-                          <p className="text-sm font-bold text-purple-800">{referralTree?.summary?.second_level_count ?? 0}</p>
+                        <div className="rounded-xl border border-[#d4a574]/25 bg-white px-2 py-2.5 text-center">
+                          <p className="text-[10px] font-medium mb-0.5" style={{ color: '#d4a574' }}>Level 2</p>
+                          <p className="text-base font-bold" style={{ color: '#c49060' }}>{referralTree?.summary?.second_level_count ?? 0}</p>
                         </div>
-                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-2 text-center">
-                          <p className="text-[10px] text-emerald-500 font-medium">Total</p>
-                          <p className="text-sm font-bold text-emerald-800">{referralTree?.summary?.total_network ?? 0}</p>
+                        <div className="rounded-xl border border-emerald-100 bg-white px-2 py-2.5 text-center">
+                          <p className="text-[10px] text-emerald-500 font-medium mb-0.5">Total</p>
+                          <p className="text-base font-bold text-emerald-600">{referralTree?.summary?.total_network ?? 0}</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleTabChange('referrals')}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white border border-purple-200 px-3 py-2.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#2c5f4f] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#234d40] transition-colors shadow-sm"
                       >
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                          <circle cx="18" cy="5" r="3" />
-                          <circle cx="6" cy="12" r="3" />
-                          <circle cx="18" cy="19" r="3" />
-                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                        <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                         </svg>
                         View Full Referral Tree
                       </button>
