@@ -14,6 +14,7 @@ import { useMeQuery } from '@/store/api/userApi'
 import { useGetCustomerNotificationsQuery } from '@/store/api/customerNotificationsApi'
 import { useRouter } from 'next/navigation'
 import { useAppDispatch } from '@/store/hooks'
+import { ROOM_OPTIONS } from '@/libs/roomConfig'
 
 type NavLink = {
   label: string;
@@ -32,55 +33,7 @@ const navLinks: NavLink[] = [
   {
     label: 'Shop By Room',
     href: '/by-room',
-    mega: {
-      BEDROOM: [
-        'Bed',
-        'Kids Bed',
-        'Easy Space Beds',
-        'Upholstered Bed',
-        'Mattress',
-        'Pillow & Bolster',
-        'Bed Rest Cushion',
-        'Night Table',
-        'Dresser Table',
-        'Desk & Tables',
-        'Cabinets',
-        'Space Saving Cabinet and Shelf',
-      ],
-      KITCHEN: [
-        'Rice Cooker',
-        'Coffee Maker',
-        'Oven & Toaster',
-        'Pressure Cooker',
-        'Grills and Surface Cooker',
-        'Kettle and Water Dispenser',
-        'Pots & Pans',
-        'Knives and Accessories',
-        'Kitchen Utensil',
-        'Glassware',
-        'Tea & Coffee Supplies',
-      ],
-      'LIVING ROOM': [
-        'Sofas',
-        'Leisure Chair',
-        'Lounge Chair',
-        'Chairs and Stools',
-        'Ottoman',
-        'Coffee Table',
-        'Center Table',
-        'TV Rack',
-        'Cabinets',
-        'Shelves',
-        'Shoe Rack',
-        'Desk & Tables',
-      ],
-      OUTDOOR: [
-        'Garden Furniture',
-        'Outdoor Lighting',
-        'Patio Sets',
-        'Storage Cabinets',
-      ],
-    },
+    mega: Object.fromEntries(ROOM_OPTIONS.map((room) => [room.label.toUpperCase(), []])),
   },
   { label: 'Shop By Brand', href: '/by-brand' },
   { label: 'Assembly Guides', href: '/assembly' },
@@ -120,6 +73,18 @@ const roomIcons: Record<string, React.ReactNode> = {
   ),
   OUTDOOR: (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 14h.01" /><path d="M7 7h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14" /><circle cx="12" cy="12" r="3" /><path d="m16 16 2 2" /></svg>
+  ),
+  'STUDY & OFFICE ROOM': (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 6h18" /><path d="M7 6v12" /><path d="M17 10v8" /><path d="M7 18h10" /><path d="M10 10h4" /></svg>
+  ),
+  'DINING ROOM': (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 4v7" /><path d="M17 4v7" /><path d="M5 11h14" /><path d="M12 11v9" /><path d="M8 20h8" /></svg>
+  ),
+  'LAUNDRY ROOM': (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="4" y="3" width="16" height="18" rx="2" /><circle cx="12" cy="13" r="4" /><path d="M8 7h8" /></svg>
+  ),
+  BATHROOM: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 10V7a5 5 0 0 1 10 0" /><path d="M4 13h16" /><path d="M6 13v2a6 6 0 0 0 12 0v-2" /></svg>
   ),
 }
 
@@ -1088,7 +1053,7 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
                   type="text"
                   value={megaSearch}
                   onChange={(e) => setMegaSearch(e.target.value)}
-                  placeholder="Search rooms & items..."
+                  placeholder="Search rooms..."
                   className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 focus:bg-white transition-all"
                 />
                 {megaSearch && (
@@ -1104,51 +1069,29 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
               {/* Columns */}
               {(() => {
                 const q = megaSearch.trim().toLowerCase();
-                const filtered = Object.entries(activeLink.mega!).map(([room, items]) => ({
-                  room,
-                  items: q ? items.filter(i => i.toLowerCase().includes(q)) : items.slice(0, 6),
-                  hasMore: !q && items.length > 6,
-                })).filter(col => col.items.length > 0);
+                const filtered = Object.keys(activeLink.mega!).filter((room) => room.toLowerCase().includes(q));
 
                 if (filtered.length === 0) return (
                   <div className="py-6 text-center text-sm text-gray-400">
-                    No items found for &quot;<span className="text-orange-500">{megaSearch}</span>&quot;
+                    No rooms found for &quot;<span className="text-orange-500">{megaSearch}</span>&quot;
                   </div>
                 );
 
                 return (
-                  <div className="grid grid-cols-4 gap-6">
-                    {filtered.map(({ room, items, hasMore }) => {
+                  <div className="grid grid-cols-2 gap-5 lg:grid-cols-3">
+                    {filtered.map((room) => {
                       const roomSlug = room.toLowerCase().replace(/\s+/g, '-');
                       return (
-                        <div key={room}>
-                          <div className="flex items-center gap-2 bg-orange-50 rounded-xl px-3 py-2 mb-3">
-                            <span className="text-orange-500">{roomIcons[room]}</span>
-                            <h3 className="text-xs font-bold tracking-wider text-orange-600">{room}</h3>
-                          </div>
-                          <ul className="space-y-0.5">
-                            {items.map((item) => (
-                              <li key={item}>
-                                <Link
-                                  href={`/by-room/${roomSlug}/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-500 hover:text-orange-600 hover:bg-orange-50/60 transition-all duration-150 group"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-gray-300 group-hover:bg-orange-400 transition-colors shrink-0" />
-                                  {item}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                          {hasMore && (
-                            <Link
-                              href={`/by-room/${roomSlug}`}
-                              className="flex items-center gap-1 mt-2 px-3 py-1.5 text-xs font-semibold text-orange-500 hover:text-orange-600 transition-colors"
-                            >
-                              View all {room.toLowerCase()}
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                            </Link>
-                          )}
-                        </div>
+                        <Link
+                          key={room}
+                          href={`/by-room/${roomSlug}`}
+                          className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-4 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-150 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+                        >
+                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-500">
+                            {roomIcons[room] ?? roomIcons.BEDROOM}
+                          </span>
+                          <span className="tracking-wide">{room}</span>
+                        </Link>
                       );
                     })}
                   </div>
@@ -1303,45 +1246,26 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
                             {/* Rooms */}
                             {(() => {
                               const q = mobileSearch.trim().toLowerCase();
-                              const rooms = Object.entries(link.mega!).map(([room, items]) => ({
-                                room,
-                                items: q ? items.filter(i => i.toLowerCase().includes(q)) : items.slice(0, 5),
-                                hasMore: !q && items.length > 5,
-                              })).filter(r => r.items.length > 0);
+                              const rooms = Object.keys(link.mega!).filter((room) => room.toLowerCase().includes(q));
 
                               if (rooms.length === 0) return (
                                 <p className="px-3 py-3 text-xs text-gray-400 text-center">
-                                  No results for &quot;<span className="text-orange-500">{mobileSearch}</span>&quot;
+                                  No rooms found for &quot;<span className="text-orange-500">{mobileSearch}</span>&quot;
                                 </p>
                               );
 
-                              return rooms.map(({ room, items, hasMore }) => {
+                              return rooms.map((room) => {
                                 const roomSlug = room.toLowerCase().replace(/\s+/g, '-');
                                 return (
                                   <div key={room} className="mb-2">
-                                    <div className="flex items-center gap-1.5 px-2 py-1.5 mb-0.5">
-                                      <span className="text-orange-500">{roomIcons[room]}</span>
+                                    <Link
+                                      href={`/by-room/${roomSlug}`}
+                                      className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-700 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 transition-colors"
+                                      onClick={() => setMobileOpen(false)}
+                                    >
+                                      <span className="text-orange-500">{roomIcons[room] ?? roomIcons.BEDROOM}</span>
                                       <span className="text-xs font-bold tracking-wider text-orange-600">{room}</span>
-                                    </div>
-                                    {items.map(item => (
-                                      <Link
-                                        key={item}
-                                        href={`/by-room/${roomSlug}/${item.toLowerCase().replace(/\s+/g, '-')}`}
-                                        className="block px-3 py-1.5 text-sm text-gray-500 hover:text-orange-500 rounded-lg transition-colors"
-                                        onClick={() => setMobileOpen(false)}
-                                      >
-                                        {item}
-                                      </Link>
-                                    ))}
-                                    {hasMore && (
-                                      <Link
-                                        href={`/by-room/${roomSlug}`}
-                                        className="flex items-center gap-1 px-3 py-1 text-xs font-semibold text-orange-500"
-                                        onClick={() => setMobileOpen(false)}
-                                      >
-                                        View all →
-                                      </Link>
-                                    )}
+                                    </Link>
                                   </div>
                                 );
                               });
@@ -1374,3 +1298,4 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
     </motion.header>
   )
 }
+

@@ -21,6 +21,7 @@ export interface Product {
   material?: string | null
   assemblyRequired?: boolean
   warranty?: string | null
+  roomType?: number
   type: number
   musthave: boolean
   bestseller: boolean
@@ -67,6 +68,7 @@ export interface ProductsResponse {
 export interface CreateProductPayload {
   pd_name: string
   pd_catid: number
+  pd_room_type?: number | null
   pd_catsubid?: number
   pd_price_srp: number
   pd_price_dp?: number
@@ -115,6 +117,7 @@ interface ProductsQueryParams {
   search?: string
   status?: string
   catId?: number
+  roomType?: number
   supplierId?: number
 }
 
@@ -195,6 +198,10 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
       typeof input.psheight === 'number'
         ? input.psheight
         : (typeof input.pd_psheight === 'number' ? input.pd_psheight : (typeof input.pd_psheight === 'string' ? Number(input.pd_psheight) : undefined)),
+    roomType:
+      typeof input.roomType === 'number'
+        ? input.roomType
+        : (typeof input.pd_room_type === 'number' ? input.pd_room_type : (typeof input.pd_room_type === 'string' ? Number(input.pd_room_type) : undefined)),
     image: primaryImage ?? images[0] ?? null,
     images,
     variants: parsedVariants,
@@ -232,6 +239,7 @@ export const productsApi = baseApi.injectEndpoints({
           q: params?.search,
           status: params?.status,
           cat_id: params?.catId,
+          room_type: params?.roomType,
           supplier_id: params?.supplierId,
         },
       }),
@@ -249,6 +257,7 @@ export const productsApi = baseApi.injectEndpoints({
           q: params?.search,
           status: params?.status,
           cat_id: params?.catId,
+          room_type: params?.roomType,
           supplier_id: params?.supplierId,
         },
       }),

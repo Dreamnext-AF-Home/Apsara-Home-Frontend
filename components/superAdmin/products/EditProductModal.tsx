@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
@@ -9,6 +9,7 @@ import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import { colorNameToHex, hexToColorName } from '@/libs/colorUtils'
+import { ROOM_OPTIONS, inferRoomTypeFromCategory } from '@/libs/roomConfig'
 
 /* ─── types ──────────────────────────────────────────────── */
 
@@ -21,6 +22,7 @@ interface EditProductModalProps {
 interface FormState {
   pd_name: string
   pd_catid: string
+  pd_room_type: string
   pd_description: string
   pd_price_srp: string
   pd_price_dp: string
@@ -172,6 +174,7 @@ const normalizeTextField = (value: string) => {
 const normalizeFormForComparison = (form: FormState) => ({
   pd_name: form.pd_name.trim(),
   pd_catid: Number(form.pd_catid),
+  pd_room_type: form.pd_room_type.trim() ? Number(form.pd_room_type) : null,
   pd_description: normalizeTextField(form.pd_description),
   pd_price_srp: Number(form.pd_price_srp),
   pd_price_dp: normalizeNumberField(form.pd_price_dp),
@@ -279,7 +282,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const isOpen = product !== null
 
   const [form, setForm] = useState<FormState>({
-    pd_name: '', pd_catid: '', pd_description: '', pd_price_srp: '',
+    pd_name: '', pd_catid: '', pd_room_type: '', pd_description: '', pd_price_srp: '',
     pd_price_dp: '', pd_price_member: '', pd_prodpv: '', pd_qty: '', pd_weight: '', pd_psweight: '',
     pd_pswidth: '', pd_pslenght: '', pd_psheight: '',
     pd_material: '', pd_warranty: '', pd_assembly_required: false,
@@ -299,6 +302,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const [imageError,         setImageError]         = useState('')
   const [variants,           setVariants]           = useState<VariantFormState[]>([])
   const [newColorInputs,     setNewColorInputs]     = useState<Record<number, { name: string; hex: string }>>({})
+  const [roomTouched,        setRoomTouched]        = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: session, status: authStatus } = useSession()
@@ -307,25 +311,30 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
   const [updateProduct, { isLoading }] = useUpdateProductMutation()
   const { data: categoriesData } = useGetCategoriesQuery({ page: 1, per_page: 500 }, { skip: skipCategories })
-  const categories = categoriesData?.categories ?? []
+  const categories = useMemo(() => categoriesData?.categories ?? [], [categoriesData?.categories])
+  const openedProductRef = useRef<Product | null>(null)
+  if (product && openedProductRef.current?.id !== product.id) {
+    openedProductRef.current = product
+  }
+  const openedProduct = openedProductRef.current
 
   /* Populate form when product changes — only re-initialize when a different product is opened,
      not when RTK Query returns an updated reference for the same product (which would reset
      any in-progress edits like variant deletions). */
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!product) return
-    const row = product as Product & Record<string, unknown>
+    if (!openedProduct) return
+    const row = openedProduct as Product & Record<string, unknown>
     const nextForm = {
-      pd_name:       product.name        ?? '',
-      pd_catid:      String(product.catid ?? ''),
-      pd_description:product.description ?? '',
-      pd_price_srp:  String(product.priceSrp ?? ''),
-      pd_price_dp:   String(product.priceDp  ?? ''),
-      pd_price_member: String(product.priceMember ?? ''),
-      pd_prodpv:     String(product.prodpv   ?? ''),
-      pd_qty:        String(product.qty      ?? ''),
-      pd_weight:     String(product.weight   ?? ''),
+      pd_name:       openedProduct.name        ?? '',
+      pd_catid:      String(openedProduct.catid ?? ''),
+      pd_room_type:  openedProduct.roomType ? String(openedProduct.roomType) : '',
+      pd_description:openedProduct.description ?? '',
+      pd_price_srp:  String(openedProduct.priceSrp ?? ''),
+      pd_price_dp:   String(openedProduct.priceDp  ?? ''),
+      pd_price_member: String(openedProduct.priceMember ?? ''),
+      pd_prodpv:     String(openedProduct.prodpv   ?? ''),
+      pd_qty:        String(openedProduct.qty      ?? ''),
+      pd_weight:     String(openedProduct.weight   ?? ''),
       pd_psweight:   String(row.psweight  ?? row.pd_psweight  ?? ''),
       pd_pswidth:    String(row.pswidth   ?? row.pd_pswidth   ?? ''),
       pd_pslenght:   String(row.pslenght  ?? row.pd_pslenght  ?? ''),
@@ -333,33 +342,42 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       pd_material:   String(row.material  ?? row.pd_material  ?? ''),
       pd_warranty:   String(row.warranty  ?? row.pd_warranty  ?? ''),
       pd_assembly_required: Boolean(row.assemblyRequired ?? row.pd_assembly_required),
-      pd_parent_sku: generateSkuFromName(product.name ?? '', product.id),
-      pd_type:       String(product.type   ?? 0),
-      pd_musthave:   product.musthave    ?? false,
-      pd_bestseller: product.bestseller  ?? false,
-      pd_salespromo: product.salespromo  ?? false,
-      pd_verified:   product.verified    ?? true,
-      pd_status:     String(product.status ?? 0),
+      pd_parent_sku: generateSkuFromName(openedProduct.name ?? '', openedProduct.id),
+      pd_type:       String(openedProduct.type   ?? 0),
+      pd_musthave:   openedProduct.musthave    ?? false,
+      pd_bestseller: openedProduct.bestseller  ?? false,
+      pd_salespromo: openedProduct.salespromo  ?? false,
+      pd_verified:   openedProduct.verified    ?? true,
+      pd_status:     String(openedProduct.status ?? 0),
     }
     setForm(nextForm)
     setInitialForm(nextForm)
-    const existing = Array.isArray(product.images) && product.images.length > 0
-      ? product.images.filter((img): img is string => Boolean(img))
-      : (product.image ? [product.image] : [])
+    const existing = Array.isArray(openedProduct.images) && openedProduct.images.length > 0
+      ? openedProduct.images.filter((img): img is string => Boolean(img))
+      : (openedProduct.image ? [openedProduct.image] : [])
     setExistingImageUrls(existing)
     setInitialImageUrls(existing)
-    const nextVariants = Array.isArray(product.variants) ? product.variants.map(mapVariantToForm) : []
+    const nextVariants = Array.isArray(openedProduct.variants) ? openedProduct.variants.map(mapVariantToForm) : []
     setInitialVariants(nextVariants)
     setImageFiles([]); setImagePreviews([]); setUploadedUrls([])
     setVariants(nextVariants)
     setNewColorInputs({})
+    setRoomTouched(false)
     setErrors({}); setServerError(''); setImageError('')
-  }, [product?.id])
+  }, [openedProduct])
 
   const set = (key: keyof FormState, value: string | boolean) => {
     setForm(p => ({ ...p, [key]: value }))
     setErrors(p => ({ ...p, [key]: undefined }))
   }
+
+  useEffect(() => {
+    if (!product || roomTouched || form.pd_room_type.trim() !== '') return
+    const selectedCategory = categories.find((category) => String(category.id) === form.pd_catid)
+    const inferredRoomType = inferRoomTypeFromCategory(selectedCategory)
+    if (!inferredRoomType) return
+    setForm((prev) => ({ ...prev, pd_room_type: String(inferredRoomType) }))
+  }, [categories, form.pd_catid, form.pd_room_type, product, roomTouched])
 
   const hasVariants = form.pd_type === '1'
 
@@ -558,6 +576,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     const payload: Partial<CreateProductPayload> = {
       pd_name:        form.pd_name.trim(),
       pd_catid:       Number(form.pd_catid),
+      pd_room_type:   form.pd_room_type.trim() ? Number(form.pd_room_type) : null,
       pd_price_srp:   Number(form.pd_price_srp),
       pd_description: form.pd_description.trim() || undefined,
       pd_price_dp:    form.pd_price_dp  ? Number(form.pd_price_dp)  : undefined,
@@ -593,6 +612,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         ...product,
         name: form.pd_name.trim(),
         catid: Number(form.pd_catid),
+        roomType: form.pd_room_type ? Number(form.pd_room_type) : undefined,
         description: form.pd_description.trim() || null,
         priceSrp: Number(form.pd_price_srp),
         priceDp: form.pd_price_dp ? Number(form.pd_price_dp) : 0,
@@ -828,7 +848,14 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                     <Field label="Category" required error={errors.pd_catid}>
                       <select
                         value={form.pd_catid}
-                        onChange={e => { set('pd_catid', e.target.value) }}
+                        onChange={e => {
+                          set('pd_catid', e.target.value)
+                          if (!roomTouched) {
+                            const selectedCategory = categories.find((category) => String(category.id) === e.target.value)
+                            const inferredRoomType = inferRoomTypeFromCategory(selectedCategory)
+                            set('pd_room_type', inferredRoomType ? String(inferredRoomType) : '')
+                          }
+                        }}
                         className={inputCls(!!errors.pd_catid)}
                       >
                         <option value="">Select category…</option>
@@ -836,6 +863,25 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                           <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
                         ))}
                       </select>
+                    </Field>
+
+                    <Field label="Shop By Room">
+                      <div className="space-y-1">
+                        <select
+                          value={form.pd_room_type}
+                          onChange={e => {
+                            setRoomTouched(true)
+                            set('pd_room_type', e.target.value)
+                          }}
+                          className={inputCls()}
+                        >
+                          <option value="">Auto / Not assigned</option>
+                          {ROOM_OPTIONS.map((room) => (
+                            <option key={room.id} value={String(room.id)}>{room.label}</option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-slate-500">Auto-filled from category when possible, but still editable here.</p>
+                      </div>
                     </Field>
 
                     <Field label="SKU (auto-generated)">

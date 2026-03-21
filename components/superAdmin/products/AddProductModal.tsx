@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
@@ -9,6 +9,7 @@ import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import { colorNameToHex, hexToColorName } from '@/libs/colorUtils'
+import { ROOM_OPTIONS, inferRoomTypeFromCategory } from '@/libs/roomConfig'
 
 /* ─── types ──────────────────────────────────────────────── */
 
@@ -21,6 +22,7 @@ interface AddProductModalProps {
 interface FormState {
   pd_name: string
   pd_catid: string
+  pd_room_type: string
   pd_description: string
   pd_price_srp: string
   pd_price_dp: string
@@ -67,6 +69,7 @@ interface VariantFormState {
 const defaultForm: FormState = {
   pd_name: '',
   pd_catid: '',
+  pd_room_type: '',
   pd_description: '',
   pd_price_srp: '',
   pd_price_dp: '',
@@ -219,6 +222,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   const [imageError,   setImageError]   = useState('')
   const [variants,     setVariants]     = useState<VariantFormState[]>([])
   const [newColorInputs, setNewColorInputs] = useState<Record<number, { name: string; hex: string }>>({})
+  const [roomTouched, setRoomTouched] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: session, status: authStatus } = useSession()
@@ -227,12 +231,25 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
 
   const [createProduct, { isLoading }] = useCreateProductMutation()
   const { data: categoriesData } = useGetCategoriesQuery({ page: 1, per_page: 500 }, { skip: skipCategories })
-  const categories = categoriesData?.categories ?? []
+  const categories = useMemo(() => categoriesData?.categories ?? [], [categoriesData?.categories])
 
   const set = (key: keyof FormState, value: string | boolean) => {
     setForm(p => ({ ...p, [key]: value }))
     setErrors(p => ({ ...p, [key]: undefined }))
   }
+
+  useEffect(() => {
+    const selectedCategory = categories.find((category) => String(category.id) === form.pd_catid)
+    const inferredRoomType = inferRoomTypeFromCategory(selectedCategory)
+
+    if (roomTouched) return
+
+    setForm((prev) => {
+      const nextRoomType = inferredRoomType ? String(inferredRoomType) : ''
+      if (prev.pd_room_type === nextRoomType) return prev
+      return { ...prev, pd_room_type: nextRoomType }
+    })
+  }, [categories, form.pd_catid, form.pd_room_type, roomTouched])
 
   const hasVariants = form.pd_type === '1'
 
@@ -408,6 +425,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     const payload: CreateProductPayload = {
       pd_name:        form.pd_name.trim(),
       pd_catid:       Number(form.pd_catid),
+      pd_room_type:   form.pd_room_type.trim() ? Number(form.pd_room_type) : undefined,
       pd_price_srp:   Number(form.pd_price_srp),
       pd_description: form.pd_description.trim() || undefined,
       pd_price_dp:    form.pd_price_dp  ? Number(form.pd_price_dp)  : undefined,
@@ -449,6 +467,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   const handleClose = () => {
     if (isLoading || isUploading) return
     setForm(defaultForm); setErrors({}); setServerError('')
+    setRoomTouched(false)
     handleClearAllImages(); setVariants([]); setNewColorInputs({})
     onClose()
   }
@@ -616,7 +635,14 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     <Field label="Category" required error={errors.pd_catid}>
                       <select
                         value={form.pd_catid}
-                        onChange={e => { set('pd_catid', e.target.value) }}
+                        onChange={e => {
+                          set('pd_catid', e.target.value)
+                          if (!roomTouched) {
+                            const selectedCategory = categories.find((category) => String(category.id) === e.target.value)
+                            const inferredRoomType = inferRoomTypeFromCategory(selectedCategory)
+                            set('pd_room_type', inferredRoomType ? String(inferredRoomType) : '')
+                          }
+                        }}
                         className={inputCls(!!errors.pd_catid)}
                       >
                         <option value="">Select category…</option>
@@ -624,6 +650,25 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                           <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
                         ))}
                       </select>
+                    </Field>
+
+                    <Field label="Shop By Room">
+                      <div className="space-y-1">
+                        <select
+                          value={form.pd_room_type}
+                          onChange={e => {
+                            setRoomTouched(true)
+                            set('pd_room_type', e.target.value)
+                          }}
+                          className={inputCls()}
+                        >
+                          <option value="">Auto / Not assigned</option>
+                          {ROOM_OPTIONS.map((room) => (
+                            <option key={room.id} value={String(room.id)}>{room.label}</option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-slate-500">Auto-filled from category when possible, but you can override it before saving.</p>
+                      </div>
                     </Field>
 
                     <Field label="SKU (auto-generated)">
