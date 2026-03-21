@@ -25,7 +25,10 @@ const StickyAddToCart = ({ product, selectedVariant }: StickyAddToCartProps) => 
   const role = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase();
   const canUseMemberPrice = isLoggedIn;
   const canSeePv = role === '' || role === 'customer' || role === 'member' || role === 'affiliate';
-  const displayPv = Number(product.prodpv ?? 0);
+  const hasSelectedVariant = Boolean(selectedVariant);
+  const displayPv = hasSelectedVariant
+    ? (toPositiveNumber(selectedVariant?.prodpv) ?? 0)
+    : Number(product.prodpv ?? 0);
   const srp = toPositiveNumber(selectedVariant?.priceSrp) ?? toPositiveNumber(product.originalPrice) ?? Number(product.price ?? 0);
   const member = toPositiveNumber(selectedVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
   const hasMemberPrice = member > 0 && member < srp;
@@ -68,7 +71,7 @@ const StickyAddToCart = ({ product, selectedVariant }: StickyAddToCartProps) => 
               <p className="truncate text-sm font-bold text-slate-800">{product.name}</p>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-bold text-orange-500">₱{displayPrice.toLocaleString()}</p>
-                {canSeePv && (
+                {canSeePv && !selectedVariant && (
                   <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
                     PV {displayPv.toLocaleString()}
                   </span>

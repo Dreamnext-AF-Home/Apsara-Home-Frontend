@@ -59,6 +59,7 @@ interface VariantFormState {
   pv_price_srp: string
   pv_price_dp: string
   pv_price_member: string
+  pv_prodpv: string
   pv_qty: string
   pv_status: string
   pv_images: string[]
@@ -97,7 +98,7 @@ type Errors = Partial<Record<keyof FormState, string>>
 
 const emptyVariant = (): VariantFormState => ({
   pv_name: '', pv_sku: '', pv_colors: [], pv_size: '',
-  pv_price_srp: '', pv_price_dp: '', pv_price_member: '', pv_qty: '',
+  pv_price_srp: '', pv_price_dp: '', pv_price_member: '', pv_prodpv: '', pv_qty: '',
   pv_status: '1', pv_images: [],
 })
 
@@ -425,6 +426,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
         pv_price_srp: toOptionalPositiveNumber(v.pv_price_srp) ?? baseSrp,
         pv_price_dp:  toOptionalPositiveNumber(v.pv_price_dp)  ?? baseDp,
         pv_price_member: toOptionalPositiveNumber(v.pv_price_member) ?? baseMember,
+        pv_prodpv:    toOptionalPositiveNumber(v.pv_prodpv) ?? toOptionalPositiveNumber(form.pd_prodpv),
         pv_qty:       v.pv_qty       ? Number(v.pv_qty)       : undefined,
         pv_status:    Number(v.pv_status),
         pv_images:    v.pv_images.length > 0 ? v.pv_images : undefined,
@@ -1070,7 +1072,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                   {/* ── Pricing ── */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pricing</p>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-semibold text-slate-500 block">SRP (₱)</label>
                                         <input type="number" value={variant.pv_price_srp} onChange={e => setVariant(index, 'pv_price_srp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_srp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
@@ -1083,8 +1085,12 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                         <label className="text-[11px] font-semibold text-slate-500 block">Member (₱)</label>
                                         <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} onBlur={e => setVariant(index, 'pv_price_member', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
                                       </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">PV</label>
+                                        <input type="number" value={variant.pv_prodpv} onChange={e => setVariant(index, 'pv_prodpv', e.target.value)} onBlur={e => setVariant(index, 'pv_prodpv', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
+                                      </div>
                                     </div>
-                                    <p className="text-[11px] text-slate-400">Leave Dealer and Member prices blank to inherit from the main product pricing.</p>
+                                    <p className="text-[11px] text-slate-400">Leave Dealer, Member, and PV blank to inherit from the main product values.</p>
                                   </div>
 
                                   {/* ── Inventory & Status ── */}

@@ -224,6 +224,7 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
         priceSrp: toOptionalNumber(variant.priceSrp ?? variant.pv_price_srp),
         priceDp: toOptionalNumber(variant.priceDp ?? variant.pv_price_dp),
         priceMember: toOptionalNumber(variant.priceMember ?? variant.pv_price_member),
+        prodpv: toOptionalNumber(variant.prodpv ?? variant.pv_prodpv),
         qty: toOptionalNumber(variant.qty ?? variant.pv_qty),
         status: typeof statusRaw === 'number' ? statusRaw : Number(statusRaw),
         images: toStringArray(variant.images ?? variant.pv_images).map((img) => resolveImageUrl(img, apiUrl)),

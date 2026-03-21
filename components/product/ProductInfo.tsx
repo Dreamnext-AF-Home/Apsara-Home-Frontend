@@ -83,7 +83,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const { data: session } = useSession();
     const isLoggedIn = Boolean(session?.user);
     const canUseMemberPrice = isLoggedIn;
-    const displayPv = Number(product.prodpv ?? 0);
+    const basePv = toPositiveNumber(product.prodpv) ?? 0;
     const [quantity, setQuantity] = useState(1);
     const [selectedColor, setSelectedColor] = useState('');
     const [added, setAdded] = useState(false);
@@ -142,7 +142,6 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 
     const baseSrp = toPositiveNumber(product.originalPrice) ?? toPositiveNumber(product.price) ?? 0;
     const variantSrp = toPositiveNumber(selectedVariant?.priceSrp) ?? baseSrp;
-    const variantDealer = toPositiveNumber(selectedVariant?.priceDp) ?? toPositiveNumber(product.priceDp) ?? 0;
     const variantMember = toPositiveNumber(selectedVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
     const hasMemberPrice = variantMember > 0 && variantMember < variantSrp;
 
@@ -156,6 +155,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const productType = Number(product.type ?? 0);
     const isVariantProduct = productType === 1;
     const hasRealVariants = isVariantProduct && variantOptions.length > 0;
+    const variantPv = hasRealVariants
+        ? (toPositiveNumber(selectedVariant?.prodpv) ?? 0)
+        : basePv;
     const productTypeLabel = PRODUCT_TYPE_LABELS[productType] ?? 'Regular';
     const displaySku = (selectedVariant?.sku && selectedVariant.sku.trim().length > 0)
         ? selectedVariant.sku
@@ -278,28 +280,11 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">SRP</p>
-                    <p className="mt-1 text-lg font-bold text-slate-900">₱{variantSrp.toLocaleString()}</p>
+            {variantPv > 0 && (
+                <div className="inline-flex items-center self-start rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                    PV {variantPv.toLocaleString()}
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Dealer</p>
-                    <p className="mt-1 text-lg font-bold text-slate-900">
-                        {variantDealer > 0 ? `₱${variantDealer.toLocaleString()}` : 'N/A'}
-                    </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Member</p>
-                    <p className="mt-1 text-lg font-bold text-slate-900">
-                        {variantMember > 0 ? `₱${variantMember.toLocaleString()}` : 'N/A'}
-                    </p>
-                </div>
-            </div>
-
-            <div className="inline-flex items-center self-start rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                PV {displayPv.toLocaleString()}
-            </div>
+            )}
 
             <div className="h-px bg-gray-100" />
 
@@ -499,3 +484,4 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 };
 
 export default ProductInfo;
+

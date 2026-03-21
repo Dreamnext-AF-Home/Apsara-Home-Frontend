@@ -22,6 +22,7 @@ export interface CategoryProduct {
         priceSrp?: number;
         priceDp?: number;
         priceMember?: number;
+        prodpv?: number;
         qty?: number;
         status?: number;
         images?: string[];
