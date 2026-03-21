@@ -9,9 +9,15 @@ import { CategoryProduct } from '@/libs/CategoryData';
 
 interface StickyAddToCartProps {
   product: CategoryProduct;
+  selectedVariant?: NonNullable<CategoryProduct['variants']>[number];
 }
 
-const StickyAddToCart = ({ product }: StickyAddToCartProps) => {
+const toPositiveNumber = (value: unknown): number | undefined => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+const StickyAddToCart = ({ product, selectedVariant }: StickyAddToCartProps) => {
   const [visible, setVisible] = useState(false);
   const { addToCart } = useCart();
   const { data: session } = useSession();
@@ -20,11 +26,11 @@ const StickyAddToCart = ({ product }: StickyAddToCartProps) => {
   const canUseMemberPrice = isLoggedIn;
   const canSeePv = role === '' || role === 'customer' || role === 'member' || role === 'affiliate';
   const displayPv = Number(product.prodpv ?? 0);
-  const srp = Number(product.originalPrice ?? product.price ?? 0);
-  const member = Number(product.priceMember ?? 0);
+  const srp = toPositiveNumber(selectedVariant?.priceSrp) ?? toPositiveNumber(product.originalPrice) ?? Number(product.price ?? 0);
+  const member = toPositiveNumber(selectedVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
   const hasMemberPrice = member > 0 && member < srp;
   const displayPrice = canUseMemberPrice && hasMemberPrice ? member : srp;
-  const stock = Number(product.stock ?? 0);
+  const stock = typeof selectedVariant?.qty === 'number' ? selectedVariant.qty : Number(product.stock ?? 0);
   const isInStock = stock > 0;
 
   useEffect(() => {

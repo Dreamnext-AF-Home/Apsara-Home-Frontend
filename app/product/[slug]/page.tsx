@@ -9,7 +9,6 @@ import ProductPageClient from '@/components/product/ProductPageClient';
 import ProductTabs from '@/components/product/ProductTabs';
 import { categoryMeta, type CategoryProduct } from '@/libs/CategoryData';
 import RelatedProducts from '@/components/product/RelatedProduct';
-import StickyAddToCart from '@/components/product/StickyAddToCart';
 import ProductQA from '@/components/product/ProductQA';
 import CompleteTheLook from '@/components/product/CompleteTheLook';
 import type { Category } from '@/store/api/categoriesApi';
@@ -359,7 +358,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <StickyAddToCart product={dynamicData.product} />
       <TopBar />
       <Navbar initialCategories={navbarCategories} />
       <main className="flex-1">
