@@ -135,6 +135,17 @@ const FLAG_CARDS: {
   },
 ]
 
+const WARRANTY_OPTIONS = [
+  'No Warranty',
+  '15 Days Warranty',
+  '1 Month Warranty',
+  '2 Months Warranty',
+  '3 Months Warranty',
+  '6 Months Warranty',
+  '9 Months Warranty',
+  '1 Year Warranty',
+] as const
+
 /* ─── helpers ────────────────────────────────────────────── */
 
 const generateSkuFromName = (name: string) => {
@@ -166,6 +177,17 @@ const toOptionalPositiveNumber = (value: string) => {
 }
 
 const normalizeVariantLabel = (value: string) => value.trim().replace(/\s+/g, ' ')
+
+const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) {
+    return items
+  }
+
+  const next = [...items]
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, moved)
+  return next
+}
 
 /* ─── small components ───────────────────────────────────── */
 
@@ -225,6 +247,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   const [variants,     setVariants]     = useState<VariantFormState[]>([])
   const [newColorInputs, setNewColorInputs] = useState<Record<number, { name: string; hex: string }>>({})
   const [roomTouched, setRoomTouched] = useState(false)
+  const activeImagePointerIndexRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: session, status: authStatus } = useSession()
@@ -282,6 +305,24 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   const handleClearAllImages = () => {
     setImageFiles([]); setImagePreviews([]); setUploadedUrls([]); setImageError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleImagePointerDown = (index: number) => {
+    activeImagePointerIndexRef.current = index
+  }
+
+  const handleImagePointerEnter = (targetIndex: number) => {
+    const sourceIndex = activeImagePointerIndexRef.current
+    if (sourceIndex == null || sourceIndex === targetIndex) return
+
+    setImageFiles((prev) => moveItem(prev, sourceIndex, targetIndex))
+    setImagePreviews((prev) => moveItem(prev, sourceIndex, targetIndex))
+    setUploadedUrls([])
+    activeImagePointerIndexRef.current = targetIndex
+  }
+
+  const stopImagePointerDrag = () => {
+    activeImagePointerIndexRef.current = null
   }
 
   /* ── variant handlers ── */
@@ -559,7 +600,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         </svg>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-slate-600 group-hover:text-teal-600 transition-colors">Click to upload image</p>
+                        <p className="text-sm font-medium text-slate-600 group-hover:text-teal-600 transition-colors">Click or drag to upload image</p>
                         <p className="text-xs text-slate-400 mt-0.5">JPEG, PNG, WEBP, GIF · max 5MB each (up to 10)</p>
                       </div>
                     </label>
@@ -567,8 +608,21 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     <div>
                       <div className="grid grid-cols-4 gap-2">
                         {imagePreviews.map((preview, index) => (
-                          <div key={preview} className="relative h-24 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group">
-                            <Image src={preview} alt={`Preview ${index + 1}`} fill className="object-cover" unoptimized/>
+                          <div
+                            key={preview}
+                            onPointerDown={() => handleImagePointerDown(index)}
+                            onPointerEnter={() => handleImagePointerEnter(index)}
+                            onPointerUp={stopImagePointerDrag}
+                            onPointerCancel={stopImagePointerDrag}
+                            className="relative h-24 cursor-grab rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group active:cursor-grabbing"
+                          >
+                            <Image
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              fill
+                              className="object-cover pointer-events-none"
+                              unoptimized
+                            />
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(index)}
@@ -593,7 +647,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <p className="text-xs text-slate-400 flex-1">{imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} selected · first image is the main</p>
+                        <p className="text-xs text-slate-400 flex-1">{imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} selected · drag to reorder · first image is the main</p>
                         <button
                           type="button"
                           onClick={handleClearAllImages}
@@ -705,7 +759,12 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       <input type="text" value={form.pd_material} onChange={e => set('pd_material', e.target.value)} placeholder="e.g. Solid Wood & Fabric" className={inputCls()}/>
                     </Field>
                     <Field label="Warranty">
-                      <input type="text" value={form.pd_warranty} onChange={e => set('pd_warranty', e.target.value)} placeholder="e.g. 1 Year Limited Warranty" className={inputCls()}/>
+                      <select value={form.pd_warranty} onChange={e => set('pd_warranty', e.target.value)} className={inputCls()}>
+                        <option value="">Select warranty…</option>
+                        {WARRANTY_OPTIONS.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
                     </Field>
                   </div>
                   <Field label="Assembly Required">
@@ -895,9 +954,10 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                       {variant.pv_size && <span className="text-slate-400 font-normal ml-1">· {variant.pv_size}</span>}
                                       {variant.pv_colors.length > 0 && (
                                         <span className="inline-flex items-center gap-1 ml-2">
-                                          {variant.pv_colors.slice(0, 3).map((c, ci) => (
+                                          {variant.pv_colors.map((c, ci) => (
                                             <span key={ci} className="h-3 w-3 rounded-full border border-slate-200 shrink-0" style={{ backgroundColor: c.hex }} title={c.name} />
                                           ))}
+                                          <span className="text-[10px] font-medium text-slate-400 ml-1">{variant.pv_colors.length}</span>
                                         </span>
                                       )}
                                     </p>
@@ -1094,7 +1154,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                         <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                                         </svg>
-                                        <p className="text-[11px] text-slate-400">Click to upload variant images</p>
+                                        <p className="text-[11px] text-slate-400">Click or drag to upload variant images</p>
                                       </label>
                                     )}
                                   </div>
