@@ -808,7 +808,11 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setIsMobileViewOpen(true);
+      if (tab !== 'profile') {
+        setIsMobileViewOpen(true);
+      } else {
+        setIsMobileViewOpen(false);
+      }
     }
   };
 
@@ -1258,11 +1262,13 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
           {/* â"€â"€ Main content â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
           <div
             ref={mainContentRef}
-            className={`xl:col-span-8 space-y-5
-              fixed inset-0 z-50 bg-slate-50 overflow-y-auto transition-transform duration-300 ease-in-out
-              ${isMobileViewOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'}
-              md:relative md:inset-auto md:z-auto md:bg-transparent md:overflow-visible md:translate-x-0 md:pointer-events-auto md:transition-none md:block
-            `}
+            className={`xl:col-span-8 space-y-5 ${
+              isMobileViewOpen
+                ? 'fixed inset-0 z-50 bg-slate-50 overflow-y-auto transition-transform duration-300 ease-in-out translate-x-0 md:relative md:inset-auto md:z-auto md:bg-transparent md:overflow-visible md:translate-x-0 md:transition-none'
+                : activeTab === 'profile'
+                  ? 'block md:block'
+                  : 'hidden md:block'
+            }`}
           >
             {/* Mobile back header — only shown in mobile full-screen view */}
             {isMobileViewOpen && (
@@ -1281,7 +1287,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                 <h2 className="text-base font-bold text-slate-900">{activeTabLabel}</h2>
               </div>
             )}
-            <div className={isMobileViewOpen ? 'px-4 py-4 space-y-5 md:px-0 md:py-0 md:space-y-0' : ''}>
+            <div className={isMobileViewOpen ? 'px-4 py-4 pb-8 space-y-5 md:px-0 md:py-0 md:space-y-0' : ''}>
             <AnimatePresence mode="wait">
               {/* â"€â"€ Profile tab â"€â"€ */}
               {activeTab === 'profile' && (
