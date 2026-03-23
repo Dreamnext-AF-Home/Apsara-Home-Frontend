@@ -3,11 +3,11 @@
 import { CategoryProduct } from '@/libs/CategoryData';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface ProductImageGalleryProps {
   product: CategoryProduct;
-  activeVariantImage?: string;
+  selectedVariantImages?: string[];
 }
 
 const HeartIcon = ({ filled }: { filled: boolean }) => (
@@ -31,52 +31,30 @@ const CloseIcon = () => (
   </svg>
 );
 
-const ProductImageGallery = ({ product, activeVariantImage }: ProductImageGalleryProps) => {
+const ProductImageGallery = ({ product, selectedVariantImages }: ProductImageGalleryProps) => {
   const baseImages = product.images && product.images.length > 0 ? product.images : [product.image];
-  const galleryImages = baseImages;
+  const variantImages = selectedVariantImages?.filter(Boolean) ?? [];
+  const galleryImages = variantImages.length > 0 ? variantImages : baseImages;
   const hasMultipleImages = galleryImages.length > 1;
   const [activeImage, setActiveImage] = useState(0);
-  const [variantPreviewSrc, setVariantPreviewSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (activeImage >= galleryImages.length) {
-      setActiveImage(0);
-    }
-  }, [activeImage, galleryImages.length]);
-
-  useEffect(() => {
-    if (!activeVariantImage) {
-      setVariantPreviewSrc(null);
-      return;
-    }
-
-    const indexInGallery = galleryImages.findIndex((img) => img === activeVariantImage);
-    if (indexInGallery >= 0) {
-      setActiveImage(indexInGallery);
-      setVariantPreviewSrc(null);
-      return;
-    }
-
-    setVariantPreviewSrc(activeVariantImage);
-  }, [activeVariantImage, galleryImages]);
   const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
   const [isZoomed, setIsZoomed] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const activeSrc = variantPreviewSrc ?? galleryImages[Math.min(activeImage, galleryImages.length - 1)] ?? product.image;
+  const safeActiveImage = galleryImages.length > 0
+    ? Math.min(Math.max(activeImage, 0), galleryImages.length - 1)
+    : 0;
+  const activeSrc = galleryImages[safeActiveImage] ?? product.image;
   const goNext = () => {
     setSlideDirection(1);
-    setVariantPreviewSrc(null);
     setActiveImage((prev) => (prev + 1) % galleryImages.length);
   };
   const goPrev = () => {
     setSlideDirection(-1);
-    setVariantPreviewSrc(null);
     setActiveImage((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
   };
   const goToImage = (index: number) => {
-    if (index === activeImage && !variantPreviewSrc) return;
-    setSlideDirection(index > activeImage ? 1 : -1);
-    setVariantPreviewSrc(null);
+    if (index === safeActiveImage) return;
+    setSlideDirection(index > safeActiveImage ? 1 : -1);
     setActiveImage(index);
   };
 
@@ -125,7 +103,7 @@ const ProductImageGallery = ({ product, activeVariantImage }: ProductImageGaller
                   key={index}
                   onClick={() => goToImage(index)}
                   className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 bg-gray-100 transition-all ${
-                    activeImage === index ? 'border-orange-400' : 'border-transparent hover:border-gray-300'
+                    safeActiveImage === index ? 'border-orange-400' : 'border-transparent hover:border-gray-300'
                   }`}
                 >
                   <Image src={image} alt={`View ${index + 1}`} fill className="object-cover" />

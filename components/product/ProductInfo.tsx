@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image';
 import { useCart } from "@/context/CartContext";
 import { CategoryProduct } from "@/libs/CategoryData";
 import { mockReviews } from "@/libs/MockProductData";
@@ -117,24 +118,43 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
         return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
     }, [variantOptions]);
 
+    const variantNameOptions = useMemo(() => {
+        const map = new Map<string, string | undefined>();
+        variantOptions.forEach((variant) => {
+            const variantName = variant.name?.trim();
+            if (!variantName) return;
+            map.set(variantName, variant.images?.[0]);
+        });
+        return Array.from(map.entries()).map(([name, image]) => ({ name, image }));
+    }, [variantOptions]);
+
     const sizeOptions = useMemo(() => {
         return Array.from(
             new Set(variantOptions.map((variant) => variant.size).filter((size): size is string => Boolean(size)))
         );
     }, [variantOptions]);
 
+    const [selectedVariantName, setSelectedVariantName] = useState('');
     const effectiveSelectedColor = selectedColor || colorOptions[0]?.name || '';
     const effectiveSelectedSize = selectedSize || sizeOptions[0] || '';
+    const usesVariantNameSelection = variantNameOptions.length > 0 && sizeOptions.length === 0;
+    const effectiveSelectedVariantName = selectedVariantName || (usesVariantNameSelection ? variantNameOptions[0]?.name || '' : '');
 
     const selectedVariant = useMemo(() => {
         if (variantOptions.length === 0) return undefined;
+        if (usesVariantNameSelection && effectiveSelectedVariantName) {
+            return (
+                variantOptions.find((variant) => (variant.name ?? '').trim() === effectiveSelectedVariantName)
+                ?? variantOptions[0]
+            );
+        }
         return (
             variantOptions.find((variant) => variant.color === effectiveSelectedColor && variant.size === effectiveSelectedSize)
             ?? variantOptions.find((variant) => variant.color === effectiveSelectedColor)
             ?? variantOptions.find((variant) => variant.size === effectiveSelectedSize)
             ?? variantOptions[0]
         );
-    }, [variantOptions, effectiveSelectedColor, effectiveSelectedSize]);
+    }, [variantOptions, effectiveSelectedColor, effectiveSelectedSize, effectiveSelectedVariantName, usesVariantNameSelection]);
 
     useEffect(() => {
         onVariantChange?.(selectedVariant);
@@ -320,6 +340,11 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 <span className="text-sm font-semibold text-slate-700">
                     Type: <span className="text-orange-500">{productTypeLabel}</span>
                 </span>
+                {selectedVariant?.name?.trim() && !usesVariantNameSelection && (
+                    <span className="text-sm font-semibold text-slate-700">
+                        Variant: <span className="text-orange-500">{selectedVariant.name.trim()}</span>
+                    </span>
+                )}
             </div>
 
             {hasRealVariants && colorOptions.length > 0 && (
@@ -357,6 +382,40 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                                     }`}
                             >
                                 {size}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {hasRealVariants && usesVariantNameSelection && (
+                <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold text-slate-700">
+                        Variant: <span className="text-orange-500">{effectiveSelectedVariantName}</span>
+                    </span>
+                    <div className="flex gap-2 flex-wrap">
+                        {variantNameOptions.map((variantOption) => (
+                            <button
+                                key={variantOption.name}
+                                onClick={() => setSelectedVariantName(variantOption.name)}
+                                className={`inline-flex items-center gap-3 px-3 py-2 text-sm rounded-xl border-2 font-medium transition-all duration-200 ${
+                                    effectiveSelectedVariantName === variantOption.name
+                                        ? 'border-orange-400 bg-orange-50 text-orange-600'
+                                        : 'border-gray-200 text-slate-600 hover:border-orange-200'
+                                }`}
+                            >
+                                {variantOption.image ? (
+                                    <span className="relative h-10 w-10 overflow-hidden rounded-lg bg-slate-100 shrink-0">
+                                        <Image
+                                            src={variantOption.image}
+                                            alt={variantOption.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="40px"
+                                        />
+                                    </span>
+                                ) : null}
+                                <span>{variantOption.name}</span>
                             </button>
                         ))}
                     </div>
