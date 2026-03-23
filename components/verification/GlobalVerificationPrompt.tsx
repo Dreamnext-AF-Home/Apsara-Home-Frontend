@@ -19,11 +19,12 @@ export default function GlobalVerificationPrompt() {
   const role = String(session?.user?.role ?? '').toLowerCase()
   const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '')
   const { data: me } = useMeQuery(undefined, { skip: !isCustomerSession })
-  const [closedForKey, setClosedForKey] = useState<string | null>(null)
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
 
+  const hasLoadedCustomer = Boolean(me?.id)
   const rawStatus = me?.verification_status ?? 'not_verified'
   const isVerified = rawStatus === 'verified' || me?.account_status === 1
-  const shouldPrompt = isCustomerSession && !isVerified && rawStatus === 'not_verified'
+  const shouldPrompt = isCustomerSession && hasLoadedCustomer && !isVerified && rawStatus === 'not_verified'
   const storageKey = me?.id ? `verification-prompt-dismissed:${me.id}:${rawStatus}` : null
   const isHiddenRoute = useMemo(
     () => Boolean(pathname && (
@@ -35,8 +36,14 @@ export default function GlobalVerificationPrompt() {
     [pathname],
   )
   const dismissed = storageKey
-    ? (closedForKey === storageKey || (typeof window !== 'undefined' && sessionStorage.getItem(storageKey) === '1'))
+    ? (dismissedKey === storageKey || (typeof window !== 'undefined' && sessionStorage.getItem(storageKey) === '1'))
     : false
+
+  useEffect(() => {
+    if (status === 'unauthenticated' && typeof window !== 'undefined') {
+      sessionStorage.removeItem('afhome-force-verification-prompt')
+    }
+  }, [status])
 
   useEffect(() => {
     if (isVerified && typeof window !== 'undefined') {
@@ -51,14 +58,16 @@ export default function GlobalVerificationPrompt() {
     if (storageKey && typeof window !== 'undefined') {
       sessionStorage.setItem(storageKey, '1')
     }
-    setClosedForKey(storageKey)
+    setDismissedKey(storageKey)
   }
 
   const handleVerifyNow = () => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('afhome-force-verification-prompt')
-    }
+    handleClose()
     router.push('/profile?tab=encashment&focus=verification#verification-form')
+  }
+
+  if (status !== 'authenticated' || !isCustomerSession) {
+    return null
   }
 
   if (!shouldPrompt || dismissed || isHiddenRoute) {
