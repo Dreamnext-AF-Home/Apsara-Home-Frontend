@@ -15,6 +15,7 @@ import { useGetCustomerNotificationsQuery } from '@/store/api/customerNotificati
 import { useRouter } from 'next/navigation'
 import { useAppDispatch } from '@/store/hooks'
 import { ROOM_OPTIONS } from '@/libs/roomConfig'
+import { useGetPublicProductBrandsQuery } from '@/store/api/productBrandsApi'
 
 type NavLink = {
   label: string;
@@ -35,7 +36,7 @@ const navLinks: NavLink[] = [
     href: '/by-room',
     mega: Object.fromEntries(ROOM_OPTIONS.map((room) => [room.label.toUpperCase(), []])),
   },
-  { label: 'Shop By Brand', href: '/by-brand' },
+  { label: 'Shop By Brand', href: '/by-brand', dropdown: [] },
   { label: 'Assembly Guides', href: '/assembly' },
   { label: 'Interior Services', href: '/interior-services' },
   {
@@ -60,6 +61,8 @@ const normalizeCategorySlug = (rawUrl: string | null | undefined, fallbackName: 
 
   return cleaned || toSlug(fallbackName);
 };
+
+const MAX_NAVBAR_BRANDS = 8;
 
 const roomIcons: Record<string, React.ReactNode> = {
   BEDROOM: (
@@ -352,6 +355,20 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
       return { label: category.name, href: `/category/${urlPart}` }
     })
   }, [initialCategories])
+  const { data: publicBrandsData } = useGetPublicProductBrandsQuery()
+  const shopBrandItems = useMemo(() => {
+    return (publicBrandsData?.brands ?? [])
+      .filter((brand) => brand.status === 0 && brand.name.trim().length > 0)
+      .map((brand) => ({
+        id: brand.id,
+        label: brand.name.trim(),
+        href: `/by-brand?brand=${encodeURIComponent(toSlug(brand.name))}`,
+      }))
+  }, [publicBrandsData?.brands])
+  const navbarBrandItems = useMemo(
+    () => shopBrandItems.slice(0, MAX_NAVBAR_BRANDS),
+    [shopBrandItems],
+  )
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -1008,26 +1025,47 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
           >
             <div className="container mx-auto px-4 py-4">
               <div className="grid grid-cols-3 gap-1">
-                {(activeLink.label === 'Shop Category'
-                  ? (
-                      shopCategoryItems.length > 0
-                        ? shopCategoryItems
-                        : [{ label: 'No categories found', href: '#' }]
-                    )
-                  : activeLink.dropdown.map((item) => ({
-                      label: item,
-                      href: `${activeLink.href}/${item.toLowerCase().replace(/\s+/g, '-')}`,
-                    }))
-                ).map((item) => (
-                  <Link
-                    key={`${activeLink.label}-${item.label}`}
-                    href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-all duration-200 group"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-orange-400 transition-colors" />
-                    {item.label}
-                  </Link>
-                ))}
+                {(() => {
+                  const items = activeLink.label === 'Shop Category'
+                    ? (
+                        shopCategoryItems.length > 0
+                          ? shopCategoryItems
+                          : [{ label: 'No categories found', href: '#' }]
+                      )
+                    : activeLink.label === 'Shop By Brand'
+                      ? (
+                          navbarBrandItems.length > 0
+                            ? navbarBrandItems
+                            : [{ label: 'No brands found', href: '/by-brand' }]
+                        )
+                      : activeLink.dropdown.map((item) => ({
+                          label: item,
+                          href: `${activeLink.href}/${item.toLowerCase().replace(/\s+/g, '-')}`,
+                        }))
+
+                  return (
+                    <>
+                      {items.map((item) => (
+                        <Link
+                          key={`${activeLink.label}-${item.label}`}
+                          href={item.href}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition-all duration-200 group"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-orange-400 transition-colors" />
+                          {item.label}
+                        </Link>
+                      ))}
+                      {activeLink.label === 'Shop By Brand' && shopBrandItems.length > 0 && (
+                        <Link
+                          href="/by-brand"
+                          className="col-span-full mt-2 inline-flex items-center justify-center rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-600 transition-colors hover:bg-orange-100"
+                        >
+                          View All Brands
+                        </Link>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </motion.div>
@@ -1263,6 +1301,12 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
                             ? shopCategoryItems
                             : [{ label: 'No categories found', href: '#' }]
                         )
+                      : link.label === 'Shop By Brand'
+                        ? (
+                            navbarBrandItems.length > 0
+                              ? navbarBrandItems
+                              : [{ label: 'No brands found', href: '/by-brand' }]
+                        )
                       : link.dropdown.map((item) => ({
                           label: item,
                           href: `${link.href}/${item.toLowerCase().replace(/\s+/g, '-')}`,
@@ -1373,6 +1417,15 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
                                 {item.label}
                               </Link>
                             ))}
+                            {link.label === 'Shop By Brand' && shopBrandItems.length > 0 && (
+                              <Link
+                                href="/by-brand"
+                                className="mt-1 inline-flex items-center rounded-lg bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-600 transition-colors hover:bg-orange-100"
+                                onClick={() => setMobileOpen(false)}
+                              >
+                                View All Brands
+                              </Link>
+                            )}
                           </div>
                         )}
                       </div>

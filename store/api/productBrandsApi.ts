@@ -20,6 +20,16 @@ interface ProductBrandPayload {
 
 export const productBrandsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getPublicProductBrands: builder.query<ProductBrandsResponse, { search?: string } | void>({
+      query: (params) => ({
+        url: '/api/product-brands',
+        method: 'GET',
+        params: {
+          q: params?.search,
+        },
+      }),
+      providesTags: ['Brands'],
+    }),
     getProductBrands: builder.query<ProductBrandsResponse, { search?: string } | void>({
       query: (params) => ({
         url: '/api/admin/product-brands',
@@ -57,6 +67,7 @@ export const productBrandsApi = baseApi.injectEndpoints({
 })
 
 export const {
+  useGetPublicProductBrandsQuery,
   useGetProductBrandsQuery,
   useCreateProductBrandMutation,
   useUpdateProductBrandMutation,

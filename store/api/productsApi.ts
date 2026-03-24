@@ -129,6 +129,7 @@ interface ProductsQueryParams {
   status?: string
   catId?: number
   roomType?: number
+  brandType?: number
   supplierId?: number
 }
 
@@ -263,6 +264,7 @@ export const productsApi = baseApi.injectEndpoints({
           status: params?.status,
           cat_id: params?.catId,
           room_type: params?.roomType,
+          brand_type: params?.brandType,
           supplier_id: params?.supplierId,
         },
       }),
@@ -281,6 +283,7 @@ export const productsApi = baseApi.injectEndpoints({
           status: params?.status,
           cat_id: params?.catId,
           room_type: params?.roomType,
+          brand_type: params?.brandType,
           supplier_id: params?.supplierId,
         },
       }),
