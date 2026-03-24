@@ -1,6 +1,7 @@
 'use client';
 
 import { CategoryProduct } from '@/libs/CategoryData';
+import { getEnhancedCloudinaryImageUrl } from '@/libs/cloudinary';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
@@ -64,6 +65,25 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
     ? Math.min(Math.max(activeImage, 0), galleryImages.length - 1)
     : 0;
   const activeSrc = galleryImages[safeActiveImage] ?? product.image;
+  const enhancedActiveSrc = getEnhancedCloudinaryImageUrl(activeSrc, {
+    width: 1400,
+    height: 1400,
+    crop: 'limit',
+    effect: 'e_improve',
+  });
+  const desktopThumbnails = useMemo(
+    () =>
+      galleryImages.map((image) => ({
+        original: image,
+        enhanced: getEnhancedCloudinaryImageUrl(image, {
+          width: 220,
+          height: 220,
+          crop: 'fill',
+          effect: 'e_improve',
+        }),
+      })),
+    [galleryImages],
+  );
 
   const goNext = () => {
     setSlideDirection(1);
@@ -98,7 +118,7 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
               className="relative w-full max-w-xl aspect-square"
               onClick={(e) => e.stopPropagation()}
             >
-              <Image src={activeSrc} alt={product.name} fill className="object-contain" priority />
+              <Image src={enhancedActiveSrc || activeSrc} alt={product.name} fill className="object-contain" priority />
             </motion.div>
             <button
               onClick={() => setIsZoomed(false)}
@@ -119,7 +139,7 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
         <div className="flex gap-4 items-start">
           {hasMultipleImages && (
             <div className="hidden md:flex w-[72px] shrink-0 flex-col gap-2 max-h-[640px] overflow-y-auto pr-1">
-              {galleryImages.map((image, index) => (
+              {desktopThumbnails.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => goToImage(index)}
@@ -127,7 +147,7 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
                     safeActiveImage === index ? 'border-orange-400' : 'border-transparent hover:border-gray-300'
                   }`}
                 >
-                  <Image src={image} alt={`View ${index + 1}`} fill className="object-cover" />
+                  <Image src={image.enhanced || image.original} alt={`View ${index + 1}`} fill className="object-cover" />
                 </button>
               ))}
             </div>
@@ -146,7 +166,7 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
                 transition={{ duration: 0.28, ease: 'easeOut' }}
                 className="absolute inset-0"
               >
-                <Image src={activeSrc} alt={product.name} fill className="object-contain p-2 sm:p-4" priority />
+                <Image src={enhancedActiveSrc || activeSrc} alt={product.name} fill className="object-contain p-2 sm:p-4" priority />
               </motion.div>
             </AnimatePresence>
 
@@ -200,7 +220,7 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
 
         {hasMultipleImages && (
           <div className="flex md:hidden gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-            {galleryImages.map((image, index) => (
+            {desktopThumbnails.map((image, index) => (
               <button
                 key={index}
                 onClick={() => goToImage(index)}
@@ -208,7 +228,7 @@ const ProductImageGallery = ({ product, selectedVariantImages, preferredActiveIm
                   activeImage === index ? 'border-orange-400' : 'border-gray-100'
                 }`}
               >
-                <Image src={image} alt={`View ${index + 1}`} fill className="object-cover" />
+                <Image src={image.enhanced || image.original} alt={`View ${index + 1}`} fill className="object-cover" />
               </button>
             ))}
           </div>

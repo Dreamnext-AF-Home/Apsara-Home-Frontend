@@ -153,6 +153,37 @@ const toStringArray = (value: unknown): string[] => {
   return []
 }
 
+const getProductVariantKey = (variant: ProductVariant) => {
+  return [
+    variant.sku?.trim().toLowerCase() ?? '',
+    variant.name?.trim().toLowerCase() ?? '',
+    variant.color?.trim().toLowerCase() ?? '',
+    variant.colorHex?.trim().toLowerCase() ?? '',
+    variant.size?.trim().toLowerCase() ?? '',
+    String(variant.width ?? ''),
+    String(variant.dimension ?? ''),
+    String(variant.height ?? ''),
+    String(variant.priceSrp ?? ''),
+    String(variant.priceDp ?? ''),
+    String(variant.priceMember ?? ''),
+    String(variant.prodpv ?? ''),
+    String(variant.qty ?? ''),
+    String(variant.status ?? ''),
+    variant.images?.join('|') ?? '',
+  ].join('|')
+}
+
+const dedupeProductVariants = (variants: ProductVariant[]) =>
+  Array.from(
+    variants.reduce((map, variant) => {
+      const key = getProductVariantKey(variant)
+      if (!map.has(key)) {
+        map.set(key, variant)
+      }
+      return map
+    }, new Map<string, ProductVariant>()).values(),
+  )
+
 export const normalizeProduct = (input: Product & Record<string, unknown>): Product => {
   const parsedImages = toStringArray(input.images ?? input.pd_images)
   const primaryImage = typeof input.image === 'string' && input.image.trim().length > 0
@@ -190,6 +221,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
           images: toStringArray(row.images ?? row.pv_images),
         } satisfies ProductVariant
       })
+  const uniqueVariants = dedupeProductVariants(parsedVariants)
 
   return {
     ...input,
@@ -228,7 +260,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
         : (typeof input.brand_name === 'string' ? input.brand_name : null),
     image: primaryImage ?? images[0] ?? null,
     images,
-    variants: parsedVariants,
+    variants: uniqueVariants,
   }
 }
 

@@ -16,6 +16,9 @@ type OrderItem = {
     image: string;
     quantity: number;
     price: number;
+    selected_color?: string | null;
+    selected_size?: string | null;
+    selected_type?: string | null;
 };
 
 type Order = {
@@ -66,6 +69,14 @@ const OrderCard = ({ order }: OrderCardProps) => {
   const isActive = !['cancelled', 'refunded', 'delivered'].includes(order.status);
   const hasShipmentInfo = Boolean(order.courier || order.tracking_no || order.shipment_status);
   const isShipmentCancelled = order.shipment_status === 'cancelled';
+
+  const getSelectedOptions = (item: OrderItem) => {
+    return [
+      item.selected_color ? `Color: ${item.selected_color}` : null,
+      item.selected_size ? `Size: ${item.selected_size}` : null,
+      item.selected_type ? `Type: ${item.selected_type}` : null,
+    ].filter(Boolean) as string[];
+  };
 
   return (
     <motion.div
@@ -236,6 +247,18 @@ const OrderCard = ({ order }: OrderCardProps) => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
                         <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
+                        {getSelectedOptions(item).length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {getSelectedOptions(item).map((option) => (
+                              <span
+                                key={option}
+                                className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-medium text-orange-700"
+                              >
+                                {option}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <p className="text-sm font-semibold text-gray-800 shrink-0">{formatPrice(item.price * item.quantity)}</p>
                     </div>

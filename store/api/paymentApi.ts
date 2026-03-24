@@ -55,6 +55,9 @@ export interface CustomerOrderItem {
   image: string
   quantity: number
   price: number
+  selected_color?: string | null
+  selected_size?: string | null
+  selected_type?: string | null
 }
 
 export interface CustomerOrder {

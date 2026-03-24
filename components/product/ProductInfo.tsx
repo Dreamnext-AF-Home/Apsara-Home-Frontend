@@ -159,24 +159,35 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const [selectedVariantName, setSelectedVariantName] = useState('');
     const [selectedSizeKey, setSelectedSizeKey] = useState('');
     const effectiveSelectedColor = selectedColor || colorOptions[0]?.name || '';
-    const effectiveSelectedSizeKey = selectedSizeKey || sizeChoices[0]?.key || '';
-    const effectiveSelectedSize = selectedSize || sizeChoices[0]?.label || '';
-    const usesVariantNameSelection = variantNameOptions.length > 0 && sizeChoices.length === 0;
+    const displayedSizeChoices = useMemo(() => {
+        const filteredChoices = effectiveSelectedColor
+            ? sizeChoices.filter((choice) => !choice.variant.color || choice.variant.color === effectiveSelectedColor)
+            : sizeChoices;
+        const uniqueChoices = new Map<string, SizeChoice>();
+
+        filteredChoices.forEach((choice) => {
+            const dedupeKey = [
+                choice.label.toLowerCase(),
+                String(choice.variant.width ?? ''),
+                String(choice.variant.dimension ?? ''),
+                String(choice.variant.height ?? ''),
+            ].join('|');
+
+            if (!uniqueChoices.has(dedupeKey)) {
+                uniqueChoices.set(dedupeKey, choice);
+            }
+        });
+
+        return Array.from(uniqueChoices.values());
+    }, [effectiveSelectedColor, sizeChoices]);
+    const effectiveSelectedSizeKey = selectedSizeKey || displayedSizeChoices[0]?.key || '';
+    const effectiveSelectedSize = selectedSize || displayedSizeChoices[0]?.label || '';
+    const usesVariantNameSelection = variantNameOptions.length > 0 && displayedSizeChoices.length === 0;
     const effectiveSelectedVariantName = selectedVariantName || (usesVariantNameSelection ? variantNameOptions[0]?.name || '' : '');
-
-    useEffect(() => {
-        if (sizeChoices.length === 0) {
-            if (selectedSizeKey !== '') setSelectedSizeKey('');
-            return;
-        }
-
-        if (sizeChoices.some((choice) => choice.key === effectiveSelectedSizeKey)) return;
-        setSelectedSizeKey(sizeChoices[0]?.key ?? '');
-    }, [effectiveSelectedSizeKey, selectedSizeKey, sizeChoices]);
 
     const selectedVariant = useMemo(() => {
         if (variantOptions.length === 0) return undefined;
-        const selectedSizeChoice = sizeChoices.find((choice) => choice.key === effectiveSelectedSizeKey);
+        const selectedSizeChoice = displayedSizeChoices.find((choice) => choice.key === effectiveSelectedSizeKey);
         if (selectedSizeChoice) {
             return selectedSizeChoice.variant;
         }
@@ -197,7 +208,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
             )
             ?? variantOptions[0]
         );
-    }, [variantOptions, effectiveSelectedColor, effectiveSelectedSize, effectiveSelectedSizeKey, effectiveSelectedVariantName, selectedSize, sizeChoices, usesVariantNameSelection]);
+    }, [displayedSizeChoices, variantOptions, effectiveSelectedColor, effectiveSelectedSize, effectiveSelectedSizeKey, effectiveSelectedVariantName, selectedSize, usesVariantNameSelection]);
 
     useEffect(() => {
         onVariantChange?.(selectedVariant);
@@ -449,11 +460,11 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
-            {hasRealVariants && sizeChoices.length > 0 && (
+            {hasRealVariants && displayedSizeChoices.length > 0 && (
                 <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold text-slate-700">Size</span>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {sizeChoices.map((sizeChoice) => (
+                        {displayedSizeChoices.map((sizeChoice) => (
                             <button
                                 key={sizeChoice.key}
                                 onClick={() => {

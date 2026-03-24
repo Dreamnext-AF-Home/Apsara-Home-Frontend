@@ -194,6 +194,21 @@ const buildVariantSku = (baseSku: string, index: number) => {
   return base ? `${base}-V${seq}` : `VAR-V${seq}`
 }
 
+const normalizeSkuSegment = (value: string) => {
+  const cleaned = value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return cleaned || 'COLOR'
+}
+
+const buildVariantColorSku = (baseSku: string, colorName: string, colorIndex: number, totalColors: number) => {
+  if (totalColors <= 1) return baseSku
+  return `${baseSku}-${normalizeSkuSegment(colorName || `COLOR-${colorIndex + 1}`)}`
+}
+
 const normalizeNumberField = (value: string) => {
   const trimmed = value.trim()
   return trimmed ? Number(trimmed) : null
@@ -205,6 +220,42 @@ const normalizeTextField = (value: string) => {
 }
 
 const normalizeVariantLabel = (value: string) => value.trim().replace(/\s+/g, ' ')
+
+const getVariantFormKey = (variant: VariantFormState) => {
+  const normalizedColors = variant.pv_colors
+    .map((color) => `${normalizeVariantLabel(color.name).toLowerCase()}|${color.hex.trim().toLowerCase()}`)
+    .sort()
+    .join(',')
+
+  return [
+    variant.id ?? '',
+    variant.pv_sku.trim().toLowerCase(),
+    normalizeVariantLabel(variant.pv_name).toLowerCase(),
+    normalizeVariantLabel(variant.pv_size).toLowerCase(),
+    variant.pv_width.trim(),
+    variant.pv_dimension.trim(),
+    variant.pv_height.trim(),
+    normalizedColors,
+    variant.pv_price_srp.trim(),
+    variant.pv_price_dp.trim(),
+    variant.pv_price_member.trim(),
+    variant.pv_prodpv.trim(),
+    variant.pv_qty.trim(),
+    variant.pv_status.trim(),
+    variant.pv_images.filter(Boolean).join('|'),
+  ].join('::')
+}
+
+const dedupeVariantFormStates = (variants: VariantFormState[]) =>
+  Array.from(
+    variants.reduce((map, variant) => {
+      const key = getVariantFormKey(variant)
+      if (!map.has(key)) {
+        map.set(key, variant)
+      }
+      return map
+    }, new Map<string, VariantFormState>()).values(),
+  )
 
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
   if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) {
@@ -227,6 +278,9 @@ const getRequestErrorMessage = (err: unknown, fallback: string) => {
 
   return firstFieldErrors[0] ?? data?.message ?? fallback
 }
+
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 const hasEditDraftContent = (
   currentForm: FormState,
@@ -336,7 +390,7 @@ function Field({
   label: string; required?: boolean; error?: string; children: React.ReactNode
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5" data-error-field={error ? 'true' : undefined}>
       <label className="text-xs font-semibold text-slate-600 block">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
@@ -362,6 +416,23 @@ const inputCls = (hasError = false) => [
 ].join(' ')
 
 const variantInputCls = 'w-full px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400 transition-all hover:border-slate-300'
+
+const scrollToFirstErrorField = (container: HTMLElement | null) => {
+  if (!container) return
+
+  requestAnimationFrame(() => {
+    const firstErrorField =
+      container.querySelector<HTMLElement>('[data-error-field="true"]') ??
+      container.querySelector<HTMLElement>('.border-red-300') ??
+      container.querySelector<HTMLElement>('.text-red-500')
+
+    if (!firstErrorField) return
+
+    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+    const focusTarget = firstErrorField.querySelector<HTMLElement>('input, select, textarea, [contenteditable="true"], button')
+    focusTarget?.focus?.({ preventScroll: true })
+  })
+}
 
 /* ─── main component ─────────────────────────────────────── */
 
@@ -394,6 +465,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const activeExistingImagePointerIndexRef = useRef<number | null>(null)
   const activeNewImagePointerIndexRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const formContentRef = useRef<HTMLDivElement>(null)
 
   const { data: session, status: authStatus } = useSession()
   const role = String(session?.user?.role ?? '').toLowerCase()
@@ -480,7 +552,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       ? openedProduct.images.filter((img): img is string => Boolean(img))
       : (openedProduct.image ? [openedProduct.image] : [])
     setInitialImageUrls(existing)
-    const nextVariants = Array.isArray(openedProduct.variants) ? openedProduct.variants.map(mapVariantToForm) : []
+    const nextVariants = Array.isArray(openedProduct.variants)
+      ? dedupeVariantFormStates(openedProduct.variants.map(mapVariantToForm))
+      : []
     setInitialVariants(nextVariants)
     setImageFiles([]); setImagePreviews([]); setUploadedUrls([])
     setNewColorInputs({})
@@ -495,7 +569,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
           if (parsedDraft.version === 1 && parsedDraft.productId === openedProduct.id) {
             setForm({ ...nextForm, ...parsedDraft.form })
             setExistingImageUrls(Array.isArray(parsedDraft.imageUrls) ? parsedDraft.imageUrls : existing)
-            setVariants(Array.isArray(parsedDraft.variants) ? parsedDraft.variants : nextVariants)
+            setVariants(
+              Array.isArray(parsedDraft.variants)
+                ? dedupeVariantFormStates(parsedDraft.variants)
+                : nextVariants,
+            )
             setRoomTouched(Boolean(parsedDraft.roomTouched))
             setDraftRestored(true)
             return
@@ -527,20 +605,32 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const hasVariants = form.pd_type === '1'
 
   /* ── image handlers ── */
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
+  const applySelectedImages = (files: File[]) => {
     if (!files.length) return
     setImageError('')
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     for (const file of files) {
-      if (!allowed.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF allowed.'); return }
-      if (file.size > 5 * 1024 * 1024) { setImageError('File too large. Max 5MB.'); return }
+      if (!IMAGE_MIME_TYPES.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF allowed.'); return }
+      if (file.size > MAX_IMAGE_BYTES) { setImageError('File too large. Max 5MB.'); return }
     }
     const maxNew = 10 - existingImageUrls.length
     const next = [...imageFiles, ...files].slice(0, maxNew)
     setImageFiles(next)
     setImagePreviews(next.map(f => URL.createObjectURL(f)))
     setUploadedUrls([])
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    applySelectedImages(Array.from(e.target.files ?? []))
+  }
+
+  const preventFileDropNavigation = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleMainImageDrop = (e: React.DragEvent<HTMLElement>) => {
+    preventFileDropNavigation(e)
+    applySelectedImages(Array.from(e.dataTransfer.files ?? []))
   }
 
   const handleRemoveImage         = (index: number) => {
@@ -617,11 +707,17 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     const hex  = newColorInputs[index]?.hex ?? '#94a3b8'
     const typedName = normalizeVariantLabel(newColorInputs[index]?.name ?? '')
     const name = typedName || hexToColorName(hex)
-    const existing = variants[index]?.pv_colors ?? []
     if (!name) return
-    if (existing.some((c) => normalizeVariantLabel(c.name).toLowerCase() === name.toLowerCase())) return
     setVariants(prev =>
-      prev.map((item, i) => i === index ? { ...item, pv_colors: [...item.pv_colors, { name, hex }] } : item),
+      prev.map((item, i) => (
+        i === index
+          ? (
+            item.pv_colors.some((color) => normalizeVariantLabel(color.name).toLowerCase() === name.toLowerCase())
+              ? item
+              : { ...item, pv_colors: [...item.pv_colors, { name, hex }] }
+          )
+          : item
+      )),
     )
     setNewColorInputs(prev => ({ ...prev, [index]: { name: '', hex: '#94a3b8' } }))  // reset after add
   }
@@ -633,13 +729,12 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       ),
     )
 
-  const uploadVariantImages = async (index: number, files: FileList | null) => {
+  const uploadVariantImages = async (index: number, files: FileList | File[] | null) => {
     const picked = Array.from(files ?? [])
     if (!picked.length) return
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     for (const file of picked) {
-      if (!allowed.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF files are allowed.'); return }
-      if (file.size > 5 * 1024 * 1024) { setImageError('File too large. Maximum size is 5MB.'); return }
+      if (!IMAGE_MIME_TYPES.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF files are allowed.'); return }
+      if (file.size > MAX_IMAGE_BYTES) { setImageError('File too large. Maximum size is 5MB.'); return }
     }
     setIsUploading(true)
     try {
@@ -661,6 +756,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     } finally {
       setIsUploading(false)
     }
+  }
+
+  const handleVariantImageDrop = (index: number) => (e: React.DragEvent<HTMLElement>) => {
+    preventFileDropNavigation(e)
+    void uploadVariantImages(index, Array.from(e.dataTransfer.files ?? []))
   }
 
   /* ── validation ── */
@@ -691,7 +791,6 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       const baseMember = toOptionalPositiveNumber(form.pd_price_member)
       const base = {
         pv_name:      v.pv_name.trim() || undefined,
-        pv_sku:       variantSku,
         pv_size:      v.pv_size || undefined,
         pv_width:     toOptionalPositiveNumber(v.pv_width),
         pv_dimension: toOptionalPositiveNumber(v.pv_dimension),
@@ -704,8 +803,16 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         pv_status:    Number(v.pv_status),
         pv_images:    v.pv_images.length > 0 ? v.pv_images : undefined,
       }
-      if (!v.pv_colors.length) return [base]
-      return v.pv_colors.map(c => ({ ...base, pv_color: c.name, pv_color_hex: c.hex }))
+      if (!v.pv_colors.length) {
+        return [{ ...base, pv_sku: variantSku }]
+      }
+
+      return v.pv_colors.map((color, colorIndex) => ({
+        ...base,
+        pv_sku: buildVariantColorSku(variantSku, color.name, colorIndex, v.pv_colors.length),
+        pv_color: color.name,
+        pv_color_hex: color.hex,
+      }))
     })
 
   /* ── submit ── */
@@ -714,7 +821,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     if (!product) return
     setServerError('')
     const errs = validate()
-    if (Object.keys(errs).length > 0) { setErrors(errs); return }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs)
+      scrollToFirstErrorField(formContentRef.current)
+      return
+    }
     const baseChanged =
       JSON.stringify(normalizeFormForComparison(form)) !== JSON.stringify(normalizeFormForComparison(initialForm ?? form))
     const variantsChanged =
@@ -937,7 +1048,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
               {/* ── Scrollable form body ── */}
               <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-                <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+                <div ref={formContentRef} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
 
                   {/* Server error */}
                   {serverError && (
@@ -1036,7 +1147,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         ))}
                         {/* Add more slot */}
                         {existingImageUrls.length + imagePreviews.length < 10 && (
-                          <label htmlFor="edit-product-image-input" className="flex flex-col items-center justify-center gap-1 h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                          <label htmlFor="edit-product-image-input" onDragOver={preventFileDropNavigation} onDrop={handleMainImageDrop} className="flex flex-col items-center justify-center gap-1 h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
                             <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
                             </svg>
@@ -1060,6 +1171,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                   ) : (
                     <label
                       htmlFor="edit-product-image-input"
+                      onDragOver={preventFileDropNavigation}
+                      onDrop={handleMainImageDrop}
                       className="flex flex-col items-center justify-center gap-2 w-full h-36 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition-all group"
                     >
                       <div className="h-10 w-10 rounded-xl bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
@@ -1591,7 +1704,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <div className="flex items-center justify-between">
                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Images</p>
-                                      <label className="inline-flex cursor-pointer items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 rounded-lg text-[11px] font-semibold transition-colors">
+                                      <label onDragOver={preventFileDropNavigation} onDrop={handleVariantImageDrop(index)} className="inline-flex cursor-pointer items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 rounded-lg text-[11px] font-semibold transition-colors">
                                         <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => uploadVariantImages(index, e.target.files)}/>
                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -1617,7 +1730,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                         ))}
                                       </div>
                                     ) : (
-                                      <label className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg border-2 border-dashed border-slate-200 hover:border-teal-400 hover:bg-teal-50/30 transition-colors cursor-pointer">
+                                      <label onDragOver={preventFileDropNavigation} onDrop={handleVariantImageDrop(index)} className="flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg border-2 border-dashed border-slate-200 hover:border-teal-400 hover:bg-teal-50/30 transition-colors cursor-pointer">
                                         <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={e => uploadVariantImages(index, e.target.files)}/>
                                         <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>

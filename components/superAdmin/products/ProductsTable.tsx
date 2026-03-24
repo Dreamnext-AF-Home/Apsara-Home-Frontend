@@ -43,6 +43,30 @@ const buildProductPath = (product: Product) => {
   return product.id > 0 ? `/product/${slug}-i${product.id}` : `/product/${slug}`
 }
 
+const getVariantCount = (product: Product) => {
+  const variants = product.variants ?? []
+  if (variants.length === 0) return 0
+
+  return new Set(
+    variants.map((variant) => [
+      variant.sku?.trim().toLowerCase() ?? '',
+      variant.name?.trim().toLowerCase() ?? '',
+      variant.color?.trim().toLowerCase() ?? '',
+      variant.colorHex?.trim().toLowerCase() ?? '',
+      variant.size?.trim().toLowerCase() ?? '',
+      String(variant.width ?? ''),
+      String(variant.dimension ?? ''),
+      String(variant.height ?? ''),
+      String(variant.priceSrp ?? ''),
+      String(variant.priceDp ?? ''),
+      String(variant.priceMember ?? ''),
+      String(variant.qty ?? ''),
+      String(variant.status ?? ''),
+      variant.images?.join('|') ?? '',
+    ].join('|')),
+  ).size
+}
+
 /* ── Stock badge ── */
 function StockBadge({ qty }: { qty: number }) {
   if (qty === 0) return (
@@ -149,9 +173,9 @@ export default function ProductsTable({
                     <p className="font-medium text-slate-800 line-clamp-1 leading-snug">{p.name || '—'}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[10px] text-slate-400 font-mono">#{p.id}</span>
-                      {p.variants && p.variants.length > 0 && (
+                      {getVariantCount(p) > 0 && (
                         <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md font-medium">
-                          {p.variants.length} variant{p.variants.length !== 1 ? 's' : ''}
+                          {getVariantCount(p)} variant{getVariantCount(p) !== 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
