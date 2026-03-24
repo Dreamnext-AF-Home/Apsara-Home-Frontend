@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { normalizeAdminPermissions } from "@/libs/adminPermissions";
 
 const ADMIN_ALLOWED_ROLES = new Set([
   "admin",
@@ -26,6 +27,16 @@ const ADMIN_ALLOWED_PREFIXES = [
   "/admin/webpages",
   "/admin/settings/users",
 ];
+const ADMIN_PERMISSION_PREFIXES: Record<string, string[]> = {
+  members: ["/admin/members"],
+  orders: ["/admin/orders"],
+  interior_requests: ["/admin/interior-requests"],
+  products: ["/admin/products"],
+  shipping: ["/admin/shipping"],
+  suppliers: ["/admin/suppliers"],
+  web_content: ["/admin/webpages"],
+  settings_users: ["/admin/settings/users"],
+};
 const MERCHANT_ALLOWED_PREFIXES = [
   "/admin/dashboard",
   "/admin/orders",
@@ -127,6 +138,11 @@ export async function proxy(req: NextRequest) {
 
     const role = String((token as { role?: string } | null)?.role ?? "").toLowerCase();
     const userLevelId = Number((token as { userLevelId?: number } | null)?.userLevelId ?? 0);
+    const adminPermissions = normalizeAdminPermissions((token as { adminPermissions?: string[] } | null)?.adminPermissions ?? []);
+    const hasCustomAdminPermissions = (role === "admin" || userLevelId === 2) && adminPermissions.length > 0;
+    const adminAllowedPrefixes = hasCustomAdminPermissions
+      ? ["/admin/dashboard", ...adminPermissions.flatMap((permission) => ADMIN_PERMISSION_PREFIXES[permission] ?? [])]
+      : ADMIN_ALLOWED_PREFIXES;
     const isAccounting = role === "accounting" || userLevelId === 5;
     const isFinanceOfficer = role === "finance_officer" || userLevelId === 6;
     const isMerchantAdmin = role === "merchant_admin" || userLevelId === 7;
@@ -172,7 +188,7 @@ export async function proxy(req: NextRequest) {
     if (role === "admin" || userLevelId === 2) {
       const allowed =
         pathname === "/admin" ||
-        ADMIN_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+        adminAllowedPrefixes.some((prefix) => pathname.startsWith(prefix));
       if (!allowed) {
         return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }

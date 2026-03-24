@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import {
@@ -13,6 +13,12 @@ import {
 } from '@/store/api/adminUsersApi'
 import { useGetSuppliersQuery } from '@/store/api/suppliersApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
+import {
+  ADMIN_PERMISSION_OPTIONS,
+  AdminPermissionId,
+  DEFAULT_ADMIN_PERMISSIONS,
+  normalizeAdminPermissions,
+} from '@/libs/adminPermissions'
 
 /* ─── types ──────────────────────────────────────────────── */
 
@@ -22,6 +28,7 @@ type CreateForm = {
   email: string
   user_level_id: number
   supplier_id: number | null
+  admin_permissions: AdminPermissionId[]
 }
 
 type EditForm = CreateForm & {
@@ -29,7 +36,7 @@ type EditForm = CreateForm & {
 }
 
 const initialForm: CreateForm = {
-  name: '', username: '', email: '', user_level_id: 3, supplier_id: null,
+  name: '', username: '', email: '', user_level_id: 3, supplier_id: null, admin_permissions: [],
 }
 
 const initialEditForm: EditForm = {
@@ -363,6 +370,65 @@ function SupplierSelect({
   )
 }
 
+function PermissionCheckboxGrid({
+  value,
+  onChange,
+}: {
+  value: AdminPermissionId[]
+  onChange: (value: AdminPermissionId[]) => void
+}) {
+  const selected = new Set(value)
+
+  const togglePermission = (permissionId: AdminPermissionId) => {
+    const next = new Set(selected)
+    if (next.has(permissionId)) {
+      next.delete(permissionId)
+    } else {
+      next.add(permissionId)
+    }
+    onChange(Array.from(next))
+  }
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <label className="text-xs font-semibold text-slate-600 block">
+          Custom Access
+        </label>
+        <p className="mt-1 text-xs text-slate-400">
+          Check only the sections this admin should be able to open.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {ADMIN_PERMISSION_OPTIONS.map((permission) => {
+          const isChecked = selected.has(permission.id)
+          return (
+            <label
+              key={permission.id}
+              className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 transition-all cursor-pointer ${
+                isChecked
+                  ? 'border-teal-300 bg-teal-50'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={() => togglePermission(permission.id)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span className="block">
+                <span className="block text-sm font-semibold text-slate-700">{permission.label}</span>
+                <span className="mt-0.5 block text-xs text-slate-400 leading-relaxed">{permission.description}</span>
+              </span>
+            </label>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ─── EditModal ──────────────────────────────────────────── */
 
 function EditModal({
@@ -375,6 +441,15 @@ function EditModal({
   supplierOptions: Array<{ id: number; label: string }>
   roleOptions: typeof ROLE_OPTIONS
 }) {
+  const permissionsRef = useRef<HTMLDivElement | null>(null)
+  const [isPermissionsSpotlightActive, setIsPermissionsSpotlightActive] = useState(false)
+
+  const spotlightPermissions = () => {
+    setIsPermissionsSpotlightActive(true)
+    permissionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => setIsPermissionsSpotlightActive(false), 1600)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div
@@ -426,7 +501,38 @@ function EditModal({
             helper="Optional. Leave blank if this account does not need email recovery."
           />
           <SectionLabel>Role & Permissions</SectionLabel>
-          <RoleCardGrid value={form.user_level_id} options={roleOptions} onChange={v => onChange({ user_level_id: v })} />
+          <RoleCardGrid
+            value={form.user_level_id}
+            options={roleOptions}
+            onChange={v => {
+              onChange({
+                user_level_id: v,
+                admin_permissions: v === 2
+                  ? (form.admin_permissions.length ? form.admin_permissions : DEFAULT_ADMIN_PERMISSIONS)
+                  : [],
+              })
+              if (v === 2) {
+                window.setTimeout(() => spotlightPermissions(), 80)
+              }
+            }}
+          />
+          {form.user_level_id === 2 && (
+            <motion.div
+              ref={permissionsRef}
+              initial={false}
+              animate={isPermissionsSpotlightActive ? { scale: [1, 1.01, 1], boxShadow: ['0 0 0 rgba(20,184,166,0)', '0 0 0 10px rgba(20,184,166,0.12)', '0 0 0 rgba(20,184,166,0)'] } : { scale: 1, boxShadow: '0 0 0 rgba(20,184,166,0)' }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="rounded-2xl border border-teal-100 bg-teal-50/60 p-3"
+            >
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                Choose Admin Access Before Saving
+              </p>
+              <PermissionCheckboxGrid
+                value={form.admin_permissions}
+                onChange={(admin_permissions) => onChange({ admin_permissions })}
+              />
+            </motion.div>
+          )}
           {form.user_level_id === 8 && (
             <SupplierSelect
               value={form.supplier_id}
@@ -481,6 +587,8 @@ export default function AdminUsersPageMain() {
   const [busyUpdateId,    setBusyUpdateId]    = useState<number | null>(null)
   const [editTarget,      setEditTarget]      = useState<AdminUserItem | null>(null)
   const [editForm,        setEditForm]        = useState<EditForm>(initialEditForm)
+  const createPermissionsRef = useRef<HTMLDivElement | null>(null)
+  const [isCreatePermissionsSpotlightActive, setIsCreatePermissionsSpotlightActive] = useState(false)
 
   const { data, isLoading, isError } = useGetAdminUsersQuery({
     search: search.trim() || undefined, page, perPage: 15,
@@ -503,18 +611,26 @@ export default function AdminUsersPageMain() {
     return []
   }, [isAdmin, isSuperAdmin])
 
+  const spotlightCreatePermissions = () => {
+    setIsCreatePermissionsSpotlightActive(true)
+    createPermissionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => setIsCreatePermissionsSpotlightActive(false), 1600)
+  }
+
   const handleCreate = async (e: React.SyntheticEvent) => {
     e.preventDefault()
     try {
       const result = await createAdminUser({
         ...createForm,
         email: createForm.email.trim() || undefined,
+        admin_permissions: createForm.user_level_id === 2 ? createForm.admin_permissions : [],
       }).unwrap()
       showSuccessToast(result.message)
       setLatestInvite(result)
       setCreateForm({
         ...initialForm,
         user_level_id: isSuperAdmin ? 2 : 3,
+        admin_permissions: isSuperAdmin ? DEFAULT_ADMIN_PERMISSIONS : [],
       })
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } }
@@ -533,6 +649,11 @@ export default function AdminUsersPageMain() {
       password: '',
       user_level_id: row.user_level_id,
       supplier_id: row.supplier_id ?? null,
+      admin_permissions: row.user_level_id === 2
+        ? (normalizeAdminPermissions(row.admin_permissions).length
+          ? normalizeAdminPermissions(row.admin_permissions)
+          : DEFAULT_ADMIN_PERMISSIONS)
+        : [],
     })
   }
 
@@ -545,6 +666,7 @@ export default function AdminUsersPageMain() {
         id: editTarget.id, name: editForm.name, username: editForm.username,
         email: editForm.email, user_level_id: editForm.user_level_id,
         supplier_id: editForm.user_level_id === 8 ? editForm.supplier_id : null,
+        admin_permissions: editForm.user_level_id === 2 ? editForm.admin_permissions : [],
         password: editForm.password.trim() || undefined,
       }).unwrap()
       showSuccessToast(`Updated account for ${editTarget.username}.`)
@@ -664,9 +786,36 @@ export default function AdminUsersPageMain() {
             options={allowedRoleOptions}
             onChange={v => {
               setLatestInvite(null)
-              setCreateForm(p => ({ ...p, user_level_id: v, supplier_id: v === 8 ? p.supplier_id : null }))
+              setCreateForm(p => ({
+                ...p,
+                user_level_id: v,
+                supplier_id: v === 8 ? p.supplier_id : null,
+                admin_permissions: v === 2
+                  ? (p.admin_permissions.length ? p.admin_permissions : DEFAULT_ADMIN_PERMISSIONS)
+                  : [],
+              }))
+              if (v === 2) {
+                window.setTimeout(() => spotlightCreatePermissions(), 80)
+              }
             }}
           />
+          {createForm.user_level_id === 2 && (
+            <motion.div
+              ref={createPermissionsRef}
+              initial={false}
+              animate={isCreatePermissionsSpotlightActive ? { scale: [1, 1.01, 1], boxShadow: ['0 0 0 rgba(20,184,166,0)', '0 0 0 10px rgba(20,184,166,0.12)', '0 0 0 rgba(20,184,166,0)'] } : { scale: 1, boxShadow: '0 0 0 rgba(20,184,166,0)' }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="rounded-2xl border border-teal-100 bg-teal-50/60 p-3"
+            >
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                Choose Admin Access Before Saving
+              </p>
+              <PermissionCheckboxGrid
+                value={createForm.admin_permissions}
+                onChange={(admin_permissions) => setCreateForm((prev) => ({ ...prev, admin_permissions }))}
+              />
+            </motion.div>
+          )}
           {createForm.user_level_id === 8 && (
             <SupplierSelect
               value={createForm.supplier_id}

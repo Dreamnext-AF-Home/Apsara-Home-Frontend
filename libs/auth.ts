@@ -7,6 +7,7 @@ type TokenUser = {
     accessToken?: string;
     role?: string;
     userLevelId?: number;
+    adminPermissions?: string[];
     supplierId?: number | null;
     supplierName?: string | null;
     supplierLevelType?: number | null;
@@ -113,6 +114,7 @@ export const authOptions: NextAuthOptions = {
                         accessToken: data.token,
                         role: data.user.role,
                         userLevelId: data.user.user_level_id,
+                        adminPermissions: data.user.admin_permissions ?? [],
                         supplierId: data.user.supplier_id ?? null,
                     }
                 } catch {
@@ -190,6 +192,7 @@ export const authOptions: NextAuthOptions = {
                 token.accessToken = authUser.accessToken;
                 token.role = authUser.role;
                 token.userLevelId = authUser.userLevelId;
+                token.adminPermissions = authUser.adminPermissions;
                 token.supplierId = authUser.supplierId;
                 token.supplierName = authUser.supplierName;
                 token.supplierLevelType = authUser.supplierLevelType;
@@ -212,6 +215,7 @@ export const authOptions: NextAuthOptions = {
                 sessionUser.accessToken = authToken.accessToken;
                 sessionUser.role = authToken.role;
                 sessionUser.userLevelId = authToken.userLevelId;
+                sessionUser.adminPermissions = authToken.adminPermissions;
                 sessionUser.supplierId = authToken.supplierId;
                 sessionUser.supplierName = authToken.supplierName;
                 sessionUser.supplierLevelType = authToken.supplierLevelType;

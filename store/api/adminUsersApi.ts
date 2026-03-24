@@ -9,6 +9,7 @@ export interface AdminUserItem {
   user_level_id: number
   supplier_id?: number | null
   supplier_name?: string | null
+  admin_permissions?: string[]
 }
 
 export interface AdminUsersResponse {
@@ -35,6 +36,7 @@ export interface CreateAdminUserPayload {
   email?: string
   user_level_id: number
   supplier_id?: number | null
+  admin_permissions?: string[]
 }
 
 export interface CreateAdminUserResponse {
@@ -47,6 +49,7 @@ export interface CreateAdminUserResponse {
     email: string
     role: string
     expires_at: string
+    admin_permissions?: string[]
   }
 }
 
@@ -58,6 +61,7 @@ export interface UpdateAdminUserPayload {
   password?: string
   user_level_id?: number
   supplier_id?: number | null
+  admin_permissions?: string[]
 }
 
 export const adminUsersApi = baseApi.injectEndpoints({

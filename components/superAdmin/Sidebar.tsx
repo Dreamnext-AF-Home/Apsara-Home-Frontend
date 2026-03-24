@@ -10,6 +10,7 @@ import { useLogoutMutation } from '@/store/api/authApi'
 import { membersApi } from '@/store/api/membersApi'
 import { useAppDispatch } from '@/store/hooks'
 import { clearAccessTokenCache } from '@/store/api/baseApi'
+import { normalizeAdminPermissions } from '@/libs/adminPermissions'
 
 interface SubItem { label: string; path: string }
 interface NavItem {
@@ -199,6 +200,16 @@ const ADMIN_VISIBLE_NAV_IDS = new Set([
   'webpages',
   'settings',
 ])
+const ADMIN_PERMISSION_NAV_IDS: Record<string, string> = {
+  members: 'members',
+  orders: 'orders',
+  interior_requests: 'interior-requests',
+  products: 'products',
+  shipping: 'shipping',
+  suppliers: 'suppliers',
+  web_content: 'webpages',
+  settings_users: 'settings',
+}
 const MERCHANT_VISIBLE_NAV_IDS = new Set([
   'dashboard',
   'orders',
@@ -229,6 +240,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isFinanceOfficer = rawRole === 'finance_officer' || userLevelId === 6
   const isMerchantAdmin = rawRole === 'merchant_admin' || userLevelId === 7
   const isSupplierAdmin = rawRole === 'supplier_admin' || userLevelId === 8
+  const adminPermissions = normalizeAdminPermissions((session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions ?? [])
+  const hasCustomAdminPermissions = isAdmin && adminPermissions.length > 0
+  const customAdminNavIds = new Set(['dashboard', ...adminPermissions.map((permission) => ADMIN_PERMISSION_NAV_IDS[permission]).filter(Boolean)])
   const displayRole = isSuperAdmin
     ? 'Super Admin'
     : isAccounting
@@ -260,13 +274,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isActive = (path: string) => pathname === path
   const isChildActive = (children?: SubItem[]) => children?.some(c => pathname === c.path) ?? false
 
-  const visibleNavItems = navItems.filter((item) => {
+  const visibleNavItems = navItems
+    .map((item) => {
+      if (hasCustomAdminPermissions && item.id === 'settings') {
+        const settingsChildren = item.children?.filter((child) => child.path === '/admin/settings/users') ?? []
+        return settingsChildren.length > 0 ? { ...item, children: settingsChildren } : null
+      }
+      return item
+    })
+    .filter((item): item is NavItem => Boolean(item))
+    .filter((item) => {
     if (isSuperAdmin) return true
     if (isAccounting) return item.id === 'accounting' || item.id === 'encashment'
     if (isFinanceOfficer) return item.id === 'finance'
     if (isMerchantAdmin) return MERCHANT_VISIBLE_NAV_IDS.has(item.id)
     if (isSupplierAdmin) return SUPPLIER_VISIBLE_NAV_IDS.has(item.id)
-    if (isAdmin) return ADMIN_VISIBLE_NAV_IDS.has(item.id)
+    if (isAdmin) return hasCustomAdminPermissions ? customAdminNavIds.has(item.id) : ADMIN_VISIBLE_NAV_IDS.has(item.id)
     return true
   })
 
@@ -287,11 +310,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       : isAdmin
       ? [
           '/admin/dashboard',
-          '/admin/orders',
-          '/admin/interior-requests',
-          '/admin/products',
-          '/admin/products/categories',
-          '/admin/webpages',
+          ...(hasCustomAdminPermissions && adminPermissions.includes('members') ? ['/admin/members'] : []),
+          ...(hasCustomAdminPermissions && adminPermissions.includes('orders') ? ['/admin/orders'] : ['/admin/orders']),
+          ...(hasCustomAdminPermissions && adminPermissions.includes('interior_requests') ? ['/admin/interior-requests'] : ['/admin/interior-requests']),
+          ...(hasCustomAdminPermissions && adminPermissions.includes('products') ? ['/admin/products', '/admin/products/categories'] : ['/admin/products', '/admin/products/categories']),
+          ...(hasCustomAdminPermissions && adminPermissions.includes('web_content') ? ['/admin/webpages'] : ['/admin/webpages']),
+          ...(hasCustomAdminPermissions && adminPermissions.includes('settings_users') ? ['/admin/settings/users'] : []),
         ]
       : [
           '/admin/dashboard',
@@ -301,7 +325,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           '/admin/products/categories',
         ]
     criticalRoutes.forEach((route) => router.prefetch(route))
-  }, [isAdmin, isMerchantAdmin, isSuperAdmin, isSupplierAdmin, router])
+  }, [adminPermissions, hasCustomAdminPermissions, isAdmin, isMerchantAdmin, isSuperAdmin, isSupplierAdmin, router])
 
   const prefetchMembersData = () => {
     dispatch(
