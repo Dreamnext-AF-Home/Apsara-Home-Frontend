@@ -3,14 +3,14 @@ import { buildPageMetadata } from '@/app/seo';
 export const metadata = buildPageMetadata({ title: 'Admin Products', description: 'Browse the Admin Products page on AF Home.', path: '/admin/products', noIndex: true });
 
 import ProductsPageMain from '@/components/superAdmin/products/ProductsPageMain'
-import { authOptions } from '@/libs/auth'
+import { adminAuthOptions } from '@/libs/adminAuth'
 import { normalizeProductsResponse, ProductsResponse } from '@/store/api/productsApi'
 import { getServerSession } from 'next-auth'
 
 export const dynamic = 'force-dynamic'
 
 async function getInitialProducts(): Promise<ProductsResponse | null> {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession(adminAuthOptions)
   const accessToken = (session?.user as { accessToken?: string } | undefined)?.accessToken
 
   if (!accessToken) return null

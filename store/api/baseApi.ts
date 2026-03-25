@@ -23,7 +23,9 @@ const resolveAccessToken = async (): Promise<string | undefined> => {
     }
 
     if (!tokenPromise) {
-        tokenPromise = getSession()
+        const pathname = window.location.pathname || ''
+        const basePath = pathname.startsWith('/admin') ? '/api/admin/auth' : undefined
+        tokenPromise = getSession({ basePath })
             .then((session) => {
                 const token = (session?.user as { accessToken?: string } | undefined)?.accessToken
                 if (token) {

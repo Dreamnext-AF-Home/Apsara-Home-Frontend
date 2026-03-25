@@ -96,6 +96,36 @@ export interface ReferralTreeResponse {
     children: ReferralTreeNode[];
 }
 
+export interface UsernameChangeRequest {
+    id: number;
+    reference_no: string;
+    status: 'pending_review' | 'approved' | 'rejected';
+    requested_username: string;
+    review_notes?: string | null;
+    reviewed_at?: string | null;
+    created_at?: string | null;
+}
+
+export interface SendUsernameChangeOtpPayload {
+    username: string;
+}
+
+export interface SendUsernameChangeOtpResponse {
+    message: string;
+    verification_token: string;
+    email: string;
+}
+
+export interface SubmitUsernameChangePayload {
+    verification_token: string;
+    otp: string;
+}
+
+export interface SubmitUsernameChangeResponse {
+    message: string;
+    request: UsernameChangeRequest;
+}
+
 export const userApi = baseApi.injectEndpoints({
     endpoints:  (builder) => ({
         me: builder.query<MeResponse, void>({
@@ -156,6 +186,30 @@ export const userApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['User'],
         }),
+
+        sendUsernameChangeOtp: builder.mutation<SendUsernameChangeOtpResponse, SendUsernameChangeOtpPayload>({
+            query: (body) => ({
+                url: '/api/auth/username-change/send-otp',
+                method: 'POST',
+                body,
+            }),
+        }),
+
+        submitUsernameChangeRequest: builder.mutation<SubmitUsernameChangeResponse, SubmitUsernameChangePayload>({
+            query: (body) => ({
+                url: '/api/auth/username-change/submit',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        usernameChangeLatest: builder.query<{ request: UsernameChangeRequest | null }, void>({
+            query: () => ({
+                url: '/api/auth/username-change/latest',
+                method: 'GET',
+            }),
+        }),
     })
 })
 
@@ -167,4 +221,7 @@ export const {
     useCustomerAddressesQuery,
     useCreateCustomerAddressMutation,
     useSetDefaultCustomerAddressMutation,
+    useSendUsernameChangeOtpMutation,
+    useSubmitUsernameChangeRequestMutation,
+    useUsernameChangeLatestQuery,
 } = userApi
