@@ -40,6 +40,8 @@ const AdminLoginForm = () => {
                 return;
             }
 
+            clearAccessTokenCache()
+
             // Hand off redirect decision to middleware using a fresh request.
             window.location.href = '/admin/login'
         } catch {

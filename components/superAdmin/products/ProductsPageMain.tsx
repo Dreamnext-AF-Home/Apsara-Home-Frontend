@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useGetAdminMeQuery } from '@/store/api/authApi'
 import { Product, useGetProductsQuery, useDeleteProductMutation, ProductsResponse } from '@/store/api/productsApi'
 import ProductsToolbar from './ProductsToolbar'
 import ProductsTable from './ProductsTable'
@@ -43,10 +44,11 @@ function StatCard({
 
 export default function ProductsPageMain({ initialData = null }: ProductsPageMainProps) {
   const router = useRouter()
-  const { data: session, status: authStatus } = useSession()
-  const role = String(session?.user?.role ?? '').toLowerCase()
+  const { data: session } = useSession()
+  const { data: adminMe } = useGetAdminMeQuery()
+  const role = String(adminMe?.role ?? session?.user?.role ?? '').toLowerCase()
   const isSupplierPortal = role === 'supplier'
-  const linkedSupplierId = Number(session?.user?.supplierId ?? 0)
+  const linkedSupplierId = Number(adminMe?.supplier_id ?? session?.user?.supplierId ?? 0)
   const [search,          setSearch]          = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [status,          setStatus]          = useState('')
@@ -66,9 +68,6 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     return () => clearTimeout(t)
   }, [search])
 
-  const hasToken = Boolean(session?.user?.accessToken)
-  const skip     = authStatus !== 'authenticated' || !hasToken
-
   const { data, isLoading, isFetching, isError, error, refetch: refetchProducts } = useGetProductsQuery(
     {
       page,
@@ -78,7 +77,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       catId,
       supplierId: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : undefined,
     },
-    { skip, refetchOnMountOrArgChange: true },
+    { refetchOnMountOrArgChange: true },
   )
 
   /* Lightweight count queries for stats */
@@ -86,12 +85,12 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     perPage: 1,
     status: '1',
     supplierId: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : undefined,
-  }, { skip, refetchOnMountOrArgChange: true })
+  }, { refetchOnMountOrArgChange: true })
   const { data: inactiveCountData, refetch: refetchInactiveCount } = useGetProductsQuery({
     perPage: 1,
     status: '0',
     supplierId: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : undefined,
-  }, { skip, refetchOnMountOrArgChange: true })
+  }, { refetchOnMountOrArgChange: true })
 
   const [deleteProduct] = useDeleteProductMutation()
 
@@ -315,11 +314,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       </motion.div>
 
       {/* ── Content ── */}
-      {authStatus === 'loading' ? (
-        <SkeletonTable />
-      ) : authStatus === 'unauthenticated' ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Please sign in first to load products.</div>
-      ) : isError ? (
+      {isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadErrorMessage}</div>
       ) : isLoading && !data && !initialData ? (
         <SkeletonTable />

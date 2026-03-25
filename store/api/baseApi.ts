@@ -26,9 +26,12 @@ const resolveAccessToken = async (): Promise<string | undefined> => {
         const sessionPath = pathname.startsWith('/admin') ? '/api/admin/auth/session' : '/api/auth/session'
         tokenPromise = fetch(sessionPath, {
             method: 'GET',
+            cache: 'no-store',
             credentials: 'include',
             headers: {
                 Accept: 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                Pragma: 'no-cache',
             },
         })
             .then((response) => (response.ok ? response.json() : null))

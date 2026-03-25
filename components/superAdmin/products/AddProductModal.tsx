@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
+import { useGetAdminMeQuery } from '@/store/api/authApi'
 import { useCreateProductMutation, CreateProductPayload } from '@/store/api/productsApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { useGetProductBrandsQuery } from '@/store/api/productBrandsApi'
@@ -328,13 +329,12 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formContentRef = useRef<HTMLDivElement>(null)
 
-  const { data: session, status: authStatus } = useSession()
-  const role = String(session?.user?.role ?? '').toLowerCase()
-  const linkedSupplierId = Number(session?.user?.supplierId ?? 0)
+  const { data: session } = useSession()
+  const { data: adminMe } = useGetAdminMeQuery()
+  const role = String(adminMe?.role ?? session?.user?.role ?? '').toLowerCase()
+  const linkedSupplierId = Number(adminMe?.supplier_id ?? session?.user?.supplierId ?? 0)
   const isSupplierScopedActor =
-    role === 'supplier' || role === 'supplier_admin' || (session?.user?.userLevelId ?? 0) === 8
-  const hasToken       = Boolean(session?.user?.accessToken)
-  const skipCategories = authStatus !== 'authenticated' || !hasToken
+    role === 'supplier' || role === 'supplier_admin' || Number(adminMe?.user_level_id ?? session?.user?.userLevelId ?? 0) === 8
 
   const [createProduct, { isLoading }] = useCreateProductMutation()
   const { data: categoriesData } = useGetCategoriesQuery(
@@ -344,10 +344,10 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       supplier_id: isSupplierScopedActor && linkedSupplierId > 0 ? linkedSupplierId : undefined,
       used_only: isSupplierScopedActor && linkedSupplierId > 0 ? true : undefined,
     },
-    { skip: skipCategories }
+    undefined
   )
   const categories = useMemo(() => categoriesData?.categories ?? [], [categoriesData?.categories])
-  const { data: brandsData } = useGetProductBrandsQuery(undefined, { skip: skipCategories })
+  const { data: brandsData } = useGetProductBrandsQuery()
   const brands = useMemo(
     () => (brandsData?.brands ?? []).filter((brand) => brand.status === 0),
     [brandsData?.brands],

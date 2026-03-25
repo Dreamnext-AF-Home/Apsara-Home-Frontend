@@ -236,18 +236,20 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const [openMenus, setOpenMenus] = useState<string[]>([])
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutApi] = useLogoutMutation()
-  const displayName = session?.user?.name?.trim() || 'Admin'
-  const displayEmail = session?.user?.email?.trim() || 'admin@afhome.com'
+  const { data: adminMe } = useGetAdminMeQuery()
+  const displayName = String(adminMe?.name ?? session?.user?.name ?? '').trim() || 'Admin'
+  const displayEmail = String(adminMe?.email ?? session?.user?.email ?? '').trim() || 'admin@afhome.com'
   const rawRole = String(session?.user?.role ?? '').toLowerCase()
   const userLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
-  const isSuperAdmin = rawRole === 'super_admin' || userLevelId === 1
-  const isAdmin = rawRole === 'admin' || userLevelId === 2
-  const isAccounting = rawRole === 'accounting' || userLevelId === 5
-  const isFinanceOfficer = rawRole === 'finance_officer' || userLevelId === 6
-  const isMerchantAdmin = rawRole === 'merchant_admin' || userLevelId === 7
-  const isSupplierAdmin = rawRole === 'supplier_admin' || userLevelId === 8
+  const effectiveRole = String(adminMe?.role ?? rawRole).toLowerCase()
+  const effectiveUserLevelId = Number(adminMe?.user_level_id ?? userLevelId)
+  const isSuperAdmin = effectiveRole === 'super_admin' || effectiveUserLevelId === 1
+  const isAdmin = effectiveRole === 'admin' || effectiveUserLevelId === 2
+  const isAccounting = effectiveRole === 'accounting' || effectiveUserLevelId === 5
+  const isFinanceOfficer = effectiveRole === 'finance_officer' || effectiveUserLevelId === 6
+  const isMerchantAdmin = effectiveRole === 'merchant_admin' || effectiveUserLevelId === 7
+  const isSupplierAdmin = effectiveRole === 'supplier_admin' || effectiveUserLevelId === 8
   const isAdminPortalRole = isSuperAdmin || isAdmin || isAccounting || isFinanceOfficer || isMerchantAdmin || isSupplierAdmin
-  const { data: adminMe } = useGetAdminMeQuery(undefined, { skip: !isAdminPortalRole })
   const effectiveAdminPermissions = normalizeAdminPermissions(adminMe?.admin_permissions ?? (session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions ?? [])
   const adminPermissions = effectiveAdminPermissions
   const hasCustomAdminPermissions = isAdmin && adminPermissions.length > 0
@@ -262,7 +264,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         ? 'Merchant Admin'
         : isSupplierAdmin
           ? 'Supplier Admin'
-          : formatRole(session?.user?.role)
+      : formatRole(adminMe?.role ?? session?.user?.role)
   const displayInitials = getInitials(displayName)
   const avatarSrc = session?.user?.image
 

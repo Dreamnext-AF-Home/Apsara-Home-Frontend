@@ -9,7 +9,6 @@ import { MemberStatus, MemberTier } from "@/types/members/types"
 import AddMemberModal from "./AddMemberModal"
 import { MembersResponse, MembersStatsResponse, useGetMembersQuery, useGetMembersStatsQuery, useLazyGetMembersQuery } from "@/store/api/membersApi"
 import { useSearchParams } from "next/navigation"
-import { useSession } from "next-auth/react"
 
 interface MembersPageMainProps {
     initialData?: MembersResponse | null
@@ -25,7 +24,6 @@ const csvEscape = (value: unknown) => {
 }
 
 const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPageMainProps) => {
-    const { status: authStatus } = useSession()
     const searchParams = useSearchParams()
     const [search, setSearch] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -54,7 +52,6 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
         return () => clearTimeout(timeout)
     }, [search])
 
-    const shouldSkipMembersQuery = authStatus === 'unauthenticated'
     const isUsingDefaultView =
         page === 1 &&
         debouncedSearch === '' &&
@@ -64,7 +61,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
     const shouldSkipInitialMembersRefetch = Boolean(initialData && isUsingDefaultView)
 
     const { data: statsData } = useGetMembersStatsQuery(undefined, {
-        skip: shouldSkipMembersQuery || Boolean(initialStats),
+        skip: Boolean(initialStats),
     })
     const [triggerExportMembers] = useLazyGetMembersQuery()
 
@@ -78,7 +75,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
             sort,
         },
         {
-            skip: shouldSkipMembersQuery || shouldSkipInitialMembersRefetch,
+            skip: shouldSkipInitialMembersRefetch,
         }
     )
 
@@ -285,15 +282,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
                 isExporting={isExporting}
             />
 
-            {authStatus === 'loading' && !effectiveData ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                    Loading your session...
-                </div>
-            ) : authStatus === 'unauthenticated' && !effectiveData ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    Please sign in first to load the members list.
-                </div>
-            ) : isError ? (
+            {isError ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                     Failed to load members list from customer data.
                 </div>

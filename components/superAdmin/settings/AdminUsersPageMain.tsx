@@ -11,6 +11,7 @@ import {
   useGetAdminUsersQuery,
   useUpdateAdminUserMutation,
 } from '@/store/api/adminUsersApi'
+import { useGetAdminMeQuery } from '@/store/api/authApi'
 import { useGetSuppliersQuery } from '@/store/api/suppliersApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import {
@@ -573,8 +574,11 @@ function EditModal({
 
 export default function AdminUsersPageMain() {
   const { data: session } = useSession()
-  const role       = String(session?.user?.role ?? '').toLowerCase()
-  const userLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
+  const sessionRole = String(session?.user?.role ?? '').toLowerCase()
+  const sessionUserLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
+  const { data: adminMe } = useGetAdminMeQuery()
+  const role = String(adminMe?.role ?? sessionRole).toLowerCase()
+  const userLevelId = Number(adminMe?.user_level_id ?? sessionUserLevelId)
   const isSuperAdmin = role === 'super_admin' || userLevelId === 1
   const isAdmin = role === 'admin' || userLevelId === 2
   const canManageUsers = isSuperAdmin || isAdmin
@@ -590,9 +594,16 @@ export default function AdminUsersPageMain() {
   const createPermissionsRef = useRef<HTMLDivElement | null>(null)
   const [isCreatePermissionsSpotlightActive, setIsCreatePermissionsSpotlightActive] = useState(false)
 
-  const { data, isLoading, isError } = useGetAdminUsersQuery({
-    search: search.trim() || undefined, page, perPage: 15,
-  })
+  const { data, isLoading, isError } = useGetAdminUsersQuery(
+    {
+      search: search.trim() || undefined,
+      page,
+      perPage: 15,
+    },
+    {
+      skip: !canManageUsers,
+    },
+  )
   const [createAdminUser, { isLoading: isCreating }] = useCreateAdminUserMutation()
   const [updateAdminUser] = useUpdateAdminUserMutation()
   const [deleteAdminUser] = useDeleteAdminUserMutation()

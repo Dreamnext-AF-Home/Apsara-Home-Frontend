@@ -12,6 +12,7 @@ import {
     useMarkAdminNotificationReadMutation,
     useMarkAllAdminNotificationsReadMutation,
 } from "@/store/api/adminNotificationsApi";
+import { useGetAdminMeQuery } from "@/store/api/authApi";
 import { useAppDispatch } from "@/store/hooks";
 import Pusher from "pusher-js";
 
@@ -86,6 +87,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     const [notifOpen, setNotifOpen] = useState(false);
     const [userOpen, setUserOpen] = useState(false);
     const { data: session } = useSession();
+    const { data: adminMe } = useGetAdminMeQuery();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -107,8 +109,8 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     const [markNotificationRead] = useMarkAdminNotificationReadMutation();
     const [markAllNotificationsRead] = useMarkAllAdminNotificationsReadMutation();
     const unreadCount = notifications?.unread_count ?? 0;
-    const displayName = session?.user?.name?.trim() || 'Admin';
-    const displayRole = formatRole(session?.user?.role);
+    const displayName = String(adminMe?.name ?? session?.user?.name ?? '').trim() || 'Admin';
+    const displayRole = formatRole(adminMe?.role ?? session?.user?.role);
     const displayInitials = getInitials(displayName);
     const avatarSrc = session?.user?.image;
     const accessToken = session?.user?.accessToken;
