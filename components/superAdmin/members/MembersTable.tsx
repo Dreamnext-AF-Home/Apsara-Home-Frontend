@@ -31,13 +31,23 @@ interface EditMemberForm {
   zipCode: string
 }
 
-function getApiErrorMessage(error: any, fallback: string) {
-  const validationErrors = error?.data?.errors as Record<string, string[]> | undefined
+type ApiErrorShape = {
+  data?: {
+    message?: string
+    errors?: Record<string, string[] | string>
+  }
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const apiError = error as ApiErrorShape
+  const validationErrors = apiError?.data?.errors
   const firstValidationError = validationErrors
-    ? Object.values(validationErrors).find((messages) => Array.isArray(messages) && messages.length > 0)?.[0]
+    ? Object.values(validationErrors)
+        .flatMap((messages) => Array.isArray(messages) ? messages : [messages])
+        .find((message) => typeof message === 'string' && message.trim().length > 0)
     : undefined
 
-  return String(error?.data?.message || firstValidationError || fallback)
+  return String(apiError?.data?.message || firstValidationError || fallback)
 }
 
 function MemberAvatar({
@@ -106,7 +116,7 @@ function EditMemberModal({
       const response = await updateMember(form).unwrap()
       setMessage({ type: 'success', text: response.message || 'Member updated successfully.' })
       setTimeout(() => onClose(), 800)
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage({ type: 'error', text: getApiErrorMessage(error, 'Failed to update member.') })
     }
   }
@@ -328,7 +338,7 @@ const MembersTable = ({
         zipCode: member.zipCode ?? '',
       }).unwrap()
       setQuickMessage(`Member status updated to ${status.replace('_', ' ')}.`)
-    } catch (error: any) {
+    } catch (error: unknown) {
       setQuickMessage(getApiErrorMessage(error, 'Failed to update member status.'))
     }
   }
