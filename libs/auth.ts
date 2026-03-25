@@ -73,56 +73,6 @@ export const authOptions: NextAuthOptions = {
             }
         }),
         CredentialsProvider({
-            id: 'admin-credentials',
-            name: 'Admin Credentials',
-            credentials: {
-                login: { label: 'Email or Username', type: 'text' },
-                password: { label: 'Password', type: 'password' },
-            },
-            async authorize(credentials) {
-                if (!credentials?.login || !credentials?.password) {
-                    return null
-                }
-
-                try {
-                    const url = `${process.env.LARAVEL_API_URL}/api/admin/auth/login`
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            login: credentials.login,
-                            password: credentials.password,
-                        }),
-                    })
-
-                    if (!res.ok) {
-                        const errBody = await res.text()
-                        console.log('[AdminAuth] Laravel error body:', errBody)
-                        return null
-                    }
-
-                    const data = await res.json()
-                    if (!data.user || !data.token) return null
-
-                    return {
-                        id: String(data.user.id),
-                        name: data.user.name ?? data.user.email,
-                        email: data.user.email,
-                        accessToken: data.token,
-                        role: data.user.role,
-                        userLevelId: data.user.user_level_id,
-                        adminPermissions: data.user.admin_permissions ?? [],
-                        supplierId: data.user.supplier_id ?? null,
-                    }
-                } catch {
-                    return null
-                }
-            }
-        }),
-        CredentialsProvider({
             id: 'supplier-credentials',
             name: 'Supplier Credentials',
             credentials: {

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -41,6 +41,7 @@ import EncashmentTab from './EncashmentTab';
 import WalletTab from './WalletTab';
 import InteriorRequestsTab from './InteriorRequestsTab';
 import { usePhAddress } from '@/hooks/usePhAddress';
+import { containsBlockedWord } from '@/libs/badWords';
 
 
 type ProfileFormState = {
@@ -65,7 +66,7 @@ type PreferencesState = {
   currency: 'PHP' | 'USD';
 };
 
-type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'encashment' | 'interior-requests' | 'activity' | 'referrals';
+type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'referrals';
 
 type AlertMsg = { type: 'success' | 'error'; text: string };
 type TreeStatusFilter = 'all' | 'verified' | 'pending_review' | 'not_verified' | 'blocked';
@@ -90,12 +91,20 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const { data: session, update: updateSession } = useSession();
   const { data } = useMeQuery();
   const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery();
+  const { data: usernameChangeLatest, refetch: refetchUsernameChangeLatest } = useUsernameChangeLatestQuery();
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
+  const [sendUsernameChangeOtp, { isLoading: isSendingUsernameOtp }] = useSendUsernameChangeOtpMutation();
+  const [submitUsernameChangeRequest, { isLoading: isSubmittingUsernameChange }] = useSubmitUsernameChangeRequestMutation();
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
 
   const [form, setForm] = useState<ProfileFormState>({ name: '', email: '', phone: '', username: '' });
+  const [usernameRequest, setUsernameRequest] = useState('');
+  const [usernameOtp, setUsernameOtp] = useState('');
+  const [usernameOtpToken, setUsernameOtpToken] = useState<string | null>(null);
+  const [usernameOtpSentTo, setUsernameOtpSentTo] = useState<string | null>(null);
+  const [isUsernamePendingLocal, setIsUsernamePendingLocal] = useState(false);
   const [bio, setBio] = useState('');
 
   const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -113,6 +122,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   });
 
   const [profileMsg, setProfileMsg] = useState<AlertMsg | null>(null);
+  const [usernameMsg, setUsernameMsg] = useState<AlertMsg | null>(null);
   const [referralMsg, setReferralMsg] = useState<AlertMsg | null>(null);
   const [expandedTreeNodes, setExpandedTreeNodes] = useState<Record<number, boolean>>({});
   const [treeSearchQuery, setTreeSearchQuery] = useState('');
@@ -127,6 +137,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const [referralQrStatus, setReferralQrStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [addressForm, setAddressForm] = useState<AddressFormState>({ address: '', zipCode: '' });
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usernameMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const referralMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mainContentRef = useRef<HTMLDivElement | null>(null);
   const phAddress = usePhAddress();
@@ -140,6 +151,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
         phone: profileData?.phone ?? '',
         username: profileData?.username ?? '',
       });
+      setUsernameRequest(profileData?.username ?? '');
     }
   }, [profileData, session]);
 
@@ -191,7 +203,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
-    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'referrals'];
+    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'referrals'];
 
     if (requestedTab && allowedTabs.includes(requestedTab as Tab)) {
       setActiveTab(requestedTab as Tab);
@@ -208,6 +220,13 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
     msgTimer.current = setTimeout(() => setProfileMsg(null), 5000);
     return () => { if (msgTimer.current) clearTimeout(msgTimer.current); };
   }, [profileMsg]);
+
+  useEffect(() => {
+    if (!usernameMsg) return;
+    if (usernameMsgTimer.current) clearTimeout(usernameMsgTimer.current);
+    usernameMsgTimer.current = setTimeout(() => setUsernameMsg(null), 5000);
+    return () => { if (usernameMsgTimer.current) clearTimeout(usernameMsgTimer.current); };
+  }, [usernameMsg]);
 
   useEffect(() => {
     if (!isAvatarPreviewOpen) return;
@@ -238,9 +257,8 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const hasChanges = useMemo(
     () =>
       form.name !== (profileData?.name ?? session?.user?.name ?? '') ||
-      form.phone !== (profileData?.phone ?? '') ||
-      form.username !== (profileData?.username ?? ''),
-    [profileData?.name, profileData?.phone, profileData?.username, form.name, form.phone, form.username, session?.user?.name],
+      form.phone !== (profileData?.phone ?? ''),
+    [profileData?.name, profileData?.phone, form.name, form.phone, session?.user?.name],
   );
 
   const verificationStatus = profileData?.verification_status ?? 'not_verified';
@@ -249,7 +267,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const configuredAppUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').trim().replace(/\/+$/, '');
   const runtimeOrigin = (typeof window !== 'undefined' ? window.location.origin : '').trim().replace(/\/+$/, '');
   const siteOrigin = configuredAppUrl || runtimeOrigin || 'http://localhost:3000';
-  const referralCode = (form.username || profileData?.username || '').trim();
+  const referralCode = ((profileData?.username ?? form.username) || '').trim();
   const referralLink = referralCode
     ? `${siteOrigin}/ref/${encodeURIComponent(referralCode)}`
     : '';
@@ -617,7 +635,6 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
     try {
       await updateProfile({
         name: form.name.trim(),
-        username: form.username.trim() || undefined,
         phone: form.phone.trim() || undefined,
       }).unwrap();
       setProfileMsg({ type: 'success', text: 'Profile updated successfully.' });
@@ -645,7 +662,6 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
     try {
       await updateProfile({
         name: form.name.trim(),
-        username: form.username.trim() || undefined,
         phone: form.phone.trim() || undefined,
         address: addressForm.address.trim() || undefined,
         barangay: phAddress.address.barangay || undefined,
@@ -686,7 +702,6 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
 
       await updateProfile({
         name: form.name.trim() || profileData?.name || session?.user?.name || 'AF Home User',
-        username: form.username.trim() || undefined,
         phone: form.phone.trim() || undefined,
         avatar_url: uploadResult.url,
       }).unwrap();
@@ -742,6 +757,76 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
     }
   };
 
+  const latestUsernameRequest = usernameChangeLatest?.request ?? null;
+  const hasPendingUsernameRequest = isUsernamePendingLocal || latestUsernameRequest?.status === 'pending_review';
+  const pendingRequestedUsername = latestUsernameRequest?.requested_username || usernameRequest.trim();
+
+  const handleSendUsernameOtp = async () => {
+    setUsernameMsg(null);
+    const nextUsername = usernameRequest.replace(/\s+/g, '').trim();
+    if (nextUsername !== usernameRequest) {
+      setUsernameRequest(nextUsername);
+    }
+    if (!nextUsername) {
+      setUsernameMsg({ type: 'error', text: 'Username is required.' });
+      return;
+    }
+    if (!/^[A-Za-z]+$/.test(nextUsername)) {
+      setUsernameMsg({ type: 'error', text: 'Username must contain letters only (A–Z).' });
+      return;
+    }
+    if (containsBlockedWord(nextUsername)) {
+      setUsernameMsg({ type: 'error', text: 'Please choose a different username.' });
+      return;
+    }
+
+    if (nextUsername === (profileData?.username ?? '').trim()) {
+      setUsernameMsg({ type: 'error', text: 'This is already your current username.' });
+      return;
+    }
+
+    try {
+      const response = await sendUsernameChangeOtp({ username: nextUsername }).unwrap();
+      setUsernameOtpToken(response.verification_token);
+      setUsernameOtpSentTo(response.email);
+      setUsernameOtp('');
+      setUsernameMsg({ type: 'success', text: 'We sent a 4-digit OTP to your email. Enter it below to submit your request.' });
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setUsernameMsg({ type: 'error', text: apiError?.data?.message || 'Failed to send OTP.' });
+    }
+  };
+
+  const handleSubmitUsernameChange = async (e: FormEvent) => {
+    e.preventDefault();
+    setUsernameMsg(null);
+    if (!usernameOtpToken) {
+      setUsernameMsg({ type: 'error', text: 'Please request an OTP first.' });
+      return;
+    }
+    if (usernameOtp.trim().length !== 4) {
+      setUsernameMsg({ type: 'error', text: 'Enter the 4-digit OTP from your email.' });
+      return;
+    }
+
+    try {
+      await submitUsernameChangeRequest({
+        verification_token: usernameOtpToken,
+        otp: usernameOtp.trim(),
+      }).unwrap();
+      setUsernameMsg({ type: 'success', text: 'Request submitted. Please wait for admin approval.' });
+      setUsernameOtpToken(null);
+      setUsernameOtp('');
+      setUsernameOtpSentTo(null);
+      setIsUsernamePendingLocal(true);
+      setUsernameRequest((prev) => prev.trim());
+      refetchUsernameChangeLatest();
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setUsernameMsg({ type: 'error', text: apiError?.data?.message || 'Failed to submit request.' });
+    }
+  };
+
   const loyaltyTier: MemberTier = rankToTier(profileData?.rank ?? 0);
 
   const accountStats = [
@@ -793,6 +878,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
     { key: 'encashment', label: 'Encashment', Icon: Icon.Bag },
     { key: 'interior-requests', label: 'Interior Requests', Icon: Icon.Package },
     { key: 'activity', label: 'Activity', Icon: Icon.Activity },
+    { key: 'change-username', label: 'Change Username', Icon: Icon.Edit },
     { key: 'referrals', label: 'Referrals', Icon: Icon.Network },
   ];
 
@@ -872,6 +958,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                 encashment: 'Encash',
                 'interior-requests': 'Requests',
                 activity: 'Activity',
+                'change-username': 'Username',
                 referrals: 'Referrals',
               };
               return TABS.map(({ key, Icon: TabIcon }) => {
@@ -1309,7 +1396,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                     <div className="flex items-center justify-between gap-3 mb-5">
                       <div>
                         <h3 className="text-base font-bold text-slate-900">Personal Information</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Update your name, username, and contact details.</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Update your name and contact details. Username changes require approval.</p>
                       </div>
                       <span className="text-xs px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 font-medium border border-orange-100 whitespace-nowrap">
                         Editable
@@ -1342,7 +1429,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {[
                         { field: 'name' as const, label: 'Full Name', type: 'text', placeholder: 'Enter your full name', disabled: false },
-                        { field: 'username' as const, label: 'Username', type: 'text', placeholder: 'e.g. raf_home', disabled: false },
+                        { field: 'username' as const, label: 'Username', type: 'text', placeholder: 'Change in the Username tab', disabled: true },
                         { field: 'email' as const, label: 'Email Address', type: 'email', placeholder: 'Email', disabled: true, isEmail: true },
                         { field: 'phone' as const, label: 'Phone Number', type: 'tel', placeholder: '09XXXXXXXXX', disabled: false },
                       ].map(({ field, label, type, placeholder, disabled, isEmail }) => (
@@ -1370,6 +1457,9 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                                 : 'border-slate-200 text-slate-800 bg-white hover:border-slate-300'
                             }`}
                           />
+                          {field === 'username' && (
+                            <p className="text-[11px] text-slate-400">Go to the Change Username tab to submit a request.</p>
+                          )}
                         </div>
                       ))}
 
@@ -2018,6 +2108,152 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
                         Active now
                       </span>
                     </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'change-username' && (
+                <motion.div key="change-username" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6">
+                    <div className="mb-4">
+                      <h3 className="text-base font-bold text-slate-900">Change Username</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Update the username used for your profile and referral link.</p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 mb-4">
+                      <p className="text-xs text-slate-500">Current username</p>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5">{profileData?.username ? `@${profileData.username}` : 'Not set'}</p>
+                    </div>
+
+                    {usernameMsg && (
+                      <div className={`mb-4 rounded-xl px-3.5 py-2.5 text-xs font-semibold ${usernameMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
+                        {usernameMsg.text}
+                      </div>
+                    )}
+
+                    {latestUsernameRequest && (
+                      <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-slate-500">Latest request</p>
+                            <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                              @{latestUsernameRequest.requested_username}
+                            </p>
+                          </div>
+                          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                            latestUsernameRequest.status === 'approved'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : latestUsernameRequest.status === 'rejected'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                                : 'bg-amber-50 text-amber-700 border border-amber-100'
+                          }`}>
+                            {latestUsernameRequest.status === 'pending_review' ? 'Pending' : latestUsernameRequest.status}
+                          </span>
+                        </div>
+                        {latestUsernameRequest.review_notes && (
+                          <p className="text-[11px] text-slate-500 mt-2">{latestUsernameRequest.review_notes}</p>
+                        )}
+                      </div>
+                    )}
+                    {hasPendingUsernameRequest && (
+                      <p className="mb-4 text-xs text-amber-700">You already have a pending request. Please wait for admin approval before submitting another.</p>
+                    )}
+
+                    <form onSubmit={handleSubmitUsernameChange} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">New Username</label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-slate-400">@</span>
+                          <input
+                            type="text"
+                            value={hasPendingUsernameRequest ? pendingRequestedUsername : usernameRequest}
+                            onChange={(e) => {
+                              const onlyLetters = e.target.value.replace(/[^A-Za-z]/g, '');
+                              setUsernameRequest(onlyLetters);
+                              if (usernameOtpToken) {
+                                setUsernameOtpToken(null);
+                                setUsernameOtp('');
+                              }
+                            }}
+                            placeholder="your.username"
+                            disabled={hasPendingUsernameRequest}
+                            className={`w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 ${
+                              hasPendingUsernameRequest
+                                ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
+                                : 'border-slate-200 text-slate-800 bg-white'
+                            }`}
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-400">Letters only (A–Z). Changing your username will update your referral link after approval.</p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleSendUsernameOtp}
+                          disabled={hasPendingUsernameRequest || isSendingUsernameOtp}
+                          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isSendingUsernameOtp ? (
+                            <>
+                              <Loading size={14} className="border border-white/30 border-t-white" />
+                              Sending OTP...
+                            </>
+                          ) : (
+                            <>
+                              <Icon.Edit className="h-4 w-4" />
+                              Send OTP
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUsernameRequest(profileData?.username ?? '');
+                            setUsernameOtp('');
+                            setUsernameOtpToken(null);
+                            setUsernameOtpSentTo(null);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                          Reset
+                        </button>
+                      </div>
+
+                      {usernameOtpToken && !hasPendingUsernameRequest && (
+                        <div className="rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-3 space-y-3">
+                          <div>
+                            <p className="text-xs font-semibold text-orange-700">Enter OTP</p>
+                            <p className="text-[11px] text-orange-600">
+                              {usernameOtpSentTo ? `We sent the code to ${usernameOtpSentTo}.` : 'Check your email for the 4-digit code.'}
+                            </p>
+                          </div>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={usernameOtp}
+                            onChange={(e) => setUsernameOtp(e.target.value.replace(/\\D/g, ''))}
+                            className="w-full rounded-xl border border-orange-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
+                            placeholder="4-digit code"
+                          />
+                          <button
+                            type="submit"
+                            disabled={isSubmittingUsernameChange}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {isSubmittingUsernameChange ? (
+                              <>
+                                <Loading size={14} className="border border-white/30 border-t-white" />
+                                Submitting...
+                              </>
+                            ) : (
+                              'Submit Request'
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </form>
                   </div>
                 </motion.div>
               )}

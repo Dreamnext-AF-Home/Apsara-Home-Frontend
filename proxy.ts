@@ -85,6 +85,13 @@ export async function proxy(req: NextRequest) {
     req,
     secret: process.env.NEXTAUTH_SECRET,
   });
+  const adminToken = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: process.env.NODE_ENV === 'production'
+      ? '__Secure-admin-next-auth.session-token'
+      : 'admin-next-auth.session-token',
+  });
   const passwordChangeRequired = Boolean((token as { passwordChangeRequired?: boolean } | null)?.passwordChangeRequired);
 
   const isAdminLoginPage = pathname === "/admin/login";
@@ -98,15 +105,15 @@ export async function proxy(req: NextRequest) {
   const isLoginPage = pathname === "/login";
 
   if (isAdminLoginPage) {
-    const role = String((token as { role?: string } | null)?.role ?? "").toLowerCase();
-    const userLevelId = Number((token as { userLevelId?: number } | null)?.userLevelId ?? 0);
+    const role = String((adminToken as { role?: string } | null)?.role ?? "").toLowerCase();
+    const userLevelId = Number((adminToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
     const isAccounting = role === "accounting" || userLevelId === 5;
     const isFinanceOfficer = role === "finance_officer" || userLevelId === 6;
     const isMerchantAdmin = role === "merchant_admin" || userLevelId === 7;
     const isSupplierAdmin = role === "supplier_admin" || userLevelId === 8;
     const hasAdminAccess = ADMIN_ALLOWED_ROLES.has(role) || isAccounting || isFinanceOfficer || isMerchantAdmin || isSupplierAdmin;
 
-    if (token && hasAdminAccess) {
+    if (adminToken && hasAdminAccess) {
       const redirectPath = isAccounting
         ? "/admin/accounting"
         : isFinanceOfficer
@@ -130,15 +137,15 @@ export async function proxy(req: NextRequest) {
   }
 
   if (isAdminRoute) {
-    if (!token) {
+    if (!adminToken) {
       const loginUrl = new URL("/admin/login", req.url);
       loginUrl.searchParams.set("callback", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    const role = String((token as { role?: string } | null)?.role ?? "").toLowerCase();
-    const userLevelId = Number((token as { userLevelId?: number } | null)?.userLevelId ?? 0);
-    const adminPermissions = normalizeAdminPermissions((token as { adminPermissions?: string[] } | null)?.adminPermissions ?? []);
+    const role = String((adminToken as { role?: string } | null)?.role ?? "").toLowerCase();
+    const userLevelId = Number((adminToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
+    const adminPermissions = normalizeAdminPermissions((adminToken as { adminPermissions?: string[] } | null)?.adminPermissions ?? []);
     const hasCustomAdminPermissions = (role === "admin" || userLevelId === 2) && adminPermissions.length > 0;
     const adminAllowedPrefixes = hasCustomAdminPermissions
       ? ["/admin/dashboard", ...adminPermissions.flatMap((permission) => ADMIN_PERMISSION_PREFIXES[permission] ?? [])]

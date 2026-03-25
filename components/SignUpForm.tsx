@@ -9,6 +9,7 @@ import { useSearchParams } from 'next/navigation'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import OtpVerification from './auth/OtpVerification'
 import { clearStoredReferralCode, getStoredReferralCode, normalizeReferralCode } from '@/libs/referral'
+import { containsBlockedWord } from '@/libs/badWords'
 
 const EyeIcon = ({ open }: { open: boolean }) => open
     ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
@@ -17,19 +18,7 @@ const EyeIcon = ({ open }: { open: boolean }) => open
 const inputClass = "w-full px-4 py-3 bg-white/15 border border-white/25 rounded-xl text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400/60 focus:bg-white/20 transition-all"
 const selectClass = "w-full px-4 py-3 bg-white/15 border border-white/25 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400/60 focus:bg-white/20 transition-all appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
 const labelClass = "block text-xs font-semibold text-white/80 mb-1.5"
-const blockedWords = ['fuck', 'shit', 'bitch', 'asshole', 'puta', 'gago', 'ulol', 'tanga', 'tarantado', 'nigger', 'nigga', 'faggot', 'porn', 'sex']
-
-const containsBlockedWord = (value: string) => {
-    const lower = value.toLowerCase()
-    const normalized = lower.replace(/[^a-z0-9]+/g, ' ')
-    const compact = lower.replace(/[^a-z0-9]+/g, '')
-
-    return blockedWords.some((word) => {
-        const needle = word.toLowerCase()
-        const needleCompact = needle.replace(/[^a-z0-9]+/g, '')
-        return normalized.includes(needle) || (needleCompact.length > 0 && compact.includes(needleCompact))
-    })
-}
+ 
 
 const getPasswordStrength = (password: string) => {
     let score = 0
