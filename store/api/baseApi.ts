@@ -1,5 +1,4 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
-import { getSession } from "next-auth/react";
 
 let cachedAccessToken: string | undefined
 let tokenPromise: Promise<string | undefined> | null = null
@@ -24,8 +23,15 @@ const resolveAccessToken = async (): Promise<string | undefined> => {
 
     if (!tokenPromise) {
         const pathname = window.location.pathname || ''
-        const basePath = pathname.startsWith('/admin') ? '/api/admin/auth' : undefined
-        tokenPromise = getSession({ basePath })
+        const sessionPath = pathname.startsWith('/admin') ? '/api/admin/auth/session' : '/api/auth/session'
+        tokenPromise = fetch(sessionPath, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+            },
+        })
+            .then((response) => (response.ok ? response.json() : null))
             .then((session) => {
                 const token = (session?.user as { accessToken?: string } | undefined)?.accessToken
                 if (token) {
