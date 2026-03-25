@@ -7,9 +7,11 @@ import { mockReviews } from "@/libs/MockProductData";
 import { displayColorName } from "@/libs/colorUtils";
 import { motion } from "framer-motion"
 import { useEffect, useMemo, useState } from "react";
+import { Link2, MessageCircle, Users, User, X as XIcon, PhoneCall } from "lucide-react";
 import StarRating from "../ui/StarRating";
 import BuyNowOptionsModal from "./BuyNowOptionsModal";
 import { useSession } from "next-auth/react";
+import { useMeQuery } from "@/store/api/userApi";
 
 const CartIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -85,6 +87,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const { addToCart } = useCart();
     const { data: session } = useSession();
     const isLoggedIn = Boolean(session?.user);
+    const { data: me } = useMeQuery(undefined, { skip: !isLoggedIn });
     const canUseMemberPrice = isLoggedIn;
     const basePv = toPositiveNumber(product.prodpv) ?? 0;
     const [quantity, setQuantity] = useState(1);
@@ -94,6 +97,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const [wishlisted, setWishlisted] = useState(false);
     const [buyOptionsOpen, setBuyOptionsOpen] = useState(false);
     const [paymentLogoMissing, setPaymentLogoMissing] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
+    const [shareCopied, setShareCopied] = useState(false);
 
     const variantOptions = useMemo(
         () =>
@@ -266,6 +272,84 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 
     };
 
+    const referralCode = (me?.username ?? '').trim();
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const url = new URL(window.location.href);
+            if (referralCode) {
+                url.searchParams.set('username', referralCode);
+                const preferredLink = `${window.location.origin}/ref/${encodeURIComponent(referralCode)}`;
+                url.searchParams.set('preffered_by', preferredLink);
+            } else {
+                url.searchParams.delete('username');
+                url.searchParams.delete('preffered_by');
+            }
+            setShareUrl(url.toString());
+        } catch {
+            setShareUrl(window.location.href);
+        }
+    }, [referralCode]);
+
+    useEffect(() => {
+        if (!isShareOpen) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setIsShareOpen(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            document.body.style.overflow = '';
+        };
+    }, [isShareOpen]);
+
+    const handleCopyShareLink = async () => {
+        const url = shareUrl || (typeof window !== 'undefined' ? window.location.href : '');
+        if (!url) return;
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                const fallback = document.createElement('textarea');
+                fallback.value = url;
+                fallback.style.position = 'fixed';
+                fallback.style.opacity = '0';
+                document.body.appendChild(fallback);
+                fallback.focus();
+                fallback.select();
+                document.execCommand('copy');
+                document.body.removeChild(fallback);
+            }
+            setShareCopied(true);
+            setTimeout(() => setShareCopied(false), 2000);
+        } catch {
+            setShareCopied(false);
+        }
+    };
+
+    const handleShareExternal = (type: 'messenger' | 'whatsapp' | 'x' | 'more') => {
+        const url = shareUrl || (typeof window !== 'undefined' ? window.location.href : '');
+        const title = displayTitle || product.name;
+        if (!url) return;
+
+        if (type === 'more' && navigator?.share) {
+            navigator.share({ title, url }).catch(() => undefined);
+            return;
+        }
+
+        const encodedUrl = encodeURIComponent(url);
+        const encodedText = encodeURIComponent(`${title} - ${url}`);
+        const shareTargets: Record<string, string> = {
+            messenger: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+            whatsapp: `https://wa.me/?text=${encodedText}`,
+            x: `https://twitter.com/intent/tweet?text=${encodedText}`,
+        };
+        const targetUrl = shareTargets[type];
+        if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 30 }}
@@ -288,7 +372,11 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                         <HeartIcon filled={wishlisted} />
                         <span>{wishlisted ? 'Saved' : 'Save'}</span>
                     </motion.button>
-                    <button className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-orange-500 transition-colors">
+                    <button
+                        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-orange-500 transition-colors"
+                        onClick={() => setIsShareOpen(true)}
+                        type="button"
+                    >
                         <ShareIcon /> Share
                     </button>
                 </div>
@@ -636,6 +724,74 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 selectedType={productTypeLabel}
 
             />
+
+            {isShareOpen && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 sm:p-6">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setIsShareOpen(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative w-full max-w-xl rounded-3xl bg-white shadow-2xl border border-gray-100 p-5 sm:p-6"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Share to</p>
+                                <h3 className="text-lg font-bold text-slate-800">Send this product</h3>
+                            </div>
+                            <button
+                                onClick={() => setIsShareOpen(false)}
+                                className="h-9 w-9 rounded-full border border-gray-200 text-gray-500 hover:text-orange-600 hover:border-orange-200 transition-colors"
+                                type="button"
+                            >
+                                <span className="sr-only">Close</span>
+                                <XIcon className="mx-auto" size={16} />
+                            </button>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-3 sm:grid-cols-6 gap-4">
+                            {[
+                                { id: 'messenger', label: 'Messenger', icon: MessageCircle, action: () => handleShareExternal('messenger') },
+                                { id: 'whatsapp', label: 'WhatsApp', icon: PhoneCall, action: () => handleShareExternal('whatsapp') },
+                                { id: 'copy', label: shareCopied ? 'Copied' : 'Copy link', icon: Link2, action: handleCopyShareLink },
+                                { id: 'group', label: 'Group', icon: Users, action: () => handleShareExternal('more') },
+                                { id: 'friend', label: "Friend's profile", icon: User, action: () => handleShareExternal('more') },
+                                { id: 'x', label: 'X', icon: XIcon, action: () => handleShareExternal('x') },
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={item.action}
+                                    className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-slate-600 hover:text-orange-600 transition-colors"
+                                    type="button"
+                                >
+                                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-slate-600 shadow-sm">
+                                        <item.icon size={22} />
+                                    </span>
+                                    <span className="leading-tight">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                            <p className="text-xs font-semibold text-slate-500">Product share link</p>
+                            <div className="mt-1 flex items-center justify-between gap-3">
+                                <span className="text-xs text-slate-600 truncate">{shareUrl}</span>
+                                <button
+                                    onClick={handleCopyShareLink}
+                                    className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                                    type="button"
+                                >
+                                    {shareCopied ? 'Copied' : 'Copy'}
+                                </button>
+                            </div>
+                        </div>
+
+                    </motion.div>
+                </div>
+            )}
         </motion.div>
     );
 };
