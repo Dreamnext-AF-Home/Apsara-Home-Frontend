@@ -13,7 +13,6 @@ type TokenUser = {
 const isProd = process.env.NODE_ENV === 'production';
 
 export const adminAuthOptions: NextAuthOptions = {
-  basePath: '/api/admin/auth',
   providers: [
     CredentialsProvider({
       id: 'admin-credentials',
