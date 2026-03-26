@@ -48,6 +48,7 @@ export interface CreateAdminUserResponse {
     username: string
     email: string
     role: string
+    role_label?: string
     expires_at: string
     admin_permissions?: string[]
   }

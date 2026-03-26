@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import Loading from '@/components/Loading'
 import { signIn, signOut } from "next-auth/react";
 import { baseApi, clearAccessTokenCache } from "@/store/api/baseApi";
 import { useAppDispatch } from "@/store/hooks";
+import { clearAdminSession } from "@/libs/adminSession";
 
 const EyeIcon = ({ open }: { open: boolean }) => open
     ? <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
@@ -14,6 +16,7 @@ const EyeIcon = ({ open }: { open: boolean }) => open
 
 const AdminLoginForm = () => {
     const dispatch = useAppDispatch();
+    const router = useRouter();
     const [showPass, setShowPass] = useState(false);
     const [error, setError] = useState('');
     const [form, setForm] = useState({ login: '', password: '' });
@@ -30,6 +33,7 @@ const AdminLoginForm = () => {
             // Reset any previous admin session/token to prevent role carry-over.
             dispatch(baseApi.util.resetApiState())
             clearAccessTokenCache()
+            await clearAdminSession()
             await signOut({ redirect: false })
 
             const result = await signIn('admin-credentials', {
@@ -46,8 +50,9 @@ const AdminLoginForm = () => {
             dispatch(baseApi.util.resetApiState())
             clearAccessTokenCache()
 
-            // Hand off redirect decision to middleware using a fresh request.
-            window.location.href = '/admin/login'
+            // Refresh the app shell using Next router navigation.
+            router.replace('/admin/dashboard')
+            router.refresh()
         } catch {
             setError('Unable to sign in. Please try again');
         } finally {

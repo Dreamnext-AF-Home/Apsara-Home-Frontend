@@ -15,6 +15,7 @@ import {
 import { useGetAdminMeQuery } from "@/store/api/authApi";
 import { baseApi, clearAccessTokenCache } from "@/store/api/baseApi";
 import { useAppDispatch } from "@/store/hooks";
+import { clearAdminSession } from "@/libs/adminSession";
 import Pusher from "pusher-js";
 
 interface HeaderProps {
@@ -510,9 +511,10 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 ))}
                                 <div className="border-t border-slate-100 mt-1 pt-1">
                                     <button
-                                        onClick={() => {
+                                        onClick={async () => {
                                             dispatch(baseApi.util.resetApiState());
                                             clearAccessTokenCache();
+                                            await clearAdminSession();
                                             void signOut({ callbackUrl: '/admin/login' });
                                         }}
                                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors text-left"

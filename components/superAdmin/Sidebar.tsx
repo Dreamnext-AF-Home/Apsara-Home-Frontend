@@ -8,9 +8,10 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useGetAdminMeQuery, useLogoutMutation } from '@/store/api/authApi'
 import { membersApi } from '@/store/api/membersApi'
+import { baseApi, clearAccessTokenCache } from '@/store/api/baseApi'
 import { useAppDispatch } from '@/store/hooks'
-import { clearAccessTokenCache } from '@/store/api/baseApi'
 import { normalizeAdminPermissions } from '@/libs/adminPermissions'
+import { clearAdminSession } from '@/libs/adminSession'
 
 interface SubItem { label: string; path: string }
 interface NavItem {
@@ -236,15 +237,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const [openMenus, setOpenMenus] = useState<string[]>([])
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutApi] = useLogoutMutation()
+  const sessionRole = String(session?.user?.role ?? '').toLowerCase()
+  const sessionUserLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
+  const sessionPermissions = normalizeAdminPermissions((session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions ?? [])
   const sessionAccessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '')
   const adminIdentityKey = sessionAccessToken
     ? `${String((session?.user as { id?: string } | undefined)?.id ?? 'unknown')}:${sessionAccessToken}`
     : undefined
   const { data: adminMe, isLoading: isAdminMeLoading } = useGetAdminMeQuery(adminIdentityKey, { skip: !sessionAccessToken })
-  const displayName = String(adminMe?.name ?? '').trim() || 'Admin'
-  const displayEmail = String(adminMe?.email ?? '').trim() || 'admin@afhome.com'
-  const effectiveRole = String(adminMe?.role ?? '').toLowerCase()
-  const effectiveUserLevelId = Number(adminMe?.user_level_id ?? 0)
+  const displayName = String(adminMe?.name ?? session?.user?.name ?? '').trim() || 'Admin'
+  const displayEmail = String(adminMe?.email ?? session?.user?.email ?? '').trim() || 'admin@afhome.com'
+  const effectiveRole = String(adminMe?.role ?? sessionRole).toLowerCase()
+  const effectiveUserLevelId = Number(adminMe?.user_level_id ?? sessionUserLevelId)
   const isSuperAdmin = effectiveRole === 'super_admin' || effectiveUserLevelId === 1
   const isAdmin = effectiveRole === 'admin' || effectiveUserLevelId === 2
   const isAccounting = effectiveRole === 'accounting' || effectiveUserLevelId === 5
@@ -252,7 +256,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isMerchantAdmin = effectiveRole === 'merchant_admin' || effectiveUserLevelId === 7
   const isSupplierAdmin = effectiveRole === 'supplier_admin' || effectiveUserLevelId === 8
   const isAdminPortalRole = isSuperAdmin || isAdmin || isAccounting || isFinanceOfficer || isMerchantAdmin || isSupplierAdmin
-  const effectiveAdminPermissions = normalizeAdminPermissions(adminMe?.admin_permissions ?? [])
+  const effectiveAdminPermissions = normalizeAdminPermissions(adminMe?.admin_permissions ?? sessionPermissions)
   const adminPermissions = effectiveAdminPermissions
   const hasCustomAdminPermissions = isAdmin && adminPermissions.length > 0
   const customAdminNavIds = new Set(['dashboard', ...adminPermissions.map((permission) => ADMIN_PERMISSION_NAV_IDS[permission]).filter(Boolean)])
@@ -274,9 +278,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   useEffect(() => {
     if (!adminMe || !isAdminPortalRole) return
 
-    const sessionRole = String(session?.user?.role ?? '').toLowerCase()
     const sessionLevel = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
-    const sessionPermissions = normalizeAdminPermissions((session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions ?? [])
     const latestPermissions = normalizeAdminPermissions(adminMe.admin_permissions ?? [])
 
     const roleChanged = sessionRole !== String(adminMe.role ?? '').toLowerCase()
@@ -298,20 +300,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    try {
-      await logoutApi().unwrap()
-    } catch (error) {
-      console.log(error)
-    }
     dispatch(baseApi.util.resetApiState())
     clearAccessTokenCache()
-    await signOut({ callbackUrl: '/admin/login' })
+    await clearAdminSession()
+    void logoutApi().unwrap().catch((error) => {
+      console.log(error)
+    })
+    void signOut({ callbackUrl: '/admin/login' })
   }
 
   const isActive = (path: string) => pathname === path
   const isChildActive = (children?: SubItem[]) => children?.some(c => pathname === c.path) ?? false
 
-  const visibleNavItems = (isAdminMeLoading && sessionAccessToken ? [] : navItems)
+  const visibleNavItems = navItems
     .map((item) => {
       if (item.id === 'settings') {
         const settingsChildren = (item.children ?? []).filter((child) => {

@@ -163,6 +163,15 @@ function getPasswordStrength(password: string) {
   return               { level: Math.min(score, 5), label: score >= 5 ? 'Very Strong' : 'Strong', color: 'bg-emerald-500', textColor: 'text-emerald-600' }
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return ''
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+
+  return parsed.toLocaleString()
+}
+
 /* ─── icons ──────────────────────────────────────────────── */
 
 const UserIcon  = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -323,6 +332,10 @@ function RoleCardGrid({
                 </p>
                 <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
                   {role.description}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Manual setup link: <span className="font-semibold text-slate-700">always available</span>
+                  {latestInviteExpiresAt ? <> {' '}Â· Valid until: <span className="font-semibold text-slate-700">{latestInviteExpiresAt}</span></> : null}
                 </p>
               </div>
               {isSelected && (
@@ -611,6 +624,10 @@ export default function AdminUsersPageMain() {
   const [createAdminUser, { isLoading: isCreating }] = useCreateAdminUserMutation()
   const [updateAdminUser] = useUpdateAdminUserMutation()
   const [deleteAdminUser] = useDeleteAdminUserMutation()
+  const latestInviteRoleLabel = latestInvite?.invite.role_label
+    ?? latestInvite?.invite.role.replace(/_/g, ' ')
+    ?? 'Admin'
+  const latestInviteExpiresAt = formatDateTime(latestInvite?.invite.expires_at)
 
   const rows = useMemo(() => data?.users ?? [], [data?.users])
   const supplierOptions = useMemo(
@@ -844,24 +861,34 @@ export default function AdminUsersPageMain() {
           <div className="mx-6 mb-5 rounded-2xl border border-teal-200 bg-teal-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-bold text-teal-800">Sub-admin setup link ready</p>
+                <p className="text-sm font-bold text-teal-800">{latestInviteRoleLabel} setup link ready</p>
                 <p className="mt-1 text-xs text-teal-700">
                   {latestInvite.delivery === 'email_and_link'
-                    ? 'The invite email was sent, and you can also share this setup link manually.'
-                    : 'Share this setup link directly with your sub-admin so they can set their password.'}
+                    ? `The ${latestInviteRoleLabel.toLowerCase()} invite email was sent, and you can also share this setup link manually.`
+                    : `Share this setup link directly with your ${latestInviteRoleLabel.toLowerCase()} so they can set their password.`}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
-                  Role: <span className="font-semibold text-slate-700 capitalize">{latestInvite.invite.role.replace(/_/g, ' ')}</span>
+                  Role: <span className="font-semibold text-slate-700">{latestInviteRoleLabel}</span>
                   {' '}· Username: <span className="font-semibold text-slate-700">{latestInvite.invite.username}</span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={copyInviteLink}
-                className="shrink-0 rounded-xl border border-teal-300 bg-white px-4 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 transition-colors"
-              >
-                Copy Link
-              </button>
+              <div className="flex shrink-0 gap-2">
+                <a
+                  href={latestInvite.setup_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-teal-300 bg-white px-4 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 transition-colors"
+                >
+                  Open Link
+                </a>
+                <button
+                  type="button"
+                  onClick={copyInviteLink}
+                  className="rounded-xl border border-teal-300 bg-white px-4 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 transition-colors"
+                >
+                  Copy Link
+                </button>
+              </div>
             </div>
             <div className="mt-3 rounded-xl border border-teal-100 bg-white px-3 py-2 text-xs text-slate-600 break-all">
               {latestInvite.setup_url}
