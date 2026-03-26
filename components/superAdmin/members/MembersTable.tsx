@@ -20,6 +20,7 @@ const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').to
 interface EditMemberForm {
   id: number
   name: string
+  username: string
   email: string
   contactNumber: string
   status: MemberStatus
@@ -93,6 +94,7 @@ function EditMemberModal({
   const [form, setForm] = useState<EditMemberForm>({
     id: member.id,
     name: member.name,
+    username: member.username ?? '',
     email: member.email,
     contactNumber: member.contactNumber ?? '',
     status: member.status,
@@ -167,6 +169,10 @@ function EditMemberModal({
               <input value={form.name} onChange={(e) => updateField('name', e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-teal-400 focus:outline-none focus:ring-4 focus:ring-teal-100" />
             </label>
             <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Username</span>
+              <input value={form.username} onChange={(e) => updateField('username', e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-teal-400 focus:outline-none focus:ring-4 focus:ring-teal-100" />
+            </label>
+            <label className="block md:col-span-2">
               <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</span>
               <input type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-teal-400 focus:outline-none focus:ring-4 focus:ring-teal-100" />
             </label>
@@ -300,7 +306,15 @@ function MemberMenuPortal({
       <button
         ref={btnRef}
         title="More options"
-        onClick={e => { e.stopPropagation(); pos ? closeMenu() : openMenu() }}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (pos) {
+            closeMenu()
+            return
+          }
+
+          openMenu()
+        }}
         className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center"
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -715,6 +729,9 @@ const MembersTable = ({
                 />
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{selectedMember.email}</p>
+                  {selectedMember.username && (
+                    <p className="mt-1 text-xs text-slate-500">@{selectedMember.username}</p>
+                  )}
                   <p className="mt-1 text-xs text-slate-500">{selectedMember.contactNumber && selectedMember.contactNumber !== '0' ? selectedMember.contactNumber : 'No contact number'}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <MembersStatusBadge status={selectedMember.status} />
@@ -733,6 +750,10 @@ const MembersTable = ({
                 <div className="rounded-xl border border-slate-100 p-3">
                   <p className="text-xs text-slate-500">Tier</p>
                   <div className="mt-1"><TierBadge tier={selectedMember.tier} /></div>
+                </div>
+                <div className="rounded-xl border border-slate-100 p-3">
+                  <p className="text-xs text-slate-500">Username</p>
+                  <p className="mt-1 font-semibold text-slate-800">{selectedMember.username ? `@${selectedMember.username}` : 'No username'}</p>
                 </div>
                 <div className="rounded-xl border border-slate-100 p-3">
                   <p className="text-xs text-slate-500">Orders</p>

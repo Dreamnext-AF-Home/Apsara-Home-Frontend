@@ -67,6 +67,7 @@ interface MembersQueryParams {
 export interface UpdateMemberPayload {
   id: number
   name: string
+  username: string
   email: string
   contactNumber?: string
   status: MemberStatus

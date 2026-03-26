@@ -85,6 +85,9 @@ interface EditProductDraft {
   productId: number
   form: FormState
   variants: VariantFormState[]
+  globalColors?: VariantColor[]
+  globalPrimaryValues?: string[]
+  globalSizeValues?: string[]
   imageUrls: string[]
   roomTouched: boolean
 }
@@ -413,6 +416,88 @@ const normalizeTextField = (value: string) => {
 }
 
 const normalizeVariantLabel = (value: string) => value.trim().replace(/\s+/g, ' ')
+
+const getVariantColorKey = (color: VariantColor) =>
+  `${normalizeVariantLabel(color.name).toLowerCase()}|${color.hex.trim().toLowerCase()}`
+
+const dedupeVariantColors = (colors: VariantColor[]) => {
+  const seen = new Set<string>()
+
+  return colors.filter((color) => {
+    const key = getVariantColorKey(color)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+const collectVariantColors = (variants: VariantFormState[]) =>
+  dedupeVariantColors(variants.flatMap((variant) => variant.pv_colors))
+
+const dedupeVariantValues = (values: string[]) => {
+  const seen = new Set<string>()
+
+  return values
+    .map((value) => normalizeVariantLabel(value))
+    .filter((value) => {
+      if (!value) return false
+      const key = value.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
+const collectVariantNames = (variants: VariantFormState[]) =>
+  dedupeVariantValues(variants.map((variant) => variant.pv_name))
+
+const collectVariantSizes = (variants: VariantFormState[]) =>
+  dedupeVariantValues(variants.map((variant) => variant.pv_size))
+
+const isGeneratedGlobalVariant = (variant: VariantFormState) => {
+  const hasCustomVariantData = Boolean(
+    variant.pv_size.trim() ||
+    variant.pv_width.trim() ||
+    variant.pv_dimension.trim() ||
+    variant.pv_height.trim() ||
+    variant.pv_price_srp.trim() ||
+    variant.pv_price_dp.trim() ||
+    variant.pv_price_member.trim() ||
+    variant.pv_reversed_pv_multiplier.trim() ||
+    variant.pv_prodpv.trim() ||
+    variant.pv_qty.trim() ||
+    variant.pv_images.length > 0,
+  )
+
+  return !hasCustomVariantData && Boolean(variant.pv_name.trim() || variant.pv_colors.length > 0)
+}
+
+const collapseGeneratedGlobalVariants = (variants: VariantFormState[]) => {
+  if (!variants.length) {
+    return {
+      visibleVariants: variants,
+      globalColors: [] as VariantColor[],
+      globalPrimaryValues: [] as string[],
+    }
+  }
+
+  const allGenerated = variants.every(isGeneratedGlobalVariant)
+  if (!allGenerated) {
+      return {
+        visibleVariants: variants,
+        globalColors: collectVariantColors(variants),
+        globalPrimaryValues: collectVariantNames(variants),
+        globalSizeValues: collectVariantSizes(variants),
+      }
+    }
+
+    return {
+      visibleVariants: [] as VariantFormState[],
+      globalColors: collectVariantColors(variants),
+      globalPrimaryValues: collectVariantNames(variants),
+      globalSizeValues: collectVariantSizes(variants),
+    }
+}
 
 const getVariantFormKey = (variant: VariantFormState) => {
   const normalizedColors = variant.pv_colors
@@ -744,6 +829,12 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const [uploadedUrls,       setUploadedUrls]       = useState<string[]>([])
   const [imageError,         setImageError]         = useState('')
   const [variants,           setVariants]           = useState<VariantFormState[]>([])
+  const [globalColors,       setGlobalColors]       = useState<VariantColor[]>([])
+  const [globalPrimaryValues, setGlobalPrimaryValues] = useState<string[]>([])
+  const [globalSizeValues, setGlobalSizeValues] = useState<string[]>([])
+  const [newGlobalColorInput, setNewGlobalColorInput] = useState<VariantColor>({ name: '', hex: '#94a3b8' })
+  const [newGlobalPrimaryValue, setNewGlobalPrimaryValue] = useState('')
+  const [newGlobalSizeValue, setNewGlobalSizeValue] = useState('')
   const [newColorInputs,     setNewColorInputs]     = useState<Record<number, { name: string; hex: string }>>({})
   const [roomTouched,        setRoomTouched]        = useState(false)
   const [draftRestored,      setDraftRestored]      = useState(false)
@@ -855,11 +946,18 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       ? openedProduct.images.filter((img): img is string => Boolean(img))
       : (openedProduct.image ? [openedProduct.image] : [])
     setInitialImageUrls(existing)
-    const nextVariants = Array.isArray(openedProduct.variants)
+    const rawNextVariants = Array.isArray(openedProduct.variants)
       ? dedupeVariantFormStates(mapProductVariantsToFormStates(openedProduct.variants))
       : []
-    setInitialVariants(nextVariants)
+    const collapsedInitialState = collapseGeneratedGlobalVariants(rawNextVariants)
+    setInitialVariants(collapsedInitialState.visibleVariants)
+    setGlobalColors(collapsedInitialState.globalColors)
+    setGlobalPrimaryValues(collapsedInitialState.globalPrimaryValues)
+    setGlobalSizeValues(collapsedInitialState.globalSizeValues)
     setImageFiles([]); setImagePreviews([]); setUploadedUrls([])
+    setNewGlobalColorInput({ name: '', hex: '#94a3b8' })
+    setNewGlobalPrimaryValue('')
+    setNewGlobalSizeValue('')
     setNewColorInputs({})
     setErrors({}); setServerError(''); setImageError('')
     setDraftRestored(false)
@@ -871,13 +969,24 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         if (savedDraft) {
           const parsedDraft = JSON.parse(savedDraft) as Partial<EditProductDraft>
           if (parsedDraft.version === 1 && parsedDraft.productId === openedProduct.id) {
+            const restoredVariants = Array.isArray(parsedDraft.variants)
+              ? dedupeVariantFormStates(parsedDraft.variants)
+              : collapsedInitialState.visibleVariants
+            const restoredGlobalColors = Array.isArray(parsedDraft.globalColors)
+              ? dedupeVariantColors(parsedDraft.globalColors)
+              : collectVariantColors(restoredVariants)
+            const restoredGlobalPrimaryValues = Array.isArray(parsedDraft.globalPrimaryValues)
+              ? dedupeVariantValues(parsedDraft.globalPrimaryValues)
+              : collectVariantNames(restoredVariants)
+            const restoredGlobalSizeValues = Array.isArray(parsedDraft.globalSizeValues)
+              ? dedupeVariantValues(parsedDraft.globalSizeValues)
+              : collectVariantSizes(restoredVariants)
             setForm({ ...nextForm, ...parsedDraft.form })
             setExistingImageUrls(Array.isArray(parsedDraft.imageUrls) ? parsedDraft.imageUrls : existing)
-            setVariants(
-              Array.isArray(parsedDraft.variants)
-                ? dedupeVariantFormStates(parsedDraft.variants)
-                : nextVariants,
-            )
+            setVariants(restoredVariants)
+            setGlobalColors(restoredGlobalColors)
+            setGlobalPrimaryValues(restoredGlobalPrimaryValues)
+            setGlobalSizeValues(restoredGlobalSizeValues)
             setRoomTouched(Boolean(parsedDraft.roomTouched))
             setDraftRestored(true)
             return
@@ -889,7 +998,10 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     }
 
     setExistingImageUrls(existing)
-    setVariants(nextVariants)
+    setVariants(collapsedInitialState.visibleVariants)
+    setGlobalColors(collapsedInitialState.globalColors)
+    setGlobalPrimaryValues(collapsedInitialState.globalPrimaryValues)
+    setGlobalSizeValues(collapsedInitialState.globalSizeValues)
     setRoomTouched(false)
   }, [openedProduct])
 
@@ -1001,7 +1113,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   }
 
   /* ── variant handlers ── */
-  const addVariant    = () => setVariants(prev => [...prev, emptyVariant()])
+  const addVariant    = () => setVariants(prev => [...prev, { ...emptyVariant(), pv_colors: globalColors.map((color) => ({ ...color })) }])
   const removeVariant = (index: number) => {
     setVariants(prev => prev.filter((_, i) => i !== index))
     setNewColorInputs(prev => {
@@ -1017,6 +1129,59 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
   const setVariant = (index: number, key: keyof VariantFormState, value: string | string[]) =>
     setVariants(prev => prev.map((item, i) => i === index ? { ...item, [key]: value } : item))
+
+  const addGlobalColor = () => {
+    const hex = newGlobalColorInput.hex ?? '#94a3b8'
+    const typedName = normalizeVariantLabel(newGlobalColorInput.name ?? '')
+    const name = typedName || hexToColorName(hex)
+    if (!name) return
+
+    const colorToAdd = { name, hex }
+    setGlobalColors((prev) => dedupeVariantColors([...prev, colorToAdd]))
+    setVariants((prev) =>
+      prev.map((item) => ({
+        ...item,
+        pv_colors: dedupeVariantColors([...item.pv_colors, colorToAdd]),
+      })),
+    )
+    setNewGlobalColorInput({ name: '', hex: '#94a3b8' })
+  }
+
+  const removeGlobalColor = (colorIndex: number) => {
+    const target = globalColors[colorIndex]
+    if (!target) return
+    const targetKey = getVariantColorKey(target)
+
+    setGlobalColors((prev) => prev.filter((_, index) => index !== colorIndex))
+    setVariants((prev) =>
+      prev.map((item) => ({
+        ...item,
+        pv_colors: item.pv_colors.filter((color) => getVariantColorKey(color) !== targetKey),
+      })),
+    )
+  }
+
+  const addGlobalPrimaryValue = () => {
+    const value = normalizeVariantLabel(newGlobalPrimaryValue)
+    if (!value) return
+    setGlobalPrimaryValues((prev) => dedupeVariantValues([...prev, value]))
+    setNewGlobalPrimaryValue('')
+  }
+
+  const removeGlobalPrimaryValue = (valueIndex: number) => {
+    setGlobalPrimaryValues((prev) => prev.filter((_, index) => index !== valueIndex))
+  }
+
+  const addGlobalSizeValue = () => {
+    const value = normalizeVariantLabel(newGlobalSizeValue)
+    if (!value) return
+    setGlobalSizeValues((prev) => dedupeVariantValues([...prev, value]))
+    setNewGlobalSizeValue('')
+  }
+
+  const removeGlobalSizeValue = (valueIndex: number) => {
+    setGlobalSizeValues((prev) => prev.filter((_, index) => index !== valueIndex))
+  }
 
   const addVariantColor = (index: number) => {
     const hex  = newColorInputs[index]?.hex ?? '#94a3b8'
@@ -1096,7 +1261,20 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     return e
   }
 
-  const expandedVariants = variants
+  const variantRowsForExpansion = variants.length > 0
+    ? variants
+    : (globalColors.length > 0 || globalPrimaryValues.length > 0 || globalSizeValues.length > 0)
+      ? (globalPrimaryValues.length > 0 ? globalPrimaryValues : ['']).flatMap((value) =>
+          (globalSizeValues.length > 0 ? globalSizeValues : ['']).map((sizeValue) => ({
+            ...emptyVariant(),
+            pv_name: value,
+            pv_size: sizeValue,
+            pv_colors: globalColors.map((color) => ({ ...color })),
+          })),
+        )
+      : []
+
+  const expandedVariants = variantRowsForExpansion
     .filter(v => v.pv_name || v.pv_colors.length > 0 || v.pv_size || v.pv_width || v.pv_dimension || v.pv_height || v.pv_sku || v.pv_images.length > 0)
     .flatMap((v, index) => {
       const autoSku    = buildVariantSku(form.pd_parent_sku || generateSkuFromName(form.pd_name, product?.id), index)
@@ -1150,11 +1328,15 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       JSON.stringify(normalizeFormForComparison(form)) !== JSON.stringify(normalizeFormForComparison(initialForm ?? form))
     const variantsChanged =
       JSON.stringify(normalizeVariantsForComparison(variants)) !== JSON.stringify(normalizeVariantsForComparison(initialVariants))
+    const globalPrimaryValuesChanged =
+      JSON.stringify(dedupeVariantValues(globalPrimaryValues)) !== JSON.stringify(collectVariantNames(initialVariants))
+    const globalSizeValuesChanged =
+      JSON.stringify(dedupeVariantValues(globalSizeValues)) !== JSON.stringify(collectVariantSizes(initialVariants))
     const existingImagesChanged =
       existingImageUrls.length !== initialImageUrls.length ||
       existingImageUrls.some((url, index) => url !== initialImageUrls[index])
 
-    if (!baseChanged && !variantsChanged && !existingImagesChanged && imageFiles.length === 0) {
+    if (!baseChanged && !variantsChanged && !globalPrimaryValuesChanged && !globalSizeValuesChanged && !existingImagesChanged && imageFiles.length === 0) {
       showSuccessToast('No changes detected.')
       onClose()
       return
@@ -1291,10 +1473,14 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     JSON.stringify(normalizeFormForComparison(form)) !== JSON.stringify(normalizeFormForComparison(initialForm))
   const variantsChangedNow =
     JSON.stringify(normalizeVariantsForComparison(variants)) !== JSON.stringify(normalizeVariantsForComparison(initialVariants))
+  const globalPrimaryValuesChangedNow =
+    JSON.stringify(dedupeVariantValues(globalPrimaryValues)) !== JSON.stringify(collectVariantNames(initialVariants))
+  const globalSizeValuesChangedNow =
+    JSON.stringify(dedupeVariantValues(globalSizeValues)) !== JSON.stringify(collectVariantSizes(initialVariants))
   const existingImagesChangedNow =
     existingImageUrls.length !== initialImageUrls.length ||
     existingImageUrls.some((url, i) => url !== initialImageUrls[i])
-  const hasChanged = baseChanged || variantsChangedNow || existingImagesChangedNow || imageFiles.length > 0
+  const hasChanged = baseChanged || variantsChangedNow || globalPrimaryValuesChangedNow || globalSizeValuesChangedNow || existingImagesChangedNow || imageFiles.length > 0
   /* Keep grid visible even after all existing images are removed so user can still add new ones */
   const showImageGrid = hasAnyImages || initialImageUrls.length > 0
   const draftImageUrls = uploadedUrls.length > 0 ? uploadedUrls : existingImageUrls
@@ -1323,12 +1509,15 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       productId: openedProduct.id,
       form,
       variants,
+      globalColors,
+      globalPrimaryValues,
+      globalSizeValues,
       imageUrls: draftImageUrls,
       roomTouched,
     }
 
     window.localStorage.setItem(draftKey, JSON.stringify(draft))
-  }, [draftImageUrls, form, initialForm, initialImageUrls, initialVariants, isOpen, openedProduct, roomTouched, variants])
+  }, [draftImageUrls, form, globalColors, globalPrimaryValues, globalSizeValues, initialForm, initialImageUrls, initialVariants, isOpen, openedProduct, roomTouched, variants])
 
   /* ─── render ─────────────────────────────────────────────── */
   return (
@@ -1782,7 +1971,16 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         onClick={() => {
                           const next = !hasVariants
                           set('pd_type', next ? '1' : '0')
-                          if (!next) { setVariants([]); setNewColorInputs({}) }
+                          if (!next) {
+                            setVariants([])
+                            setGlobalColors([])
+                            setGlobalPrimaryValues([])
+                            setGlobalSizeValues([])
+                            setNewGlobalColorInput({ name: '', hex: '#94a3b8' })
+                            setNewGlobalPrimaryValue('')
+                            setNewGlobalSizeValue('')
+                            setNewColorInputs({})
+                          }
                         }}
                         className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border-2 transition-all ${
                           hasVariants
@@ -1844,30 +2042,179 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                     <>
                       <SectionLabel>Variants</SectionLabel>
                       <div className="space-y-3">
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Option Labels</p>
-                            <p className="mt-1 text-xs text-slate-500">Use generic labels like Thickness, Size, Material, Length, or leave them blank for the default variant wording.</p>
+                        <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-bold text-slate-800">Global Colors</p>
+                              <p className="text-xs text-slate-500 mt-1">
+                                Add shared colors once, then every existing and new variant will inherit them.
+                              </p>
+                            </div>
+                            <div className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-blue-700 border border-blue-100">
+                              {globalColors.length} color{globalColors.length === 1 ? '' : 's'}
+                            </div>
                           </div>
-                          <div className="mt-3 grid gap-3 md:grid-cols-2">
-                            <Field label="Primary Option Label">
-                              <input
-                                value={form.pd_primary_option_label}
-                                onChange={e => set('pd_primary_option_label', e.target.value)}
-                                placeholder="e.g. Thickness, Color, Material"
-                                className={inputCls()}
+
+                          <div className="mt-4 flex gap-2 items-center rounded-xl bg-white/80 border border-blue-100 p-2.5">
+                            <label className="shrink-0 cursor-pointer relative group">
+                              <div
+                                className="h-10 w-10 rounded-xl border-2 border-white ring-1 ring-slate-200 group-hover:ring-blue-400 transition-all shadow-sm"
+                                style={{ backgroundColor: newGlobalColorInput.hex ?? '#94a3b8' }}
                               />
-                            </Field>
-                            <Field label="Secondary Option Label">
                               <input
-                                value={form.pd_secondary_option_label}
-                                onChange={e => set('pd_secondary_option_label', e.target.value)}
-                                placeholder="e.g. Size, Length, Capacity"
-                                className={inputCls()}
+                                type="color"
+                                value={newGlobalColorInput.hex ?? '#94a3b8'}
+                                onChange={(e) => {
+                                  const hex = e.target.value
+                                  setNewGlobalColorInput((prev) => ({
+                                    hex,
+                                    name: normalizeVariantLabel(prev.name) || hexToColorName(hex),
+                                  }))
+                                }}
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                               />
-                            </Field>
+                            </label>
+                            <div className="flex-1 space-y-1">
+                              <input
+                                type="text"
+                                value={newGlobalColorInput.name ?? ''}
+                                onChange={(e) => {
+                                  const name = e.target.value
+                                  const matchedHex = colorNameToHex(name)
+                                  setNewGlobalColorInput((prev) => ({
+                                    name,
+                                    hex: matchedHex ?? prev.hex ?? '#94a3b8',
+                                  }))
+                                }}
+                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalColor())}
+                                placeholder="Global color / finish (e.g. Walnut Oak, Matte Black)"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                              />
+                              <p className="text-[11px] text-slate-400">Use this when the same colors apply across the whole product.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={addGlobalColor}
+                              className="shrink-0 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                            >
+                              Add Color
+                            </button>
+                          </div>
+
+                          {globalColors.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {globalColors.map((color, colorIndex) => (
+                                <span key={`${getVariantColorKey(color)}-${colorIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white pl-1 pr-2.5 py-1 shadow-sm">
+                                  <span className="h-5 w-5 rounded-full shrink-0 border border-slate-200" style={{ backgroundColor: color.hex }} />
+                                  <span className="text-xs font-medium text-slate-700">{color.name !== color.hex ? color.name : color.hex}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeGlobalColor(colorIndex)}
+                                    className="text-slate-300 hover:text-red-500 transition-colors leading-none"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="mt-4 rounded-xl border border-blue-100 bg-white/80 p-3 space-y-4">
+                            <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-600 block">Additional Variant Header</label>
+                                <input
+                                  value={form.pd_primary_option_label}
+                                  onChange={(e) => set('pd_primary_option_label', e.target.value)}
+                                  placeholder="e.g. Thickness"
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                />
+                                <p className="text-[11px] text-slate-400">Set the title for your additional custom options.</p>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-600 block">Add Option Values</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    value={newGlobalPrimaryValue}
+                                    onChange={(e) => setNewGlobalPrimaryValue(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalPrimaryValue())}
+                                    placeholder="e.g. 1 inch, 2 inches"
+                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={addGlobalPrimaryValue}
+                                    className="shrink-0 px-4 py-2.5 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold transition-colors border border-blue-200"
+                                  >
+                                    + Add
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {globalPrimaryValues.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {globalPrimaryValues.map((value, valueIndex) => (
+                                  <span key={`${value}-${valueIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50/70 pl-3 pr-2 py-1.5 shadow-sm">
+                                    <span className="text-xs font-medium text-slate-700">{value}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeGlobalPrimaryValue(valueIndex)}
+                                      className="text-slate-300 hover:text-red-500 transition-colors leading-none"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                                      </svg>
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-slate-600 block">Global Sizes</label>
+                              <div className="flex gap-2">
+                                <input
+                                  value={newGlobalSizeValue}
+                                  onChange={(e) => setNewGlobalSizeValue(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalSizeValue())}
+                                  placeholder="e.g. 36 x 75, 48 x 75"
+                                  className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={addGlobalSizeValue}
+                                  className="shrink-0 px-4 py-2.5 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold transition-colors border border-blue-200"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+                              <p className="text-[11px] text-slate-400">Add repeatable size values here if you do not need per-variant cards.</p>
+                            </div>
+
+                            {globalSizeValues.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {globalSizeValues.map((value, valueIndex) => (
+                                  <span key={`${value}-${valueIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white pl-3 pr-2 py-1.5 shadow-sm">
+                                    <span className="text-xs font-medium text-slate-700">{value}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeGlobalSizeValue(valueIndex)}
+                                      className="text-slate-300 hover:text-red-500 transition-colors leading-none"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                                      </svg>
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
+
                         {variants.length === 0 ? (
                           <div className="flex flex-col items-center gap-2 py-8 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
                             <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
@@ -1929,13 +2276,14 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                     <div className="grid grid-cols-3 gap-2">
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-semibold text-slate-500 block">
-                                          {form.pd_primary_option_label.trim() || 'Primary Variant Value'} <span className="font-normal text-slate-400">(recommended)</span>
+                                          Name <span className="font-normal text-slate-400">(recommended)</span>
                                         </label>
-                                        <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder={`e.g. ${form.pd_primary_option_label.trim() || '4 inches, Black, Standard'}`} className={variantInputCls}/>
+                                        <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder="e.g. 4 inches, Black, Standard" className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">{form.pd_secondary_option_label.trim() || 'Secondary Variant Value'}</label>
-                                        <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder={`e.g. ${form.pd_secondary_option_label.trim() || '60x75, Large, 500ml'}`} className={variantInputCls}/>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Size</label>
+                                        <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder="e.g. 10L, Large, 500ml, 60x75" className={variantInputCls}/>
+                                        <p className="text-[10px] text-slate-400">Leave blank if this variant does not use a size value.</p>
                                       </div>
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-semibold text-slate-500 block">SKU <span className="font-normal text-slate-400">(optional)</span></label>

@@ -10,6 +10,7 @@ export type MemberTier =
 export interface Member {
   id: number;
   name: string;
+  username?: string;
   email: string;
   contactNumber?: string;
   avatar?: string;

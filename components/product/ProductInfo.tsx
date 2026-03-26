@@ -136,7 +136,6 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const [buyOptionsOpen, setBuyOptionsOpen] = useState(false);
     const [paymentLogoMissing, setPaymentLogoMissing] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
-    const [shareUrl, setShareUrl] = useState('');
     const [shareCopied, setShareCopied] = useState(false);
     const optionLabels = useMemo(() => extractVariantOptionLabels(product.specifications), [product.specifications]);
 
@@ -250,35 +249,34 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
 
     const logicalSizeChoices = useMemo(() => {
         return groupedVariantChoices.filter((choice) =>
-            Boolean(choice.groupVariants?.some((variant) => (variant.size ?? '').trim() || (variant.name ?? '').trim())),
+            Boolean(choice.groupVariants?.some((variant) => (variant.size ?? '').trim())),
         );
     }, [groupedVariantChoices]);
 
     const [selectedVariantName, setSelectedVariantName] = useState('');
     const [selectedSizeKey, setSelectedSizeKey] = useState('');
     const effectiveSelectedColor = selectedColor || colorOptions[0]?.name || '';
-    const shouldUseNameAsPrimaryOption = colorOptions.length === 0 && variantNameOptions.length > 1;
-    const primaryOptionMode = colorOptions.length > 0 ? 'color' : (shouldUseNameAsPrimaryOption ? 'name' : 'none');
-    const effectiveSelectedPrimaryName = selectedVariantName || (primaryOptionMode === 'name' ? variantNameOptions[0]?.name || '' : '');
-    const primaryOptionLabel = primaryOptionMode === 'color'
-        ? (optionLabels.primaryLabel || 'Color')
-        : (primaryOptionMode === 'name' ? (optionLabels.primaryLabel || 'Variant') : '');
-    const secondaryOptionLabel = optionLabels.secondaryLabel || 'Size';
+    const hasColorSelector = colorOptions.length > 0;
+    const hasPrimaryOptionSelector = variantNameOptions.length > 1;
+    const effectiveSelectedPrimaryName = selectedVariantName || (hasPrimaryOptionSelector ? variantNameOptions[0]?.name || '' : '');
+    const primaryOptionLabel = optionLabels.primaryLabel?.trim() || 'Options';
+    const hasSecondarySizeValues = logicalSizeChoices.length > 0;
+    const secondaryOptionLabel = optionLabels.secondaryLabel?.trim() || (hasSecondarySizeValues ? 'Size' : '');
     const displayedSizeChoices = useMemo(() => {
         let filteredChoices = logicalSizeChoices;
-        if (primaryOptionMode === 'color' && effectiveSelectedColor) {
+        if (hasColorSelector && effectiveSelectedColor) {
             filteredChoices = logicalSizeChoices.filter((choice) =>
                 (choice.groupVariants ?? []).some((variant) => !variant.color || variant.color === effectiveSelectedColor),
             );
         }
-        if (primaryOptionMode === 'name' && effectiveSelectedPrimaryName) {
+        if (hasPrimaryOptionSelector && effectiveSelectedPrimaryName) {
             filteredChoices = filteredChoices.filter((choice) =>
                 (choice.groupVariants ?? []).some((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName),
             );
         }
-
         return filteredChoices;
-    }, [effectiveSelectedColor, effectiveSelectedPrimaryName, logicalSizeChoices, primaryOptionMode]);
+    }, [effectiveSelectedColor, effectiveSelectedPrimaryName, hasColorSelector, hasPrimaryOptionSelector, logicalSizeChoices]);
+    const shouldShowSecondaryOption = secondaryOptionLabel.length > 0 && displayedSizeChoices.length > 0;
     const effectiveSelectedSizeKey = selectedSizeKey || displayedSizeChoices[0]?.key || '';
     const effectiveSelectedSize = selectedSize || displayedSizeChoices[0]?.label || '';
 
@@ -287,21 +285,37 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
         const selectedSizeChoice = displayedSizeChoices.find((choice) => choice.key === effectiveSelectedSizeKey);
         if (selectedSizeChoice) {
             const groupedVariants = selectedSizeChoice.groupVariants ?? (selectedSizeChoice.variant ? [selectedSizeChoice.variant] : []);
-            if (primaryOptionMode === 'color') {
-                return groupedVariants.find((variant) => variant.color === effectiveSelectedColor) ?? groupedVariants[0];
-            }
-            if (primaryOptionMode === 'name') {
-                return groupedVariants.find((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName) ?? groupedVariants[0];
-            }
-            return groupedVariants[0];
+            return (
+                groupedVariants.find((variant) =>
+                    (!hasColorSelector || !effectiveSelectedColor || variant.color === effectiveSelectedColor) &&
+                    (!hasPrimaryOptionSelector || !effectiveSelectedPrimaryName || (variant.name ?? '').trim() === effectiveSelectedPrimaryName),
+                )
+                ?? groupedVariants.find((variant) =>
+                    !hasColorSelector || !effectiveSelectedColor || variant.color === effectiveSelectedColor,
+                )
+                ?? groupedVariants.find((variant) =>
+                    !hasPrimaryOptionSelector || !effectiveSelectedPrimaryName || (variant.name ?? '').trim() === effectiveSelectedPrimaryName,
+                )
+                ?? groupedVariants[0]
+            );
         }
-        if (primaryOptionMode === 'name' && effectiveSelectedPrimaryName) {
+        if (hasColorSelector && effectiveSelectedColor && hasPrimaryOptionSelector && effectiveSelectedPrimaryName) {
+            return (
+                variantOptions.find((variant) =>
+                    variant.color === effectiveSelectedColor && (variant.name ?? '').trim() === effectiveSelectedPrimaryName,
+                )
+                ?? variantOptions.find((variant) => variant.color === effectiveSelectedColor)
+                ?? variantOptions.find((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName)
+                ?? variantOptions[0]
+            );
+        }
+        if (hasPrimaryOptionSelector && effectiveSelectedPrimaryName) {
             return (
                 variantOptions.find((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName)
                 ?? variantOptions[0]
             );
         }
-        if (primaryOptionMode === 'color' && effectiveSelectedColor) {
+        if (hasColorSelector && effectiveSelectedColor) {
             return variantOptions.find((variant) => variant.color === effectiveSelectedColor) ?? variantOptions[0];
         }
         return (
@@ -315,7 +329,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
             )
             ?? variantOptions[0]
         );
-    }, [displayedSizeChoices, variantOptions, effectiveSelectedColor, effectiveSelectedPrimaryName, effectiveSelectedSize, effectiveSelectedSizeKey, primaryOptionMode, selectedSize]);
+    }, [displayedSizeChoices, variantOptions, effectiveSelectedColor, effectiveSelectedPrimaryName, effectiveSelectedSize, effectiveSelectedSizeKey, hasColorSelector, hasPrimaryOptionSelector, selectedSize]);
 
     useEffect(() => {
         onVariantChange?.(selectedVariant);
@@ -387,9 +401,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     };
 
     const referralCode = (me?.username ?? '').trim();
+    const shareUrl = useMemo(() => {
+        if (typeof window === 'undefined') return '';
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
         try {
             const url = new URL(window.location.href);
             if (referralCode) {
@@ -400,9 +414,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 url.searchParams.delete('username');
                 url.searchParams.delete('preffered_by');
             }
-            setShareUrl(url.toString());
+            return url.toString();
         } catch {
-            setShareUrl(window.location.href);
+            return window.location.href;
         }
     }, [referralCode]);
 
@@ -624,7 +638,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                                 Selected Variant: <span className="text-orange-500">{selectedVariantLabel}</span>
                             </span>
                         ) : null}
-                        {selectedVariant?.size?.trim() && selectedVariant?.name?.trim() && (
+                        {shouldShowSecondaryOption && selectedVariant?.size?.trim() && selectedVariant?.name?.trim() && (
                             <span className="text-sm font-semibold text-slate-700">
                                 {secondaryOptionLabel}: <span className="text-orange-500">{selectedVariant.size.trim()}</span>
                             </span>
@@ -645,9 +659,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
-            {hasRealVariants && primaryOptionMode === 'color' && colorOptions.length > 0 && (
+            {hasRealVariants && hasColorSelector && colorOptions.length > 0 && (
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold text-slate-700">{primaryOptionLabel}</span>
+                    <span className="text-sm font-semibold text-slate-700">Color</span>
                     <div className="flex gap-2.5">
                         {colorOptions.map(c => (
                             <button
@@ -662,7 +676,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
-            {hasRealVariants && primaryOptionMode === 'name' && variantNameOptions.length > 0 && (
+            {hasRealVariants && hasPrimaryOptionSelector && variantNameOptions.length > 0 && (
                 <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold text-slate-700">{primaryOptionLabel}</span>
                     <div className="flex gap-2 flex-wrap">
@@ -694,7 +708,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
-            {hasRealVariants && displayedSizeChoices.length > 0 && (
+            {hasRealVariants && shouldShowSecondaryOption && (
                 <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold text-slate-700">{secondaryOptionLabel}</span>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
