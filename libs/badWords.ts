@@ -21,7 +21,7 @@ const blockedWords = [
   'putanginamopo','putanginanyo','putangina nyo',
   'tangina','tanginamo','tanginamoka','tanginanyo',
   'taena','taenamo','taenanyo',
-  'gago','gagoka','gagomo','gagoka','gagoka',
+  'gago','gagoka','gagomo','gagoka','gaguka',
   'ulol','ulolka','ulolmo',
   'tanga','tangaka','tangamo',
   'tarantado','tarantadoka','tarantadomo',

@@ -322,6 +322,12 @@ export default function Navbar({ initialCategories = [] }: { initialCategories?:
     }, 0)
   }, [readCustomerNotificationKeys, visibleCustomerNotifications])
 
+  useEffect(() => {
+    if (!notifMenuOpen) return
+    if (!visibleCustomerNotifications.length) return
+    markAllCustomerNotificationsAsRead()
+  }, [notifMenuOpen, visibleCustomerNotifications])
+
   const markCustomerNotificationAsRead = (item: { id: string; title: string; description: string; count: number }) => {
     const readKey = getCustomerNotificationReadKey(item)
 

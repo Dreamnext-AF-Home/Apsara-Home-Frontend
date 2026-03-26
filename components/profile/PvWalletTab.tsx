@@ -59,49 +59,49 @@ const PvWalletTab = ({
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <PvStatCard 
-            label="Current PV"
+            label="Affiliate Retail Profit"
             value={currentPv}
             accent="blue"
-            helper="Usable purchase volume"
+            helper="Profit earned from your retail affiliate sales"
         />
         <PvStatCard 
-            label="Pending PV"
+            label="Yearly Purchases"
             value={pendingPv}
             accent="amber"
-            helper="Awaiting final order status"
+            helper="Your Purchase Accumulated this Year"
         />
         <PvStatCard 
-            label="Lifetime PV"
+            label="Affiliate Performance Bonus"
             value={lifetimePv}
             accent="emerald"
-            helper="All Approved PV Earned"
+            helper="Bonus earned based on affiliate performance metrics"
         />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <PvStatCard
-          label="Personal Purchase PV"
+          label="Global Purchase Bonus"
           value={personalPurchasePv}
           accent="violet"
-          helper="From your own approved purchases"
+          helper="Earnings from worldwide purchases"
         />
         <PvStatCard
-          label="Group PV"
+          label="Group Purchase Bonus"
           value={groupPv}
           accent="blue"
-          helper="Accumulated group purchase volume"
+          helper="Bonus from your group’s purchases"
         />
         <PvStatCard
-          label="Current Month GPV"
+          label="Monthly Purchase Points"
           value={currentMonthGroupPv}
           accent="emerald"
-          helper="Group PV earned this month"
+          helper="Purchase Points this Month"
         />
         <PvStatCard
-          label="Current CV"
+          label="Total Bonus"
           value={currentCv}
           accent="amber"
-          helper="Current commission value in system"
+          helper="Total earnings from all bonus sources"
         />
       </div>
 
@@ -110,7 +110,7 @@ const PvWalletTab = ({
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-400">
-                        PV Goal
+                        Performance Value Goal
                     </p>
                     <h3 className="mt-2 text-2xl font-semibold text-slate-900">
                         {currentPv.toLocaleString()} / {goalPv.toLocaleString()} PV

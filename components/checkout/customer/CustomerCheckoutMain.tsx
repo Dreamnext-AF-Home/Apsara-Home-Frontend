@@ -13,7 +13,7 @@ import CustomerCheckoutContactForm from "./CustomerCheckoutContactForm";
 import CustomerCheckoutAddressForm from "./CustomerCheckoutAddressForm";
 import CustomerCheckoutPaymentMethod from "./CustomerCheckoutPaymentMethod";
 import CustomerCheckoutOrderSummary from "./CustomerCheckoutOrderSummary";
-import { useCreateCheckoutSessionMutation } from "@/store/api/paymentApi";
+import { useCreateCheckoutSessionMutation, useValidateVoucherMutation } from "@/store/api/paymentApi";
 import { getStoredReferralCode } from "@/libs/referral";
 import { useMeQuery } from "@/store/api/userApi";
 import type { Category } from '@/store/api/categoriesApi';
@@ -76,6 +76,9 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
     const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('gcash');
     const [notice, setNotice] = useState('');
     const [createCheckoutSession, { isLoading: loading }] = useCreateCheckoutSessionMutation();
+    const [validateVoucher, { isLoading: voucherLoading }] = useValidateVoucherMutation();
+    const [voucherInfo, setVoucherInfo] = useState<{ code: string; amount: number; discount: number } | null>(null);
+    const [voucherError, setVoucherError] = useState<string | null>(null);
 
     const form = useMemo<GuestForm>(() => ({
         ...defaultForm,
@@ -98,6 +101,36 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
         if (checkoutData) return;
         router.replace('/');
     }, [checkoutData, router]);
+
+    useEffect(() => {
+        if (!checkoutData) return;
+        const code = form.voucher_coupon.trim();
+
+        if (!code) {
+            setVoucherInfo(null);
+            setVoucherError(null);
+            return;
+        }
+
+        setVoucherError(null);
+        const handle = setTimeout(async () => {
+            try {
+                const res = await validateVoucher({ code, subtotal: checkoutData.subtotal }).unwrap();
+                setVoucherInfo({
+                    code: res.voucher.code,
+                    amount: res.voucher.amount,
+                    discount: res.discount,
+                });
+                setVoucherError(null);
+            } catch (error) {
+                const apiError = error as { data?: { message?: string } };
+                setVoucherInfo(null);
+                setVoucherError(apiError?.data?.message || 'Voucher code is invalid or expired.');
+            }
+        }, 450);
+
+        return () => clearTimeout(handle);
+    }, [form.voucher_coupon, checkoutData, validateVoucher]);
 
     const setField = useCallback((key: keyof GuestForm, value: string) => {
         setFormOverrides(prev => ({ ...prev, [key]: value }))
@@ -157,11 +190,19 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
             return;
         }
 
+        if (form.voucher_coupon.trim() && !voucherInfo) {
+            setVoucherError(voucherError || 'Voucher code is invalid or expired.');
+            return;
+        }
+
         try {
+            const voucherDiscount = voucherInfo?.discount ?? 0;
+            const computedTotal = Math.max(0, checkoutData.subtotal - voucherDiscount) + checkoutData.handlingFee;
             const data = await createCheckoutSession({
-                amount: checkoutData.total,
+                amount: computedTotal,
                 description: checkoutData.product.name,
                 payment_method: selectedMethod,
+                voucher_code: voucherInfo?.code,
                 customer: {
                     name: form.name,
                     email: form.email,
@@ -179,6 +220,8 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
                     selected_color: checkoutData.selectedColor ?? null,
                     selected_size: checkoutData.selectedSize ?? null,
                     selected_type: checkoutData.selectedType ?? null,
+                    subtotal: checkoutData.subtotal,
+                    handling_fee: checkoutData.handlingFee,
                 },
             }).unwrap();
 
@@ -259,6 +302,11 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
                                 form={form}
                                 errors={errors}
                                 setField={setField}
+                                voucherStatus={{
+                                    loading: voucherLoading,
+                                    error: voucherError,
+                                    appliedAmount: voucherInfo?.discount ?? 0,
+                                }}
                             />
                             <CustomerCheckoutAddressForm
                                 form={form}
@@ -283,6 +331,8 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
                                 loading={loading}
                                 onSubmit={handleSubmit}
                                 isLoggedIn={isLoggedIn}
+                                voucher={voucherInfo ? { code: voucherInfo.code, discount: voucherInfo.discount } : null}
+                                computedTotal={Math.max(0, checkoutData.subtotal - (voucherInfo?.discount ?? 0)) + checkoutData.handlingFee}
                             />
                         </div>
                     </div>

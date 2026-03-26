@@ -6,6 +6,11 @@ interface CustomerCheckoutContactFormProps {
     form: GuestForm;
     errors: FormErrors;
     setField: (key: keyof GuestForm, value: string) => void;
+    voucherStatus?: {
+        loading?: boolean;
+        error?: string | null;
+        appliedAmount?: number | null;
+    };
 }
 
 const Field = ({ label, value, onChange, placeholder, type = 'text', required = false, error, fieldKey }: {
@@ -29,7 +34,8 @@ const Field = ({ label, value, onChange, placeholder, type = 'text', required = 
 const CustomerCheckoutContactForm = ({
     form,
     errors,
-    setField
+    setField,
+    voucherStatus
 }: CustomerCheckoutContactFormProps) => {
     return (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -97,10 +103,20 @@ const CustomerCheckoutContactForm = ({
                             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 transition-all tracking-widest font-mono uppercase"
                         />
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
-                        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Apply your voucher coupon code if available.
-                    </p>
+                    {voucherStatus?.loading ? (
+                        <p className="text-[11px] text-slate-400 mt-1.5">Checking voucher…</p>
+                    ) : voucherStatus?.error ? (
+                        <p className="text-[11px] text-rose-500 mt-1.5">{voucherStatus.error}</p>
+                    ) : (voucherStatus?.appliedAmount ?? 0) > 0 ? (
+                        <p className="text-[11px] text-emerald-600 mt-1.5">
+                            Voucher applied: -PHP {(voucherStatus?.appliedAmount ?? 0).toLocaleString()}
+                        </p>
+                    ) : (
+                        <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+                            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Apply your voucher coupon code if available.
+                        </p>
+                    )}
                 </div>
             </div>
         </div>

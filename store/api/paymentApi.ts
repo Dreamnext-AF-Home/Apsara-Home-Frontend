@@ -14,6 +14,7 @@ export interface CreateCheckoutSessionPayload {
   amount: number
   description: string
   payment_method: CheckoutPaymentMethod
+  voucher_code?: string
   customer?: CheckoutCustomerPayload
   order?: {
     product_name?: string
@@ -25,6 +26,8 @@ export interface CreateCheckoutSessionPayload {
     selected_color?: string | null
     selected_size?: string | null
     selected_type?: string | null
+    subtotal?: number
+    handling_fee?: number
   }
 }
 
@@ -38,6 +41,19 @@ export interface VerifyCheckoutSessionResponse {
   status: string | null
   payment_intent_id: string | null
   raw?: Record<string, unknown>
+}
+
+export interface ValidateVoucherResponse {
+  valid: boolean
+  voucher: {
+    id: number
+    code: string
+    amount: number
+    max_uses?: number | null
+    used_count?: number | null
+    expires_at?: string | null
+  }
+  discount: number
 }
 
 export type CustomerOrderStatus =
@@ -106,6 +122,13 @@ export const paymentApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
+    validateVoucher: builder.mutation<ValidateVoucherResponse, { code: string; subtotal?: number }>({
+      query: (body) => ({
+        url: '/api/payments/validate-voucher',
+        method: 'POST',
+        body,
+      }),
+    }),
     getCheckoutHistory: builder.query<CheckoutHistoryResponse, void>({
       query: () => ({
         url: '/api/orders/history',
@@ -129,6 +152,7 @@ export const paymentApi = baseApi.injectEndpoints({
 export const {
   useCreateCheckoutSessionMutation,
   useLazyVerifyCheckoutSessionQuery,
+  useValidateVoucherMutation,
   useGetCheckoutHistoryQuery,
   useLazyTrackGuestOrderQuery,
 } = paymentApi

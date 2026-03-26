@@ -9,9 +9,11 @@ interface Props {
   loading: boolean;
   onSubmit: () => void;
   isLoggedIn?: boolean;
+  voucher?: { code: string; discount: number } | null;
+  computedTotal?: number;
 }
 
-export default function CustomerCheckoutOrderSummary({ checkoutData, loading, onSubmit, isLoggedIn = false }: Props) {
+export default function CustomerCheckoutOrderSummary({ checkoutData, loading, onSubmit, isLoggedIn = false, voucher, computedTotal }: Props) {
   if (!checkoutData) {
     return (
       <div className="space-y-4">
@@ -25,9 +27,11 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
   const { product, quantity, selectedColor, selectedSize, selectedType, selectedSku, items = [], subtotal, handlingFee, total } = checkoutData;
   const hasSelectedItems = items.length > 0;
   const unitPv = hasSelectedItems
-    ? items.reduce((sum, item) => sum + (((item.prodpv ?? 0) as number) * item.quantity), 0)
+    ? items.reduce((sum, item) => sum + (Number(item.prodpv ?? 0) * item.quantity), 0)
     : Number(product.prodpv ?? 0);
   const totalPv = hasSelectedItems ? unitPv : unitPv * quantity;
+  const voucherDiscount = Math.max(0, Number(voucher?.discount ?? 0));
+  const displayTotal = typeof computedTotal === 'number' ? computedTotal : total;
   const selectedOptions = [
     selectedColor ? { label: 'Color', value: selectedColor } : null,
     selectedSize ? { label: 'Size', value: selectedSize } : null,
@@ -89,7 +93,7 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
           </div>
         </div>
 
-        {items.length > 0 ? (
+        {hasSelectedItems ? (
           <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Selected Items</p>
             <div className="mt-3 space-y-3">
@@ -121,6 +125,12 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
             <span>Subtotal ({quantity}x)</span>
             <span className="font-semibold text-slate-700">PHP {subtotal.toLocaleString()}</span>
           </div>
+          {voucherDiscount > 0 ? (
+            <div className="flex justify-between text-emerald-600">
+              <span>Voucher ({voucher?.code ?? 'Applied'})</span>
+              <span className="font-semibold">-PHP {voucherDiscount.toLocaleString()}</span>
+            </div>
+          ) : null}
           <div className="flex justify-between text-slate-500">
             <span>PV per item</span>
             <span className="font-semibold text-blue-700">{unitPv.toLocaleString()} PV</span>
@@ -135,14 +145,14 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
               {handlingFee === 0 && <span className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 font-bold rounded-full">FREE</span>}
             </div>
             <span className={handlingFee === 0 ? 'text-green-600 font-semibold' : 'font-semibold text-slate-700'}>
-              {handlingFee === 0 ? 'PHP 0.00' : `PHP ${handlingFee}`}
+              {handlingFee === 0 ? 'PHP 0.00' : `PHP ${Number(handlingFee ?? 0).toLocaleString()}`}
             </span>
           </div>
         </div>
 
         <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
           <span className="font-bold text-slate-800">Total</span>
-          <span className="font-extrabold text-orange-500 text-xl">PHP {total.toLocaleString()}</span>
+          <span className="font-extrabold text-orange-500 text-xl">PHP {displayTotal.toLocaleString()}</span>
         </div>
 
         {handlingFee === 0 ? (
@@ -171,7 +181,7 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
             </svg>
-            Place Order · PHP {total.toLocaleString()}
+            Place Order · PHP {displayTotal.toLocaleString()}
           </>
         )}
       </button>
