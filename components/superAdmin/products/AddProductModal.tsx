@@ -225,6 +225,10 @@ const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => {
 }
 
 const getRequestErrorMessage = (err: unknown, fallback: string) => {
+  if (err instanceof TypeError) {
+    return 'Unable to reach the admin upload/product service. Check if the frontend server, backend API, or Cloudinary upload route is available.'
+  }
+
   const data = (err as { data?: { message?: string; errors?: Record<string, string[] | string> } })?.data
   const firstFieldErrors = data?.errors
     ? Object.values(data.errors)
@@ -233,6 +237,14 @@ const getRequestErrorMessage = (err: unknown, fallback: string) => {
     : []
 
   return firstFieldErrors[0] ?? data?.message ?? fallback
+}
+
+const getUploadErrorMessage = (err: unknown, fallback: string) => {
+  if (err instanceof TypeError) {
+    return 'Upload service is unreachable right now. Check the frontend server and Cloudinary configuration, then try again.'
+  }
+
+  return (err as Error)?.message ?? fallback
 }
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -613,7 +625,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       )
       setImageError('')
     } catch (err: unknown) {
-      setImageError((err as Error).message ?? 'Variant image upload failed.')
+      setImageError(getUploadErrorMessage(err, 'Variant image upload failed.'))
     } finally {
       setIsUploading(false)
     }
@@ -706,7 +718,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
         finalImageUrls = uploaded
         setUploadedUrls(uploaded)
       } catch (err: unknown) {
-        setImageError((err as Error).message ?? 'Image upload failed.')
+        setImageError(getUploadErrorMessage(err, 'Image upload failed.'))
         setIsUploading(false)
         return
       }
