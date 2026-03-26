@@ -16,6 +16,7 @@ import { useGetAdminMeQuery } from "@/store/api/authApi";
 import { baseApi, clearAccessTokenCache } from "@/store/api/baseApi";
 import { useAppDispatch } from "@/store/hooks";
 import { clearAdminSession } from "@/libs/adminSession";
+import { normalizeAdminPermissions } from "@/libs/adminPermissions";
 import Pusher from "pusher-js";
 
 interface HeaderProps {
@@ -84,6 +85,21 @@ const resolveNotificationHref = (notif: AdminNotificationItem) => {
     return `${url.pathname}${url.search}`;
 };
 
+const permissionForAdminHref = (href?: string | null) => {
+    const normalized = `/${String(href ?? '/admin/orders').replace(/^\/+/, '')}`;
+
+    if (normalized === '/admin' || normalized.startsWith('/admin/dashboard')) return null;
+    if (normalized.startsWith('/admin/members')) return 'members';
+    if (normalized.startsWith('/admin/orders')) return 'orders';
+    if (normalized.startsWith('/admin/interior-requests')) return 'interior_requests';
+    if (normalized.startsWith('/admin/products') || normalized.startsWith('/admin/categories') || normalized.startsWith('/admin/product-brands')) return 'products';
+    if (normalized.startsWith('/admin/shipping')) return 'shipping';
+    if (normalized.startsWith('/admin/suppliers')) return 'suppliers';
+    if (normalized.startsWith('/admin/webpages') || normalized.startsWith('/admin/web-pages')) return 'web_content';
+    if (normalized.startsWith('/admin/settings/users') || normalized.startsWith('/admin/users')) return 'settings_users';
+    return null;
+};
+
 const Header = ({ onMenuClick }: HeaderProps) => {
     const dispatch = useAppDispatch();
     const [notifOpen, setNotifOpen] = useState(false);
@@ -120,6 +136,11 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     const displayInitials = getInitials(displayName);
     const avatarSrc = adminMe?.avatar_url || session?.user?.image;
     const accessToken = session?.user?.accessToken;
+    const effectiveRole = adminMe?.role ?? session?.user?.role;
+    const effectiveUserLevelId = Number(adminMe?.user_level_id ?? (session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0);
+    const effectivePermissions = normalizeAdminPermissions(
+        adminMe?.admin_permissions ?? (session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions ?? []
+    );
     const userMenuItems = [
         { label: 'My Profile', href: '/admin/profile' },
         { label: 'Settings', href: '/admin/settings/general' },
@@ -167,6 +188,11 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             href?: string;
             created_at?: string;
         }) => {
+            const neededPermission = permissionForAdminHref(event?.href);
+            if (effectiveUserLevelId !== 1 && neededPermission && !effectivePermissions.includes(neededPermission)) {
+                return;
+            }
+
             if (event?.id != null) {
                 dispatch(
                     adminNotificationsApi.util.updateQueryData('getAdminNotifications', undefined, (draft) => {
@@ -205,7 +231,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             pusher.unsubscribe('private-admin-orders');
             pusher.disconnect();
         };
-    }, [accessToken, dispatch, refetchNotifs]);
+    }, [accessToken, dispatch, effectivePermissions, effectiveRole, effectiveUserLevelId, refetchNotifs]);
 
     const handleNotificationClick = (notif: AdminNotificationItem) => {
         setNotifOpen(false);

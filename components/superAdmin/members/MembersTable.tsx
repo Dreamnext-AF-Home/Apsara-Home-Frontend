@@ -358,13 +358,13 @@ const MembersTable = ({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-visible">
       {quickMessage && (
         <div className="border-b border-slate-100 bg-teal-50 px-4 py-2 text-sm text-teal-700">
           {quickMessage}
         </div>
       )}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
@@ -416,7 +416,7 @@ const MembersTable = ({
                     </td>
 
                     {/* Status */}
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5 relative">
                       <MembersStatusBadge status={member.status} />
                     </td>
 
@@ -496,7 +496,7 @@ const MembersTable = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                           </svg>
                         </button>
-                        <div className="relative">
+                        <div className="relative z-20">
                           <button
                             title="More options"
                             onClick={() => setMenuOpenFor((prev) => prev === member.id ? null : member.id)}
@@ -512,7 +512,7 @@ const MembersTable = ({
                                 initial={{ opacity: 0, y: 6, scale: 0.98 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                                className="absolute right-0 top-9 z-20 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"
+                                className="absolute right-0 top-9 z-30 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-300/60"
                               >
                                 <button
                                   onClick={() => {

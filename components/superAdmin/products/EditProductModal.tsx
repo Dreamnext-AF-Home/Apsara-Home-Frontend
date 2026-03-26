@@ -172,6 +172,12 @@ const mapVariantToForm = (variant: ProductVariant): VariantFormState => ({
   pv_images: Array.isArray(variant.images) ? variant.images.filter(Boolean) : [],
 })
 
+const getNormalizedColorSignature = (color?: string, colorHex?: string) => {
+  const normalizedName = normalizeVariantLabel(color ?? '').toLowerCase()
+  const normalizedHex = (colorHex ?? '').trim().toLowerCase()
+  return `${normalizedName}|${normalizedHex}`
+}
+
 const generateSkuFromName = (name: string, productId?: number) => {
   const letters = name.toUpperCase().replace(/[^A-Z]/g, '')
   if (!letters) return ''
@@ -211,6 +217,20 @@ const buildVariantColorSku = (baseSku: string, colorName: string, colorIndex: nu
   return `${baseSku}-${normalizeSkuSegment(colorName || `COLOR-${colorIndex + 1}`)}`
 }
 
+const stripVariantColorSuffix = (sku: string | undefined, colorName: string | undefined) => {
+  const normalizedSku = (sku ?? '').trim()
+  const normalizedColorSegment = normalizeSkuSegment(colorName ?? '')
+
+  if (!normalizedSku || !normalizedColorSegment) {
+    return normalizedSku
+  }
+
+  const suffix = `-${normalizedColorSegment}`
+  return normalizedSku.toUpperCase().endsWith(suffix)
+    ? normalizedSku.slice(0, -suffix.length)
+    : normalizedSku
+}
+
 const normalizeNumberField = (value: string) => {
   const trimmed = value.trim()
   return trimmed ? Number(trimmed) : null
@@ -246,6 +266,81 @@ const getVariantFormKey = (variant: VariantFormState) => {
     variant.pv_status.trim(),
     variant.pv_images.filter(Boolean).join('|'),
   ].join('::')
+}
+
+const getVariantCoreGroupKey = (variant: ProductVariant) => {
+  const images = Array.isArray(variant.images) ? variant.images.filter(Boolean).join('|') : ''
+
+  return [
+    normalizeVariantLabel(variant.name ?? '').toLowerCase(),
+    normalizeVariantLabel(variant.size ?? '').toLowerCase(),
+    variant.width ?? '',
+    variant.dimension ?? '',
+    variant.height ?? '',
+    variant.priceSrp ?? '',
+    variant.priceDp ?? '',
+    variant.priceMember ?? '',
+    variant.prodpv ?? '',
+    variant.qty ?? '',
+    variant.status ?? 1,
+    images,
+  ].join('::')
+}
+
+const mapProductVariantsToFormStates = (productVariants: ProductVariant[]) => {
+  const groupedSkuCounts = productVariants.reduce((map, variant) => {
+    const groupKey = `${getVariantCoreGroupKey(variant)}::${stripVariantColorSuffix(variant.sku, variant.color)}`
+    map.set(groupKey, (map.get(groupKey) ?? 0) + 1)
+    return map
+  }, new Map<string, number>())
+
+  const groupedVariants = productVariants.reduce((map, variant) => {
+    const coreKey = getVariantCoreGroupKey(variant)
+    const strippedSku = stripVariantColorSuffix(variant.sku, variant.color)
+    const candidateKey = `${coreKey}::${strippedSku}`
+    const resolvedSku = (groupedSkuCounts.get(candidateKey) ?? 0) > 1
+      ? strippedSku
+      : (variant.sku ?? '').trim()
+    const groupKey = `${coreKey}::${resolvedSku}`
+
+    const current = map.get(groupKey)
+    const nextColor =
+      variant.colorHex || variant.color
+        ? [{
+            name: variant.color ?? variant.colorHex ?? '',
+            hex: variant.colorHex || colorNameToHex(variant.color ?? '') || '#94a3b8',
+          }]
+        : []
+
+    if (!current) {
+      map.set(groupKey, {
+        ...mapVariantToForm(variant),
+        pv_sku: resolvedSku,
+        pv_colors: nextColor,
+      })
+      return map
+    }
+
+    const mergedImages = Array.from(new Set([...current.pv_images, ...(Array.isArray(variant.images) ? variant.images.filter(Boolean) : [])]))
+    const mergedColors = [...current.pv_colors]
+
+    nextColor.forEach((color) => {
+      const signature = getNormalizedColorSignature(color.name, color.hex)
+      const alreadyExists = mergedColors.some((existingColor) => getNormalizedColorSignature(existingColor.name, existingColor.hex) === signature)
+      if (!alreadyExists) {
+        mergedColors.push(color)
+      }
+    })
+
+    map.set(groupKey, {
+      ...current,
+      pv_images: mergedImages,
+      pv_colors: mergedColors,
+    })
+    return map
+  }, new Map<string, VariantFormState>())
+
+  return Array.from(groupedVariants.values())
 }
 
 const dedupeVariantFormStates = (variants: VariantFormState[]) =>
@@ -571,7 +666,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       : (openedProduct.image ? [openedProduct.image] : [])
     setInitialImageUrls(existing)
     const nextVariants = Array.isArray(openedProduct.variants)
-      ? dedupeVariantFormStates(openedProduct.variants.map(mapVariantToForm))
+      ? dedupeVariantFormStates(mapProductVariantsToFormStates(openedProduct.variants))
       : []
     setInitialVariants(nextVariants)
     setImageFiles([]); setImagePreviews([]); setUploadedUrls([])

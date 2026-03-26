@@ -43,27 +43,65 @@ const buildProductPath = (product: Product) => {
   return product.id > 0 ? `/product/${slug}-i${product.id}` : `/product/${slug}`
 }
 
+const normalizeVariantLabel = (value?: string | null) => (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+
+const normalizeSkuSegment = (value?: string | null) =>
+  (value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'COLOR'
+
+const stripVariantColorSuffix = (sku?: string | null, colorName?: string | null) => {
+  const normalizedSku = (sku ?? '').trim()
+  const normalizedColorSegment = normalizeSkuSegment(colorName)
+
+  if (!normalizedSku || !normalizedColorSegment) {
+    return normalizedSku
+  }
+
+  const suffix = `-${normalizedColorSegment}`
+  return normalizedSku.toUpperCase().endsWith(suffix)
+    ? normalizedSku.slice(0, -suffix.length)
+    : normalizedSku
+}
+
+const getVariantCoreGroupKey = (variant: NonNullable<Product['variants']>[number]) => [
+  normalizeVariantLabel(variant.name),
+  normalizeVariantLabel(variant.size),
+  String(variant.width ?? ''),
+  String(variant.dimension ?? ''),
+  String(variant.height ?? ''),
+  String(variant.priceSrp ?? ''),
+  String(variant.priceDp ?? ''),
+  String(variant.priceMember ?? ''),
+  String(variant.prodpv ?? ''),
+  String(variant.qty ?? ''),
+  String(variant.status ?? ''),
+  variant.images?.filter(Boolean).join('|') ?? '',
+].join('|')
+
 const getVariantCount = (product: Product) => {
   const variants = product.variants ?? []
   if (variants.length === 0) return 0
 
+  const groupedSkuCounts = variants.reduce((map, variant) => {
+    const groupKey = `${getVariantCoreGroupKey(variant)}|${stripVariantColorSuffix(variant.sku, variant.color)}`
+    map.set(groupKey, (map.get(groupKey) ?? 0) + 1)
+    return map
+  }, new Map<string, number>())
+
   return new Set(
-    variants.map((variant) => [
-      variant.sku?.trim().toLowerCase() ?? '',
-      variant.name?.trim().toLowerCase() ?? '',
-      variant.color?.trim().toLowerCase() ?? '',
-      variant.colorHex?.trim().toLowerCase() ?? '',
-      variant.size?.trim().toLowerCase() ?? '',
-      String(variant.width ?? ''),
-      String(variant.dimension ?? ''),
-      String(variant.height ?? ''),
-      String(variant.priceSrp ?? ''),
-      String(variant.priceDp ?? ''),
-      String(variant.priceMember ?? ''),
-      String(variant.qty ?? ''),
-      String(variant.status ?? ''),
-      variant.images?.join('|') ?? '',
-    ].join('|')),
+    variants.map((variant) => {
+      const coreKey = getVariantCoreGroupKey(variant)
+      const strippedSku = stripVariantColorSuffix(variant.sku, variant.color)
+      const candidateKey = `${coreKey}|${strippedSku}`
+      const resolvedSku = (groupedSkuCounts.get(candidateKey) ?? 0) > 1
+        ? strippedSku
+        : (variant.sku ?? '').trim()
+
+      return `${coreKey}|${resolvedSku.toLowerCase()}`
+    }),
   ).size
 }
 
