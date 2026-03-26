@@ -5,6 +5,7 @@ import { useCart } from "@/context/CartContext";
 import { CategoryProduct } from "@/libs/CategoryData";
 import { mockReviews } from "@/libs/MockProductData";
 import { displayColorName } from "@/libs/colorUtils";
+import { extractVariantOptionLabels } from "@/libs/productVariantOptions";
 import { motion } from "framer-motion"
 import { useEffect, useMemo, useState } from "react";
 import { Link2, MessageCircle, Users, User, X as XIcon, PhoneCall } from "lucide-react";
@@ -137,6 +138,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [shareUrl, setShareUrl] = useState('');
     const [shareCopied, setShareCopied] = useState(false);
+    const optionLabels = useMemo(() => extractVariantOptionLabels(product.specifications), [product.specifications]);
 
     const variantOptions = useMemo(
         () =>
@@ -255,35 +257,52 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const [selectedVariantName, setSelectedVariantName] = useState('');
     const [selectedSizeKey, setSelectedSizeKey] = useState('');
     const effectiveSelectedColor = selectedColor || colorOptions[0]?.name || '';
+    const shouldUseNameAsPrimaryOption = colorOptions.length === 0 && variantNameOptions.length > 1;
+    const primaryOptionMode = colorOptions.length > 0 ? 'color' : (shouldUseNameAsPrimaryOption ? 'name' : 'none');
+    const effectiveSelectedPrimaryName = selectedVariantName || (primaryOptionMode === 'name' ? variantNameOptions[0]?.name || '' : '');
+    const primaryOptionLabel = primaryOptionMode === 'color'
+        ? (optionLabels.primaryLabel || 'Color')
+        : (primaryOptionMode === 'name' ? (optionLabels.primaryLabel || 'Variant') : '');
+    const secondaryOptionLabel = optionLabels.secondaryLabel || 'Size';
     const displayedSizeChoices = useMemo(() => {
-        const filteredChoices = effectiveSelectedColor
-            ? logicalSizeChoices.filter((choice) =>
+        let filteredChoices = logicalSizeChoices;
+        if (primaryOptionMode === 'color' && effectiveSelectedColor) {
+            filteredChoices = logicalSizeChoices.filter((choice) =>
                 (choice.groupVariants ?? []).some((variant) => !variant.color || variant.color === effectiveSelectedColor),
-            )
-            : logicalSizeChoices;
+            );
+        }
+        if (primaryOptionMode === 'name' && effectiveSelectedPrimaryName) {
+            filteredChoices = filteredChoices.filter((choice) =>
+                (choice.groupVariants ?? []).some((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName),
+            );
+        }
 
         return filteredChoices;
-    }, [effectiveSelectedColor, logicalSizeChoices]);
+    }, [effectiveSelectedColor, effectiveSelectedPrimaryName, logicalSizeChoices, primaryOptionMode]);
     const effectiveSelectedSizeKey = selectedSizeKey || displayedSizeChoices[0]?.key || '';
     const effectiveSelectedSize = selectedSize || displayedSizeChoices[0]?.label || '';
-    const usesVariantNameSelection = variantNameOptions.length > 0 && displayedSizeChoices.length === 0;
-    const effectiveSelectedVariantName = selectedVariantName || (usesVariantNameSelection ? variantNameOptions[0]?.name || '' : '');
 
     const selectedVariant = useMemo(() => {
         if (variantOptions.length === 0) return undefined;
         const selectedSizeChoice = displayedSizeChoices.find((choice) => choice.key === effectiveSelectedSizeKey);
         if (selectedSizeChoice) {
             const groupedVariants = selectedSizeChoice.groupVariants ?? (selectedSizeChoice.variant ? [selectedSizeChoice.variant] : []);
-            return (
-                groupedVariants.find((variant) => variant.color === effectiveSelectedColor)
-                ?? groupedVariants[0]
-            );
+            if (primaryOptionMode === 'color') {
+                return groupedVariants.find((variant) => variant.color === effectiveSelectedColor) ?? groupedVariants[0];
+            }
+            if (primaryOptionMode === 'name') {
+                return groupedVariants.find((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName) ?? groupedVariants[0];
+            }
+            return groupedVariants[0];
         }
-        if (usesVariantNameSelection && effectiveSelectedVariantName) {
+        if (primaryOptionMode === 'name' && effectiveSelectedPrimaryName) {
             return (
-                variantOptions.find((variant) => (variant.name ?? '').trim() === effectiveSelectedVariantName)
+                variantOptions.find((variant) => (variant.name ?? '').trim() === effectiveSelectedPrimaryName)
                 ?? variantOptions[0]
             );
+        }
+        if (primaryOptionMode === 'color' && effectiveSelectedColor) {
+            return variantOptions.find((variant) => variant.color === effectiveSelectedColor) ?? variantOptions[0];
         }
         return (
             variantOptions.find((variant) =>
@@ -296,7 +315,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
             )
             ?? variantOptions[0]
         );
-    }, [displayedSizeChoices, variantOptions, effectiveSelectedColor, effectiveSelectedSize, effectiveSelectedSizeKey, effectiveSelectedVariantName, selectedSize, usesVariantNameSelection]);
+    }, [displayedSizeChoices, variantOptions, effectiveSelectedColor, effectiveSelectedPrimaryName, effectiveSelectedSize, effectiveSelectedSizeKey, primaryOptionMode, selectedSize]);
 
     useEffect(() => {
         onVariantChange?.(selectedVariant);
@@ -607,7 +626,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                         ) : null}
                         {selectedVariant?.size?.trim() && selectedVariant?.name?.trim() && (
                             <span className="text-sm font-semibold text-slate-700">
-                                Size: <span className="text-orange-500">{selectedVariant.size.trim()}</span>
+                                {secondaryOptionLabel}: <span className="text-orange-500">{selectedVariant.size.trim()}</span>
                             </span>
                         )}
                         {hasDisplayDimensions && (
@@ -626,9 +645,9 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
-            {hasRealVariants && colorOptions.length > 0 && (
+            {hasRealVariants && primaryOptionMode === 'color' && colorOptions.length > 0 && (
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold text-slate-700">Color</span>
+                    <span className="text-sm font-semibold text-slate-700">{primaryOptionLabel}</span>
                     <div className="flex gap-2.5">
                         {colorOptions.map(c => (
                             <button
@@ -643,9 +662,41 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                 </div>
             )}
 
+            {hasRealVariants && primaryOptionMode === 'name' && variantNameOptions.length > 0 && (
+                <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold text-slate-700">{primaryOptionLabel}</span>
+                    <div className="flex gap-2 flex-wrap">
+                        {variantNameOptions.map((variantOption) => (
+                            <button
+                                key={variantOption.name}
+                                onClick={() => setSelectedVariantName(variantOption.name)}
+                                className={`inline-flex items-center gap-3 px-3 py-2 text-sm rounded-xl border-2 font-medium transition-all duration-200 ${
+                                    effectiveSelectedPrimaryName === variantOption.name
+                                        ? 'border-orange-400 bg-orange-50 text-orange-600'
+                                        : 'border-gray-200 text-slate-600 hover:border-orange-200'
+                                }`}
+                            >
+                                {variantOption.image ? (
+                                    <span className="relative h-10 w-10 overflow-hidden rounded-lg bg-slate-100 shrink-0">
+                                        <Image
+                                            src={variantOption.image}
+                                            alt={variantOption.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="40px"
+                                        />
+                                    </span>
+                                ) : null}
+                                <span>{variantOption.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {hasRealVariants && displayedSizeChoices.length > 0 && (
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold text-slate-700">Size</span>
+                    <span className="text-sm font-semibold text-slate-700">{secondaryOptionLabel}</span>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {displayedSizeChoices.map((sizeChoice) => (
                             <button
@@ -665,38 +716,6 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                                         {sizeChoice.meta}
                                     </span>
                                 )}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {hasRealVariants && usesVariantNameSelection && (
-                <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold text-slate-700">Variant Options</span>
-                    <div className="flex gap-2 flex-wrap">
-                        {variantNameOptions.map((variantOption) => (
-                            <button
-                                key={variantOption.name}
-                                onClick={() => setSelectedVariantName(variantOption.name)}
-                                className={`inline-flex items-center gap-3 px-3 py-2 text-sm rounded-xl border-2 font-medium transition-all duration-200 ${
-                                    effectiveSelectedVariantName === variantOption.name
-                                        ? 'border-orange-400 bg-orange-50 text-orange-600'
-                                        : 'border-gray-200 text-slate-600 hover:border-orange-200'
-                                }`}
-                            >
-                                {variantOption.image ? (
-                                    <span className="relative h-10 w-10 overflow-hidden rounded-lg bg-slate-100 shrink-0">
-                                        <Image
-                                            src={variantOption.image}
-                                            alt={variantOption.name}
-                                            fill
-                                            className="object-cover"
-                                            sizes="40px"
-                                        />
-                                    </span>
-                                ) : null}
-                                <span>{variantOption.name}</span>
                             </button>
                         ))}
                     </div>

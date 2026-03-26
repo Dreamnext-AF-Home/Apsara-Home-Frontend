@@ -10,6 +10,7 @@ export interface CategoryProduct {
     image: string;
     images?: string[];
     description?: string;
+    specifications?: string;
     sku?: string;
     stock?: number;
     variants?: Array<{

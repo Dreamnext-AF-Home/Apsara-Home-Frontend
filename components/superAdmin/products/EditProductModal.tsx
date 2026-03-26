@@ -13,6 +13,7 @@ import RichTextEditor from '@/components/ui/RichTextEditor'
 import ProductDescriptionGenerator from '@/components/superAdmin/products/ProductDescriptionGenerator'
 import ImagePositionEditorModal from '@/components/superAdmin/products/ImagePositionEditorModal'
 import { colorNameToHex, hexToColorName } from '@/libs/colorUtils'
+import { extractVariantOptionLabels, mergeVariantOptionLabelsMeta } from '@/libs/productVariantOptions'
 import { ROOM_OPTIONS, inferRoomTypeFromCategory } from '@/libs/roomConfig'
 
 /* ─── types ──────────────────────────────────────────────── */
@@ -29,9 +30,13 @@ interface FormState {
   pd_room_type: string
   pd_brand_type: string
   pd_description: string
+  pd_specifications: string
   pd_price_srp: string
   pd_price_dp: string
   pd_price_member: string
+  pd_primary_option_label: string
+  pd_secondary_option_label: string
+  pd_reversed_pv_multiplier: string
   pd_prodpv: string
   pd_qty: string
   pd_weight: string
@@ -68,6 +73,7 @@ interface VariantFormState {
   pv_price_srp: string
   pv_price_dp: string
   pv_price_member: string
+  pv_reversed_pv_multiplier: string
   pv_prodpv: string
   pv_qty: string
   pv_status: string
@@ -133,12 +139,176 @@ const WARRANTY_OPTIONS = [
 ] as const
 
 const getEditProductDraftKey = (productId: number) => `afhome:edit-product-draft:${productId}`
+const GROUP_PURCHASE_RATE = 0.06
+const PERSONAL_CASHBACK_RATE = 0.04
+const GLOBAL_PURCHASE_BONUS_RATE = 0.01
+const AFFILIATE_PERFORMANCE_RATE = 0.1
+const INCENTIVE_ALLOC_RATE = 0.01
+const TOTAL_PAYOUT_RATE =
+  GROUP_PURCHASE_RATE +
+  PERSONAL_CASHBACK_RATE +
+  GLOBAL_PURCHASE_BONUS_RATE +
+  AFFILIATE_PERFORMANCE_RATE +
+  INCENTIVE_ALLOC_RATE
+const VAT_RATE = 0.12
+
+type PricingSummary = {
+  effectiveMemberPrice: number
+  transferPrice: number
+  computedPv: number
+  retailProfit: number
+  reversedMultiplier: number
+  groupPurchase: number
+  personalCashback: number
+  globalPurchaseBonus: number
+  affiliatePerformanceBonus: number
+  incentiveAllocation: number
+  totalAllocation: number
+  vatOnMemberPrice: number
+  dealerDiscount: number
+  dealerDiscountRate: number
+  memberDiscount: number
+  memberDiscountRate: number
+}
+
+const toSafeNumber = (value: string | number | null | undefined) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const roundTo = (value: number, digits = 6) => {
+  const factor = 10 ** digits
+  return Math.round(value * factor) / factor
+}
+
+const formatDecimalInput = (value: number, digits = 6) => {
+  const rounded = roundTo(value, digits)
+  return rounded.toFixed(digits).replace(/\.?0+$/, '')
+}
+
+const deriveComputedPv = ({
+  transfer,
+  multiplier,
+}: {
+  transfer: string | number | null | undefined
+  multiplier: string | number | null | undefined
+}) => {
+  const transferValue = Math.max(toSafeNumber(transfer), 0)
+  const multiplierValue = Math.max(toSafeNumber(multiplier), 0)
+  return roundTo(transferValue * multiplierValue, 2)
+}
+
+const deriveMultiplierFromPv = ({
+  transfer,
+  pv,
+}: {
+  transfer: string | number | null | undefined
+  pv: string | number | null | undefined
+}) => {
+  const transferValue = Math.max(toSafeNumber(transfer), 0)
+  const pvValue = Math.max(toSafeNumber(pv), 0)
+  if (transferValue <= 0 || pvValue <= 0) return ''
+  return formatDecimalInput(pvValue / transferValue)
+}
+
+const buildPricingSummary = ({
+  srp,
+  dealer,
+  member,
+  multiplier,
+}: {
+  srp: string | number | null | undefined
+  dealer: string | number | null | undefined
+  member: string | number | null | undefined
+  multiplier: string | number | null | undefined
+}): PricingSummary => {
+  const srpValue = Math.max(toSafeNumber(srp), 0)
+  const dealerValue = Math.max(toSafeNumber(dealer), 0)
+  const memberValue = Math.max(toSafeNumber(member), 0)
+  const multiplierValue = Math.max(toSafeNumber(multiplier), 0)
+  const pvValue = deriveComputedPv({ transfer: dealerValue, multiplier: multiplierValue })
+  const effectiveMemberPrice = memberValue
+  const retailProfit = srpValue > 0 && memberValue > 0 ? srpValue - memberValue : 0
+
+  return {
+    effectiveMemberPrice,
+    transferPrice: dealerValue,
+    computedPv: pvValue,
+    retailProfit,
+    reversedMultiplier: multiplierValue,
+    groupPurchase: pvValue * GROUP_PURCHASE_RATE,
+    personalCashback: pvValue * PERSONAL_CASHBACK_RATE,
+    globalPurchaseBonus: pvValue * GLOBAL_PURCHASE_BONUS_RATE,
+    affiliatePerformanceBonus: pvValue * AFFILIATE_PERFORMANCE_RATE,
+    incentiveAllocation: pvValue * INCENTIVE_ALLOC_RATE,
+    totalAllocation: pvValue * TOTAL_PAYOUT_RATE,
+    vatOnMemberPrice: effectiveMemberPrice * VAT_RATE,
+    dealerDiscount: srpValue > 0 && dealerValue > 0 ? srpValue - dealerValue : 0,
+    dealerDiscountRate: srpValue > 0 && dealerValue > 0 ? ((srpValue - dealerValue) / srpValue) * 100 : 0,
+    memberDiscount: srpValue > 0 && effectiveMemberPrice > 0 ? srpValue - effectiveMemberPrice : 0,
+    memberDiscountRate: srpValue > 0 && effectiveMemberPrice > 0 ? ((srpValue - effectiveMemberPrice) / srpValue) * 100 : 0,
+  }
+}
+
+function PricingSummaryPanel({
+  summary,
+  title = 'PV Summary',
+  memberFallbackToSrp = false,
+}: {
+  summary: PricingSummary
+  title?: string
+  memberFallbackToSrp?: boolean
+}) {
+  const rows = [
+    ['Transfer Price', `PHP ${summary.transferPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Auto PV', `${summary.computedPv.toLocaleString(undefined, { maximumFractionDigits: 2 })} PV`],
+    ['Reversed PV Multiplier', summary.reversedMultiplier.toFixed(6)],
+    ['Retail Profit', `PHP ${summary.retailProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Group Purchase 6%', `PHP ${summary.groupPurchase.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Personal Cashback 4%', `PHP ${summary.personalCashback.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Global Purchase Bonus 1%', `PHP ${summary.globalPurchaseBonus.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Affiliate Performance Bonus 10%', `PHP ${summary.affiliatePerformanceBonus.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Incentive Alloc 1%', `PHP ${summary.incentiveAllocation.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['Total Allocation 22%', `PHP ${summary.totalAllocation.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+    ['VAT (12% of MP)', `PHP ${summary.vatOnMemberPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+  ] as const
+
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-[linear-gradient(135deg,#f8fbff,#eef6ff)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-500">{title}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Live preview based on transfer price, member price, and reversed PV multiplier.
+            {memberFallbackToSrp ? ' Enter a member price to unlock MP-based calculations.' : ''}
+          </p>
+        </div>
+        <div className="rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Member Price</p>
+          <p className="text-sm font-bold text-slate-800">
+            {summary.effectiveMemberPrice > 0
+              ? `PHP ${summary.effectiveMemberPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+              : 'Waiting for MP'}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+            <p className="mt-1 text-sm font-bold text-slate-800">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /* ─── helpers ────────────────────────────────────────────── */
 
 const emptyVariant = (): VariantFormState => ({
   pv_name: '', pv_sku: '', pv_colors: [], pv_size: '', pv_width: '', pv_dimension: '', pv_height: '',
-  pv_price_srp: '', pv_price_dp: '', pv_price_member: '', pv_prodpv: '', pv_qty: '',
+  pv_price_srp: '', pv_price_dp: '', pv_price_member: '', pv_reversed_pv_multiplier: '', pv_prodpv: '', pv_qty: '',
   pv_status: '1', pv_images: [],
 })
 
@@ -166,6 +336,7 @@ const mapVariantToForm = (variant: ProductVariant): VariantFormState => ({
   pv_price_srp: toOptionalPositiveNumber(variant.priceSrp)?.toString() ?? '',
   pv_price_dp:  toOptionalPositiveNumber(variant.priceDp)?.toString() ?? '',
   pv_price_member: toOptionalPositiveNumber(variant.priceMember)?.toString() ?? '',
+  pv_reversed_pv_multiplier: deriveMultiplierFromPv({ transfer: variant.priceDp, pv: variant.prodpv }),
   pv_prodpv:   toOptionalPositiveNumber(variant.prodpv)?.toString() ?? '',
   pv_qty:       variant.qty      != null ? String(variant.qty)      : '',
   pv_status: String(variant.status ?? 1),
@@ -261,7 +432,7 @@ const getVariantFormKey = (variant: VariantFormState) => {
     variant.pv_price_srp.trim(),
     variant.pv_price_dp.trim(),
     variant.pv_price_member.trim(),
-    variant.pv_prodpv.trim(),
+    variant.pv_reversed_pv_multiplier.trim(),
     variant.pv_qty.trim(),
     variant.pv_status.trim(),
     variant.pv_images.filter(Boolean).join('|'),
@@ -418,10 +589,14 @@ const normalizeFormForComparison = (form: FormState) => ({
   pd_room_type: form.pd_room_type.trim() ? Number(form.pd_room_type) : null,
   pd_brand_type: form.pd_brand_type.trim() ? Number(form.pd_brand_type) : null,
   pd_description: normalizeTextField(form.pd_description),
+  pd_specifications: normalizeTextField(form.pd_specifications),
   pd_price_srp: Number(form.pd_price_srp),
   pd_price_dp: normalizeNumberField(form.pd_price_dp),
   pd_price_member: normalizeNumberField(form.pd_price_member),
-  pd_prodpv: normalizeNumberField(form.pd_prodpv),
+  pd_primary_option_label: normalizeTextField(form.pd_primary_option_label),
+  pd_secondary_option_label: normalizeTextField(form.pd_secondary_option_label),
+  pd_reversed_pv_multiplier: normalizeNumberField(form.pd_reversed_pv_multiplier),
+  pd_prodpv: deriveComputedPv({ transfer: form.pd_price_dp, multiplier: form.pd_reversed_pv_multiplier }),
   pd_qty: normalizeNumberField(form.pd_qty),
   pd_weight: normalizeNumberField(form.pd_weight),
   pd_psweight: normalizeNumberField(form.pd_psweight),
@@ -456,7 +631,8 @@ const normalizeVariantsForComparison = (variants: VariantFormState[]) =>
     pv_price_srp: normalizeNumberField(variant.pv_price_srp),
     pv_price_dp: normalizeNumberField(variant.pv_price_dp),
     pv_price_member: normalizeNumberField(variant.pv_price_member),
-    pv_prodpv: normalizeNumberField(variant.pv_prodpv),
+    pv_reversed_pv_multiplier: normalizeNumberField(variant.pv_reversed_pv_multiplier),
+    pv_prodpv: deriveComputedPv({ transfer: variant.pv_price_dp, multiplier: variant.pv_reversed_pv_multiplier }),
     pv_qty: normalizeNumberField(variant.pv_qty),
     pv_status: Number(variant.pv_status),
     pv_images: variant.pv_images.filter(Boolean),
@@ -549,8 +725,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const isOpen = product !== null
 
   const [form, setForm] = useState<FormState>({
-    pd_name: '', pd_catid: '', pd_room_type: '', pd_brand_type: '', pd_description: '', pd_price_srp: '',
-    pd_price_dp: '', pd_price_member: '', pd_prodpv: '', pd_qty: '', pd_weight: '', pd_psweight: '',
+      pd_name: '', pd_catid: '', pd_room_type: '', pd_brand_type: '', pd_description: '', pd_specifications: '', pd_price_srp: '',
+      pd_price_dp: '', pd_price_member: '', pd_primary_option_label: '', pd_secondary_option_label: '', pd_reversed_pv_multiplier: '', pd_prodpv: '', pd_qty: '', pd_weight: '', pd_psweight: '',
     pd_pswidth: '', pd_pslenght: '', pd_psheight: '',
     pd_material: '', pd_warranty: '', pd_assembly_required: false,
     pd_parent_sku: '', pd_type: '0',
@@ -620,6 +796,15 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     () => generateSkuFromName(form.pd_name, product?.id),
     [form.pd_name, product?.id],
   )
+  const mainPricingSummary = useMemo(
+    () => buildPricingSummary({
+      srp: form.pd_price_srp,
+      dealer: form.pd_price_dp,
+      member: form.pd_price_member,
+      multiplier: form.pd_reversed_pv_multiplier,
+    }),
+    [form.pd_price_srp, form.pd_price_dp, form.pd_price_member, form.pd_reversed_pv_multiplier],
+  )
   const openedProductRef = useRef<Product | null>(null)
   if (product && openedProductRef.current?.id !== product.id) {
     openedProductRef.current = product
@@ -632,15 +817,20 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   useEffect(() => {
     if (!openedProduct) return
     const row = openedProduct as Product & Record<string, unknown>
+    const optionLabels = extractVariantOptionLabels(openedProduct.specifications)
     const nextForm = {
       pd_name:       openedProduct.name        ?? '',
       pd_catid:      String(openedProduct.catid ?? ''),
       pd_room_type:  openedProduct.roomType ? String(openedProduct.roomType) : '',
       pd_brand_type: openedProduct.brandType ? String(openedProduct.brandType) : '',
       pd_description:openedProduct.description ?? '',
+      pd_specifications: openedProduct.specifications ?? '',
       pd_price_srp:  String(openedProduct.priceSrp ?? ''),
       pd_price_dp:   String(openedProduct.priceDp  ?? ''),
       pd_price_member: String(openedProduct.priceMember ?? ''),
+      pd_primary_option_label: optionLabels.primaryLabel ?? '',
+      pd_secondary_option_label: optionLabels.secondaryLabel ?? '',
+      pd_reversed_pv_multiplier: deriveMultiplierFromPv({ transfer: openedProduct.priceDp, pv: openedProduct.prodpv }),
       pd_prodpv:     String(openedProduct.prodpv   ?? ''),
       pd_qty:        String(openedProduct.qty      ?? ''),
       pd_weight:     String(openedProduct.weight   ?? ''),
@@ -896,7 +1086,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     if (!form.pd_price_srp.trim() || isNaN(Number(form.pd_price_srp))) e.pd_price_srp = 'Valid SRP price is required'
     if (form.pd_price_dp && isNaN(Number(form.pd_price_dp)))           e.pd_price_dp  = 'Must be a valid number'
     if (form.pd_price_member && isNaN(Number(form.pd_price_member)))   e.pd_price_member = 'Must be a valid number'
-    if (form.pd_prodpv   && isNaN(Number(form.pd_prodpv)))             e.pd_prodpv    = 'Must be a valid number'
+    if (form.pd_reversed_pv_multiplier && isNaN(Number(form.pd_reversed_pv_multiplier))) e.pd_prodpv = 'Multiplier must be a valid number'
     if (form.pd_qty      && isNaN(Number(form.pd_qty)))                e.pd_qty       = 'Must be a valid number'
     if (form.pd_weight   && isNaN(Number(form.pd_weight)))             e.pd_weight    = 'Must be a valid number'
     if (form.pd_psweight && isNaN(Number(form.pd_psweight)))           e.pd_psweight  = 'Must be a valid number'
@@ -914,6 +1104,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       const baseSrp = toOptionalPositiveNumber(form.pd_price_srp)
       const baseDp = toOptionalPositiveNumber(form.pd_price_dp)
       const baseMember = toOptionalPositiveNumber(form.pd_price_member)
+      const baseMultiplier = toOptionalPositiveNumber(form.pd_reversed_pv_multiplier)
+      const variantTransferPrice = toOptionalPositiveNumber(v.pv_price_dp) ?? baseDp
+      const variantMultiplier = toOptionalPositiveNumber(v.pv_reversed_pv_multiplier) ?? baseMultiplier
       const base = {
         pv_name:      v.pv_name.trim() || undefined,
         pv_size:      v.pv_size || undefined,
@@ -921,9 +1114,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         pv_dimension: toOptionalPositiveNumber(v.pv_dimension),
         pv_height:    toOptionalPositiveNumber(v.pv_height),
         pv_price_srp: toOptionalPositiveNumber(v.pv_price_srp) ?? baseSrp,
-        pv_price_dp:  toOptionalPositiveNumber(v.pv_price_dp)  ?? baseDp,
+        pv_price_dp:  variantTransferPrice,
         pv_price_member: toOptionalPositiveNumber(v.pv_price_member) ?? baseMember,
-        pv_prodpv:    toOptionalPositiveNumber(v.pv_prodpv) ?? toOptionalPositiveNumber(form.pd_prodpv),
+        pv_prodpv:    variantTransferPrice != null && variantMultiplier != null
+          ? deriveComputedPv({ transfer: variantTransferPrice, multiplier: variantMultiplier })
+          : undefined,
         pv_qty:       v.pv_qty       ? Number(v.pv_qty)       : undefined,
         pv_status:    Number(v.pv_status),
         pv_images:    v.pv_images.length > 0 ? v.pv_images : undefined,
@@ -995,6 +1190,15 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       finalImageUrls.length !== initialImageUrls.length ||
       finalImageUrls.some((url, index) => url !== initialImageUrls[index])
 
+    const computedMainPv = deriveComputedPv({
+      transfer: form.pd_price_dp,
+      multiplier: form.pd_reversed_pv_multiplier,
+    })
+    const nextSpecifications = mergeVariantOptionLabelsMeta(form.pd_specifications, {
+      primaryLabel: form.pd_primary_option_label,
+      secondaryLabel: form.pd_secondary_option_label,
+    })
+
     const payload: Partial<CreateProductPayload> = {
       pd_name:        form.pd_name.trim(),
       pd_catid:       Number(form.pd_catid),
@@ -1002,9 +1206,10 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       pd_brand_type:  form.pd_brand_type.trim() ? Number(form.pd_brand_type) : undefined,
       pd_price_srp:   Number(form.pd_price_srp),
       pd_description: form.pd_description.trim() || undefined,
+      pd_specifications: nextSpecifications,
       pd_price_dp:    form.pd_price_dp  ? Number(form.pd_price_dp)  : undefined,
       pd_price_member: form.pd_price_member ? Number(form.pd_price_member) : undefined,
-      pd_prodpv:      form.pd_prodpv    ? Number(form.pd_prodpv)    : undefined,
+      pd_prodpv:      computedMainPv > 0 ? computedMainPv : undefined,
       pd_qty:         form.pd_qty       ? Number(form.pd_qty)       : undefined,
       pd_weight:      form.pd_weight    ? Number(form.pd_weight)    : undefined,
       pd_psweight:    form.pd_psweight  ? Number(form.pd_psweight)  : undefined,
@@ -1039,10 +1244,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         brandType: form.pd_brand_type ? Number(form.pd_brand_type) : undefined,
         brand: brands.find((brand) => brand.id === Number(form.pd_brand_type))?.name ?? product.brand ?? null,
         description: form.pd_description.trim() || null,
+        specifications: nextSpecifications ?? null,
         priceSrp: Number(form.pd_price_srp),
         priceDp: form.pd_price_dp ? Number(form.pd_price_dp) : 0,
         priceMember: form.pd_price_member ? Number(form.pd_price_member) : undefined,
-        prodpv: form.pd_prodpv ? Number(form.pd_prodpv) : undefined,
+        prodpv: computedMainPv > 0 ? computedMainPv : undefined,
         qty: form.pd_qty ? Number(form.pd_qty) : 0,
         weight: form.pd_weight ? Number(form.pd_weight) : 0,
         psweight: form.pd_psweight ? Number(form.pd_psweight) : undefined,
@@ -1502,10 +1708,22 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         <p className="text-[11px] text-slate-500">Shown to member accounts. If blank, SRP will be used.</p>
                       </div>
                     </Field>
-                    <Field label="PV Value" error={errors.pd_prodpv}>
-                      <input type="number" value={form.pd_prodpv} onChange={e => set('pd_prodpv', e.target.value)} placeholder="0" className={inputCls(!!errors.pd_prodpv)}/>
+                    <Field label="Reversed PV Multiplier" error={errors.pd_prodpv}>
+                      <div className="space-y-1">
+                        <input type="number" value={form.pd_reversed_pv_multiplier} onChange={e => set('pd_reversed_pv_multiplier', e.target.value)} placeholder="e.g. 0.2" className={inputCls(!!errors.pd_prodpv)}/>
+                        <p className="text-[11px] text-slate-500">Formula: PV = Transfer Price × Multiplier.</p>
+                      </div>
                     </Field>
                   </div>
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mt-3">
+                    <Field label="PV (auto)">
+                      <input type="text" value={mainPricingSummary.computedPv > 0 ? formatDecimalInput(mainPricingSummary.computedPv, 2) : ''} readOnly placeholder="Auto-computed" className={`${inputCls()} bg-slate-50 text-slate-600`}/>
+                    </Field>
+                    <Field label="Retail Profit">
+                      <input type="text" value={mainPricingSummary.retailProfit !== 0 ? formatDecimalInput(mainPricingSummary.retailProfit, 2) : ''} readOnly placeholder="SRP - Member Price" className={`${inputCls()} bg-slate-50 text-slate-600`}/>
+                    </Field>
+                  </div>
+                  <PricingSummaryPanel summary={mainPricingSummary} memberFallbackToSrp={!form.pd_price_member.trim()} />
 
                   {/* ── Section: Stock & Shipping ── */}
                   <SectionLabel>Stock & Shipping</SectionLabel>
@@ -1626,6 +1844,30 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                     <>
                       <SectionLabel>Variants</SectionLabel>
                       <div className="space-y-3">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Option Labels</p>
+                            <p className="mt-1 text-xs text-slate-500">Use generic labels like Thickness, Size, Material, Length, or leave them blank for the default variant wording.</p>
+                          </div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <Field label="Primary Option Label">
+                              <input
+                                value={form.pd_primary_option_label}
+                                onChange={e => set('pd_primary_option_label', e.target.value)}
+                                placeholder="e.g. Thickness, Color, Material"
+                                className={inputCls()}
+                              />
+                            </Field>
+                            <Field label="Secondary Option Label">
+                              <input
+                                value={form.pd_secondary_option_label}
+                                onChange={e => set('pd_secondary_option_label', e.target.value)}
+                                placeholder="e.g. Size, Length, Capacity"
+                                className={inputCls()}
+                              />
+                            </Field>
+                          </div>
+                        </div>
                         {variants.length === 0 ? (
                           <div className="flex flex-col items-center gap-2 py-8 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
                             <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
@@ -1686,12 +1928,14 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identity</p>
                                     <div className="grid grid-cols-3 gap-2">
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">Name <span className="font-normal text-slate-400">(recommended)</span></label>
-                                        <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder="e.g. Black Large" className={variantInputCls}/>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">
+                                          {form.pd_primary_option_label.trim() || 'Primary Variant Value'} <span className="font-normal text-slate-400">(recommended)</span>
+                                        </label>
+                                        <input value={variant.pv_name} onChange={e => setVariant(index, 'pv_name', e.target.value)} placeholder={`e.g. ${form.pd_primary_option_label.trim() || '4 inches, Black, Standard'}`} className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">Size</label>
-                                        <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder="e.g. Medium, XL" className={variantInputCls}/>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">{form.pd_secondary_option_label.trim() || 'Secondary Variant Value'}</label>
+                                        <input value={variant.pv_size} onChange={e => setVariant(index, 'pv_size', e.target.value)} placeholder={`e.g. ${form.pd_secondary_option_label.trim() || '60x75, Large, 500ml'}`} className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-semibold text-slate-500 block">SKU <span className="font-normal text-slate-400">(optional)</span></label>
@@ -1716,7 +1960,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
                                   {/* ── Colors ── */}
                                   <div className="px-4 py-3.5 space-y-2.5">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Colors</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Colors / Extra Option Values</p>
                                     {variant.pv_colors.length > 0 && (
                                       <div className="flex flex-wrap gap-1.5">
                                         {variant.pv_colors.map((color, ci) => (
@@ -1772,7 +2016,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                           placeholder="Color / finish (e.g. Matte Black, Walnut Oak)"
                                           className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400"
                                         />
-                                        <p className="text-[10px] text-slate-400 px-0.5">Use simple or complex labels like Black, Rose Gold, Walnut Oak, or Ash Gray.</p>
+                                        <p className="text-[10px] text-slate-400 px-0.5">Optional. Use this when you also need color or finish choices under the same variant row.</p>
                                       </div>
                                       <button
                                         type="button"
@@ -1801,11 +2045,53 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                         <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} onBlur={e => setVariant(index, 'pv_price_member', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">PV</label>
-                                        <input type="number" value={variant.pv_prodpv} onChange={e => setVariant(index, 'pv_prodpv', e.target.value)} onBlur={e => setVariant(index, 'pv_prodpv', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">PV Multiplier</label>
+                                        <input type="number" value={variant.pv_reversed_pv_multiplier} onChange={e => setVariant(index, 'pv_reversed_pv_multiplier', e.target.value)} placeholder="Inherit" className={variantInputCls}/>
                                       </div>
                                     </div>
-                                    <p className="text-[11px] text-slate-400">Leave Dealer, Member, and PV blank to inherit from the main product values.</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">PV (auto)</label>
+                                        <input
+                                          type="text"
+                                          value={formatDecimalInput(buildPricingSummary({
+                                            srp: variant.pv_price_srp,
+                                            dealer: variant.pv_price_dp || form.pd_price_dp,
+                                            member: variant.pv_price_member || form.pd_price_member,
+                                            multiplier: variant.pv_reversed_pv_multiplier || form.pd_reversed_pv_multiplier,
+                                          }).computedPv, 2)}
+                                          readOnly
+                                          placeholder="Auto"
+                                          className={`${variantInputCls} bg-slate-50 text-slate-600`}
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Retail Profit</label>
+                                        <input
+                                          type="text"
+                                          value={formatDecimalInput(buildPricingSummary({
+                                            srp: variant.pv_price_srp,
+                                            dealer: variant.pv_price_dp || form.pd_price_dp,
+                                            member: variant.pv_price_member || form.pd_price_member,
+                                            multiplier: variant.pv_reversed_pv_multiplier || form.pd_reversed_pv_multiplier,
+                                          }).retailProfit, 2)}
+                                          readOnly
+                                          placeholder="Auto"
+                                          className={`${variantInputCls} bg-slate-50 text-slate-600`}
+                                        />
+                                      </div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400">Leave Transfer, Member, or Multiplier blank to inherit the main product setup.</p>
+                                    <PricingSummaryPanel
+                                      title="Variant PV Summary"
+                                      summary={buildPricingSummary({
+                                        srp: variant.pv_price_srp,
+                                        dealer: variant.pv_price_dp,
+                                        member: variant.pv_price_member || form.pd_price_member,
+                                        multiplier: variant.pv_reversed_pv_multiplier || form.pd_reversed_pv_multiplier,
+                                      })}
+                                      memberFallbackToSrp={!(variant.pv_price_member || form.pd_price_member).trim()}
+                                    />
                                   </div>
 
                                   {/* ── Inventory & Status ── */}
