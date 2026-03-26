@@ -71,6 +71,10 @@ export interface ProductsResponse {
   meta: ProductsMeta
 }
 
+export interface PublicProductResponse {
+  product: Product
+}
+
 export interface CreateProductPayload {
   pd_name: string
   pd_catid: number
@@ -303,6 +307,18 @@ export const productsApi = baseApi.injectEndpoints({
       transformResponse: (response: ProductsResponse) => normalizeProductsResponse(response),
       providesTags: ['Products'],
     }),
+    getPublicProduct: builder.query<Product, number>({
+      query: (id) => ({
+        url: `/api/products/${id}`,
+        method: 'GET',
+        cache: 'no-store',
+      }),
+      transformResponse: (response: PublicProductResponse | Product) => {
+        const rawProduct = 'product' in response ? response.product : response
+        return normalizeProduct(rawProduct as Product & Record<string, unknown>)
+      },
+      providesTags: ['Products'],
+    }),
     getProducts: builder.query<ProductsResponse, ProductsQueryParams | void>({
       query: (params) => ({
         url: '/api/admin/products',
@@ -350,6 +366,7 @@ export const productsApi = baseApi.injectEndpoints({
 
 export const {
   useGetPublicProductsQuery,
+  useLazyGetPublicProductQuery,
   useGetProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,

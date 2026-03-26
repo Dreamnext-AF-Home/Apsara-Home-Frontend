@@ -35,12 +35,27 @@ export interface CustomerCheckoutProduct {
   price: number;
 }
 
+export interface CustomerCheckoutLineItem {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+  prodpv?: number | null;
+  selectedColor?: string | null;
+  selectedSize?: string | null;
+  selectedType?: string | null;
+  selectedSku?: string | null;
+}
+
 export interface CustomerCheckoutData {
   product: CustomerCheckoutProduct;
   quantity: number;
   selectedColor?: string | null;
   selectedSize?: string | null;
   selectedType?: string | null;
+  selectedSku?: string | null;
+  items?: CustomerCheckoutLineItem[];
   subtotal: number;
   handlingFee: number;
   total: number;

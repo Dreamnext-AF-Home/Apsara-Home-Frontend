@@ -3,16 +3,19 @@
 import { CategoryProduct } from '@/libs/CategoryData';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Loading from '../Loading';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+
+type VariantOption = NonNullable<CategoryProduct['variants']>[number];
 
 interface BuyNowOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: CategoryProduct;
   quantity?: number;
+  selectedVariant?: VariantOption;
   selectedColor?: string;
   selectedSize?: string;
   selectedType?: string;
@@ -44,11 +47,17 @@ const methodLabelMap: Record<PaymentMethod, string> = {
   maya: 'Maya',
 };
 
+const toPositiveNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
 const BuyNowOptionsModal = ({
   isOpen,
   onClose,
   product,
   quantity = 1,
+  selectedVariant,
   selectedColor,
   selectedSize,
   selectedType,
@@ -58,22 +67,68 @@ const BuyNowOptionsModal = ({
   const [selectedOnlineBank, setSelectedOnlineBank] = useState(onlineBankingOptions[0]);
   const [selectedCardBrand, setSelectedCardBrand] = useState(cardOptions[0]);
   const [notice, setNotice] = useState('');
+  const [variantPickerOpen, setVariantPickerOpen] = useState(false);
+  const [modalSelectedVariantSku, setModalSelectedVariantSku] = useState(selectedVariant?.sku ?? '');
   const loading = false;
 
-  const subtotal = useMemo(() => product.price * quantity, [product.price, quantity]);
-  const unitPv = useMemo(() => Number(product.prodpv ?? 0), [product.prodpv]);
+  const variantOptions = useMemo(
+    () =>
+      (product.variants ?? []).filter((variant) =>
+        Boolean(
+          variant.color ||
+          variant.size ||
+          variant.name ||
+          variant.sku ||
+          (variant.images && variant.images.length > 0) ||
+          typeof variant.priceSrp === 'number',
+        ),
+      ),
+    [product.variants],
+  );
+  const hasVariantOptions = variantOptions.length > 0;
+
+  const activeVariant = useMemo(() => {
+    if (!hasVariantOptions) return undefined;
+    if (modalSelectedVariantSku) {
+      return variantOptions.find((variant) => (variant.sku ?? '') === modalSelectedVariantSku) ?? selectedVariant ?? variantOptions[0];
+    }
+    return selectedVariant ?? variantOptions[0];
+  }, [hasVariantOptions, modalSelectedVariantSku, selectedVariant, variantOptions]);
+
+  const activeSelectedColor = activeVariant?.color ?? selectedColor ?? null;
+  const activeSelectedSize = activeVariant?.size ?? selectedSize ?? null;
+  const activeSelectedType = activeVariant?.name ?? selectedType ?? null;
+  const unitPrice = toPositiveNumber(activeVariant?.priceSrp) ?? product.price;
+  const unitPv = toPositiveNumber(activeVariant?.prodpv) ?? Number(product.prodpv ?? 0);
+  const selectedVariantImage = activeVariant?.images?.[0] || product.image;
+
+  const subtotal = useMemo(() => unitPrice * quantity, [quantity, unitPrice]);
   const totalPv = useMemo(() => unitPv * quantity, [unitPv, quantity]);
   const handlingFee = subtotal >= 5000 ? 0 : 99;
   const total = subtotal + handlingFee;
   const router = useRouter();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setNotice('');
+    setVariantPickerOpen(false);
+    setModalSelectedVariantSku(selectedVariant?.sku ?? '');
+  }, [isOpen, selectedVariant?.sku]);
+
   const persistCheckoutDraft = () => {
     localStorage.setItem('guest_checkout', JSON.stringify({
-      product,
+      product: {
+        ...product,
+        image: selectedVariantImage,
+        sku: activeVariant?.sku ?? product.sku,
+        price: unitPrice,
+        prodpv: activeVariant?.prodpv ?? product.prodpv,
+      },
       quantity,
-      selectedColor: selectedColor ?? null,
-      selectedSize: selectedSize ?? null,
-      selectedType: selectedType ?? null,
+      selectedColor: activeSelectedColor,
+      selectedSize: activeSelectedSize,
+      selectedType: activeSelectedType,
+      selectedSku: activeVariant?.sku ?? null,
       subtotal,
       handlingFee,
       total,
@@ -81,6 +136,12 @@ const BuyNowOptionsModal = ({
   }
 
   const handleProceed = async () => {
+    if (hasVariantOptions && !activeVariant) {
+      setNotice('Please select a variant before continuing to checkout.');
+      setVariantPickerOpen(true);
+      return;
+    }
+
     if (status !== 'authenticated') {
       onClose();
       router.push('/login');
@@ -93,6 +154,12 @@ const BuyNowOptionsModal = ({
   };
 
   const handleCustomerCheckout = () => {
+    if (hasVariantOptions && !activeVariant) {
+      setNotice('Please select a variant before continuing to checkout.');
+      setVariantPickerOpen(true);
+      return;
+    }
+
     persistCheckoutDraft();
     onClose();
     router.push('/checkout/customer')
@@ -152,7 +219,7 @@ const BuyNowOptionsModal = ({
                   {/* Product */}
                   <div className="flex gap-3.5 rounded-2xl bg-white border border-orange-100 p-3.5 shadow-sm">
                     <div className="relative h-[72px] w-[72px] rounded-xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0">
-                      <Image src={product.image} alt={product.name} fill className="object-cover" />
+                      <Image src={selectedVariantImage} alt={product.name} fill className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 leading-snug line-clamp-2">{product.name}</p>
@@ -260,6 +327,9 @@ const BuyNowOptionsModal = ({
                           type="button"
                           onClick={() => {
                             setSelectedMethod(method.id);
+                            if (method.id === 'card' && hasVariantOptions && !activeVariant) {
+                              setVariantPickerOpen(true);
+                            }
                             setNotice('');
                           }}
                           className={`text-left rounded-2xl border-2 p-4 transition-all duration-200 flex items-center gap-3.5
@@ -380,6 +450,109 @@ const BuyNowOptionsModal = ({
                               </button>
                             ))}
                           </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {selectedMethod === 'card' && hasVariantOptions && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 16 }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3 rounded-2xl border border-orange-200 bg-orange-50/70 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                Variant Selection
+                              </p>
+                              <p className="mt-1 text-[11px] text-orange-600">
+                                Card checkout will use the exact variant you select here.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setVariantPickerOpen((current) => !current)}
+                              className="shrink-0 rounded-xl border border-orange-200 bg-white px-3 py-2 text-[11px] font-bold text-orange-600 hover:bg-orange-100 transition-colors"
+                            >
+                              {variantPickerOpen ? 'Hide Options' : (activeVariant ? 'Change Variant' : 'Select Variant')}
+                            </button>
+                          </div>
+
+                          {(activeSelectedType || activeSelectedSize || activeSelectedColor || activeVariant?.sku) && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {activeSelectedType ? <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-orange-100">{activeSelectedType}</span> : null}
+                              {activeSelectedSize ? <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-orange-100">{activeSelectedSize}</span> : null}
+                              {activeSelectedColor ? <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-orange-100">{activeSelectedColor}</span> : null}
+                              {activeVariant?.sku ? <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 border border-orange-100">{activeVariant.sku}</span> : null}
+                            </div>
+                          )}
+
+                          <AnimatePresence>
+                            {(variantPickerOpen || !activeVariant) && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 20, height: 0 }}
+                                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                exit={{ opacity: 0, y: 12, height: 0 }}
+                                transition={{ duration: 0.22, ease: 'easeOut' }}
+                                className="mt-3 overflow-hidden"
+                              >
+                                <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                                  {variantOptions.map((variant, index) => {
+                                    const isActive = (activeVariant?.sku ?? '') === (variant.sku ?? '');
+                                    const variantLabel = variant.name?.trim() || variant.size?.trim() || `Variant ${index + 1}`;
+                                    const variantMeta = [
+                                      variant.size?.trim() || '',
+                                      variant.color?.trim() || '',
+                                      variant.sku?.trim() || '',
+                                    ].filter(Boolean).join(' • ');
+
+                                    return (
+                                      <button
+                                        key={`${variant.sku ?? variant.id ?? index}-${index}`}
+                                        type="button"
+                                        onClick={() => {
+                                          setModalSelectedVariantSku(variant.sku ?? '');
+                                          setVariantPickerOpen(false);
+                                          setNotice('');
+                                        }}
+                                        className={`w-full rounded-2xl border px-3.5 py-3 text-left transition-all ${
+                                          isActive
+                                            ? 'border-orange-400 bg-white shadow-sm'
+                                            : 'border-orange-100 bg-white/80 hover:border-orange-300 hover:bg-white'
+                                        }`}
+                                      >
+                                        <div className="flex items-start gap-3">
+                                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white">
+                                            <Image
+                                              src={variant.images?.[0] || selectedVariantImage}
+                                              alt={variantLabel}
+                                              fill
+                                              className="object-cover"
+                                            />
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                              <p className="truncate text-sm font-bold text-slate-800">{variantLabel}</p>
+                                              {isActive ? <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600">Selected</span> : null}
+                                            </div>
+                                            {variantMeta ? <p className="mt-1 text-[11px] text-slate-500">{variantMeta}</p> : null}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </motion.div>
                     )}

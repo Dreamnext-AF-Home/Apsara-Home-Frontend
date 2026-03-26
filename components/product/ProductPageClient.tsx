@@ -38,16 +38,24 @@ const ProductPageClient = ({ product, categoryLabel }: ProductPageClientProps) =
         try {
             setStoredReferralCode(username);
             const quantity = 1;
-            const subtotal = Number(product.price ?? 0) * quantity;
+            const unitPrice = Number(selectedVariant?.priceSrp ?? product.price ?? 0);
+            const subtotal = unitPrice * quantity;
             const handlingFee = subtotal >= 5000 ? 0 : 99;
             const total = subtotal + handlingFee;
 
             localStorage.setItem('guest_checkout', JSON.stringify({
-                product,
+                product: {
+                    ...product,
+                    image: selectedVariant?.images?.[0] || product.image,
+                    sku: selectedVariant?.sku ?? product.sku,
+                    price: selectedVariant?.priceSrp ?? product.price,
+                    prodpv: selectedVariant?.prodpv ?? product.prodpv,
+                },
                 quantity,
                 selectedColor: selectedVariant?.color ?? null,
                 selectedSize: selectedVariant?.size ?? null,
                 selectedType: selectedVariant?.name ?? null,
+                selectedSku: selectedVariant?.sku ?? null,
                 subtotal,
                 handlingFee,
                 total,

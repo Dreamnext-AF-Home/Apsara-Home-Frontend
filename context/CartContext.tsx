@@ -15,6 +15,11 @@ export interface CartItem {
   price: number
   image: string
   quantity: number
+  prodpv?: number | null
+  selectedColor?: string | null
+  selectedSize?: string | null
+  selectedType?: string | null
+  selectedSku?: string | null
 }
 
 interface CartContextType {

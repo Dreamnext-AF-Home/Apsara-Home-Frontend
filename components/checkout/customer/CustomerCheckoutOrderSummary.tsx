@@ -22,13 +22,17 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
     );
   }
 
-  const { product, quantity, selectedColor, selectedSize, selectedType, subtotal, handlingFee, total } = checkoutData;
-  const unitPv = Number(product.prodpv ?? 0);
-  const totalPv = unitPv * quantity;
+  const { product, quantity, selectedColor, selectedSize, selectedType, selectedSku, items = [], subtotal, handlingFee, total } = checkoutData;
+  const hasSelectedItems = items.length > 0;
+  const unitPv = hasSelectedItems
+    ? items.reduce((sum, item) => sum + (((item.prodpv ?? 0) as number) * item.quantity), 0)
+    : Number(product.prodpv ?? 0);
+  const totalPv = hasSelectedItems ? unitPv : unitPv * quantity;
   const selectedOptions = [
     selectedColor ? { label: 'Color', value: selectedColor } : null,
     selectedSize ? { label: 'Size', value: selectedSize } : null,
     selectedType ? { label: 'Type', value: selectedType } : null,
+    selectedSku ? { label: 'SKU', value: selectedSku } : null,
   ].filter((item): item is { label: string; value: string } => Boolean(item));
 
   return (
@@ -67,6 +71,7 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
               {selectedColor && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-full">{selectedColor}</span>}
               {selectedSize && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-full">{selectedSize}</span>}
               {selectedType && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-full">{selectedType}</span>}
+              {selectedSku && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-full">{selectedSku}</span>}
             </div>
             {selectedOptions.length > 0 ? (
               <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 px-3 py-2">
@@ -83,6 +88,32 @@ export default function CustomerCheckoutOrderSummary({ checkoutData, loading, on
             ) : null}
           </div>
         </div>
+
+        {items.length > 0 ? (
+          <div className="mb-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Selected Items</p>
+            <div className="mt-3 space-y-3">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-white p-3">
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-50">
+                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 line-clamp-2">{item.name}</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600">Qty: {item.quantity}</span>
+                      {item.selectedColor ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.selectedColor}</span> : null}
+                      {item.selectedSize ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.selectedSize}</span> : null}
+                      {item.selectedType ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.selectedType}</span> : null}
+                      {item.selectedSku ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{item.selectedSku}</span> : null}
+                    </div>
+                  </div>
+                  <p className="shrink-0 text-xs font-bold text-slate-800">PHP {(item.price * item.quantity).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {/* Breakdown */}
         <div className="space-y-2.5 text-sm border-t border-slate-100 pt-3">

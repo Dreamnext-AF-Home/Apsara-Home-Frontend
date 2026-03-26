@@ -172,7 +172,7 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
                 order: {
                     product_name: checkoutData.product.name,
                     product_id: checkoutData.product.id,
-                    product_sku: checkoutData.product.sku ?? null,
+                    product_sku: checkoutData.selectedSku ?? checkoutData.product.sku ?? null,
                     product_pv: checkoutData.product.prodpv ?? 0,
                     product_image: checkoutData.product.image,
                     quantity: checkoutData.quantity,

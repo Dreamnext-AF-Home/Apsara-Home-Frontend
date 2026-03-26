@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCart } from '@/context/CartContext';
 import { CategoryProduct } from '@/libs/CategoryData';
+import { displayColorName } from '@/libs/colorUtils';
 
 interface StickyAddToCartProps {
   product: CategoryProduct;
@@ -47,11 +48,24 @@ const StickyAddToCart = ({ product, selectedVariant }: StickyAddToCartProps) => 
   const handleAddToCart = () => {
     if (!isInStock) return;
 
+    const variantLabel = [
+      selectedVariant?.name?.trim(),
+      selectedVariant?.size?.trim(),
+      selectedVariant?.color ? displayColorName(selectedVariant.color) : '',
+    ].filter(Boolean).join(' • ');
+    const cartItemIdBase = product.id ? String(product.id) : displayName.toLowerCase().replace(/\s+/g, '-');
+    const cartItemId = selectedVariant?.sku ? `${cartItemIdBase}::${selectedVariant.sku}` : cartItemIdBase;
+
     addToCart({
-      id: displayName.toLowerCase().replace(/\s+/g, '-'),
-      name: displayName,
+      id: cartItemId,
+      name: variantLabel ? `${product.name} (${variantLabel})` : displayName,
       price: displayPrice,
       image: displayImage,
+      prodpv: displayPv,
+      selectedColor: selectedVariant?.color ?? null,
+      selectedSize: selectedVariant?.size ?? null,
+      selectedType: selectedVariant?.name ?? null,
+      selectedSku: selectedVariant?.sku ?? null,
     });
   };
 
