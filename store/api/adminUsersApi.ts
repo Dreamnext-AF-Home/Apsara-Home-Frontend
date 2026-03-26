@@ -10,6 +10,7 @@ export interface AdminUserItem {
   supplier_id?: number | null
   supplier_name?: string | null
   admin_permissions?: string[]
+  is_banned?: boolean
 }
 
 export interface AdminUsersResponse {
@@ -102,6 +103,20 @@ export const adminUsersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['AdminUsers'],
     }),
+    banAdminUser: builder.mutation<{ message: string; user: AdminUserItem }, { id: number }>({
+      query: ({ id }) => ({
+        url: `/api/admin/users/${id}/ban`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['AdminUsers'],
+    }),
+    unbanAdminUser: builder.mutation<{ message: string; user: AdminUserItem }, { id: number }>({
+      query: ({ id }) => ({
+        url: `/api/admin/users/${id}/unban`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['AdminUsers'],
+    }),
   }),
 })
 
@@ -110,4 +125,6 @@ export const {
   useCreateAdminUserMutation,
   useUpdateAdminUserMutation,
   useDeleteAdminUserMutation,
+  useBanAdminUserMutation,
+  useUnbanAdminUserMutation,
 } = adminUsersApi

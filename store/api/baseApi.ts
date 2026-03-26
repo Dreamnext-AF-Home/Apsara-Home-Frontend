@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { createApi, fetchBaseQuery, type BaseQueryFn, type FetchArgs, type FetchBaseQueryError } from '@reduxjs/toolkit/query/react'
 
 let cachedAccessToken: string | undefined
 let tokenPromise: Promise<string | undefined> | null = null
@@ -74,9 +74,34 @@ const baseQuery = fetchBaseQuery({
     }
 })
 
+let banSignOutInFlight = false
+
+const baseQueryWithBanCheck: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+    args,
+    api,
+    extraOptions,
+) => {
+    const result = await baseQuery(args, api, extraOptions)
+
+    if (
+        result.error?.status === 401 &&
+        (result.error.data as { reason?: string } | undefined)?.reason === 'banned' &&
+        typeof window !== 'undefined' &&
+        !banSignOutInFlight
+    ) {
+        banSignOutInFlight = true
+        const { signOut } = await import('next-auth/react')
+        await signOut({ redirect: false })
+        clearAccessTokenCache()
+        window.location.replace('/admin/login?suspended=1')
+    }
+
+    return result
+}
+
 export const baseApi = createApi({
     reducerPath: 'api',
-    baseQuery,
+    baseQuery: baseQueryWithBanCheck,
     tagTypes: ['User', 'Members', 'Products', 'Categories', 'Brands', 'Orders', 'Encashment', 'AdminUsers', 'AdminNotifications', 'CustomerNotifications', 'Wishlist', 'WebPages', 'Suppliers', 'InteriorRequests'],
     endpoints: () => ({}),
 })

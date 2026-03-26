@@ -10,6 +10,7 @@ type TokenUser = {
   supplierId?: number | null;
   image?: string | null;
   picture?: string | null;
+  isBanned?: boolean;
 };
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -43,8 +44,14 @@ export const adminAuthOptions: NextAuthOptions = {
           });
 
           if (!res.ok) {
-            const errBody = await res.text();
-            console.log('[AdminAuth] Laravel error body:', errBody);
+            try {
+              const errBody = await res.json() as { message?: string; errors?: Record<string, string[]> };
+              const firstValidation = errBody.errors ? Object.values(errBody.errors)[0]?.[0] : undefined;
+              const message = firstValidation || errBody.message || '';
+              if (message) throw new Error(message);
+            } catch (parseErr) {
+              if (parseErr instanceof Error && parseErr.message) throw parseErr;
+            }
             return null;
           }
 
@@ -61,6 +68,7 @@ export const adminAuthOptions: NextAuthOptions = {
             adminPermissions: data.user.admin_permissions ?? [],
             supplierId: data.user.supplier_id ?? null,
             image: data.user.avatar_url ?? null,
+            isBanned: data.user.is_banned ?? false,
           };
         } catch {
           return null;
@@ -118,6 +126,7 @@ export const adminAuthOptions: NextAuthOptions = {
         token.adminPermissions = authUser.adminPermissions;
         token.supplierId = authUser.supplierId;
         token.picture = authUser.image ?? null;
+        token.isBanned = authUser.isBanned ?? false;
       }
       if (trigger === 'update' && session) {
         const nextSession = session as {
@@ -156,6 +165,7 @@ export const adminAuthOptions: NextAuthOptions = {
         sessionUser.adminPermissions = authToken.adminPermissions;
         sessionUser.supplierId = authToken.supplierId;
         sessionUser.image = typeof authToken.picture === 'string' ? authToken.picture : null;
+        sessionUser.isBanned = typeof authToken.isBanned === 'boolean' ? authToken.isBanned : false;
       }
       return session;
     }

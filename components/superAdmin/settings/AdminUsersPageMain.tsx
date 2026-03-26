@@ -6,9 +6,11 @@ import { useSession } from 'next-auth/react'
 import {
   AdminUserItem,
   CreateAdminUserResponse,
+  useBanAdminUserMutation,
   useCreateAdminUserMutation,
   useDeleteAdminUserMutation,
   useGetAdminUsersQuery,
+  useUnbanAdminUserMutation,
   useUpdateAdminUserMutation,
 } from '@/store/api/adminUsersApi'
 import { useGetAdminMeQuery } from '@/store/api/authApi'
@@ -298,8 +300,6 @@ function RoleCardGrid({
   onChange: (v: number) => void
   options?: typeof ROLE_OPTIONS
 }) {
-  const latestInviteExpiresAt = null
-
   return (
     <div className="space-y-2">
       <label className="text-xs font-semibold text-slate-600 block">
@@ -334,14 +334,6 @@ function RoleCardGrid({
                 </p>
                 <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
                   {role.description}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Manual setup link: <span className="font-semibold text-slate-700">always available</span>
-                  {latestInviteExpiresAt ? <> {' '}Â· Valid until: <span className="font-semibold text-slate-700">{latestInviteExpiresAt}</span></> : null}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Manual setup link: <span className="font-semibold text-slate-700">always available</span>
-                  {latestInviteExpiresAt ? <> {' '}Â· Valid until: <span className="font-semibold text-slate-700">{latestInviteExpiresAt}</span></> : null}
                 </p>
               </div>
               {isSelected && (
@@ -445,6 +437,72 @@ function PermissionCheckboxGrid({
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/* ─── ConfirmModal ───────────────────────────────────────── */
+
+function ConfirmModal({
+  icon,
+  iconBg,
+  title,
+  description,
+  confirmLabel,
+  confirmClass,
+  busy,
+  onConfirm,
+  onClose,
+}: {
+  icon: React.ReactNode
+  iconBg: string
+  title: string
+  description: React.ReactNode
+  confirmLabel: string
+  confirmClass: string
+  busy: boolean
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.93, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.93, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={e => e.stopPropagation()}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 overflow-hidden"
+      >
+        <div className="px-6 pt-6 pb-5 flex flex-col items-center text-center gap-4">
+          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${iconBg}`}>
+            {icon}
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">{title}</h3>
+            <div className="mt-1.5 text-sm text-slate-500 leading-relaxed">{description}</div>
+          </div>
+        </div>
+        <div className="px-6 pb-5 flex gap-2.5">
+          <button
+            type="button" onClick={onClose} disabled={busy}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button" onClick={onConfirm} disabled={busy}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-60 transition-all flex items-center justify-center gap-2 ${confirmClass}`}
+          >
+            {busy ? <><SpinIcon />{confirmLabel}…</> : confirmLabel}
+          </button>
+        </div>
+      </motion.div>
     </div>
   )
 }
@@ -630,6 +688,10 @@ export default function AdminUsersPageMain() {
   const [createAdminUser, { isLoading: isCreating }] = useCreateAdminUserMutation()
   const [updateAdminUser] = useUpdateAdminUserMutation()
   const [deleteAdminUser] = useDeleteAdminUserMutation()
+  const [banAdminUser] = useBanAdminUserMutation()
+  const [unbanAdminUser] = useUnbanAdminUserMutation()
+  const [deleteTarget, setDeleteTarget] = useState<AdminUserItem | null>(null)
+  const [banTarget, setBanTarget] = useState<AdminUserItem | null>(null)
   const latestInviteRoleLabel = latestInvite?.invite.role_label
     ?? latestInvite?.invite.role.replace(/_/g, ' ')
     ?? 'Admin'
@@ -718,14 +780,32 @@ export default function AdminUsersPageMain() {
     } finally { setBusyUpdateId(null) }
   }
 
-  const handleDelete = async (row: AdminUserItem) => {
-    if (!window.confirm(`Delete admin account "${row.username}"?`)) return
-    setBusyUpdateId(row.id)
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setBusyUpdateId(deleteTarget.id)
     try {
-      await deleteAdminUser({ id: row.id }).unwrap()
-      showSuccessToast(`Deleted account ${row.username}.`)
+      await deleteAdminUser({ id: deleteTarget.id }).unwrap()
+      showSuccessToast(`Deleted account ${deleteTarget.username}.`)
+      setDeleteTarget(null)
     } catch (err: unknown) {
       showErrorToast((err as { data?: { message?: string } })?.data?.message || 'Failed to delete admin account.')
+    } finally { setBusyUpdateId(null) }
+  }
+
+  const handleBanToggle = async () => {
+    if (!banTarget) return
+    setBusyUpdateId(banTarget.id)
+    try {
+      if (banTarget.is_banned) {
+        await unbanAdminUser({ id: banTarget.id }).unwrap()
+        showSuccessToast(`Unbanned ${banTarget.username}. They can now log in again.`)
+      } else {
+        await banAdminUser({ id: banTarget.id }).unwrap()
+        showSuccessToast(`Banned ${banTarget.username}. They can no longer log in.`)
+      }
+      setBanTarget(null)
+    } catch (err: unknown) {
+      showErrorToast((err as { data?: { message?: string } })?.data?.message || 'Failed to update ban status.')
     } finally { setBusyUpdateId(null) }
   }
 
@@ -1007,29 +1087,68 @@ export default function AdminUsersPageMain() {
                       <td className="px-5 py-3.5 text-sm text-slate-500">{row.email}</td>
                       <td className="px-5 py-3.5">
                         <div className="space-y-1">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full border text-[11px] font-semibold capitalize ${roleCls}`}>
-                            {row.role.replace(/_/g, ' ')}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`inline-flex px-2.5 py-1 rounded-full border text-[11px] font-semibold capitalize ${roleCls}`}>
+                              {row.role.replace(/_/g, ' ')}
+                            </span>
+                            {row.is_banned && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 border border-red-200 text-[10px] font-bold uppercase tracking-wide text-red-600">
+                                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                </svg>
+                                Banned
+                              </span>
+                            )}
+                          </div>
                           {row.supplier_name && (
                             <p className="text-[11px] text-slate-400">{row.supplier_name}</p>
                           )}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
+                          {/* Edit */}
                           <button
                             disabled={isBusy}
                             onClick={() => openEditModal(row)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all"
+                            title="Edit account"
+                            className="group relative h-8 w-8 rounded-lg border border-slate-200 text-slate-500 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-600 disabled:opacity-40 transition-all flex items-center justify-center"
                           >
-                            Edit
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
                           </button>
+                          {/* Ban / Unban */}
                           <button
                             disabled={isBusy}
-                            onClick={() => handleDelete(row)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-all"
+                            onClick={() => setBanTarget(row)}
+                            title={row.is_banned ? 'Unban account' : 'Ban account'}
+                            className={`h-8 w-8 rounded-lg border flex items-center justify-center disabled:opacity-40 transition-all ${
+                              row.is_banned
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                : 'border-amber-200 text-amber-500 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-600'
+                            }`}
                           >
-                            Delete
+                            {row.is_banned ? (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
+                            )}
+                          </button>
+                          {/* Delete */}
+                          <button
+                            disabled={isBusy}
+                            onClick={() => setDeleteTarget(row)}
+                            title="Delete account"
+                            className="h-8 w-8 rounded-lg border border-red-100 text-red-400 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 transition-all flex items-center justify-center"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
                       </td>
@@ -1091,6 +1210,77 @@ export default function AdminUsersPageMain() {
             onClose={() => { setEditTarget(null); setEditForm(initialEditForm) }}
             supplierOptions={supplierOptions}
             roleOptions={allowedRoleOptions}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Confirm Modal ── */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <ConfirmModal
+            icon={
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            }
+            iconBg="bg-red-100 text-red-500"
+            title="Delete Admin Account"
+            description={
+              <>
+                Are you sure you want to permanently delete{' '}
+                <span className="font-semibold text-slate-700">@{deleteTarget.username}</span>?
+                This action cannot be undone.
+              </>
+            }
+            confirmLabel="Delete"
+            confirmClass="bg-red-500 hover:bg-red-600 shadow-sm shadow-red-500/20"
+            busy={busyUpdateId === deleteTarget.id}
+            onConfirm={() => void handleDelete()}
+            onClose={() => setDeleteTarget(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Ban / Unban Confirm Modal ── */}
+      <AnimatePresence>
+        {banTarget && (
+          <ConfirmModal
+            icon={
+              banTarget.is_banned ? (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              ) : (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              )
+            }
+            iconBg={banTarget.is_banned ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}
+            title={banTarget.is_banned ? 'Unban Admin Account' : 'Ban Admin Account'}
+            description={
+              banTarget.is_banned ? (
+                <>
+                  Restore login access for{' '}
+                  <span className="font-semibold text-slate-700">@{banTarget.username}</span>?
+                  They will be able to log in again.
+                </>
+              ) : (
+                <>
+                  Ban <span className="font-semibold text-slate-700">@{banTarget.username}</span>?
+                  Their account will be restricted and they will not be able to log in until unbanned.
+                </>
+              )
+            }
+            confirmLabel={banTarget.is_banned ? 'Unban' : 'Ban'}
+            confirmClass={
+              banTarget.is_banned
+                ? 'bg-emerald-500 hover:bg-emerald-600 shadow-sm shadow-emerald-500/20'
+                : 'bg-amber-500 hover:bg-amber-600 shadow-sm shadow-amber-500/20'
+            }
+            busy={busyUpdateId === banTarget.id}
+            onConfirm={() => void handleBanToggle()}
+            onClose={() => setBanTarget(null)}
           />
         )}
       </AnimatePresence>
