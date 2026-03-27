@@ -13,6 +13,7 @@ import ShopNewsletterSignup from './ShopNewsletterSignup'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
+import { buildPartnerShopLink } from '@/libs/partnerStorefront'
 
 type ShopSectionPayload = {
   fields?: Record<string, string>
@@ -45,6 +46,7 @@ export type ShopBuilderSectionsData = {
 
 export type ShopBuilderSectionsProps = {
   data?: ShopBuilderSectionsData
+  partnerSlug?: string
 }
 
 export type ShopBuilderApiResponse = {
@@ -61,7 +63,7 @@ export function normalizeShopBuilderApiResponse(data: ShopBuilderApiResponse | n
   }
 }
 
-export default function ShopBuilderSections({ data = null }: ShopBuilderSectionsProps) {
+export default function ShopBuilderSections({ data = null, partnerSlug }: ShopBuilderSectionsProps) {
   const { items, categories, products } = normalizeShopBuilderApiResponse(data)
 
   if (!data || items.length === 0) {
@@ -118,12 +120,13 @@ export default function ShopBuilderSections({ data = null }: ShopBuilderSections
   return (
     <>
       {announcements ? <AnnouncementsSection section={announcements} /> : null}
-      {campaignBanners ? <CampaignBannersSection section={campaignBanners} /> : null}
+      {campaignBanners ? <CampaignBannersSection section={campaignBanners} partnerSlug={partnerSlug} /> : null}
 
       {categoryGrid ? (
         <CategoryGridSection
           section={categoryGrid}
           categoryCards={allCategoryCards}
+          partnerSlug={partnerSlug}
         />
       ) : (
         <HeroSection />
@@ -133,12 +136,13 @@ export default function ShopBuilderSections({ data = null }: ShopBuilderSections
         <FeaturedCollectionSection
           section={featuredCollection}
           featuredProducts={featuredProducts}
+          partnerSlug={partnerSlug}
         />
       ) : (
         <FeaturedSections />
       )}
 
-      {promoPair ? <PromoPairSection section={promoPair} /> : <PromoBenners />}
+      {promoPair ? <PromoPairSection section={promoPair} partnerSlug={partnerSlug} /> : <PromoBenners />}
       {newsletter ? <NewsletterSection section={newsletter} /> : <NewsLetter />}
     </>
   )
@@ -178,19 +182,19 @@ function AnnouncementsSection({ section }: { section: WebPageItem }) {
   )
 }
 
-function CampaignBannersSection({ section }: { section: WebPageItem }) {
+function CampaignBannersSection({ section, partnerSlug }: { section: WebPageItem; partnerSlug?: string }) {
   const banners = [
     {
       title: getField(section, 'left_title') || 'Weekend Furniture Drop',
       subtitle: getField(section, 'left_subtitle') || 'Refresh your living room this week',
       image: getField(section, 'left_image') || fallbackImage,
-      link: getField(section, 'left_link') || '/shop',
+      link: buildPartnerShopLink(getField(section, 'left_link') || '/shop', partnerSlug),
     },
     {
       title: getField(section, 'right_title') || 'Appliance Upgrade Days',
       subtitle: getField(section, 'right_subtitle') || 'Choose your best appliance today',
       image: getField(section, 'right_image') || '/Images/PromoBanners/ct2-img2-large.jpg',
-      link: getField(section, 'right_link') || '/shop',
+      link: buildPartnerShopLink(getField(section, 'right_link') || '/shop', partnerSlug),
     },
   ]
 
@@ -229,14 +233,16 @@ function CampaignBannersSection({ section }: { section: WebPageItem }) {
 function CategoryGridSection({
   section,
   categoryCards,
+  partnerSlug,
 }: {
   section: WebPageItem
   categoryCards: Array<{ id: number; name: string; url: string; count: number; image: string }>
+  partnerSlug?: string
 }) {
   const fallbackCards = [1, 2, 3, 4].map((index) => ({
     id: index,
     name: `Category ${index}`,
-    url: 'shop',
+    url: buildPartnerShopLink('/shop', partnerSlug),
     count: 0,
     image: getField(section, `card_${index}_image`) || fallbackImage,
   }))
@@ -283,11 +289,13 @@ function CategoryGridSection({
 function FeaturedCollectionSection({
   section,
   featuredProducts,
+  partnerSlug,
 }: {
   section: WebPageItem
   featuredProducts: Product[]
+  partnerSlug?: string
 }) {
-  const buttonLink = getField(section, 'lead_link') || '/shop'
+  const buttonLink = buildPartnerShopLink(getField(section, 'lead_link') || '/shop', partnerSlug)
   const buttonText = section.button_text || 'Shop Collection'
 
   return (
@@ -389,14 +397,14 @@ function FeaturedCollectionSection({
   )
 }
 
-function PromoPairSection({ section }: { section: WebPageItem }) {
+function PromoPairSection({ section, partnerSlug }: { section: WebPageItem; partnerSlug?: string }) {
   const promos = [
     {
       eyebrow: getField(section, 'left_eyebrow') || 'Limited Offer',
       heading: getField(section, 'left_heading') || 'Build Your Home with Furniture',
       button: getField(section, 'left_button') || 'Shop Now',
       image: getField(section, 'left_image') || '/Images/PromoBanners/ct2-img1-large.jpg',
-      link: getField(section, 'left_link') || '/shop',
+      link: buildPartnerShopLink(getField(section, 'left_link') || '/shop', partnerSlug),
       badge: 'text-orange-300',
       tone: 'from-slate-900/90 via-slate-900/40 to-transparent',
     },
@@ -405,7 +413,7 @@ function PromoPairSection({ section }: { section: WebPageItem }) {
       heading: getField(section, 'right_heading') || 'Choose Your Best Appliance',
       button: getField(section, 'right_button') || 'Explore',
       image: getField(section, 'right_image') || '/Images/PromoBanners/ct2-img2-large.jpg',
-      link: getField(section, 'right_link') || '/shop',
+      link: buildPartnerShopLink(getField(section, 'right_link') || '/shop', partnerSlug),
       badge: 'text-sky-300',
       tone: 'from-sky-900/90 via-sky-900/40 to-transparent',
     },
