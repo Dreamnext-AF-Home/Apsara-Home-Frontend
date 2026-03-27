@@ -11,6 +11,7 @@ import ProductsTable from './ProductsTable'
 import AddProductModal from './AddProductModal'
 import EditProductModal from './EditProductModal'
 import BulkEditProductsModal from './BulkEditProductsModal'
+import ProductActivityLogsModal from './ProductActivityLogsModal'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { revalidateStorefront } from '@/libs/revalidateStorefront'
 
@@ -51,6 +52,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     : undefined
   const { data: adminMe } = useGetAdminMeQuery(adminIdentityKey, { skip: !sessionAccessToken })
   const role = String(adminMe?.role ?? session?.user?.role ?? '').toLowerCase()
+  const canViewAllActivity = role === 'super_admin' || role === 'admin'
   const isSupplierPortal = role === 'supplier'
   const linkedSupplierId = Number(adminMe?.supplier_id ?? session?.user?.supplierId ?? 0)
   const [search,          setSearch]          = useState('')
@@ -59,6 +61,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   const [catId,           setCatId]           = useState<number | undefined>(undefined)
   const [page,            setPage]            = useState(1)
   const [showAddModal,    setShowAddModal]    = useState(false)
+  const [showActivityLogs, setShowActivityLogs] = useState(false)
   const [editProduct,     setEditProduct]     = useState<Product | null>(null)
   const [showBulkEdit,    setShowBulkEdit]    = useState(false)
   const [deletingIds,     setDeletingIds]     = useState<number[]>([])
@@ -311,15 +314,26 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
           <h1 className="text-xl font-bold text-slate-800">Products</h1>
           <p className="text-sm text-slate-500 mt-0.5">Manage your product catalog</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-teal-500/30 shrink-0"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
-          </svg>
-          <span className="hidden sm:inline">Add Product</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowActivityLogs(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-semibold transition-colors border border-slate-200 shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 9 2 2 4-4"/>
+            </svg>
+            <span className="hidden sm:inline">Upload History</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm shadow-teal-500/30 shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+            </svg>
+            <span className="hidden sm:inline">Add Product</span>
+          </button>
+        </div>
       </motion.div>
 
       {/* ── Stats strip ── */}
@@ -451,6 +465,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       )}
 
       <AddProductModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSaved={handleProductsSaved}/>
+      <ProductActivityLogsModal isOpen={showActivityLogs} onClose={() => setShowActivityLogs(false)} canViewAll={canViewAllActivity} />
       <EditProductModal product={editProduct} onClose={() => setEditProduct(null)} onSaved={handleProductsSaved}/>
       <BulkEditProductsModal
         products={showBulkEdit ? selectedProducts : []}

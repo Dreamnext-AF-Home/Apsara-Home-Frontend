@@ -71,6 +71,25 @@ export interface ProductsResponse {
   meta: ProductsMeta
 }
 
+export interface ProductActivityLog {
+  id: number
+  productId: number | null
+  supplierId: number | null
+  action: string
+  status: string
+  productName: string
+  productSku?: string | null
+  actorName?: string | null
+  actorEmail?: string | null
+  actorRole?: string | null
+  createdAt?: string | null
+}
+
+export interface ProductActivityLogsResponse {
+  logs: ProductActivityLog[]
+  meta: ProductsMeta
+}
+
 export interface PublicProductResponse {
   product: Product
 }
@@ -135,6 +154,13 @@ interface ProductsQueryParams {
   roomType?: number
   brandType?: number
   supplierId?: number
+}
+
+interface ProductActivityLogsQueryParams {
+  page?: number
+  perPage?: number
+  search?: string
+  scope?: 'my' | 'all'
 }
 
 const toStringArray = (value: unknown): string[] => {
@@ -338,6 +364,20 @@ export const productsApi = baseApi.injectEndpoints({
       transformResponse: (response: ProductsResponse) => normalizeProductsResponse(response),
       providesTags: ['Products'],
     }),
+    getProductActivityLogs: builder.query<ProductActivityLogsResponse, ProductActivityLogsQueryParams | void>({
+      query: (params) => ({
+        url: '/api/admin/products/activity-logs',
+        method: 'GET',
+        cache: 'no-store',
+        params: {
+          page: params?.page ?? 1,
+          per_page: params?.perPage ?? 20,
+          search: params?.search,
+          scope: params?.scope ?? 'my',
+        },
+      }),
+      providesTags: ['Products'],
+    }),
     createProduct: builder.mutation<{ message: string; product: Partial<Product> }, CreateProductPayload>({
       query: (body) => ({
         url: '/api/admin/products',
@@ -368,6 +408,7 @@ export const {
   useGetPublicProductsQuery,
   useLazyGetPublicProductQuery,
   useGetProductsQuery,
+  useGetProductActivityLogsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
