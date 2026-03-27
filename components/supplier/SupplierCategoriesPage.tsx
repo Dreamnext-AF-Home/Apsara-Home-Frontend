@@ -2,19 +2,14 @@
 
 import { useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
+import { useGetSupplierCategoriesQuery } from '@/store/api/suppliersApi'
 
 export default function SupplierCategoriesPage() {
   const { data: session } = useSession()
   const supplierId = Number(session?.user?.supplierId ?? 0)
-  const { data, isLoading, isError } = useGetCategoriesQuery(
-    {
-      page: 1,
-      per_page: 200,
-      supplier_id: supplierId > 0 ? supplierId : undefined,
-    },
-    { skip: supplierId <= 0 },
-  )
+  const { data, isLoading, isError } = useGetSupplierCategoriesQuery(supplierId, {
+    skip: supplierId <= 0,
+  })
 
   const categories = useMemo(() => data?.categories ?? [], [data?.categories])
 

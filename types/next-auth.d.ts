@@ -12,7 +12,6 @@ declare module 'next-auth' {
             userLevelId?: number;
             supplierId?: number | null;
             supplierName?: string | null;
-            supplierStatus?: number | null;
             supplierLevelType?: number | null;
             isMainSupplier?: boolean;
             accessToken?: string
@@ -28,7 +27,6 @@ declare module 'next-auth/jwt' {
         userLevelId?: number
         supplierId?: number | null
         supplierName?: string | null
-        supplierStatus?: number | null
         supplierLevelType?: number | null
         isMainSupplier?: boolean
         accessToken?: string

@@ -10,7 +10,6 @@ type TokenUser = {
     adminPermissions?: string[];
     supplierId?: number | null;
     supplierName?: string | null;
-    supplierStatus?: number | null;
     supplierLevelType?: number | null;
     isMainSupplier?: boolean;
     passwordChangeRequired?: boolean;
@@ -121,7 +120,6 @@ export const authOptions: NextAuthOptions = {
                         role: data.user.role,
                         supplierId: data.user.supplier_id ?? null,
                         supplierName: data.user.supplier_name ?? null,
-                        supplierStatus: typeof data.user.supplier_status === 'number' ? data.user.supplier_status : null,
                         supplierLevelType: data.user.level_type ?? null,
                         isMainSupplier: Boolean(data.user.is_main_supplier),
                     }
@@ -152,7 +150,6 @@ export const authOptions: NextAuthOptions = {
                 token.adminPermissions = authUser.adminPermissions;
                 token.supplierId = authUser.supplierId;
                 token.supplierName = authUser.supplierName;
-                token.supplierStatus = authUser.supplierStatus;
                 token.supplierLevelType = authUser.supplierLevelType;
                 token.isMainSupplier = authUser.isMainSupplier;
                 token.passwordChangeRequired = authUser.passwordChangeRequired;
@@ -164,7 +161,6 @@ export const authOptions: NextAuthOptions = {
                     userLevelId?: number;
                     adminPermissions?: string[];
                     supplierId?: number | null;
-                    supplierStatus?: number | null;
                 };
                 if (typeof nextSession.passwordChangeRequired === 'boolean') {
                     token.passwordChangeRequired = nextSession.passwordChangeRequired;
@@ -181,9 +177,6 @@ export const authOptions: NextAuthOptions = {
                 if (typeof nextSession.supplierId !== 'undefined') {
                     token.supplierId = nextSession.supplierId;
                 }
-                if (typeof nextSession.supplierStatus !== 'undefined') {
-                    token.supplierStatus = nextSession.supplierStatus;
-                }
             }
             return token;
         },
@@ -198,7 +191,6 @@ export const authOptions: NextAuthOptions = {
                 sessionUser.adminPermissions = authToken.adminPermissions;
                 sessionUser.supplierId = authToken.supplierId;
                 sessionUser.supplierName = authToken.supplierName;
-                sessionUser.supplierStatus = authToken.supplierStatus;
                 sessionUser.supplierLevelType = authToken.supplierLevelType;
                 sessionUser.isMainSupplier = authToken.isMainSupplier;
                 sessionUser.passwordChangeRequired = authToken.passwordChangeRequired;

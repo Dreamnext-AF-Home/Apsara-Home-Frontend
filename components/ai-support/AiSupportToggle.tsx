@@ -15,7 +15,7 @@ export function AiSupportToggle({ isOpen, onClick, robotSrc, logoSrc }: Props) {
       type="button"
       onClick={onClick}
       aria-label={isOpen ? 'Close AI Support' : 'Open AI Support'}
-      className="fixed left-5 bottom-[26px] z-[9000] w-[90px] h-[90px] border-0 bg-transparent p-0 cursor-pointer max-[576px]:left-2.5 max-[576px]:bottom-5"
+      className="fixed left-5 bottom-[26px] z-[9999] w-[90px] h-[90px] border-0 bg-transparent p-0 cursor-pointer max-[576px]:left-2.5 max-[576px]:bottom-5"
       animate={{ y: [0, -5, 0] }}
       transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
     >

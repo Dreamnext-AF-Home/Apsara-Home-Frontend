@@ -11,10 +11,6 @@ export default function SupplierDashboardHome() {
   const supplierId = Number(session?.user?.supplierId ?? 0)
   const supplierName = session?.user?.supplierName || session?.user?.name || 'Supplier'
   const isMainSupplier = Boolean(session?.user?.isMainSupplier)
-  const supplierStatus =
-    typeof session?.user?.supplierStatus === 'number'
-      ? session?.user?.supplierStatus
-      : undefined
   const skip = status !== 'authenticated' || supplierId <= 0
 
   const { data: productsData } = useGetProductsQuery(
@@ -41,7 +37,6 @@ export default function SupplierDashboardHome() {
     () => (suppliersData?.suppliers ?? []).find((item) => item.id === supplierId),
     [supplierId, suppliersData?.suppliers]
   )
-  const resolvedSupplierStatus = supplierStatus ?? supplier?.status ?? 0
   const recentProducts = useMemo(() => productsData?.products ?? [], [productsData?.products])
   const lowStockCount = useMemo(
     () => (inventoryData?.products ?? []).filter((product) => Number(product.qty ?? 0) > 0 && Number(product.qty ?? 0) <= 5).length,
@@ -118,7 +113,7 @@ export default function SupplierDashboardHome() {
                 {isMainSupplier ? 'Main Supplier' : 'Sub Supplier'}
               </span>
               <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-                {resolvedSupplierStatus === 1 ? 'Company Active' : 'Company Inactive'}
+                {supplier?.status === 1 ? 'Company Active' : 'Company Inactive'}
               </span>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -162,7 +157,7 @@ export default function SupplierDashboardHome() {
             <SnapshotCard label="Company" value={supplier?.company || supplier?.name || 'Not linked'} />
             <SnapshotCard label="Contact" value={supplier?.contact || 'Not provided'} />
             <SnapshotCard label="Email" value={supplier?.email || 'Not provided'} />
-            <SnapshotCard label="Status" value={resolvedSupplierStatus === 1 ? 'Active' : 'Inactive'} />
+            <SnapshotCard label="Status" value={supplier?.status === 1 ? 'Active' : 'Inactive'} />
             <SnapshotCard label="Main Supplier" value={mainSupplierUser?.fullname || mainSupplierUser?.username || 'Not assigned'} />
             <SnapshotCard label="Sub Suppliers" value={String(subSupplierCount)} />
           </div>

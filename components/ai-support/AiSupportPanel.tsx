@@ -39,7 +39,7 @@ export function AiSupportPanel({
           exit={{ opacity: 0, y: 12, scale: 0.97 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           className={[
-            'fixed z-[9000] flex flex-col overflow-hidden',
+            'fixed z-[9999] flex flex-col overflow-hidden',
             'bg-white border border-indigo-100/60 rounded-3xl',
             'shadow-2xl shadow-slate-200/60',
             /* desktop */

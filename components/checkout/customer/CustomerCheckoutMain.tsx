@@ -66,7 +66,6 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
     const role = String(session?.user?.role ?? '').toLowerCase();
     const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '');
     const isLoggedIn = isCustomerSession;
-    const hideReferral = status === 'authenticated';
     const { data: meData } = useMeQuery(undefined, { skip: !isCustomerSession });
 
     const checkoutData = useMemo(() => readCheckoutDraft(), []);
@@ -95,7 +94,7 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
             zip: meData?.zip_code || '',
         } : {}),
         ...formOverrides,
-        referred_by: hideReferral ? '' : (formOverrides.referred_by || storedReferral),
+        referred_by: formOverrides.referred_by || storedReferral,
     }), [formOverrides, isLoggedIn, meData, storedReferral]);
 
     useEffect(() => {
@@ -144,7 +143,7 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
         if (!form.email.trim()) e.email = 'Required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
         if (!form.phone.trim()) e.phone = 'Required';
-        if (!hideReferral && !form.referred_by.trim()) e.referred_by = 'Required';
+        if (!form.referred_by.trim()) e.referred_by = 'Required';
         if (!form.address.trim()) e.address = 'Required';
         if (!form.region.trim()) e.region = 'Required';
         if (!form.barangay.trim()) e.barangay = 'Required';
@@ -299,15 +298,14 @@ const CustomerCheckoutMain = ({ initialCategories = [] }: { initialCategories?: 
                 <div className="container mx-auto px-4 py-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                         <div className="lg:col-span-2 space-y-5">
-                    <CustomerCheckoutContactForm
-                        form={form}
-                        errors={errors}
-                        setField={setField}
-                        isLoggedIn={hideReferral}
-                        voucherStatus={{
-                            loading: voucherLoading,
-                            error: voucherError,
-                            appliedAmount: voucherInfo?.discount ?? 0,
+                            <CustomerCheckoutContactForm
+                                form={form}
+                                errors={errors}
+                                setField={setField}
+                                voucherStatus={{
+                                    loading: voucherLoading,
+                                    error: voucherError,
+                                    appliedAmount: voucherInfo?.discount ?? 0,
                                 }}
                             />
                             <CustomerCheckoutAddressForm
