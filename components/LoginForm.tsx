@@ -188,6 +188,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
                 <p className="text-center text-xs text-white/60">
                     Don&apos;t have an account?{' '}
                     <button
+                        type="button"
                         onClick={onSwitchToSignUp}
                         className="text-orange-400 hover:text-orange-400 font-semibold transition-colors"
                     >

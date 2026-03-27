@@ -20,10 +20,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const pathname = usePathname();
     const isBanned = (session?.user as { isBanned?: boolean } | undefined)?.isBanned === true;
     const sessionAccessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '');
+    const adminIdentityKey = sessionAccessToken
+        ? `${String((session?.user as { id?: string | number } | undefined)?.id ?? 'unknown')}:${sessionAccessToken}`
+        : undefined;
     const [heartbeatAdminPresence] = useHeartbeatAdminPresenceMutation();
 
     // Poll /me every 12 seconds — baseQueryWithBanCheck intercepts 401 reason:banned and auto-signs out
-    useGetAdminMeQuery(undefined, { pollingInterval: 12_000, skip: isBanned });
+    useGetAdminMeQuery(adminIdentityKey, { pollingInterval: 12_000, skip: isBanned || !sessionAccessToken });
 
     useEffect(() => {
         if (!sessionAccessToken || isBanned) {

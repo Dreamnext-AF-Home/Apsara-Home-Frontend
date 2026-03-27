@@ -14,6 +14,7 @@ const AuthTabs = ({ mode, setMode }: AuthTabsProps) => {
       {(['login', 'signup'] as const).map(tab => (
         <button
             key={tab}
+            type="button"
             onClick={() => setMode(tab)}
             className={`relative px-6 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 whitespace-nowrap ${
                 mode === tab ? 'text-white' : 'text-white/60 hover:text-white/90'

@@ -245,10 +245,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     ? `${String((session?.user as { id?: string } | undefined)?.id ?? 'unknown')}:${sessionAccessToken}`
     : undefined
   const { data: adminMe, isLoading: isAdminMeLoading } = useGetAdminMeQuery(adminIdentityKey, { skip: !sessionAccessToken })
-  const displayName = String(adminMe?.name ?? session?.user?.name ?? '').trim() || 'Admin'
-  const displayEmail = String(adminMe?.email ?? session?.user?.email ?? '').trim() || 'admin@afhome.com'
-  const effectiveRole = String(adminMe?.role ?? sessionRole).toLowerCase()
-  const effectiveUserLevelId = Number(adminMe?.user_level_id ?? sessionUserLevelId)
+  const [stableAdminMe, setStableAdminMe] = useState<typeof adminMe | null>(null)
+
+  useEffect(() => {
+    if (adminMe) {
+      setStableAdminMe(adminMe)
+    }
+  }, [adminMe])
+
+  const resolvedAdminMe = adminMe ?? stableAdminMe
+  const displayName = String(resolvedAdminMe?.name ?? session?.user?.name ?? '').trim() || 'Admin'
+  const displayEmail = String(resolvedAdminMe?.email ?? session?.user?.email ?? '').trim() || 'admin@afhome.com'
+  const effectiveRole = String(resolvedAdminMe?.role ?? sessionRole).toLowerCase()
+  const effectiveUserLevelId = Number(resolvedAdminMe?.user_level_id ?? sessionUserLevelId)
   const isSuperAdmin = effectiveRole === 'super_admin' || effectiveUserLevelId === 1
   const isAdmin = effectiveRole === 'admin' || effectiveUserLevelId === 2
   const isAccounting = effectiveRole === 'accounting' || effectiveUserLevelId === 5
@@ -256,7 +265,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isMerchantAdmin = effectiveRole === 'merchant_admin' || effectiveUserLevelId === 7
   const isSupplierAdmin = effectiveRole === 'supplier_admin' || effectiveUserLevelId === 8
   const isAdminPortalRole = isSuperAdmin || isAdmin || isAccounting || isFinanceOfficer || isMerchantAdmin || isSupplierAdmin
-  const effectiveAdminPermissions = normalizeAdminPermissions(adminMe?.admin_permissions ?? sessionPermissions)
+  const effectiveAdminPermissions = normalizeAdminPermissions(resolvedAdminMe?.admin_permissions ?? sessionPermissions)
   const adminPermissions = effectiveAdminPermissions
   const hasCustomAdminPermissions = isAdmin && adminPermissions.length > 0
   const customAdminNavIds = new Set(['dashboard', ...adminPermissions.map((permission) => ADMIN_PERMISSION_NAV_IDS[permission]).filter(Boolean)])
@@ -271,9 +280,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         ? 'Merchant Admin'
         : isSupplierAdmin
           ? 'Supplier Admin'
-      : formatRole(adminMe?.role)
+      : formatRole(resolvedAdminMe?.role)
   const displayInitials = getInitials(displayName)
-  const avatarSrc = adminMe?.avatar_url || session?.user?.image
+  const avatarSrc = resolvedAdminMe?.avatar_url || session?.user?.image
 
   useEffect(() => {
     if (!adminMe || !isAdminPortalRole) return
