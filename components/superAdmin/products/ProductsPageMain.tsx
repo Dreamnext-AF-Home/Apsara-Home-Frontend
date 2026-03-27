@@ -52,7 +52,6 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
     : undefined
   const { data: adminMe } = useGetAdminMeQuery(adminIdentityKey, { skip: !sessionAccessToken })
   const role = String(adminMe?.role ?? session?.user?.role ?? '').toLowerCase()
-  const canViewAllActivity = role === 'super_admin' || role === 'admin'
   const isSupplierPortal = role === 'supplier'
   const linkedSupplierId = Number(adminMe?.supplier_id ?? session?.user?.supplierId ?? 0)
   const [search,          setSearch]          = useState('')
@@ -465,7 +464,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       )}
 
       <AddProductModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSaved={handleProductsSaved}/>
-      <ProductActivityLogsModal isOpen={showActivityLogs} onClose={() => setShowActivityLogs(false)} canViewAll={canViewAllActivity} />
+      <ProductActivityLogsModal isOpen={showActivityLogs} onClose={() => setShowActivityLogs(false)} />
       <EditProductModal product={editProduct} onClose={() => setEditProduct(null)} onSaved={handleProductsSaved}/>
       <BulkEditProductsModal
         products={showBulkEdit ? selectedProducts : []}

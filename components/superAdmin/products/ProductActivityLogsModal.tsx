@@ -7,7 +7,6 @@ import { ProductActivityLog, useGetProductActivityLogsQuery } from '@/store/api/
 interface ProductActivityLogsModalProps {
   isOpen: boolean
   onClose: () => void
-  canViewAll: boolean
 }
 
 const formatActivityDate = (value?: string | null) => {
@@ -82,28 +81,21 @@ function ActivityRow({ log }: { log: ProductActivityLog }) {
   )
 }
 
-export default function ProductActivityLogsModal({ isOpen, onClose, canViewAll }: ProductActivityLogsModalProps) {
+export default function ProductActivityLogsModal({ isOpen, onClose }: ProductActivityLogsModalProps) {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [scope, setScope] = useState<'my' | 'all'>('my')
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250)
     return () => clearTimeout(timer)
   }, [search])
 
-  useEffect(() => {
-    if (!canViewAll && scope !== 'my') {
-      setScope('my')
-    }
-  }, [canViewAll, scope])
-
   const { data, isFetching, isLoading } = useGetProductActivityLogsQuery(
     {
       page: 1,
       perPage: 20,
       search: debouncedSearch || undefined,
-      scope,
+      scope: 'my',
     },
     { skip: !isOpen },
   )
@@ -147,23 +139,9 @@ export default function ProductActivityLogsModal({ isOpen, onClose, canViewAll }
               </div>
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setScope('my')}
-                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${scope === 'my' ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/25' : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700'}`}
-                  >
-                    My Activity
-                  </button>
-                  {canViewAll ? (
-                    <button
-                      onClick={() => setScope('all')}
-                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${scope === 'all' ? 'bg-slate-800 text-white shadow-sm shadow-slate-800/15' : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'}`}
-                    >
-                      All Activity
-                    </button>
-                  ) : null}
+                <div className="inline-flex items-center rounded-xl bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-700">
+                  This account's activity only
                 </div>
-
                 <div className="relative w-full sm:max-w-sm">
                   <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
