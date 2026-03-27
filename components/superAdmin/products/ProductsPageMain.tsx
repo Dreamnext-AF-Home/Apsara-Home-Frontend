@@ -65,7 +65,9 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   const [selectedIds,     setSelectedIds]     = useState<number[]>([])
   const [productOverrides, setProductOverrides] = useState<Record<number, Product>>({})
   const [useInitialData,  setUseInitialData]  = useState(Boolean(initialData))
-  const perPage = 25
+  const defaultPerPage = 25
+  const searchPerPage = 500
+  const perPage = debouncedSearch ? searchPerPage : defaultPerPage
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
@@ -74,7 +76,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
 
   const { data, isLoading, isFetching, isError, error, refetch: refetchProducts } = useGetProductsQuery(
     {
-      page,
+      page: debouncedSearch ? 1 : page,
       perPage,
       search: debouncedSearch || undefined,
       status: status || undefined,
