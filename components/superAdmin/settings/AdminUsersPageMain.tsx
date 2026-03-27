@@ -781,7 +781,7 @@ export default function AdminUsersPageMain() {
   const createPermissionsRef = useRef<HTMLDivElement | null>(null)
   const [isCreatePermissionsSpotlightActive, setIsCreatePermissionsSpotlightActive] = useState(false)
 
-  const { data, isLoading, isError } = useGetAdminUsersQuery(
+  const { data, isLoading, isFetching, isError } = useGetAdminUsersQuery(
     {
       search: search.trim() || undefined,
       role: roleFilter || undefined,
@@ -1178,6 +1178,12 @@ export default function AdminUsersPageMain() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Failed to load admin users.
+          </div>
+        )}
+
+        {isFetching && !isLoading && (
+          <div className="relative h-0.5 w-full overflow-hidden bg-teal-100/60">
+            <div className="animate-loading-sweep absolute inset-y-0 left-0 w-2/5 bg-gradient-to-r from-transparent via-teal-500 to-transparent" />
           </div>
         )}
 
