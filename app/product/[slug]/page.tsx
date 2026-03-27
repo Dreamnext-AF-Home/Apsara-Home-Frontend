@@ -249,6 +249,7 @@ const toCategoryProduct = (row: LooseRecord, apiUrl?: string): CategoryProduct =
     image: resolveImageUrl(rawImage, apiUrl),
     images,
     description: (row.description ?? row.pd_description) as string | undefined,
+    specifications: (row.specifications ?? row.pd_specifications) as string | undefined,
     weight: toNumber(row.weight ?? row.pd_weight),
     psweight: toNumber(row.psweight ?? row.pd_psweight),
     pswidth: toNumber(row.pswidth ?? row.pd_pswidth),

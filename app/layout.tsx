@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+// import Script from "next/script";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -20,17 +20,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const aiBaseUrl = process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? "";
+  const apiBase = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '');
 
   return (
     <html lang="en">
+      <head>
+        {/* Preload AI support images so they're ready when the component hydrates */}
+        <link rel="preload" as="image" href={`${apiBase}/Image/sir.png`} />
+        <link rel="preload" as="image" href={`${apiBase}/Image/af.png`} />
+      </head>
       <body className={`${poppins.variable} antialiased bg-white`}>
         <Providers>{children}</Providers>
-        <Script
+        {/* <Script
           id="af-ai-support-base"
           strategy="afterInteractive"
-        >{`window.appBaseUrl = ${JSON.stringify(aiBaseUrl)}; window.afAiApiBase = '';`}</Script>
-        <Script src="/ai-support.js" strategy="afterInteractive" />
+        >{`window.appBaseUrl = ${JSON.stringify(apiBase)}; window.afAiApiBase = '';`}</Script>
+        <Script src="/ai-support.js" strategy="afterInteractive" /> */}
       </body>
     </html>
   );
