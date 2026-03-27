@@ -795,7 +795,6 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       page: 1,
       per_page: 500,
       supplier_id: isSupplierScopedActor && linkedSupplierId > 0 ? linkedSupplierId : undefined,
-      used_only: isSupplierScopedActor && linkedSupplierId > 0 ? true : undefined,
     },
     undefined
   )
@@ -860,6 +859,11 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
 
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return
+    if (isSupplierScopedActor) {
+      window.localStorage.removeItem(ADD_PRODUCT_DRAFT_KEY)
+      setDraftRestored(false)
+      return
+    }
 
     const savedDraft = window.localStorage.getItem(ADD_PRODUCT_DRAFT_KEY)
     if (!savedDraft) {
@@ -918,6 +922,25 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       return { ...prev, pd_room_type: nextRoomType }
     })
   }, [categories, form.pd_catid, form.pd_room_type, roomTouched])
+
+  useEffect(() => {
+    if (!isSupplierScopedActor) return
+    if (!form.pd_catid) return
+
+    const hasAccess = categories.some((category) => String(category.id) === form.pd_catid)
+    if (hasAccess) return
+
+    setForm((prev) => ({ ...prev, pd_catid: '' }))
+    setErrors((prev) => ({
+      ...prev,
+      pd_catid: 'Selected category is not allowed for this supplier.',
+    }))
+    if (draftRestored && typeof window !== 'undefined') {
+      window.localStorage.removeItem(ADD_PRODUCT_DRAFT_KEY)
+      setDraftRestored(false)
+      setServerError('Saved draft cleared because the category is not allowed for this supplier.')
+    }
+  }, [categories, form.pd_catid, isSupplierScopedActor])
 
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return
@@ -1175,6 +1198,19 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     const e: Errors = {}
     if (!form.pd_name.trim())                                              e.pd_name      = 'Product name is required'
     if (!form.pd_catid.trim())                                             e.pd_catid     = 'Category is required'
+    if (
+      isSupplierScopedActor &&
+      form.pd_catid.trim() &&
+      !categories.some((category) => String(category.id) === form.pd_catid)
+    ) {
+      e.pd_catid = 'Selected category is not allowed for this supplier.'
+    }
+    if (isSupplierScopedActor && categories.length === 0) {
+      e.pd_catid = 'No categories are assigned to this supplier yet.'
+    }
+    if (isSupplierScopedActor && linkedSupplierId <= 0) {
+      e.pd_catid = 'Supplier account is not linked to a supplier company.'
+    }
     if (!form.pd_price_srp.trim() || isNaN(Number(form.pd_price_srp)))    e.pd_price_srp = 'Valid SRP price is required'
     if (form.pd_price_dp  && isNaN(Number(form.pd_price_dp)))             e.pd_price_dp  = 'Must be a valid number'
     if (form.pd_price_member && isNaN(Number(form.pd_price_member)))      e.pd_price_member = 'Must be a valid number'
@@ -1560,6 +1596,11 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                           <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
                         ))}
                       </select>
+                      {isSupplierScopedActor && (
+                        <p className="text-[11px] text-slate-500">
+                          Allowed categories: {categories.length > 0 ? categories.map((cat) => cat.name).join(', ') : 'None assigned'}
+                        </p>
+                      )}
                     </Field>
 
                     <Field label="Shop By Room">
