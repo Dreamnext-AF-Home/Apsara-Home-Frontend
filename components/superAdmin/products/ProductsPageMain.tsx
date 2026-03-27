@@ -47,10 +47,12 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   const router = useRouter()
   const { data: session } = useSession()
   const sessionAccessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '')
+  const sessionRole = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase()
   const adminIdentityKey = sessionAccessToken
     ? `${String((session?.user as { id?: string } | undefined)?.id ?? 'unknown')}:${sessionAccessToken}`
     : undefined
-  const { data: adminMe } = useGetAdminMeQuery(adminIdentityKey, { skip: !sessionAccessToken })
+  const shouldFetchAdminMe = Boolean(sessionAccessToken) && sessionRole !== 'supplier'
+  const { data: adminMe } = useGetAdminMeQuery(adminIdentityKey, { skip: !shouldFetchAdminMe })
   const role = String(adminMe?.role ?? session?.user?.role ?? '').toLowerCase()
   const isSupplierPortal = role === 'supplier'
   const linkedSupplierId = Number(adminMe?.supplier_id ?? session?.user?.supplierId ?? 0)

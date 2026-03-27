@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useAiSupport } from './hooks/useAiSupport';
 import { AiSupportPanel } from './AiSupportPanel';
 import { AiSupportToggle } from './AiSupportToggle';
@@ -9,20 +10,31 @@ const API_BASE = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/,
 const LOGO_SRC = `${API_BASE}/Image/af.png`;
 const ROBOT_SRC = `${API_BASE}/Image/sir.png`;
 
-// Add paths here kung gusto mong lumabas ang AI support
-const ALLOWED_PATHS = ['/shop', '/product', '/category', '/by-brand', '/by-room'];
+// Hide AI support on these pages only
+const BLOCKED_PATHS = [
+  '/',
+  '/landing-page',
+  '/admin',
+  '/admin-setup',
+  '/super_admin',
+  '/supplier',
+  '/supplier-setup',
+  '/login',
+];
 
 function useIsAllowed() {
   const pathname = usePathname();
-  return ALLOWED_PATHS.some(path => pathname === path || pathname.startsWith(path + '/'));
+  if (BLOCKED_PATHS.some(path => pathname === path || pathname.startsWith(path + '/'))) return false;
+  return true;
 }
 
 export function AiSupport() {
   const allowed = useIsAllowed();
+  const { status } = useSession();
   const { isOpen, close, toggle, messages, quickReplies, inputValue, setInputValue, send, isLoading } =
     useAiSupport();
 
-  if (!allowed) return null;
+  if (!allowed || status === 'loading') return null;
 
   return (
     <>

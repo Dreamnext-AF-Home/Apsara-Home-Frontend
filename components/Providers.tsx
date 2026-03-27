@@ -8,6 +8,7 @@ import { SessionProvider, useSession } from 'next-auth/react'
 import { store } from '@/store/store'
 import { Toaster } from 'react-hot-toast'
 import GlobalVerificationPrompt from '@/components/verification/GlobalVerificationPrompt'
+import { AiSupport } from '@/components/ai-support'
 import { useMeQuery } from '@/store/api/userApi'
 import { useEffect, useState } from 'react'
 
@@ -83,6 +84,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <CustomerSessionGuard />
           <CustomerBannedOverlay />
           {children}
+          <AiSupport />
           <GlobalVerificationPrompt />
           <CartDrawer />
           <Toaster

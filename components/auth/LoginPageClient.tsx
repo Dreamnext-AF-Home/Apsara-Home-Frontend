@@ -21,21 +21,26 @@ export default function LoginPageClient() {
   const role = String(session?.user?.role ?? '').toLowerCase();
   const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '');
   const forcePasswordChange = searchParams.get('force-password-change') === '1';
+  const forcedMode = (searchParams.get('mode') || searchParams.get('tab') || '').toLowerCase();
+  const forceSignup = forcedMode === 'signup' || forcedMode === 'register';
   const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired);
   const hasReferral = Boolean(searchParams.get('ref') || searchParams.get('referred_by'));
-  const [manualMode, setManualMode] = useState<'login' | 'signup' | null>(null);
+  const [manualMode, setManualMode] = useState<'login' | 'signup' | null>(
+    forceSignup ? 'signup' : null
+  );
 
   useEffect(() => {
     if (!isCustomerSession) return;
+    if (manualMode === 'signup' || hasReferral || forceSignup) return;
 
     if (!passwordChangeRequired && !forcePasswordChange) {
       router.replace('/shop');
     }
-  }, [forcePasswordChange, isCustomerSession, passwordChangeRequired, router]);
+  }, [forcePasswordChange, forceSignup, hasReferral, isCustomerSession, manualMode, passwordChangeRequired, router]);
 
   const mode: Mode = passwordChangeRequired || forcePasswordChange
     ? 'force-password-change'
-    : (manualMode ?? (hasReferral ? 'signup' : 'login'));
+    : (manualMode ?? (forceSignup || hasReferral ? 'signup' : 'login'));
   const handleTabChange = (nextMode: 'login' | 'signup') => setManualMode(nextMode);
 
   return (
