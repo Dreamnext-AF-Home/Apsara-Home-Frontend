@@ -1964,6 +1964,25 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                   {/* ── Section: Product Information ── */}
                   <SectionLabel>Product Information</SectionLabel>
 
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Supplier</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700">{product.supplierName?.trim() || 'No supplier assigned'}</p>
+                      {product.supplierId ? (
+                        <p className="mt-1 text-[11px] text-slate-400">Supplier #{product.supplierId}</p>
+                      ) : null}
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Uploaded By</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700">{product.uploaderName?.trim() || 'Unknown user'}</p>
+                      {product.uploaderRole ? (
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">{product.uploaderRole.replace(/_/g, ' ')}</p>
+                      ) : product.uploaderEmail ? (
+                        <p className="mt-1 text-[11px] text-slate-400">{product.uploaderEmail}</p>
+                      ) : null}
+                    </div>
+                  </div>
+
                   <Field label="Product Name" required error={errors.pd_name}>
                     <input
                       type="text"

@@ -163,6 +163,7 @@ export default function ProductsTable({
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide w-14">Image</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Product</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">SKU</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Supplier</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Uploader</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">SRP</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Dealer</th>
@@ -176,7 +177,7 @@ export default function ProductsTable({
           <tbody className="divide-y divide-slate-50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={12} className="py-20 text-center">
+                <td colSpan={13} className="py-20 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
                       <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -239,6 +240,15 @@ export default function ProductsTable({
                     <span className="text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
                       {p.sku || '—'}
                     </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="min-w-[140px]">
+                      <p className="text-sm font-medium text-slate-700 line-clamp-1">{p.supplierName?.trim() || 'No supplier'}</p>
+                      {p.supplierId ? (
+                        <p className="text-[11px] text-slate-400 line-clamp-1">Supplier #{p.supplierId}</p>
+                      ) : null}
+                    </div>
                   </td>
 
                   <td className="px-4 py-3">

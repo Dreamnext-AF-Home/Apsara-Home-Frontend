@@ -3,6 +3,7 @@ import { baseApi } from './baseApi'
 export interface Product {
   id: number
   supplierId?: number
+  supplierName?: string | null
   name: string
   description?: string | null
   specifications?: string | null
