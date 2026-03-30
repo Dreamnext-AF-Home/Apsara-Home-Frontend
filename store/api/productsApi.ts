@@ -31,6 +31,9 @@ export interface Product {
   verified?: boolean
   status: number
   sku: string
+  uploaderName?: string | null
+  uploaderEmail?: string | null
+  uploaderRole?: string | null
   image: string | null
   images?: string[] | null
   variants?: ProductVariant[] | null
@@ -82,12 +85,72 @@ export interface ProductActivityLog {
   actorName?: string | null
   actorEmail?: string | null
   actorRole?: string | null
+  changes?: Array<{
+    field: string
+    before: string | null
+    after: string | null
+  }> | null
   createdAt?: string | null
 }
 
 export interface ProductActivityLogsResponse {
   logs: ProductActivityLog[]
   meta: ProductsMeta
+}
+
+export interface BulkImportProductsRow {
+  pd_name?: string
+  pd_parent_sku?: string
+  pd_catid?: number | string
+  pd_room_type?: number | string
+  pd_brand_type?: number | string
+  pd_catsubid?: number | string
+  pd_price_srp?: number | string
+  pd_price_dp?: number | string
+  pd_price_member?: number | string
+  pd_prodpv?: number | string
+  pd_qty?: number | string
+  pd_weight?: number | string
+  pd_psweight?: number | string
+  pd_pswidth?: number | string
+  pd_pslenght?: number | string
+  pd_psheight?: number | string
+  pd_description?: string
+  pd_specifications?: string
+  pd_material?: string
+  pd_warranty?: string
+  pd_image?: string
+  pd_images?: string[] | string
+  pd_type?: number | string
+  pd_status?: number | string
+  pd_musthave?: boolean | number | string
+  pd_bestseller?: boolean | number | string
+  pd_salespromo?: boolean | number | string
+  pd_verified?: boolean | number | string
+  pd_assembly_required?: boolean | number | string
+}
+
+export interface BulkImportProductsPayload {
+  rows: BulkImportProductsRow[]
+  mode?: 'create_only' | 'create_or_update'
+}
+
+export interface BulkImportProductsResponse {
+  message: string
+  summary: {
+    total: number
+    created: number
+    updated: number
+    failed: number
+  }
+  results: Array<{
+    row: number
+    status: 'created' | 'updated' | 'failed'
+    product_id?: number | null
+    name?: string | null
+    sku?: string | null
+    message: string
+  }>
 }
 
 export interface PublicProductResponse {
@@ -386,11 +449,23 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Products'],
     }),
-    updateProduct: builder.mutation<{ message: string }, { id: number; data: Partial<CreateProductPayload> }>({
+    bulkImportProducts: builder.mutation<BulkImportProductsResponse, BulkImportProductsPayload>({
+      query: (body) => ({
+        url: '/api/admin/products/import',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Products'],
+    }),
+    updateProduct: builder.mutation<{ message: string; product?: Product }, { id: number; data: Partial<CreateProductPayload> }>({
       query: ({ id, data }) => ({
         url: `/api/admin/products/${id}`,
         method: 'PUT',
         body: data,
+      }),
+      transformResponse: (response: { message: string; product?: Product | Record<string, unknown> }) => ({
+        ...response,
+        product: response.product ? normalizeProduct(response.product as Product & Record<string, unknown>) : undefined,
       }),
       invalidatesTags: ['Products'],
     }),
@@ -410,6 +485,7 @@ export const {
   useGetProductsQuery,
   useGetProductActivityLogsQuery,
   useCreateProductMutation,
+  useBulkImportProductsMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
 } = productsApi

@@ -19,6 +19,18 @@ interface ProductsPageMainProps {
   initialData?: ProductsResponse | null
 }
 
+const NEW_BADGE_DAYS = 7
+
+const isNewProduct = (product: Product) => {
+  if (!product.createdAt) return false
+
+  const createdAt = new Date(product.createdAt)
+  if (Number.isNaN(createdAt.getTime())) return false
+
+  const diffDays = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+  return diffDays >= 0 && diffDays < NEW_BADGE_DAYS
+}
+
 /* ── Stat card ── */
 function StatCard({
   label, value, sub, icon, colorClass,
@@ -84,7 +96,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       page: debouncedSearch ? 1 : page,
       perPage,
       search: debouncedSearch || undefined,
-      status: status || undefined,
+      status: status === 'new' ? undefined : (status || undefined),
       catId,
       supplierId: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : undefined,
     },
@@ -156,13 +168,14 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   }, [createdProducts, data?.products, initialData?.products, isSupplierPortal, linkedSupplierId, productOverrides, useInitialData])
 
   const visibleProducts = useMemo(() => {
+    const baseProducts = status === 'new' ? products.filter(isNewProduct) : products
     const keyword = debouncedSearch.trim().toLowerCase()
-    if (!keyword) return products
+    if (!keyword) return baseProducts
 
     const terms = keyword.split(/\s+/).filter(Boolean)
-    if (terms.length === 0) return products
+    if (terms.length === 0) return baseProducts
 
-    return products.filter((product) => {
+    return baseProducts.filter((product) => {
       const haystacks = [
         product.name,
         product.sku,
@@ -182,7 +195,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
 
       return terms.every((term) => haystacks.some((value) => value.includes(term)))
     })
-  }, [debouncedSearch, products])
+  }, [debouncedSearch, products, status])
 
   const meta = useMemo(() => {
     const rawMeta = data?.meta ?? (useInitialData ? initialData?.meta : undefined)
@@ -200,7 +213,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
   }, [data?.meta, initialData?.meta, isSupplierPortal, linkedSupplierId, products.length, useInitialData])
 
   const visibleMeta = useMemo(() => {
-    if (!debouncedSearch) {
+    if (!debouncedSearch && status !== 'new') {
       return meta
     }
 
@@ -212,7 +225,7 @@ export default function ProductsPageMain({ initialData = null }: ProductsPageMai
       from: visibleProducts.length > 0 ? 1 : 0,
       to: visibleProducts.length,
     }
-  }, [debouncedSearch, meta, perPage, visibleProducts.length])
+  }, [debouncedSearch, meta, perPage, status, visibleProducts.length])
 
   /* Low-stock count from current page */
   const lowStockCount = useMemo(() => visibleProducts.filter(p => p.qty > 0 && p.qty <= 5).length, [visibleProducts])

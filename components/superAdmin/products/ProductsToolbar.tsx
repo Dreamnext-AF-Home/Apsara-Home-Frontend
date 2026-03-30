@@ -17,6 +17,7 @@ const STATUS_TABS = [
   { value: '',  label: 'All'      },
   { value: '1', label: 'Active'   },
   { value: '0', label: 'Inactive' },
+  { value: 'new', label: 'New' },
 ]
 
 export default function ProductsToolbar({ search, onSearch, status, onStatus, catId, onCatId, resultCount, supplierId }: ProductsToolbarProps) {

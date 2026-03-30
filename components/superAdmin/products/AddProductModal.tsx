@@ -12,6 +12,7 @@ import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import ProductDescriptionGenerator from '@/components/superAdmin/products/ProductDescriptionGenerator'
 import ImagePositionEditorModal from '@/components/superAdmin/products/ImagePositionEditorModal'
+import BulkProductImportPanel from '@/components/superAdmin/products/BulkProductImportPanel'
 import { colorNameToHex, hexToColorName } from '@/libs/colorUtils'
 import { mergeVariantOptionLabelsMeta } from '@/libs/productVariantOptions'
 import { ROOM_OPTIONS, inferRoomTypeFromCategory } from '@/libs/roomConfig'
@@ -755,6 +756,7 @@ const scrollToFirstErrorField = (container: HTMLElement | null) => {
 /* ─── main component ─────────────────────────────────────── */
 
 export default function AddProductModal({ isOpen, onClose, onSaved }: AddProductModalProps) {
+  const [entryMode, setEntryMode] = useState<'manual' | 'csv'>('manual')
   const [form,         setForm]         = useState<FormState>(defaultForm)
   const [errors,       setErrors]       = useState<Errors>({})
   const [serverError,  setServerError]  = useState('')
@@ -838,6 +840,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   }
 
   const resetModalState = () => {
+    setEntryMode('manual')
     setForm(defaultForm)
     setErrors({})
     setServerError('')
@@ -1412,23 +1415,50 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                   </div>
                   <div>
                     <h2 className="text-slate-800 font-bold text-base leading-none">Add New Product</h2>
-                    <p className="text-slate-400 text-xs mt-0.5">Fill in all product details below</p>
+                    <p className="text-slate-400 text-xs mt-0.5">Choose manual entry or bulk CSV import</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={isBusy}
-                  className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center disabled:opacity-40"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex rounded-xl bg-slate-100 p-1">
+                    {[
+                      { value: 'manual', label: 'Manual' },
+                      { value: 'csv', label: 'CSV Import' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setEntryMode(option.value as 'manual' | 'csv')}
+                        className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                          entryMode === option.value ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={isBusy}
+                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-center disabled:opacity-40"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* ── Scrollable form body ── */}
-              <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <form onSubmit={entryMode === 'manual' ? handleSubmit : (event) => event.preventDefault()} className="flex flex-col flex-1 min-h-0">
+                {entryMode === 'csv' ? (
+                  <BulkProductImportPanel
+                    onClose={handleClose}
+                    onImported={() => {
+                      onSaved?.()
+                    }}
+                  />
+                ) : (
                 <div ref={formContentRef} className="overflow-y-auto flex-1 px-4 py-4 sm:px-6 sm:py-5 space-y-5">
 
                   {/* Server error */}
@@ -1483,7 +1513,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:grid-cols-4">
                         {visibleImagePreviews.map((preview, index) => (
                           <motion.div
-                            key={preview}
+                            key={`preview-${index}-${preview || 'empty'}`}
                             onPointerDown={() => handleImagePointerDown(index)}
                             onPointerEnter={() => handleImagePointerEnter(index)}
                             onPointerUp={stopImagePointerDrag}
@@ -2373,9 +2403,10 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </>
                   )}
                 </div>
+                )}
 
                 {/* ── Sticky footer ── */}
-                <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 shrink-0 flex items-center gap-3 bg-slate-50/60">
+                {entryMode === 'manual' && <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 shrink-0 flex items-center gap-3 bg-slate-50/60">
                   <p className="text-xs text-slate-400 flex-1">
                     Fields marked <span className="text-red-400 font-semibold">*</span> are required
                   </p>
@@ -2409,7 +2440,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       </>
                     )}
                   </button>
-                </div>
+                </div>}
               </form>
             </motion.div>
           </div>

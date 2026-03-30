@@ -1649,8 +1649,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     }
 
     try {
-      await updateProduct({ id: product.id, data: payload }).unwrap()
-      const updatedProduct: Product = {
+      const response = await updateProduct({ id: product.id, data: payload }).unwrap()
+      const updatedProduct: Product = response.product ?? {
         ...product,
         name: form.pd_name.trim(),
         catid: Number(form.pd_catid),

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import { ProductActivityLog, useGetProductActivityLogsQuery } from '@/store/api/productsApi'
 
 interface ProductActivityLogsModalProps {
@@ -61,6 +62,20 @@ const statusBadgeClass = (status: string) => {
   }
 }
 
+const splitImageValues = (value?: string | null) => {
+  if (!value) return []
+
+  return value
+    .split(/\n|\s*\|\s*/)
+    .map((item) => item.trim())
+    .filter((item) => /^https?:\/\//i.test(item))
+}
+
+const isImageField = (field: string) => {
+  const normalized = field.trim().toLowerCase()
+  return normalized === 'primary image' || normalized === 'image gallery'
+}
+
 function ActivityRow({ log }: { log: ProductActivityLog }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
@@ -88,6 +103,57 @@ function ActivityRow({ log }: { log: ProductActivityLog }) {
           {log.status}
         </div>
       </div>
+      {log.changes && log.changes.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Field Changes</p>
+          <div className="mt-2 space-y-2">
+            {log.changes.map((change, index) => (
+              <div key={`${change.field}-${index}`} className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 border border-slate-100">
+                <span className="font-semibold text-slate-700">{change.field}</span>
+                <span className="mx-2 text-slate-300">:</span>
+                {isImageField(change.field) ? (
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Before</p>
+                      {splitImageValues(change.before).length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {splitImageValues(change.before).map((url, imageIndex) => (
+                            <div key={`before-${imageIndex}-${url}`} className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                              <Image src={url} alt={`${change.field} before ${imageIndex + 1}`} fill className="object-cover" unoptimized />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">{change.before ?? 'empty'}</span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">After</p>
+                      {splitImageValues(change.after).length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {splitImageValues(change.after).map((url, imageIndex) => (
+                            <div key={`after-${imageIndex}-${url}`} className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                              <Image src={url} alt={`${change.field} after ${imageIndex + 1}`} fill className="object-cover" unoptimized />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="font-semibold text-slate-800">{change.after ?? 'empty'}</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-slate-500">{change.before ?? 'empty'}</span>
+                    <span className="mx-2 text-slate-300">-&gt;</span>
+                    <span className="font-semibold text-slate-800">{change.after ?? 'empty'}</span>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

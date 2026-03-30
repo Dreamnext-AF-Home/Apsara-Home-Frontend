@@ -30,6 +30,8 @@ const statusBadge = (status: number) =>
 const formatPrice = (v: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(v)
 
+const NEW_BADGE_DAYS = 7
+
 const slugify = (value: string) =>
   value
     .toLowerCase()
@@ -105,6 +107,16 @@ const getVariantCount = (product: Product) => {
   ).size
 }
 
+const isNewProduct = (product: Product) => {
+  if (!product.createdAt) return false
+
+  const createdAt = new Date(product.createdAt)
+  if (Number.isNaN(createdAt.getTime())) return false
+
+  const diffDays = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+  return diffDays >= 0 && diffDays < NEW_BADGE_DAYS
+}
+
 /* ── Stock badge ── */
 function StockBadge({ qty }: { qty: number }) {
   if (qty === 0) return (
@@ -149,6 +161,7 @@ export default function ProductsTable({
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide w-14">Image</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Product</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">SKU</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Uploader</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">SRP</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Dealer</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Member</th>
@@ -161,7 +174,7 @@ export default function ProductsTable({
           <tbody className="divide-y divide-slate-50">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="py-20 text-center">
+                <td colSpan={12} className="py-20 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
                       <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,6 +239,19 @@ export default function ProductsTable({
                     </span>
                   </td>
 
+                  <td className="px-4 py-3">
+                    <div className="min-w-[140px]">
+                      <p className="text-sm font-medium text-slate-700 line-clamp-1">{p.uploaderName?.trim() || 'Unknown user'}</p>
+                      {p.uploaderRole ? (
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400 line-clamp-1">
+                          {p.uploaderRole.replace(/_/g, ' ')}
+                        </p>
+                      ) : p.uploaderEmail ? (
+                        <p className="text-[11px] text-slate-400 line-clamp-1">{p.uploaderEmail}</p>
+                      ) : null}
+                    </div>
+                  </td>
+
                   {/* Prices */}
                   <td className="px-4 py-3 text-right font-semibold text-slate-700 text-sm">{formatPrice(p.priceSrp)}</td>
                   <td className="px-4 py-3 text-right text-slate-500 text-sm">{formatPrice(p.priceDp)}</td>
@@ -239,6 +265,14 @@ export default function ProductsTable({
                   {/* Badges (Must Have / Bestseller) */}
                   <td className="px-4 py-3">
                     <div className="flex flex-col items-center gap-1">
+                      {isNewProduct(p) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 text-[10px] border border-sky-200 font-semibold whitespace-nowrap">
+                          <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2.5 12.317 7.183 17.5 7.936 13.75 11.59 14.635 16.75 10 14.313 5.365 16.75 6.25 11.59 2.5 7.936 7.683 7.183 10 2.5Z"/>
+                          </svg>
+                          New
+                        </span>
+                      )}
                       {p.musthave && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] border border-amber-200 font-semibold whitespace-nowrap">
                           <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -255,7 +289,7 @@ export default function ProductsTable({
                           Bestseller
                         </span>
                       )}
-                      {!p.musthave && !p.bestseller && <span className="text-slate-300 text-xs">—</span>}
+                      {!isNewProduct(p) && !p.musthave && !p.bestseller && <span className="text-slate-300 text-xs">—</span>}
                     </div>
                   </td>
 
