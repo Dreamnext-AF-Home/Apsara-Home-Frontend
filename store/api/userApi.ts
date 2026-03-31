@@ -171,7 +171,7 @@ export const userApi = baseApi.injectEndpoints({
             invalidatesTags: ['User'],
         }),
 
-        referralTree: builder.query<ReferralTreeResponse, void>({
+        referralTree: builder.query<ReferralTreeResponse, number | string | void>({
             query: () => ({
                 url: '/api/auth/referral-tree',
                 method: 'GET',

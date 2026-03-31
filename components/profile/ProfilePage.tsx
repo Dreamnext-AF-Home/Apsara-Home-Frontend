@@ -249,7 +249,7 @@ const ProfilePage = ({ initialProfile = null }: ProfilePageProps) => {
   const searchParams = useSearchParams();
   const { data: session, update: updateSession } = useSession();
   const { data } = useMeQuery();
-  const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(undefined, {
+  const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(data?.id, {
     refetchOnMountOrArgChange: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
