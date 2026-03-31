@@ -319,7 +319,30 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
 
   return {
     ...input,
+    id: typeof input.id === 'number' ? input.id : Number(input.id ?? 0),
+    supplierId:
+      typeof input.supplierId === 'number'
+        ? input.supplierId
+        : (typeof input.pd_supplier === 'number' ? input.pd_supplier : (typeof input.pd_supplier === 'string' ? Number(input.pd_supplier) : 0)),
+    supplierName: typeof input.supplierName === 'string' ? input.supplierName : null,
+    name: typeof input.name === 'string' ? input.name : (typeof input.pd_name === 'string' ? input.pd_name : ''),
     specifications: typeof input.specifications === 'string' ? input.specifications : null,
+    catid:
+      typeof input.catid === 'number'
+        ? input.catid
+        : (typeof input.pd_catid === 'number' ? input.pd_catid : (typeof input.pd_catid === 'string' ? Number(input.pd_catid) : 0)),
+    catsubid:
+      typeof input.catsubid === 'number'
+        ? input.catsubid
+        : (typeof input.pd_catsubid === 'number' ? input.pd_catsubid : (typeof input.pd_catsubid === 'string' ? Number(input.pd_catsubid) : 0)),
+    priceSrp:
+      typeof input.priceSrp === 'number'
+        ? input.priceSrp
+        : (typeof input.pd_price_srp === 'number' ? input.pd_price_srp : (typeof input.pd_price_srp === 'string' ? Number(input.pd_price_srp) : 0)),
+    priceDp:
+      typeof input.priceDp === 'number'
+        ? input.priceDp
+        : (typeof input.pd_price_dp === 'number' ? input.pd_price_dp : (typeof input.pd_price_dp === 'string' ? Number(input.pd_price_dp) : 0)),
     priceMember:
       typeof input.priceMember === 'number'
         ? input.priceMember
@@ -352,9 +375,46 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
       typeof input.brand === 'string'
         ? input.brand
         : (typeof input.brand_name === 'string' ? input.brand_name : null),
+    qty:
+      typeof input.qty === 'number'
+        ? input.qty
+        : (typeof input.pd_qty === 'number' ? input.pd_qty : (typeof input.pd_qty === 'string' ? Number(input.pd_qty) : 0)),
+    weight:
+      typeof input.weight === 'number'
+        ? input.weight
+        : (typeof input.pd_weight === 'number' ? input.pd_weight : (typeof input.pd_weight === 'string' ? Number(input.pd_weight) : 0)),
+    type:
+      typeof input.type === 'number'
+        ? input.type
+        : (typeof input.pd_type === 'number' ? input.pd_type : (typeof input.pd_type === 'string' ? Number(input.pd_type) : 0)),
+    musthave:
+      typeof input.musthave === 'boolean'
+        ? input.musthave
+        : Boolean(input.pd_musthave),
+    bestseller:
+      typeof input.bestseller === 'boolean'
+        ? input.bestseller
+        : Boolean(input.pd_bestseller),
+    salespromo:
+      typeof input.salespromo === 'boolean'
+        ? input.salespromo
+        : Boolean(input.pd_salespromo),
+    status:
+      typeof input.status === 'number'
+        ? input.status
+        : (typeof input.pd_status === 'number' ? input.pd_status : (typeof input.pd_status === 'string' ? Number(input.pd_status) : 0)),
+    sku:
+      typeof input.sku === 'string'
+        ? input.sku
+        : (typeof input.pd_parent_sku === 'string' ? input.pd_parent_sku : ''),
+    uploaderName: typeof input.uploaderName === 'string' ? input.uploaderName : null,
+    uploaderEmail: typeof input.uploaderEmail === 'string' ? input.uploaderEmail : null,
+    uploaderRole: typeof input.uploaderRole === 'string' ? input.uploaderRole : null,
     image: primaryImage ?? images[0] ?? null,
     images,
     variants: uniqueVariants,
+    createdAt: typeof input.createdAt === 'string' ? input.createdAt : null,
+    updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : null,
   }
 }
 
