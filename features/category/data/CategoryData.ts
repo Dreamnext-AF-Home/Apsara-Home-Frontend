@@ -2,6 +2,7 @@ export interface CategoryProduct {
     id?: number;
     name: string;
     type?: number;
+    createdAt?: string | null;
     price: number;
     priceDp?: number;
     priceMember?: number;

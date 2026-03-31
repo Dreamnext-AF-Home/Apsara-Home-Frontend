@@ -34,6 +34,16 @@ const isNewProduct = (product: Product) => {
   return diffDays >= 0 && diffDays < NEW_BADGE_DAYS
 }
 
+const getEffectiveStockQty = (product: Product) => {
+  const activeVariants = (product.variants ?? []).filter((variant) => Number(variant.status ?? 1) === 1)
+
+  if (activeVariants.length === 0) {
+    return Number(product.qty ?? 0)
+  }
+
+  return activeVariants.reduce((total, variant) => total + Number(variant.qty ?? 0), 0)
+}
+
 /* ── Stat card ── */
 function StatCard({
   label, value, sub, icon, colorClass,
@@ -351,7 +361,13 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   }, [debouncedSearch, meta, perPage, status, visibleProducts.length])
 
   /* Low-stock count from current page */
-  const lowStockCount = useMemo(() => visibleProducts.filter(p => p.qty > 0 && p.qty <= 5).length, [visibleProducts])
+  const lowStockCount = useMemo(
+    () => visibleProducts.filter((product) => {
+      const qty = getEffectiveStockQty(product)
+      return qty > 0 && qty <= 5
+    }).length,
+    [visibleProducts],
+  )
 
   const handleSearch = (v: string) => { setSearch(v); setPage(1) }
   const handleStatus = (v: string) => { setStatus(v); setPage(1) }

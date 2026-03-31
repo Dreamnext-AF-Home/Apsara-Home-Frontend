@@ -40,6 +40,16 @@ const PRODUCT_TYPE_LABELS: Record<number, string> = {
     1: 'Variant',
     2: 'Bundle',
 }
+const NEW_BADGE_DAYS = 3;
+
+const isNewProduct = (createdAt?: string | null) => {
+    if (!createdAt) return false;
+
+    const createdAtTime = new Date(createdAt).getTime();
+    if (Number.isNaN(createdAtTime)) return false;
+
+    return Date.now() - createdAtTime <= NEW_BADGE_DAYS * 24 * 60 * 60 * 1000;
+}
 
 interface ProductInfoProps {
     product: CategoryProduct
@@ -119,6 +129,16 @@ const stripHtml = (value: string) =>
 const toPositiveNumber = (value: unknown): number | undefined => {
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+const getEffectiveVariantStock = (variants?: CategoryProduct['variants']) => {
+    const activeVariants = (variants ?? []).filter((variant) => (variant?.status ?? 1) === 1);
+
+    if (activeVariants.length === 0) {
+        return undefined;
+    }
+
+    return activeVariants.reduce((total, variant) => total + Number(variant?.qty ?? 0), 0);
 };
 
 const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }: ProductInfoProps) => {
@@ -258,6 +278,7 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const effectiveSelectedColor = selectedColor || colorOptions[0]?.name || '';
     const hasColorSelector = colorOptions.length > 0;
     const hasPrimaryOptionSelector = variantNameOptions.length > 1;
+    const showNewBadge = isNewProduct(product.createdAt);
     const effectiveSelectedPrimaryName = selectedVariantName || (hasPrimaryOptionSelector ? variantNameOptions[0]?.name || '' : '');
     const primaryOptionLabel = optionLabels.primaryLabel?.trim() || 'Options';
     const hasSecondarySizeValues = logicalSizeChoices.length > 0;
@@ -344,9 +365,10 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
     const displayOriginalPrice = canUseMemberPrice
         ? (hasMemberPrice ? variantSrp : undefined)
         : (product.originalPrice && product.originalPrice > variantSrp ? product.originalPrice : undefined);
+    const totalVariantStock = getEffectiveVariantStock(variantOptions);
     const displayStock = typeof selectedVariant?.qty === 'number'
         ? selectedVariant.qty
-        : product.stock;
+        : (typeof totalVariantStock === 'number' ? totalVariantStock : product.stock);
     const productType = Number(product.type ?? 0);
     const isVariantProduct = productType === 1;
     const hasRealVariants = isVariantProduct && variantOptions.length > 0;
@@ -533,6 +555,14 @@ const ProductInfo = ({ product, categoryLabel, onReviewsClick, onVariantChange }
                     <>
                         <span className="text-xs text-gray-300">|</span>
                         <span className="text-xs text-green-600 font-semibold">✓ Verified Product</span>
+                    </>
+                )}
+                {showNewBadge && (
+                    <>
+                        <span className="text-xs text-gray-300">|</span>
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                            New
+                        </span>
                     </>
                 )}
             </div>

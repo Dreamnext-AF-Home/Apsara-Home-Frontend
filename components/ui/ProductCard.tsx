@@ -15,6 +15,7 @@ import { showErrorToast, showSuccessToast } from '@/libs/toast';
 interface ProductCardProps {
   id?: number;
   name: string;
+  createdAt?: string | null;
   price: number;
   priceMember?: number;
   prodpv?: number;
@@ -34,6 +35,26 @@ type VariantChoice = {
 };
 
 const FALLBACK_IMAGE = '/Images/HeroSection/chairs_stools.jpg';
+const NEW_BADGE_DAYS = 3;
+
+const isNewProduct = (createdAt?: string | null) => {
+  if (!createdAt) return false;
+
+  const createdAtTime = new Date(createdAt).getTime();
+  if (Number.isNaN(createdAtTime)) return false;
+
+  return Date.now() - createdAtTime <= NEW_BADGE_DAYS * 24 * 60 * 60 * 1000;
+};
+
+const getEffectiveStock = (stock?: number, variants?: CategoryProduct['variants']) => {
+  const activeVariants = (variants ?? []).filter((variant) => (variant?.status ?? 1) === 1);
+
+  if (activeVariants.length > 0) {
+    return activeVariants.reduce((total, variant) => total + Number(variant?.qty ?? 0), 0);
+  }
+
+  return Number(stock ?? 0);
+};
 
 const normalizeVariantLabel = (value?: string | null) => (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -70,6 +91,7 @@ const getVariantChoiceKey = (variant: VariantOption) => [
 export default function ProductCard({
   id,
   name,
+  createdAt,
   price,
   priceMember,
   prodpv,
@@ -102,8 +124,9 @@ export default function ProductCard({
   const displayPrice = hasMemberPrice ? memberPrice : srpPrice;
   const strikePrice = hasMemberPrice ? srpPrice : Number(originalPrice ?? 0);
   const displayPv = Number(prodpv ?? 0);
-  const normalizedStock = Number(stock ?? 0);
+  const normalizedStock = getEffectiveStock(stock, resolvedVariants);
   const isInStock = normalizedStock > 0;
+  const showNewBadge = isNewProduct(createdAt);
 
   useEffect(() => {
     const nextVariants = variants ?? [];
@@ -286,11 +309,18 @@ export default function ProductCard({
               onError={() => setImageSrc(FALLBACK_IMAGE)}
             />
 
-            {badge ? (
-              <span className="absolute left-3 top-3 z-10 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white">
-                {badge}
-              </span>
-            ) : null}
+            <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+              {showNewBadge ? (
+                <span className="rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white">
+                  NEW
+                </span>
+              ) : null}
+              {badge ? (
+                <span className="rounded-full bg-orange-500 px-2 py-1 text-[10px] font-bold tracking-wide text-white">
+                  {badge}
+                </span>
+              ) : null}
+            </div>
 
             <div className="absolute inset-0 bg-black/0 transition-colors duration-500 group-hover:bg-black/10" />
 

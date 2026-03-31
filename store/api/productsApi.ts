@@ -278,6 +278,16 @@ const dedupeProductVariants = (variants: ProductVariant[]) =>
     }, new Map<string, ProductVariant>()).values(),
   )
 
+const getEffectiveProductQty = (variants: ProductVariant[], fallbackQty: number) => {
+  const activeVariants = variants.filter((variant) => Number(variant.status ?? 1) === 1)
+
+  if (activeVariants.length === 0) {
+    return fallbackQty
+  }
+
+  return activeVariants.reduce((total, variant) => total + Number(variant.qty ?? 0), 0)
+}
+
 export const normalizeProduct = (input: Product & Record<string, unknown>): Product => {
   const parsedImages = toStringArray(input.images ?? input.pd_images)
   const primaryImage = typeof input.image === 'string' && input.image.trim().length > 0
@@ -316,6 +326,11 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
         } satisfies ProductVariant
       })
   const uniqueVariants = dedupeProductVariants(parsedVariants)
+  const fallbackQty =
+    typeof input.qty === 'number'
+      ? input.qty
+      : (typeof input.pd_qty === 'number' ? input.pd_qty : (typeof input.pd_qty === 'string' ? Number(input.pd_qty) : 0))
+  const effectiveQty = getEffectiveProductQty(uniqueVariants, fallbackQty)
 
   return {
     ...input,
@@ -376,9 +391,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
         ? input.brand
         : (typeof input.brand_name === 'string' ? input.brand_name : null),
     qty:
-      typeof input.qty === 'number'
-        ? input.qty
-        : (typeof input.pd_qty === 'number' ? input.pd_qty : (typeof input.pd_qty === 'string' ? Number(input.pd_qty) : 0)),
+      effectiveQty,
     weight:
       typeof input.weight === 'number'
         ? input.weight

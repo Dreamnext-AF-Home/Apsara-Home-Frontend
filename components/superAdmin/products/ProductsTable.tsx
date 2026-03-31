@@ -109,6 +109,16 @@ const getVariantCount = (product: Product) => {
   ).size
 }
 
+const getEffectiveStockQty = (product: Product) => {
+  const activeVariants = (product.variants ?? []).filter((variant) => Number(variant.status ?? 1) === 1)
+
+  if (activeVariants.length === 0) {
+    return Number(product.qty ?? 0)
+  }
+
+  return activeVariants.reduce((total, variant) => total + Number(variant.qty ?? 0), 0)
+}
+
 const isNewProduct = (product: Product) => {
   if (!product.createdAt) return false
 
@@ -190,7 +200,10 @@ export default function ProductsTable({
                 </td>
               </tr>
             ) : (
-              rows.map(p => (
+              rows.map(p => {
+                const effectiveStockQty = getEffectiveStockQty(p)
+
+                return (
                 <tr
                   key={p.id}
                   className="hover:bg-slate-50/60 transition-colors group"
@@ -271,7 +284,7 @@ export default function ProductsTable({
 
                   {/* Stock */}
                   <td className="px-4 py-3 text-right text-sm">
-                    <StockBadge qty={p.qty} />
+                    <StockBadge qty={effectiveStockQty} />
                   </td>
 
                   {/* Badges (Must Have / Bestseller) */}
@@ -365,7 +378,7 @@ export default function ProductsTable({
                     </div>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>

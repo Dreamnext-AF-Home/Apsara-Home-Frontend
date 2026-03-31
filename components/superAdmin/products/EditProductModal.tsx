@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useGetAdminMeQuery } from '@/store/api/authApi'
-import { Product, ProductVariant, useUpdateProductMutation, CreateProductPayload } from '@/store/api/productsApi'
+import { Product, ProductVariant, useUpdateProductMutation, CreateProductPayload, normalizeProduct } from '@/store/api/productsApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { useGetProductBrandsQuery } from '@/store/api/productBrandsApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
@@ -1656,38 +1656,40 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
     try {
       const response = await updateProduct({ id: product.id, data: payload }).unwrap()
-      const updatedProduct: Product = response.product ?? {
-        ...product,
-        name: form.pd_name.trim(),
-        catid: Number(form.pd_catid),
-        roomType: form.pd_room_type ? Number(form.pd_room_type) : undefined,
-        brandType: form.pd_brand_type ? Number(form.pd_brand_type) : undefined,
-        brand: brands.find((brand) => brand.id === Number(form.pd_brand_type))?.name ?? product.brand ?? null,
-        description: form.pd_description.trim() || null,
-        specifications: nextSpecifications ?? null,
-        priceSrp: Number(form.pd_price_srp),
-        priceDp: form.pd_price_dp ? Number(form.pd_price_dp) : 0,
-        priceMember: form.pd_price_member ? Number(form.pd_price_member) : undefined,
-        prodpv: resolvedMainPv,
-        qty: form.pd_qty ? Number(form.pd_qty) : 0,
-        weight: form.pd_weight ? Number(form.pd_weight) : 0,
-        psweight: form.pd_psweight ? Number(form.pd_psweight) : undefined,
-        pswidth: form.pd_pswidth ? Number(form.pd_pswidth) : undefined,
-        pslenght: form.pd_pslenght ? Number(form.pd_pslenght) : undefined,
-        psheight: form.pd_psheight ? Number(form.pd_psheight) : undefined,
-        material: form.pd_material.trim() || null,
-        warranty: form.pd_warranty.trim() || null,
-        assemblyRequired: form.pd_assembly_required,
-        type: Number(form.pd_type),
-        musthave: form.pd_musthave,
-        bestseller: form.pd_bestseller,
-        salespromo: form.pd_salespromo,
-        verified: form.pd_verified,
-        status: Number(form.pd_status),
-        image: finalImageUrls[0] ?? null,
-        images: finalImageUrls,
-        variants: hasVariants ? expandedVariants.map(mapExpandedVariantToProductVariant) : [],
-      }
+      const updatedProduct: Product = response.product
+        ? normalizeProduct(response.product as Product & Record<string, unknown>)
+        : normalizeProduct({
+            ...product,
+            name: form.pd_name.trim(),
+            catid: Number(form.pd_catid),
+            roomType: form.pd_room_type ? Number(form.pd_room_type) : undefined,
+            brandType: form.pd_brand_type ? Number(form.pd_brand_type) : undefined,
+            brand: brands.find((brand) => brand.id === Number(form.pd_brand_type))?.name ?? product.brand ?? null,
+            description: form.pd_description.trim() || null,
+            specifications: nextSpecifications ?? null,
+            priceSrp: Number(form.pd_price_srp),
+            priceDp: form.pd_price_dp ? Number(form.pd_price_dp) : 0,
+            priceMember: form.pd_price_member ? Number(form.pd_price_member) : undefined,
+            prodpv: resolvedMainPv,
+            qty: form.pd_qty ? Number(form.pd_qty) : 0,
+            weight: form.pd_weight ? Number(form.pd_weight) : 0,
+            psweight: form.pd_psweight ? Number(form.pd_psweight) : undefined,
+            pswidth: form.pd_pswidth ? Number(form.pd_pswidth) : undefined,
+            pslenght: form.pd_pslenght ? Number(form.pd_pslenght) : undefined,
+            psheight: form.pd_psheight ? Number(form.pd_psheight) : undefined,
+            material: form.pd_material.trim() || null,
+            warranty: form.pd_warranty.trim() || null,
+            assemblyRequired: form.pd_assembly_required,
+            type: Number(form.pd_type),
+            musthave: form.pd_musthave,
+            bestseller: form.pd_bestseller,
+            salespromo: form.pd_salespromo,
+            verified: form.pd_verified,
+            status: Number(form.pd_status),
+            image: finalImageUrls[0] ?? null,
+            images: finalImageUrls,
+            variants: hasVariants ? expandedVariants.map(mapExpandedVariantToProductVariant) : [],
+          } as Product & Record<string, unknown>)
       showSuccessToast('Product updated successfully.')
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(getEditProductDraftKey(product.id))

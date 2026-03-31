@@ -18,6 +18,16 @@ const toPositiveNumber = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 };
 
+const getEffectiveVariantStock = (variants?: CategoryProduct['variants']) => {
+  const activeVariants = (variants ?? []).filter((variant) => (variant?.status ?? 1) === 1);
+
+  if (activeVariants.length === 0) {
+    return undefined;
+  }
+
+  return activeVariants.reduce((total, variant) => total + Number(variant?.qty ?? 0), 0);
+};
+
 const StickyAddToCart = ({ product, selectedVariant }: StickyAddToCartProps) => {
   const [visible, setVisible] = useState(false);
   const { addToCart } = useCart();
@@ -36,7 +46,10 @@ const StickyAddToCart = ({ product, selectedVariant }: StickyAddToCartProps) => 
   const displayImage = selectedVariant?.images?.find((image) => typeof image === 'string' && image.trim().length > 0) || product.image;
   const hasMemberPrice = member > 0 && member < srp;
   const displayPrice = canUseMemberPrice && hasMemberPrice ? member : srp;
-  const stock = typeof selectedVariant?.qty === 'number' ? selectedVariant.qty : Number(product.stock ?? 0);
+  const totalVariantStock = getEffectiveVariantStock(product.variants);
+  const stock = typeof selectedVariant?.qty === 'number'
+    ? selectedVariant.qty
+    : (typeof totalVariantStock === 'number' ? totalVariantStock : Number(product.stock ?? 0));
   const isInStock = stock > 0;
 
   useEffect(() => {
