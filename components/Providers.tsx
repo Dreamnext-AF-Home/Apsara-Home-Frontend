@@ -1,6 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
+import { Suspense } from 'react'
 import { CartProvider } from '@/context/CartContext'
 import CartDrawer from '@/components/ui/CartDrawer'
 import { Provider as ReduxProvider } from 'react-redux'
@@ -80,7 +81,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider> 
         <ReduxProvider store={store}>
           <CartProvider>
-          <ReferralCapture />
+          <Suspense fallback={null}>
+            <ReferralCapture />
+          </Suspense>
           <CustomerSessionGuard />
           <CustomerBannedOverlay />
           {children}
