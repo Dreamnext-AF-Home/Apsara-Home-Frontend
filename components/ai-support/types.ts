@@ -24,6 +24,11 @@ export interface CategoryCardData {
   url: string;
 }
 
+export interface StepImageData {
+  url: string;
+  caption?: string;
+}
+
 export interface ProductCardsMessage {
   kind: 'cards';
   cards: ProductCardData[];
@@ -40,7 +45,24 @@ export interface CategoryCardsMessage {
   cards: CategoryCardData[];
 }
 
-export type ChatMessage = TextMessage | ProductCardsMessage | BrandCardsMessage | CategoryCardsMessage;
+export interface StepImagesMessage {
+  kind: 'step_images';
+  images: StepImageData[];
+}
+
+export interface ImageMessage {
+  kind: 'image';
+  role: 'bot' | 'user';
+  url: string;
+}
+
+export type ChatMessage =
+  | TextMessage
+  | ImageMessage
+  | ProductCardsMessage
+  | BrandCardsMessage
+  | CategoryCardsMessage
+  | StepImagesMessage;
 
 export interface ApiResponse {
   status: 'ok' | 'error';
@@ -49,5 +71,6 @@ export interface ApiResponse {
   brand_cards?: BrandCardData[];
   category_cards?: CategoryCardData[];
   brand_view_all_url?: string;
+  step_images?: StepImageData[];
   quick_replies?: string[];
 }

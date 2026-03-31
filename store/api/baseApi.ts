@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery, type BaseQueryFn, type FetchArgs, type Fetch
 let cachedAccessToken: string | undefined
 let tokenPromise: Promise<string | undefined> | null = null
 let cachedAt = 0
-const TOKEN_CACHE_TTL_MS = 30_000
+const TOKEN_CACHE_TTL_MS = 120_000
 
 export const clearAccessTokenCache = () => {
     cachedAccessToken = undefined
@@ -23,7 +23,11 @@ const resolveAccessToken = async (): Promise<string | undefined> => {
 
     if (!tokenPromise) {
         const pathname = window.location.pathname || ''
-        const sessionPath = pathname.startsWith('/admin') ? '/api/admin/auth/session' : '/api/auth/session'
+        const sessionPath = pathname.startsWith('/admin')
+            ? '/api/admin/auth/session'
+            : pathname.startsWith('/supplier')
+              ? '/api/supplier/auth/session'
+              : '/api/auth/session'
         tokenPromise = fetch(sessionPath, {
             method: 'GET',
             cache: 'no-store',

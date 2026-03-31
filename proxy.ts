@@ -53,6 +53,8 @@ const AUTH_REQUIRED_PREFIXES = ["/profile", "/orders"]
 const SUPPLIER_ALLOWED_PREFIXES = [
   "/supplier/dashboard",
   "/supplier/products",
+  "/supplier/orders",
+  "/supplier/reports",
   "/supplier/categories",
   "/supplier/users",
   "/supplier/company",
@@ -92,6 +94,13 @@ export async function proxy(req: NextRequest) {
       ? '__Secure-admin-next-auth.session-token'
       : 'admin-next-auth.session-token',
   });
+  const supplierToken = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: process.env.NODE_ENV === 'production'
+      ? '__Secure-supplier-next-auth.session-token'
+      : 'supplier-next-auth.session-token',
+  });
   const passwordChangeRequired = Boolean((token as { passwordChangeRequired?: boolean } | null)?.passwordChangeRequired);
 
   const isAdminLoginPage = pathname === "/admin/login";
@@ -129,8 +138,8 @@ export async function proxy(req: NextRequest) {
   }
 
   if (isSupplierPublicPage) {
-    const role = String((token as { role?: string } | null)?.role ?? "").toLowerCase();
-    if (token && role === "supplier") {
+    const role = String((supplierToken as { role?: string } | null)?.role ?? "").toLowerCase();
+    if (supplierToken && role === "supplier") {
       return NextResponse.redirect(new URL("/supplier/dashboard", req.url));
     }
     return NextResponse.next();
@@ -203,13 +212,13 @@ export async function proxy(req: NextRequest) {
   }
 
   if (isSupplierRoute) {
-    if (!token) {
+    if (!supplierToken) {
       const loginUrl = new URL("/supplier/login", req.url);
       loginUrl.searchParams.set("callback", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    const role = String((token as { role?: string } | null)?.role ?? "").toLowerCase();
+    const role = String((supplierToken as { role?: string } | null)?.role ?? "").toLowerCase();
     if (role !== "supplier") {
       return NextResponse.redirect(new URL("/", req.url));
     }

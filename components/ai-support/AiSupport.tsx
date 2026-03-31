@@ -10,7 +10,17 @@ const API_BASE = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/,
 const LOGO_SRC = `${API_BASE}/Image/af.png`;
 const ROBOT_SRC = `${API_BASE}/Image/sir.png`;
 
-const DISABLED_PREFIXES = ['/admin', '/supplier', '/loading', '/interior-services', '/login'];
+const DISABLED_PREFIXES = [
+  '/admin',
+  '/supplier',
+  '/loading',
+  '/interior-services',
+  '/login',
+  '/checkout',
+  '/orders',
+  '/track-order',
+  '/verification',
+];
 
 function useIsAllowed() {
   const pathname = usePathname();
@@ -39,7 +49,19 @@ function useIsLoadingScreenVisible() {
 export function AiSupport() {
   const allowed = useIsAllowed();
   const isLoadingScreenVisible = useIsLoadingScreenVisible();
-  const { isOpen, close, toggle, messages, quickReplies, inputValue, setInputValue, send, isLoading } =
+  const {
+    isOpen,
+    close,
+    toggle,
+    messages,
+    quickReplies,
+    inputValue,
+    setInputValue,
+    imageDataUrl,
+    setImageDataUrl,
+    send,
+    isLoading,
+  } =
     useAiSupport();
 
   if (!allowed || isLoadingScreenVisible) return null;
@@ -57,6 +79,8 @@ export function AiSupport() {
         onClose={close}
         onInputChange={setInputValue}
         onSend={send}
+        onImageChange={setImageDataUrl}
+        hasImage={Boolean(imageDataUrl)}
       />
     </>
   );

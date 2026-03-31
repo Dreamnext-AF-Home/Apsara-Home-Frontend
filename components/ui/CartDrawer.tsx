@@ -3,15 +3,12 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useCart } from '@/context/CartContext'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import type { CustomerCheckoutLineItem } from '@/types/CustomerCheckout/types'
 
 export default function CartDrawer() {
   const router = useRouter()
-  const pathname = usePathname()
   const { items, isOpen, setIsOpen, removeFromCart, updateQuantity, cartCount, total } = useCart()
-  const isCheckoutRoute = pathname.startsWith('/checkout')
   const checkoutItems: CustomerCheckoutLineItem[] = items.map((item) => ({
     id: item.id,
     name: item.name,
@@ -25,12 +22,6 @@ export default function CartDrawer() {
     selectedSku: item.selectedSku ?? null,
   }))
 
-  useEffect(() => {
-    if (isCheckoutRoute && isOpen) {
-      setIsOpen(false)
-    }
-  }, [isCheckoutRoute, isOpen, setIsOpen])
-
   const handleCustomerCheckout = () => {
     if (checkoutItems.length === 0) return
 
@@ -39,6 +30,7 @@ export default function CartDrawer() {
 
     localStorage.setItem('guest_checkout', JSON.stringify({
       product: {
+        id: checkoutItems.length === 1 ? firstItem.id : firstItem.id,
         name: checkoutItems.length === 1 ? firstItem.name : `${checkoutItems.length} selected items from AF Home`,
         image: firstItem.image,
         price: total,
@@ -58,10 +50,6 @@ export default function CartDrawer() {
 
     setIsOpen(false)
     router.push('/checkout/customer')
-  }
-
-  if (isCheckoutRoute) {
-    return null
   }
 
   return (

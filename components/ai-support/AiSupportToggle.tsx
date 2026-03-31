@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Props {
   isOpen: boolean;
@@ -10,6 +11,26 @@ interface Props {
 }
 
 export function AiSupportToggle({ isOpen, onClick, robotSrc, logoSrc }: Props) {
+  const prompts = useMemo(
+    () => [
+      'How can I help you today?',
+      'Need help? I’m here!',
+      'Ask me anything!',
+      'Hi! How can I assist you?',
+      'What can I do for you?',
+      'Need something? Just ask!',
+    ],
+    [],
+  );
+  const [promptIndex, setPromptIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPromptIndex((prev) => (prev + 1) % prompts.length);
+    }, 20000);
+    return () => clearInterval(id);
+  }, [prompts.length]);
+
   return (
     <motion.button
       type="button"
@@ -20,6 +41,14 @@ export function AiSupportToggle({ isOpen, onClick, robotSrc, logoSrc }: Props) {
       transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
     >
       <div className="relative w-full h-full flex items-center justify-center">
+        {!isOpen && (
+          <div className="absolute left-[86px] bottom-7 max-w-[240px] min-w-[150px] rounded-2xl bg-white border border-indigo-100 shadow-lg shadow-slate-200 px-3 py-2 text-[12.5px] text-slate-700">
+            <span className="block leading-snug whitespace-normal break-words">
+              {prompts[promptIndex]}
+            </span>
+            <span className="absolute -left-1.5 top-4 w-2.5 h-2.5 bg-white border-l border-b border-indigo-100 rotate-45" />
+          </div>
+        )}
         <motion.img
           src={robotSrc}
           alt="AI Support"

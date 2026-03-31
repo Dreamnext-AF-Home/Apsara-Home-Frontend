@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
-import { AiSupport } from "@/components/ai-support";
+import ShopAiSupportGate from "@/components/ai-support/ShopAiSupportGate";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -32,7 +32,7 @@ export default function RootLayout({
       </head>
       <body className={`${poppins.variable} antialiased bg-white`}>
         <Providers>{children}</Providers>
-        <AiSupport />
+        <ShopAiSupportGate />
         {/* <Script
           id="af-ai-support-base"
           strategy="afterInteractive"

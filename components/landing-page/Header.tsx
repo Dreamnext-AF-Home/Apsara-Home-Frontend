@@ -84,7 +84,7 @@ export default function Header({ cartCount }: HeaderProps) {
               whileTap={{ scale: 0.95 }}
               className={`p-2 transition-colors ${isScrolled ? 'text-black' : 'text-white'}`}
             >
-              <Link href={userHref} aria-label="User account">
+              <Link href="/login" aria-label="User account">
                 <User size={20} />
               </Link>
             </motion.div>

@@ -8,6 +8,7 @@ export interface CheckoutCustomerPayload {
   phone?: string
   address?: string
   referred_by?: string
+  is_member?: boolean
 }
 
 export interface CreateCheckoutSessionPayload {

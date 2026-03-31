@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { SessionProvider } from 'next-auth/react'
 import SupplierLayoutShell from '@/components/supplier/SupplierLayoutShell'
 
 export default function SupplierLayout({ children }: { children: React.ReactNode }) {
@@ -11,8 +12,16 @@ export default function SupplierLayout({ children }: { children: React.ReactNode
     pathname === '/supplier/forgot-password' ||
     pathname === '/supplier/reset-password'
   ) {
-    return <>{children}</>
+    return (
+      <SessionProvider basePath="/api/supplier/auth">
+        {children}
+      </SessionProvider>
+    )
   }
 
-  return <SupplierLayoutShell>{children}</SupplierLayoutShell>
+  return (
+    <SessionProvider basePath="/api/supplier/auth">
+      <SupplierLayoutShell>{children}</SupplierLayoutShell>
+    </SessionProvider>
+  )
 }
