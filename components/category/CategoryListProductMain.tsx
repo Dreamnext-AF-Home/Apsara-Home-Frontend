@@ -341,16 +341,15 @@ export default function CategoryListProductMain({
     );
 
     const renderAdBlock = () => (
-        <div className="mt-4 rounded-2xl overflow-hidden aspect-square bg-linear-to-br from-blue-50 to-sky-100 border border-dashed border-sky-200 flex flex-col items-center justify-center gap-2 text-center p-4">
-            <div className="w-10 h-10 rounded-full bg-sky-200 flex items-center justify-center mb-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" />
-                    <line x1="8" y1="21" x2="16" y2="21" />
-                    <line x1="12" y1="17" x2="12" y2="21" />
-                </svg>
-            </div>
-            <p className="text-xs font-semibold text-sky-700">Advertisement</p>
-            <p className="text-[10px] text-sky-500">300 × 300</p>
+        <div className="mt-4 rounded-2xl overflow-hidden aspect-square border border-slate-100 bg-slate-50">
+            <video
+                className="h-full w-full object-cover"
+                src="/loginpageVideo/afhome.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+            />
         </div>
     );
 
@@ -656,6 +655,9 @@ export default function CategoryListProductMain({
         </div>
     );
 }
+
+
+
 
 
 

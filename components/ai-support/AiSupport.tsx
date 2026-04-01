@@ -57,8 +57,8 @@ export function AiSupport() {
     quickReplies,
     inputValue,
     setInputValue,
-    imageDataUrl,
-    setImageDataUrl,
+    imageDataUrls,
+    setImageDataUrls,
     send,
     isLoading,
   } =
@@ -79,8 +79,9 @@ export function AiSupport() {
         onClose={close}
         onInputChange={setInputValue}
         onSend={send}
-        onImageChange={setImageDataUrl}
-        hasImage={Boolean(imageDataUrl)}
+        images={imageDataUrls}
+        onImageChange={setImageDataUrls}
+        hasImage={imageDataUrls.length > 0}
       />
     </>
   );

@@ -17,7 +17,8 @@ interface Props {
   onClose: () => void;
   onInputChange: (v: string) => void;
   onSend: (text: string) => void;
-  onImageChange: (dataUrl: string) => void;
+  images: string[];
+  onImageChange: (dataUrls: string[]) => void;
   hasImage: boolean;
 }
 
@@ -31,6 +32,7 @@ export function AiSupportPanel({
   onClose,
   onInputChange,
   onSend,
+  images,
   onImageChange,
   hasImage,
 }: Props) {
@@ -61,6 +63,7 @@ export function AiSupportPanel({
             value={inputValue}
             onChange={onInputChange}
             onSend={() => onSend(inputValue)}
+            images={images}
             onImageChange={onImageChange}
             hasImage={hasImage}
             disabled={isLoading}

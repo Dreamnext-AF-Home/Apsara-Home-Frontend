@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
 const products = [
   { name: 'Modern Sofa Set',      category: 'Furniture',   sold: 142, revenue: '₱ 284,000', pct: 95 },
@@ -15,25 +16,31 @@ const quickActions = [
     label: 'Add Product',
     color: 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+    href: '/admin/products?modal=add-product',
   },
   {
     label: 'New Order',
     color: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>,
+    href: '/admin/orders',
   },
   {
     label: 'Add Member',
     color: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
+    href: '/admin/members?modal=add-member',
   },
   {
     label: 'View Reports',
     color: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200',
     icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+    href: '/admin/reports/sales',
   },
 ]
 
 const TopProducts = () => {
+  const router = useRouter()
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
@@ -42,6 +49,7 @@ const TopProducts = () => {
           {quickActions.map((action) => (
             <button
               key={action.label}
+              onClick={() => router.push(action.href)}
               className={`${action.color} text-xs font-semibold px-3 py-2.5 rounded-xl flex items-center gap-2 transition-colors duration-200`}
             >
               {action.icon}

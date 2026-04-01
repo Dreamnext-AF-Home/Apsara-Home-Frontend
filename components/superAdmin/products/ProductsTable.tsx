@@ -257,9 +257,13 @@ export default function ProductsTable({
 
                   <td className="px-4 py-3">
                     <div className="min-w-[140px]">
-                      <p className="text-sm font-medium text-slate-700 line-clamp-1">{p.supplierName?.trim() || 'No supplier'}</p>
+                      <p className="text-sm font-medium text-slate-700 line-clamp-1">
+                        {p.supplierName?.trim() || p.brand?.trim() || 'No supplier'}
+                      </p>
                       {p.supplierId ? (
                         <p className="text-[11px] text-slate-400 line-clamp-1">Supplier #{p.supplierId}</p>
+                      ) : p.brand ? (
+                        <p className="text-[11px] text-slate-400 line-clamp-1">Brand</p>
                       ) : null}
                     </div>
                   </td>

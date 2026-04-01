@@ -64,7 +64,7 @@ export function useAiSupport() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [imageDataUrl, setImageDataUrl] = useState('');
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const initialized = useRef(false);
 
@@ -97,14 +97,16 @@ export function useAiSupport() {
   const send = useCallback(
     async (text: string) => {
       const msg = text.trim();
-      if ((!msg && !imageDataUrl) || isLoading) return;
+      if ((!msg && imageDataUrls.length === 0) || isLoading) return;
 
       setInputValue('');
 
       setMessages(prev => {
         const next: ChatMessage[] = [...prev];
-        if (imageDataUrl) {
-          next.push({ kind: 'image', role: 'user', url: imageDataUrl });
+        if (imageDataUrls.length > 0) {
+          imageDataUrls.forEach((url) => {
+            next.push({ kind: 'image', role: 'user', url });
+          });
         }
         if (msg) {
           next.push({ kind: 'text', role: 'user', text: msg });
@@ -118,12 +120,11 @@ export function useAiSupport() {
       try {
         const res = await fetch(apiEndpoint('/api/ai-support'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-          body:
-            'message=' +
-            encodeURIComponent(msg) +
-            '&image=' +
-            encodeURIComponent(imageDataUrl),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: msg,
+            images: imageDataUrls,
+          }),
         });
         const data = (await res.json()) as ApiResponse;
         const newQRs = data.quick_replies?.slice(0, 14) ?? [];
@@ -162,12 +163,12 @@ export function useAiSupport() {
         });
       } finally {
         setIsLoading(false);
-        if (imageDataUrl) {
-          setImageDataUrl('');
+        if (imageDataUrls.length > 0) {
+          setImageDataUrls([]);
         }
       }
     },
-    [imageDataUrl, isLoading, quickReplies],
+    [imageDataUrls, isLoading, quickReplies],
   );
 
   return {
@@ -179,8 +180,8 @@ export function useAiSupport() {
     quickReplies,
     inputValue,
     setInputValue,
-    imageDataUrl,
-    setImageDataUrl,
+    imageDataUrls,
+    setImageDataUrls,
     send,
     isLoading,
   };

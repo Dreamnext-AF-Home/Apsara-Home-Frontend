@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react"
 import { MemberStatus, MemberTier } from "@/types/members/types"
 import AddMemberModal from "./AddMemberModal"
 import { MembersResponse, MembersStatsResponse, useGetMembersQuery, useGetMembersStatsQuery, useLazyGetMembersQuery } from "@/store/api/membersApi"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 interface MembersPageMainProps {
     initialData?: MembersResponse | null
@@ -25,6 +25,8 @@ const csvEscape = (value: unknown) => {
 
 const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPageMainProps) => {
     const searchParams = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
     const [search, setSearch] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [status, setStatus] = useState<'all' | MemberStatus>('all')
@@ -38,6 +40,13 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
     const [stableStats, setStableStats] = useState<MembersStatsResponse | null>(initialStats)
     const perPage = 7
     const urlSearch = (searchParams.get('q') ?? '').trim()
+
+    useEffect(() => {
+        const modal = (searchParams.get('modal') ?? '').toLowerCase()
+        if (modal === 'add-member') {
+            setShowModal(true)
+        }
+    }, [searchParams])
 
     useEffect(() => {
         setSearch(urlSearch)
@@ -324,7 +333,12 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
 
             <AddMemberModal 
                 isOpen={showModal}
-                onClose={() => setShowModal(false)}
+                onClose={() => {
+                    setShowModal(false)
+                    if ((searchParams.get('modal') ?? '').toLowerCase() === 'add-member') {
+                        router.replace(pathname)
+                    }
+                }}
                 onSubmit={(data) => {
                     console.log('New member data: ', data)
                 }}

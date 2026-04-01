@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useSession } from 'next-auth/react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useGetAdminMeQuery } from '@/store/api/authApi'
 import { Product, useGetProductsQuery, useGetPublicProductsQuery, useDeleteProductMutation, ProductsResponse } from '@/store/api/productsApi'
 import { useGetPublicProductBrandsQuery } from '@/store/api/productBrandsApi'
@@ -71,6 +71,7 @@ function StatCard({
 export default function ProductsPageMain({ initialData = null, initialBrandType }: ProductsPageMainProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { data: session } = useSession()
   const supplierName = String((session?.user as { supplierName?: string | null; name?: string | null } | undefined)?.supplierName
     ?? (session?.user as { name?: string | null } | undefined)?.name
@@ -105,6 +106,13 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   const defaultPerPage = 25
   const searchPerPage = 500
   const perPage = debouncedSearch ? searchPerPage : defaultPerPage
+
+  useEffect(() => {
+    const modal = (searchParams.get('modal') ?? '').toLowerCase()
+    if (modal === 'add-product') {
+      setShowAddModal(true)
+    }
+  }, [searchParams])
 
   const { data: supplierBrandsData } = useGetPublicProductBrandsQuery(undefined, { skip: !isSupplierPortal })
   const { data: supplierListData } = useGetSuppliersQuery(undefined, { skip: isSupplierPortal })
@@ -640,7 +648,16 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
         </div>
       )}
 
-      <AddProductModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSaved={handleProductsSaved}/>
+      <AddProductModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false)
+          if ((searchParams.get('modal') ?? '').toLowerCase() === 'add-product') {
+            router.replace(pathname)
+          }
+        }}
+        onSaved={handleProductsSaved}
+      />
       <ProductActivityLogsModal isOpen={showActivityLogs} onClose={() => setShowActivityLogs(false)} />
       <EditProductModal product={editProduct} onClose={() => setEditProduct(null)} onSaved={handleProductsSaved}/>
       <BulkEditProductsModal

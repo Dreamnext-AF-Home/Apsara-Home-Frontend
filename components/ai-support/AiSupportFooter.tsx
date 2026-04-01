@@ -5,51 +5,88 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
-  onImageChange: (dataUrl: string) => void;
+  images: string[];
+  onImageChange: (dataUrls: string[]) => void;
   hasImage: boolean;
+  maxImages?: number;
   disabled?: boolean;
 }
 
-export function AiSupportFooter({ value, onChange, onSend, onImageChange, hasImage, disabled }: Props) {
+export function AiSupportFooter({
+  value,
+  onChange,
+  onSend,
+  images,
+  onImageChange,
+  hasImage,
+  maxImages = 4,
+  disabled,
+}: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [previewName, setPreviewName] = useState<string>('');
+  const [previews, setPreviews] = useState<Array<{ url: string; name: string; dataUrl: string }>>([]);
+  const imagesRef = useRef<string[]>(images);
+
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      previews.forEach((preview) => {
+        URL.revokeObjectURL(preview.url);
+      });
     };
-  }, [previewUrl]);
+  }, [previews]);
 
   const handlePickImage = () => {
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setPreviewUrl(URL.createObjectURL(file));
-    setPreviewName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      onImageChange(result);
-    };
-    reader.readAsDataURL(file);
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+
+    const remainingSlots = Math.max(0, maxImages - previews.length);
+    const selected = files.slice(0, remainingSlots);
+    if (selected.length === 0) return;
+
+    selected.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      setPreviews((prev) => [...prev, { url, name: file.name, dataUrl: '' }]);
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) return;
+
+        setPreviews((prev) =>
+          prev.map((item) => (item.url === url ? { ...item, dataUrl } : item)),
+        );
+
+        const next = [...imagesRef.current, dataUrl].slice(0, maxImages);
+        imagesRef.current = next;
+        onImageChange(next);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
-  const clearPreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+  const clearPreview = (index?: number) => {
+    if (typeof index === 'number') {
+      setPreviews((prev) => {
+        const target = prev[index];
+        if (target?.url) {
+          URL.revokeObjectURL(target.url);
+        }
+        const next = prev.filter((_, i) => i !== index);
+        onImageChange(next.map((item) => item.dataUrl));
+        return next;
+      });
+      return;
     }
-    setPreviewUrl('');
-    setPreviewName('');
-    onImageChange('');
+    previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    setPreviews([]);
+    onImageChange([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -68,6 +105,7 @@ export function AiSupportFooter({ value, onChange, onSend, onImageChange, hasIma
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleFileChange}
       />
@@ -102,24 +140,30 @@ export function AiSupportFooter({ value, onChange, onSend, onImageChange, hasIma
       >
         <SendHorizonal size={16} strokeWidth={2.2} />
       </button>
-      {previewUrl && (
-        <div className="absolute bottom-[64px] left-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-lg">
-          <img
-            src={previewUrl}
-            alt={previewName || 'Selected upload'}
-            className="h-10 w-10 rounded-lg object-cover"
-          />
-          <div className="max-w-[160px] truncate text-[12px] text-slate-600">
-            {previewName || 'Selected image'}
+      {previews.length > 0 && (
+        <div className="absolute bottom-[64px] left-3 max-w-[300px] rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-lg">
+          <div className="flex flex-wrap gap-2">
+            {previews.map((preview, idx) => (
+              <div key={`${preview.url}-${idx}`} className="relative">
+                <img
+                  src={preview.url}
+                  alt={preview.name || 'Selected upload'}
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => clearPreview(idx)}
+                  className="absolute -top-2 -right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-600 shadow hover:bg-slate-100"
+                  aria-label="Remove image"
+                >
+                  <X size={10} strokeWidth={2.2} />
+                </button>
+              </div>
+            ))}
           </div>
-          <button
-            type="button"
-            onClick={clearPreview}
-            className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Remove image"
-          >
-            <X size={12} strokeWidth={2.2} />
-          </button>
+          <div className="mt-2 text-[11px] text-slate-500">
+            {previews.length} image{previews.length > 1 ? 's' : ''} attached
+          </div>
         </div>
       )}
     </div>

@@ -5,23 +5,36 @@ import { authOptions } from "@/libs/auth";
 const normalizeBase = (value?: string | null) =>
   String(value ?? "").replace(/\/+$/, "");
 
-const parseMessage = async (request: Request): Promise<string> => {
+const parsePayload = async (
+  request: Request,
+): Promise<{ message: string; images: string[] }> => {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/x-www-form-urlencoded")) {
     const form = await request.formData();
-    return String(form.get("message") ?? "");
+    const message = String(form.get("message") ?? "");
+    const images = form.getAll("images[]").map((value) => String(value));
+    const legacyImage = String(form.get("image") ?? "").trim();
+    if (legacyImage) images.push(legacyImage);
+    return { message, images };
   }
   if (contentType.includes("application/json")) {
     const json = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    return String(json.message ?? "");
+    const message = String(json.message ?? "");
+    const images =
+      Array.isArray(json.images) ? json.images.map((value) => String(value)) : [];
+    return { message, images };
   }
   const text = await request.text().catch(() => "");
-  if (!text) return "";
+  if (!text) return { message: "", images: [] };
   if (text.includes("=")) {
     const params = new URLSearchParams(text);
-    return params.get("message") ?? "";
+    const message = params.get("message") ?? "";
+    const images = params.getAll("images[]");
+    const legacyImage = params.get("image") ?? "";
+    if (legacyImage) images.push(legacyImage);
+    return { message, images };
   }
-  return text;
+  return { message: text, images: [] };
 };
 
 export async function POST(request: Request) {
@@ -39,17 +52,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const message = (await parseMessage(request)).trim();
-  const body = `message=${encodeURIComponent(message)}`;
+  const { message, images } = await parsePayload(request);
 
   try {
     const res = await fetch(`${apiBase}/api/ai-support`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Content-Type": "application/json",
         "X-AF-IS-MEMBER": isMember ? "1" : "0",
       },
-      body,
+      body: JSON.stringify({
+        message: String(message ?? "").trim(),
+        images: Array.isArray(images) ? images : [],
+      }),
     });
 
     const contentType = res.headers.get("content-type") ?? "application/json";
