@@ -15,10 +15,13 @@ interface PvWalletTabProps {
     currentPv: number;
     pendingPv: number;
     lifetimePv: number;
+    yearlyPurchasePv?: number;
+    pendingReferralEarnings?: number;
     personalPurchasePv?: number;
     groupPv?: number;
     currentMonthGroupPv?: number;
     currentCv?: number;
+    goalProgressPv?: number;
     goalPv?: number;
     history: PvHistoryItem[];
     totalReferrals?: number;
@@ -44,17 +47,21 @@ const PvWalletTab = ({
     currentPv,
     pendingPv,
     lifetimePv,
+    yearlyPurchasePv = 0,
+    pendingReferralEarnings = 0,
     personalPurchasePv = 0,
     groupPv = 0,
     currentMonthGroupPv = 0,
     currentCv = 0,
+    goalProgressPv,
     goalPv = 50000,
     history,
     totalReferrals = 0,
     verifiedReferrals = 0,
     activeReferrals = 0,
 }: PvWalletTabProps) => {
-  const progress = Math.min((currentPv / goalPv) * 100, 100)
+  const goalCurrent = typeof goalProgressPv === 'number' ? goalProgressPv : currentPv
+  const progress = Math.min((goalCurrent / goalPv) * 100, 100)
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
@@ -62,13 +69,13 @@ const PvWalletTab = ({
             label="Affiliate Retail Profit"
             value={currentPv}
             accent="blue"
-            helper="Profit earned from your retail affiliate sales"
+            helper="Available direct referral earnings from delivered referred purchases"
         />
         <PvStatCard 
             label="Yearly Purchases"
-            value={pendingPv}
+            value={yearlyPurchasePv}
             accent="amber"
-            helper="Your Purchase Accumulated this Year"
+            helper="Your credited PV purchases accumulated this year"
         />
         <PvStatCard 
             label="Affiliate Performance Bonus"
@@ -105,6 +112,21 @@ const PvWalletTab = ({
         />
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <PvStatCard
+          label="Pending Referral Earnings"
+          value={pendingReferralEarnings}
+          accent="amber"
+          helper="Paid referred purchases waiting for delivery release"
+        />
+        <PvStatCard
+          label="Pending PV"
+          value={pendingPv}
+          accent="blue"
+          helper="Paid purchases waiting for admin approval posting"
+        />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
@@ -113,10 +135,10 @@ const PvWalletTab = ({
                         Performance Value Goal
                     </p>
                     <h3 className="mt-2 text-2xl font-semibold text-slate-900">
-                        {currentPv.toLocaleString()} / {goalPv.toLocaleString()} PV
+                        {goalCurrent.toLocaleString()} / {goalPv.toLocaleString()} PV
                     </h3>
                     <p className="mt-2 text-sm text-slate-500">
-                        Track your progress toward your next target.
+                        Track your direct referral PV progress toward your next target.
                     </p>
                 </div>
 

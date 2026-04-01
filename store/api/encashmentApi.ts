@@ -261,6 +261,15 @@ export interface WalletOverviewResponse {
     current_cv: number;
     pending_pv: number;
     lifetime_pv: number;
+    affiliate_retail_profit?: number;
+    pending_referral_earnings?: number;
+    yearly_purchase_pv?: number;
+    affiliate_performance_bonus?: number;
+    global_purchase_bonus?: number;
+    group_purchase_bonus?: number;
+    monthly_purchase_points?: number;
+    total_bonus?: number;
+    direct_referral_total_pv?: number;
     cash_credits: number;
     cash_debits: number;
     pv_credits: number;

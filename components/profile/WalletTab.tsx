@@ -155,13 +155,16 @@ export default function WalletTab({ isVerified = false }: WalletTabProps) {
               ) : (
                 <div className="mt-5">
                   <PvWalletTab
-                    currentPv={Number(summary?.current_pv ?? 0)}
+                    currentPv={Number(summary?.affiliate_retail_profit ?? summary?.current_pv ?? 0)}
                     pendingPv={Number(summary?.pending_pv ?? 0)}
-                    lifetimePv={Number(summary?.lifetime_pv ?? 0)}
-                    personalPurchasePv={Number(summary?.personal_purchase_pv ?? 0)}
-                    groupPv={Number(summary?.group_pv ?? 0)}
-                    currentMonthGroupPv={Number(summary?.current_month_group_pv ?? 0)}
-                    currentCv={Number(summary?.current_cv ?? 0)}
+                    lifetimePv={Number(summary?.affiliate_performance_bonus ?? summary?.lifetime_pv ?? 0)}
+                    personalPurchasePv={Number(summary?.global_purchase_bonus ?? summary?.personal_purchase_pv ?? 0)}
+                    groupPv={Number(summary?.group_purchase_bonus ?? summary?.group_pv ?? 0)}
+                    currentMonthGroupPv={Number(summary?.monthly_purchase_points ?? summary?.current_month_group_pv ?? 0)}
+                    currentCv={Number(summary?.total_bonus ?? summary?.current_cv ?? 0)}
+                    yearlyPurchasePv={Number(summary?.yearly_purchase_pv ?? 0)}
+                    pendingReferralEarnings={Number(summary?.pending_referral_earnings ?? 0)}
+                    goalProgressPv={Number(summary?.direct_referral_total_pv ?? 0)}
                     goalPv={50000}
                     history={pvHistory}
                     totalReferrals={Number(summary?.referrals?.total ?? 0)}
