@@ -1,6 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "@heroui/styles";
 @plugin "@tailwindcss/typography";
+@source "../node_modules/@heroui/react/dist/**/*.{js,ts,jsx,tsx}";
+@source "../node_modules/@heroui/styles/dist/**/*.{js,ts,jsx,tsx}";
 
 :root {
   --af-cream: #faf8f5;

@@ -68,9 +68,9 @@ export default function LoginPageClient() {
           initial={{ opacity: 0, y: 32, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1]}}
-          className={`w-full transition-all duration-300 ${mode === 'signup' ? 'max-w-xl' : 'max-w-md'}`}
+          className={`w-full transition-all duration-300 ${mode === 'signup' ? 'max-w-4xl' : 'max-w-md'}`}
         >
-          <div className="bg-slate-800/85 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+          <div className={`bg-slate-800/85 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl ${mode === 'signup' ? 'p-9 sm:p-10' : 'p-8'}`}>
             {mode !== 'force-password-change' && (
               <AuthTabs mode={mode === 'signup' ? 'signup' : 'login'} setMode={handleTabChange} />
             )}

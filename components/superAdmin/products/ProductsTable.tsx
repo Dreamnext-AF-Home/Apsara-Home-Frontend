@@ -1,10 +1,12 @@
 'use client'
 
+import type { Selection, SortDescriptor } from 'react-aria-components'
+
+import { Button, Checkbox, Chip, Pagination, Table, cn } from '@heroui/react'
+import { Eye, Pencil, Trash2, TriangleAlert } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
-import { useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Product } from '@/store/api/productsApi'
-import AdminPagination from '@/components/superAdmin/AdminPagination'
 
 interface ProductsTableProps {
   rows: Product[]
@@ -22,15 +24,21 @@ interface ProductsTableProps {
   onToggleSelectAll: () => void
 }
 
+type SortableProductColumn =
+  | 'name'
+  | 'sku'
+  | 'supplier'
+  | 'uploader'
+  | 'priceSrp'
+  | 'priceDp'
+  | 'priceMember'
+  | 'stock'
+  | 'status'
+
 const isActiveStatus = (status: number) => status === 1 || status === 2
 
-const statusBadge = (status: number) =>
-  isActiveStatus(status)
-    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-    : 'bg-slate-100 text-slate-500 border border-slate-200'
-
-const formatPrice = (v: number) =>
-  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(v)
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(value)
 
 const NEW_BADGE_DAYS = 7
 
@@ -129,273 +137,488 @@ const isNewProduct = (product: Product) => {
   return diffDays >= 0 && diffDays < NEW_BADGE_DAYS
 }
 
-/* ── Stock badge ── */
-function StockBadge({ qty }: { qty: number }) {
-  if (qty === 0) return (
-    <span className="font-semibold text-red-500">{qty.toLocaleString()}</span>
-  )
-  if (qty <= 5) return (
-    <span className="font-semibold text-orange-500">{qty.toLocaleString()}
-      <span className="ml-1 text-[10px] font-medium text-orange-400">low</span>
+const getSortableValue = (product: Product, column: SortableProductColumn) => {
+  switch (column) {
+    case 'name':
+      return (product.name ?? '').toLowerCase()
+    case 'sku':
+      return (product.sku ?? '').toLowerCase()
+    case 'supplier':
+      return (product.supplierName?.trim() || product.brand?.trim() || '').toLowerCase()
+    case 'uploader':
+      return (product.uploaderName?.trim() || product.uploaderEmail?.trim() || '').toLowerCase()
+    case 'priceSrp':
+      return Number(product.priceSrp ?? 0)
+    case 'priceDp':
+      return Number(product.priceDp ?? 0)
+    case 'priceMember':
+      return Number(product.priceMember ?? 0)
+    case 'stock':
+      return getEffectiveStockQty(product)
+    case 'status':
+      return isActiveStatus(product.status) ? 1 : 0
+    default:
+      return ''
+  }
+}
+
+const compareValues = (first: string | number, second: string | number) => {
+  if (typeof first === 'number' && typeof second === 'number') {
+    return first - second
+  }
+
+  return String(first).localeCompare(String(second), undefined, { numeric: true, sensitivity: 'base' })
+}
+
+const statusColorMap: Record<'Active' | 'Inactive', 'success' | 'default'> = {
+  Active: 'success',
+  Inactive: 'default',
+}
+
+const getPaginationPages = (currentPage: number, totalPages: number) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const pages = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1])
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((first, second) => first - second)
+}
+
+function SortableColumnHeader({
+  children,
+  sortDirection,
+}: {
+  children: React.ReactNode
+  sortDirection?: 'ascending' | 'descending'
+}) {
+  return (
+    <span className="flex items-center justify-between gap-2">
+      <span>{children}</span>
+      {!!sortDirection && (
+        <svg
+          className={cn(
+            'h-3 w-3 shrink-0 transform text-slate-400 transition-transform duration-100 ease-out',
+            sortDirection === 'descending' ? 'rotate-180' : '',
+          )}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.25} d="m6 15 6-6 6 6" />
+        </svg>
+      )}
     </span>
   )
+}
+
+function StockCell({ qty }: { qty: number }) {
+  if (qty === 0) {
+    return <span className="font-semibold text-red-500">{qty.toLocaleString()}</span>
+  }
+
+  if (qty <= 5) {
+    return (
+      <span className="inline-flex items-center gap-1 font-semibold text-orange-500">
+        <TriangleAlert className="h-3.5 w-3.5" />
+        {qty.toLocaleString()}
+      </span>
+    )
+  }
+
   return <span className="text-slate-600">{qty.toLocaleString()}</span>
 }
 
+function EmptyProductsState() {
+  return (
+    <div className="flex flex-col items-center gap-2 py-16 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+        <svg className="h-7 w-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold text-slate-500">No products found</p>
+      <p className="text-xs text-slate-400">Try adjusting your search or filter.</p>
+    </div>
+  )
+}
+
 export default function ProductsTable({
-  rows, currentPage, totalPages, totalRecords, from, to,
-  onPageChange, onEdit, onDelete, isDeletingIds = [], selectedIds, onToggleSelect, onToggleSelectAll,
+  rows,
+  currentPage,
+  totalPages,
+  totalRecords,
+  from,
+  to,
+  onPageChange,
+  onEdit,
+  onDelete,
+  isDeletingIds = [],
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: ProductsTableProps) {
   const [confirmId, setConfirmId] = useState<number | null>(null)
-  const allSelected = rows.length > 0 && rows.every(row => selectedIds.includes(row.id))
-  const isDeleting  = (id: number) => isDeletingIds.includes(id)
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
+    column: 'name',
+    direction: 'ascending',
+  })
+
+  const isDeleting = (id: number) => isDeletingIds.includes(id)
+  const paginationPages = useMemo(() => getPaginationPages(currentPage, totalPages), [currentPage, totalPages])
+
+  const sortedRows = useMemo(() => {
+    const column = (sortDescriptor.column as SortableProductColumn | undefined) ?? 'name'
+    const direction = sortDescriptor.direction === 'descending' ? -1 : 1
+
+    return [...rows].sort((first, second) => {
+      const left = getSortableValue(first, column)
+      const right = getSortableValue(second, column)
+      const comparison = compareValues(left, right)
+
+      if (comparison !== 0) return comparison * direction
+      return first.id - second.id
+    })
+  }, [rows, sortDescriptor])
 
   const handleDeleteClick = (id: number) => {
-    if (confirmId === id) { onDelete(id); setConfirmId(null) }
-    else setConfirmId(id)
+    if (confirmId === id) {
+      onDelete(id)
+      setConfirmId(null)
+      return
+    }
+
+    setConfirmId(id)
+  }
+
+  const selectedKeys = useMemo(() => {
+    return new Set(rows.filter((row) => selectedIds.includes(row.id)).map((row) => row.id))
+  }, [rows, selectedIds])
+
+  const handleSelectionChange = (keys: Selection) => {
+    if (keys === 'all') {
+      onToggleSelectAll()
+      return
+    }
+
+    const nextIds = new Set(Array.from(keys).map((key) => Number(key)))
+
+    rows.forEach((row) => {
+      const isSelected = selectedIds.includes(row.id)
+      const shouldBeSelected = nextIds.has(row.id)
+
+      if (isSelected !== shouldBeSelected) {
+        onToggleSelect(row.id)
+      }
+    })
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="text-left px-3 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={onToggleSelectAll}
-                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+    <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+      <Table className="w-full">
+        <Table.ScrollContainer>
+          <Table.Content
+            aria-label="Admin products table"
+            className="min-w-[1260px]"
+            selectedKeys={selectedKeys}
+            selectionMode="multiple"
+            sortDescriptor={sortDescriptor}
+            onSelectionChange={handleSelectionChange}
+            onSortChange={setSortDescriptor}
+          >
+            <Table.Header>
+              <Table.Column className="w-12 pr-0">
+                <Checkbox
                   aria-label="Select all products in current page"
-                />
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide w-14">Image</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Product</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">SKU</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Supplier</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Uploader</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">SRP</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Dealer</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Member</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Stock</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Badges</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={13} className="py-20 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
-                      <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                      </svg>
-                    </div>
-                    <p className="text-sm font-semibold text-slate-500">No products found</p>
-                    <p className="text-xs text-slate-400">Try adjusting your search or filter</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              rows.map(p => {
-                const effectiveStockQty = getEffectiveStockQty(p)
-
-                return (
-                <tr
-                  key={p.id}
-                  className="hover:bg-slate-50/60 transition-colors group"
-                  onClick={() => confirmId === p.id && setConfirmId(null)}
+                  slot="selection"
+                  variant="secondary"
+                  className="justify-center"
                 >
-                  {/* Checkbox */}
-                  <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(p.id)}
-                      onChange={() => onToggleSelect(p.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                      aria-label={`Select product ${p.name}`}
-                    />
-                  </td>
+                  <Checkbox.Control>
+                    <Checkbox.Indicator />
+                  </Checkbox.Control>
+                </Checkbox>
+              </Table.Column>
+              <Table.Column className="w-20 text-xs font-semibold uppercase tracking-wide text-slate-400">Image</Table.Column>
+              <Table.Column allowsSorting isRowHeader id="name" className="min-w-[240px] text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Product</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="sku" className="min-w-[140px] text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>SKU</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="supplier" className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Supplier</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="uploader" className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Uploader</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="priceSrp" className="text-end text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>SRP</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="priceDp" className="text-end text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Dealer</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="priceMember" className="text-end text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Member</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column allowsSorting id="stock" className="text-end text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Stock</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column className="min-w-[130px] text-center text-xs font-semibold uppercase tracking-wide text-slate-400">Badges</Table.Column>
+              <Table.Column allowsSorting id="status" className="text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {({ sortDirection }) => <SortableColumnHeader sortDirection={sortDirection}>Status</SortableColumnHeader>}
+              </Table.Column>
+              <Table.Column className="text-end text-xs font-semibold uppercase tracking-wide text-slate-400">Actions</Table.Column>
+            </Table.Header>
 
-                  {/* Image */}
-                  <td className="px-3 py-2.5">
-                    <div className="relative h-11 w-11 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                      {p.image ? (
-                        <Image src={p.image} alt={p.name} fill className="object-cover" unoptimized/>
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                          </svg>
+            <Table.Body>
+              {sortedRows.length === 0 ? (
+                <Table.Row key="empty">
+                  <Table.Cell colSpan={13}>
+                    <EmptyProductsState />
+                  </Table.Cell>
+                </Table.Row>
+              ) : (
+                sortedRows.map((product) => {
+                  const effectiveStockQty = getEffectiveStockQty(product)
+                  const isSelected = selectedIds.includes(product.id)
+                  const variantCount = getVariantCount(product)
+                  const statusLabel = isActiveStatus(product.status) ? 'Active' : 'Inactive'
+
+                  return (
+                    <Table.Row
+                      key={product.id}
+                      id={product.id}
+                      className={cn(
+                        'border-b border-slate-50 transition-colors hover:bg-slate-50/60',
+                        isSelected ? 'bg-teal-50/40' : '',
+                      )}
+                    >
+                      <Table.Cell className="pr-0">
+                        <Checkbox
+                          aria-label={`Select product ${product.name}`}
+                          slot="selection"
+                          variant="secondary"
+                          className="justify-center"
+                        >
+                          <Checkbox.Control>
+                            <Checkbox.Indicator />
+                          </Checkbox.Control>
+                        </Checkbox>
+                      </Table.Cell>
+
+                      <Table.Cell>
+                        <div className="relative h-11 w-11 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                          {product.image ? (
+                            <Image src={product.image} alt={product.name} fill className="object-cover" unoptimized />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <svg className="h-5 w-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </td>
+                      </Table.Cell>
 
-                  {/* Name + meta */}
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-slate-800 line-clamp-1 leading-snug">{p.name || '—'}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-slate-400 font-mono">#{p.id}</span>
-                      {getVariantCount(p) > 0 && (
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md font-medium">
-                          {getVariantCount(p)} variant{getVariantCount(p) !== 1 ? 's' : ''}
+                      <Table.Cell>
+                        <div className="min-w-0">
+                          <p className="line-clamp-1 font-medium leading-snug text-slate-800">{product.name || 'N/A'}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-mono text-slate-400">#{product.id}</span>
+                            {variantCount > 0 && (
+                              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                                {variantCount} variant{variantCount !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Table.Cell>
+
+                      <Table.Cell>
+                        <span className="inline-flex rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-500">
+                          {product.sku || 'N/A'}
                         </span>
+                      </Table.Cell>
+
+                      <Table.Cell>
+                        <div className="min-w-[150px]">
+                          <p className="line-clamp-1 text-sm font-medium text-slate-700">
+                            {product.supplierName?.trim() || product.brand?.trim() || 'No supplier'}
+                          </p>
+                          {product.supplierId ? (
+                            <p className="line-clamp-1 text-[11px] text-slate-400">Supplier #{product.supplierId}</p>
+                          ) : product.brand ? (
+                            <p className="line-clamp-1 text-[11px] text-slate-400">Brand</p>
+                          ) : null}
+                        </div>
+                      </Table.Cell>
+
+                      <Table.Cell>
+                        <div className="min-w-[150px]">
+                          <p className="line-clamp-1 text-sm font-medium text-slate-700">
+                            {product.uploaderName?.trim() || 'Unknown user'}
+                          </p>
+                          {product.uploaderRole ? (
+                            <p className="line-clamp-1 text-[10px] uppercase tracking-[0.12em] text-slate-400">
+                              {product.uploaderRole.replace(/_/g, ' ')}
+                            </p>
+                          ) : product.uploaderEmail ? (
+                            <p className="line-clamp-1 text-[11px] text-slate-400">{product.uploaderEmail}</p>
+                          ) : null}
+                        </div>
+                      </Table.Cell>
+
+                      <Table.Cell className="text-end font-semibold text-slate-700">
+                        {formatPrice(product.priceSrp)}
+                      </Table.Cell>
+                      <Table.Cell className="text-end text-slate-500">
+                        {formatPrice(product.priceDp)}
+                      </Table.Cell>
+                      <Table.Cell className="text-end text-slate-500">
+                        {formatPrice(product.priceMember ?? 0)}
+                      </Table.Cell>
+
+                      <Table.Cell className="text-end">
+                        <StockCell qty={effectiveStockQty} />
+                      </Table.Cell>
+
+                      <Table.Cell>
+                        <div className="flex flex-col items-center gap-1">
+                          {isNewProduct(product) && (
+                            <Chip color="accent" size="sm" variant="soft">
+                              New
+                            </Chip>
+                          )}
+                          {product.musthave && (
+                            <Chip color="warning" size="sm" variant="soft">
+                              Must Have
+                            </Chip>
+                          )}
+                          {product.bestseller && (
+                            <Chip size="sm" variant="soft" className="bg-fuchsia-50 text-fuchsia-700">
+                              Bestseller
+                            </Chip>
+                          )}
+                          {!isNewProduct(product) && !product.musthave && !product.bestseller && (
+                            <span className="text-xs text-slate-300">N/A</span>
+                          )}
+                        </div>
+                      </Table.Cell>
+
+                      <Table.Cell className="text-center">
+                        <Chip color={statusColorMap[statusLabel]} size="sm" variant="soft">
+                          {statusLabel}
+                        </Chip>
+                      </Table.Cell>
+
+                      <Table.Cell>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="tertiary"
+                            aria-label={`Preview ${product.name}`}
+                            onPress={() => window.open(buildProductPath(product), '_blank', 'noopener,noreferrer')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="tertiary"
+                            aria-label={`Edit ${product.name}`}
+                            onPress={() => {
+                              setConfirmId(null)
+                              onEdit(product)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {confirmId === product.id ? (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              isDisabled={isDeleting(product.id)}
+                              aria-label={`Confirm delete ${product.name}`}
+                              onPress={() => handleDeleteClick(product.id)}
+                            >
+                              {isDeleting(product.id) ? 'Deleting...' : 'Confirm'}
+                            </Button>
+                          ) : (
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="danger-soft"
+                              aria-label={`Delete ${product.name}`}
+                              onPress={() => handleDeleteClick(product.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  )
+                })
+              )}
+            </Table.Body>
+
+          </Table.Content>
+        </Table.ScrollContainer>
+
+        {totalPages > 1 && (
+          <Table.Footer>
+            <Pagination size="sm" className="w-full justify-between gap-3 px-4 py-3">
+              <Pagination.Summary>
+                {(from ?? 0).toLocaleString()} to {(to ?? 0).toLocaleString()} of {totalRecords.toLocaleString()} results
+              </Pagination.Summary>
+              <Pagination.Content>
+                <Pagination.Item>
+                  <Pagination.Previous
+                    isDisabled={currentPage === 1}
+                    onPress={() => onPageChange(Math.max(1, currentPage - 1))}
+                  >
+                    <Pagination.PreviousIcon />
+                    Prev
+                  </Pagination.Previous>
+                </Pagination.Item>
+
+                {paginationPages.map((page, index) => {
+                  const previousPage = paginationPages[index - 1]
+                  const shouldShowEllipsis = typeof previousPage === 'number' && page - previousPage > 1
+
+                  return (
+                    <Fragment key={`fragment-${page}`}>
+                      {shouldShowEllipsis && (
+                        <Pagination.Item>
+                          <Pagination.Ellipsis />
+                        </Pagination.Item>
                       )}
-                    </div>
-                  </td>
+                      <Pagination.Item>
+                        <Pagination.Link isActive={page === currentPage} onPress={() => onPageChange(page)}>
+                          {page}
+                        </Pagination.Link>
+                      </Pagination.Item>
+                    </Fragment>
+                  )
+                })}
 
-                  {/* SKU */}
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                      {p.sku || '—'}
-                    </span>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="min-w-[140px]">
-                      <p className="text-sm font-medium text-slate-700 line-clamp-1">
-                        {p.supplierName?.trim() || p.brand?.trim() || 'No supplier'}
-                      </p>
-                      {p.supplierId ? (
-                        <p className="text-[11px] text-slate-400 line-clamp-1">Supplier #{p.supplierId}</p>
-                      ) : p.brand ? (
-                        <p className="text-[11px] text-slate-400 line-clamp-1">Brand</p>
-                      ) : null}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div className="min-w-[140px]">
-                      <p className="text-sm font-medium text-slate-700 line-clamp-1">{p.uploaderName?.trim() || 'Unknown user'}</p>
-                      {p.uploaderRole ? (
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400 line-clamp-1">
-                          {p.uploaderRole.replace(/_/g, ' ')}
-                        </p>
-                      ) : p.uploaderEmail ? (
-                        <p className="text-[11px] text-slate-400 line-clamp-1">{p.uploaderEmail}</p>
-                      ) : null}
-                    </div>
-                  </td>
-
-                  {/* Prices */}
-                  <td className="px-4 py-3 text-right font-semibold text-slate-700 text-sm">{formatPrice(p.priceSrp)}</td>
-                  <td className="px-4 py-3 text-right text-slate-500 text-sm">{formatPrice(p.priceDp)}</td>
-                  <td className="px-4 py-3 text-right text-slate-500 text-sm">{formatPrice(p.priceMember ?? 0)}</td>
-
-                  {/* Stock */}
-                  <td className="px-4 py-3 text-right text-sm">
-                    <StockBadge qty={effectiveStockQty} />
-                  </td>
-
-                  {/* Badges (Must Have / Bestseller) */}
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col items-center gap-1">
-                      {isNewProduct(p) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 text-[10px] border border-sky-200 font-semibold whitespace-nowrap">
-                          <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 2.5 12.317 7.183 17.5 7.936 13.75 11.59 14.635 16.75 10 14.313 5.365 16.75 6.25 11.59 2.5 7.936 7.683 7.183 10 2.5Z"/>
-                          </svg>
-                          New
-                        </span>
-                      )}
-                      {p.musthave && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] border border-amber-200 font-semibold whitespace-nowrap">
-                          <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                          </svg>
-                          Must Have
-                        </span>
-                      )}
-                      {p.bestseller && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[10px] border border-purple-200 font-semibold whitespace-nowrap">
-                          <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                          </svg>
-                          Bestseller
-                        </span>
-                      )}
-                      {!isNewProduct(p) && !p.musthave && !p.bestseller && <span className="text-slate-300 text-xs">—</span>}
-                    </div>
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(p.status)}`}>
-                      {isActiveStatus(p.status) ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Link
-                        href={buildProductPath(p)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50 transition-colors"
-                        title="View product"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 3h6m0 0v6m0-6L10 14"/>
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5h5M5 5v14h14v-5"/>
-                        </svg>
-                      </Link>
-                      <button
-                        onClick={e => { e.stopPropagation(); setConfirmId(null); onEdit(p) }}
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition-colors"
-                        title="Edit"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                      </button>
-
-                      {confirmId === p.id ? (
-                        <button
-                          onClick={e => { e.stopPropagation(); handleDeleteClick(p.id) }}
-                          disabled={isDeleting(p.id)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors disabled:opacity-60"
-                        >
-                          {isDeleting(p.id) ? (
-                            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                            </svg>
-                          ) : 'Confirm'}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={e => { e.stopPropagation(); handleDeleteClick(p.id) }}
-                          className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          title="Delete"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )})
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <AdminPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        from={from}
-        to={to}
-        totalRecords={totalRecords}
-        onPageChange={onPageChange}
-      />
+                <Pagination.Item>
+                  <Pagination.Next
+                    isDisabled={currentPage === totalPages}
+                    onPress={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                  >
+                    Next
+                    <Pagination.NextIcon />
+                  </Pagination.Next>
+                </Pagination.Item>
+              </Pagination.Content>
+            </Pagination>
+          </Table.Footer>
+        )}
+      </Table>
     </div>
   )
 }
