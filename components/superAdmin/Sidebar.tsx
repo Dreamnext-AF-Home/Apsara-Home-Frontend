@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useGetAdminMeQuery, useLogoutMutation } from '@/store/api/authApi'
 import { useGetAdminOrdersQuery } from '@/store/api/adminOrdersApi'
-import { membersApi } from '@/store/api/membersApi'
+import { membersApi, useGetMembersStatsQuery } from '@/store/api/membersApi'
 import { baseApi, clearAccessTokenCache } from '@/store/api/baseApi'
 import { useAppDispatch } from '@/store/hooks'
 import { normalizeAdminPermissions } from '@/libs/adminPermissions'
@@ -249,6 +249,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const { data: adminMe, isLoading: isAdminMeLoading, isFetching: isAdminMeFetching } = useGetAdminMeQuery(adminIdentityKey, { skip: !sessionAccessToken })
   const orderCountQueryOptions = { skip: !sessionAccessToken }
   const { data: allOrdersData } = useGetAdminOrdersQuery({ filter: 'all', page: 1, perPage: 1 }, orderCountQueryOptions)
+  const { data: membersStats } = useGetMembersStatsQuery(undefined, { skip: !sessionAccessToken })
   const resolvedAdminMe = adminMe
   const isRefreshingAdminIdentity = Boolean(sessionAccessToken) && !resolvedAdminMe && (isAdminMeLoading || isAdminMeFetching)
   const displayName = String(resolvedAdminMe?.name ?? session?.user?.name ?? '').trim() || (isRefreshingAdminIdentity ? 'Refreshing admin...' : 'Admin')
@@ -336,6 +337,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   const visibleNavItems = navItems
     .map((item) => {
+      if (item.id === 'members') {
+        return {
+          ...item,
+          badge: membersStats?.total ?? 0,
+        }
+      }
+
       if (item.id === 'orders') {
         return {
           ...item,

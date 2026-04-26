@@ -1,24 +1,43 @@
 'use client'
 
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-
-const orders = [
-  { id: '#ORD-0001', customer: 'Juan dela Cruz', date: 'Jan 10, 2026', amount: '₱ 2,500.00', status: 'Completed', method: 'E-Wallet' },
-  { id: '#ORD-0002', customer: 'Maria Santos', date: 'Jan 10, 2026', amount: '₱ 1,200.00', status: 'Pending', method: 'GC' },
-  { id: '#ORD-0003', customer: 'Pedro Reyes', date: 'Jan 9, 2026', amount: '₱ 4,800.00', status: 'Processing', method: 'E-Wallet' },
-  { id: '#ORD-0004', customer: 'Ana Gomez', date: 'Jan 9, 2026', amount: '₱ 900.00', status: 'Cancelled', method: 'COD' },
-  { id: '#ORD-0005', customer: 'Carlos Tan', date: 'Jan 8, 2026', amount: '₱ 3,150.00', status: 'Completed', method: 'GC' },
-  { id: '#ORD-0006', customer: 'Linda Cruz', date: 'Jan 8, 2026', amount: '₱ 780.00', status: 'Unpaid', method: 'E-Wallet' },
-]
+import { useGetAdminOrdersQuery, type AdminOrder } from '@/store/api/adminOrdersApi'
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
-  Completed:  { bg: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30',     text: 'text-teal-700 dark:text-teal-300',   dot: 'bg-teal-500' },
-  Pending:    { bg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30',  text: 'text-amber-700 dark:text-amber-300',  dot: 'bg-amber-400' },
-  Processing: { bg: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30',     text: 'text-blue-700 dark:text-blue-300',   dot: 'bg-blue-500' },
-  Cancelled:  { bg: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30',         text: 'text-red-600 dark:text-red-300',    dot: 'bg-red-500' },
-  Unpaid:     { bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-400' },
-  Returned:   { bg: 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/30', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500' },
-  default:    { bg: 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700', text: 'text-gray-600 dark:text-gray-300', dot: 'bg-gray-400' },
+  Completed: { bg: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30', text: 'text-teal-700 dark:text-teal-300', dot: 'bg-teal-500' },
+  Pending: { bg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30', text: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-400' },
+  Processing: { bg: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
+  Cancelled: { bg: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30', text: 'text-red-600 dark:text-red-300', dot: 'bg-red-500' },
+  Unpaid: { bg: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-400' },
+  default: { bg: 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700', text: 'text-gray-600 dark:text-gray-300', dot: 'bg-gray-400' },
+}
+
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 2,
+  }).format(value || 0)
+
+const parseOrderDate = (value?: string | null) => {
+  if (!value) return null
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+  const withTimezone = /([zZ]|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}+08:00`
+  const parsed = new Date(withTimezone)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const formatDateOnly = (value?: string | null) => {
+  const date = parseOrderDate(value)
+  if (!date) return 'N/A'
+
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date)
 }
 
 function avatarColor(name: string) {
@@ -33,15 +52,44 @@ function avatarColor(name: string) {
   return colors[name.charCodeAt(0) % colors.length]
 }
 
+const getOrderStatusLabel = (order: AdminOrder) => {
+  const fulfillment = String(order.fulfillment_status ?? '').toLowerCase()
+  const payment = String(order.payment_status ?? '').toLowerCase()
+  const approval = String(order.approval_status ?? '').toLowerCase()
+
+  if (['delivered'].includes(fulfillment)) return 'Completed'
+  if (['cancelled', 'refunded'].includes(fulfillment)) return 'Cancelled'
+  if (['unpaid', 'failed', 'void', 'expired'].includes(payment)) return 'Unpaid'
+  if (approval === 'pending_approval' || ['pending'].includes(fulfillment)) return 'Pending'
+  if (['processing', 'packed', 'shipped', 'out_for_delivery'].includes(fulfillment)) return 'Processing'
+  if (payment === 'paid' || payment === 'succeeded' || payment === 'success') return 'Processing'
+  return 'Pending'
+}
+
+const formatOrderId = (value?: string | null, fallbackId?: number) => {
+  const raw = String(value ?? '').trim()
+  if (raw) {
+    return raw.startsWith('#') ? raw : `#${raw}`
+  }
+  return fallbackId ? `#ORD-${String(fallbackId).padStart(4, '0')}` : '#N/A'
+}
+
 const RecentOrders = () => {
+  const { data, isLoading, isFetching, isError } = useGetAdminOrdersQuery({ page: 1, perPage: 6, filter: 'all' })
+  const orders = data?.orders ?? []
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
         <div>
           <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">Recent Orders</h3>
-          <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Latest transactions</p>
+          <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+            {isLoading ? 'Loading latest transactions...' : `Latest ${orders.length} transactions from the database`}
+          </p>
         </div>
-        <button className="text-xs font-semibold text-teal-500 hover:underline dark:text-teal-300">View all</button>
+        <Link href="/admin/orders" className="text-xs font-semibold text-teal-500 hover:underline dark:text-teal-300">
+          View all
+        </Link>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -56,40 +104,74 @@ const RecentOrders = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {orders.map((order, index) => {
-              const cfg = statusConfig[order.status] ?? statusConfig['default']
+            {isLoading &&
+              Array.from({ length: 6 }).map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  <td className="px-6 py-4"><div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                  <td className="px-6 py-4"><div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                  <td className="hidden px-6 py-4 md:table-cell"><div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                  <td className="hidden px-6 py-4 sm:table-cell"><div className="h-4 w-16 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                  <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" /></td>
+                  <td className="px-6 py-4"><div className="h-7 w-24 rounded-full bg-gray-200 dark:bg-gray-700" /></td>
+                </tr>
+              ))}
+
+            {!isLoading && isError && (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-sm text-red-500 dark:text-red-300">
+                  Unable to load recent orders from the database.
+                </td>
+              </tr>
+            )}
+
+            {!isLoading && !isError && orders.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  No orders were found in the database yet.
+                </td>
+              </tr>
+            )}
+
+            {!isLoading && !isError && orders.map((order, index) => {
+              const customerName = order.customer_name?.trim() || 'Unknown Customer'
+              const status = getOrderStatusLabel(order)
+              const cfg = statusConfig[status] ?? statusConfig.default
+              const orderDate = order.paid_at || order.created_at
+
               return (
                 <motion.tr
                   key={order.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.05 }}
-                  className="cursor-pointer transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
+                  className="transition-colors hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
                 >
                   <td className="px-6 py-3.5">
-                    <span className="font-mono text-xs font-semibold text-teal-600 dark:text-teal-300">{order.id}</span>
+                    <span className="font-mono text-xs font-semibold text-teal-600 dark:text-teal-300">
+                      {formatOrderId(order.checkout_id, order.id)}
+                    </span>
                   </td>
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-2.5">
-                      <div className={`h-7 w-7 rounded-full bg-linear-to-br ${avatarColor(order.customer)} flex items-center justify-center shrink-0`}>
-                        <span className="text-white text-[10px] font-bold">{order.customer[0]}</span>
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${avatarColor(customerName)}`}>
+                        <span className="text-[10px] font-bold text-white">{customerName[0]?.toUpperCase() ?? '?'}</span>
                       </div>
-                      <span className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-200">{order.customer}</span>
+                      <span className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-200">{customerName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-3.5 hidden md:table-cell">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{order.date}</span>
+                  <td className="hidden px-6 py-3.5 md:table-cell">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatDateOnly(orderDate)}</span>
                   </td>
-                  <td className="px-6 py-3.5 hidden sm:table-cell">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{order.method}</span>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-100">{order.amount}</span>
+                  <td className="hidden px-6 py-3.5 sm:table-cell">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{order.payment_method || 'N/A'}</span>
                   </td>
                   <td className="px-6 py-3.5">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} shrink-0`} />
-                      {order.status}
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-100">{formatMoney(Number(order.amount ?? 0))}</span>
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
+                      {status}
                     </span>
                   </td>
                 </motion.tr>
@@ -98,6 +180,11 @@ const RecentOrders = () => {
           </tbody>
         </table>
       </div>
+      {isFetching && !isLoading && (
+        <div className="border-t border-gray-200 px-6 py-2 text-right text-[11px] text-gray-400 dark:border-gray-700 dark:text-gray-500">
+          Refreshing live order data...
+        </div>
+      )}
     </div>
   )
 }

@@ -67,6 +67,21 @@ export interface SupplierPortalUser {
   role_label?: string
 }
 
+export interface SupplierStatsSummary {
+  total_suppliers: number
+  active_suppliers: number
+  supplier_users: number
+  suppliers_with_products: number
+  suppliers_with_sales: number
+  new_suppliers_this_month: number
+  supplier_paid_orders: number
+  supplier_sales_amount: number
+}
+
+export interface SupplierStatsResponse {
+  summary: SupplierStatsSummary
+}
+
 export interface UpdateSupplierUserPayload {
   id: number
   fullname: string
@@ -83,6 +98,13 @@ export const suppliersApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
       providesTags: ['Suppliers'],
+    }),
+    getSupplierStats: builder.query<SupplierStatsResponse, void>({
+      query: () => ({
+        url: '/api/admin/suppliers/stats',
+        method: 'GET',
+      }),
+      providesTags: ['Suppliers', 'Orders'],
     }),
     createSupplier: builder.mutation<{ message: string; supplier: SupplierItem }, CreateSupplierPayload>({
       query: (body) => ({
@@ -165,6 +187,7 @@ export const suppliersApi = baseApi.injectEndpoints({
 
 export const {
   useGetSuppliersQuery,
+  useGetSupplierStatsQuery,
   useCreateSupplierMutation,
   useUpdateSupplierMutation,
   useDeleteSupplierMutation,

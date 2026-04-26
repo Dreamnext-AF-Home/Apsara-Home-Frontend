@@ -12,6 +12,7 @@ import AddMemberModal from "./AddMemberModal"
 import {
     MembersMeta,
     MembersResponse,
+    MembersStatsPeriod,
     MembersStatsResponse,
     useGetMembersQuery,
     useGetMembersStatsQuery,
@@ -92,9 +93,9 @@ const modalDescriptions: Record<MembersStatCardKey, { intro: string; emptyTitle:
         emptyDescription: 'There are no blocked-member records to show right now.',
     },
     new_members: {
-        intro: 'Live recent registrations from the last 7 days, loaded directly from the database.',
+        intro: 'Live recent registrations loaded directly from the database for the selected period.',
         emptyTitle: 'No recent members found.',
-        emptyDescription: 'There are no recent registration records to show right now.',
+        emptyDescription: 'There are no registration records to show for the selected period.',
     },
     total_spent: {
         intro: 'These are the actual members contributing to Total Spent, ranked from the database.',
@@ -124,6 +125,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
     const [registration, setRegistration] = useState<'all' | 'new' | 'referred' | 'direct'>('all')
     const [profilePhoto, setProfilePhoto] = useState<'all' | 'with_photo' | 'no_photo'>('all')
     const [sort, setSort] = useState<'default' | 'newest_registered' | 'oldest_registered' | 'earnings_low_high' | 'earnings_high_low' | 'referrals_high_low'>('default')
+    const [statsPeriod, setStatsPeriod] = useState<MembersStatsPeriod>('7d')
     const [showModal, setShowModal] = useState(false)
     const [selectedStatCard, setSelectedStatCard] = useState<MembersStatCardKey | null>(null)
     const [statModalMembers, setStatModalMembers] = useState<ModalMember[]>([])
@@ -183,9 +185,10 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
         profilePhoto === 'all'
 
     const shouldSkipInitialMembersRefetch = Boolean(initialData && isUsingDefaultView)
+    const shouldSkipInitialStatsRefetch = Boolean(initialStats && statsPeriod === '7d')
 
-    const { data: statsData } = useGetMembersStatsQuery(undefined, {
-        skip: Boolean(initialStats),
+    const { data: statsData } = useGetMembersStatsQuery({ period: statsPeriod }, {
+        skip: shouldSkipInitialStatsRefetch,
     })
     const [triggerExportMembers] = useLazyGetMembersQuery()
     const [triggerStatDetails] = useLazyGetMemberStatDetailsQuery()
@@ -259,6 +262,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
                 page: nextPage,
                 perPage: statPageSize,
                 search: normalizedSearch,
+                period: stat === 'new_members' ? statsPeriod : undefined,
             }).unwrap()
 
             if (requestId !== statModalRequestIdRef.current) {
@@ -286,7 +290,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
                 setIsStatModalLoadingMore(false)
             }
         }
-    }, [triggerStatDetails])
+    }, [statsPeriod, triggerStatDetails])
 
     useEffect(() => {
         if (!selectedStatCard) {
@@ -499,6 +503,8 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
 
             <MembersStats
                 stats={effectiveStats ?? undefined}
+                selectedPeriod={statsPeriod}
+                onPeriodChange={setStatsPeriod}
                 onCardClick={setSelectedStatCard}
             />
 

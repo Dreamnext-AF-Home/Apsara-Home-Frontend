@@ -22,10 +22,14 @@ export interface MembersStatsResponse {
   pending: number
   blocked: number
   newMembers: number
+  newMembersPeriod: MembersStatsPeriod
+  newMembersLabel: string
   totalSpent: number
   totalEarnings: number
   totalReferrals: number
 }
+
+export type MembersStatsPeriod = '7d' | '30d' | 'last_month' | '3m'
 
 export type MemberStatKey =
   | 'total_members'
@@ -196,19 +200,26 @@ export const membersApi = baseApi.injectEndpoints({
       keepUnusedDataFor: 300,
       providesTags: ['Members'],
     }),
-    getMembersStats: builder.query<MembersStatsResponse, void>({
-      query: () => '/api/admin/members/stats',
+    getMembersStats: builder.query<MembersStatsResponse, { period?: MembersStatsPeriod } | void>({
+      query: (params) => ({
+        url: '/api/admin/members/stats',
+        method: 'GET',
+        params: {
+          period: params?.period ?? '7d',
+        },
+      }),
       keepUnusedDataFor: 300,
       providesTags: ['Members'],
     }),
-    getMemberStatDetails: builder.query<MemberStatDetailsResponse, { stat: MemberStatKey; page?: number; perPage?: number; search?: string }>({
-      query: ({ stat, page = 1, perPage = 25, search }) => ({
+    getMemberStatDetails: builder.query<MemberStatDetailsResponse, { stat: MemberStatKey; page?: number; perPage?: number; search?: string; period?: MembersStatsPeriod }>({
+      query: ({ stat, page = 1, perPage = 25, search, period = '7d' }) => ({
         url: `/api/admin/members/stats/${stat}`,
         method: 'GET',
         params: {
           page,
           per_page: perPage,
           q: search?.trim() ? search.trim() : undefined,
+          period,
         },
       }),
       keepUnusedDataFor: 120,
