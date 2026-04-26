@@ -1,11 +1,13 @@
 'use client'
 
 import { Card } from '@heroui/react/card'
-import { MembersStatsResponse } from '@/store/api/membersApi'
+import { MembersStatsPeriod, MembersStatsResponse } from '@/store/api/membersApi'
 import { motion } from 'framer-motion'
 
 interface MembersStatsProps {
   stats?: MembersStatsResponse
+  selectedPeriod: MembersStatsPeriod
+  onPeriodChange?: (period: MembersStatsPeriod) => void
   onCardClick?: (key: MembersStatCardKey) => void
 }
 
@@ -19,7 +21,14 @@ export type MembersStatCardKey =
   | 'total_earnings'
   | 'total_referrals'
 
-export default function MembersStats({ stats, onCardClick }: MembersStatsProps) {
+const periodOptions: Array<{ value: MembersStatsPeriod; label: string }> = [
+  { value: '7d', label: '7 Days' },
+  { value: '30d', label: '30 Days' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: '3m', label: '3 Months' },
+]
+
+export default function MembersStats({ stats, selectedPeriod, onPeriodChange, onCardClick }: MembersStatsProps) {
   const cards = [
     {
       key: 'total_members' as const,
@@ -71,7 +80,7 @@ export default function MembersStats({ stats, onCardClick }: MembersStatsProps) 
     },
     {
       key: 'new_members' as const,
-      label: 'New This 7 Days',
+      label: stats?.newMembersLabel ?? 'New This 7 Days',
       value: stats ? stats.newMembers.toLocaleString() : '-',
       bg: 'bg-blue-50 dark:bg-blue-500/20', text: 'text-blue-600 dark:text-blue-200', border: 'border-blue-100 dark:border-blue-500/30', val: 'text-blue-700 dark:text-blue-200',
       sub: 'Click to trace new registrations',
@@ -120,7 +129,28 @@ export default function MembersStats({ stats, onCardClick }: MembersStatsProps) 
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {periodOptions.map((option) => {
+          const active = option.value === selectedPeriod
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onPeriodChange?.(option.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                active
+                  ? 'border-blue-500 bg-blue-500 text-white shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:text-blue-600'
+              }`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
       {cards.map((card, index) => {
         const inner = (
           <div className="flex items-start justify-between gap-2">
@@ -157,6 +187,7 @@ export default function MembersStats({ stats, onCardClick }: MembersStatsProps) 
           </motion.div>
         )
       })}
+      </div>
     </div>
   )
 }

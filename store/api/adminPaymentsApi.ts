@@ -62,9 +62,28 @@ export interface AdminEncashmentSnapshot {
   released_amount: number
 }
 
+export interface AdminSalesTrendSeriesItem {
+  key: string
+  label: string
+  color: string
+}
+
+export interface AdminSalesTrendPoint {
+  time: string
+  [key: string]: string | number
+}
+
+export interface AdminSalesTrends {
+  series: AdminSalesTrendSeriesItem[]
+  daily: AdminSalesTrendPoint[]
+  monthly: AdminSalesTrendPoint[]
+  yearly: AdminSalesTrendPoint[]
+}
+
 export interface AdminPaymentsOverviewResponse {
   summary: AdminPaymentSummary
   payment_methods: AdminPaymentMethodBreakdownItem[]
+  sales_trends: AdminSalesTrends
   recent_transactions: AdminRecentTransactionItem[]
   voucher_summary: AdminVoucherSummary
   recent_vouchers: AdminRecentVoucherItem[]
