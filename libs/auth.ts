@@ -29,6 +29,7 @@ export const authOptions: NextAuthOptions = {
                 resend_otp: { label: 'Resend OTP', type: 'text' },
                 mfa_challenge_token: { label: 'MFA Challenge Token', type: 'text' },
                 resend_mfa_approval: { label: 'Resend MFA Approval', type: 'text' },
+                cf_turnstile_response: { label: 'Turnstile Response', type: 'text' },
             },
             async authorize(credentials, req) {
                 if (!credentials?.email || !credentials?.password) {
@@ -83,6 +84,7 @@ export const authOptions: NextAuthOptions = {
                                     otp: credentials.otp?.trim() || undefined,
                                     otp_challenge_token: credentials.otp_challenge_token || undefined,
                                     mfa_challenge_token: credentials.mfa_challenge_token || undefined,
+                                    cf_turnstile_response: credentials.cf_turnstile_response || undefined,
                                 }
                         ),
                     })
