@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import VideoBackground from "@/components/VideoBackground";
+import { motion } from "framer-motion";
+import Header from "@/components/landing-page/Header";
+import PrimaryButton from '@/components/ui/buttons/PrimaryButton';
 
 export default function ForgotPasswordForm() {
   const apiUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
@@ -45,54 +49,70 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex items-center justify-center bg-slate-950 px-4 py-12">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-800/85 p-8 shadow-2xl backdrop-blur-xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Forgot Password</h1>
-          <p className="mt-2 text-sm text-white/70">
-            Enter your AF Home account email and we&apos;ll send you a reset link.
-          </p>
-        </div>
+    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col">
+      <VideoBackground />
+      <div className="absolute inset-0 bg-black/25 dark:bg-black/55 backdrop-blur-[2px]" />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-white">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-              className="w-full rounded-xl border border-white/25 bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:bg-white/20 focus:outline-none focus:ring-2 focus:ring-orange-400/60"
-            />
+      <div className="relative z-20">
+        <Header cartCount={0} />
+      </div>
+
+      <div className="relative z-10 flex justify-center w-full px-4 flex-1 items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 32, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md transition-all duration-300"
+        >
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl p-8">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Forgot Password</h1>
+              <p className="mt-2 text-sm text-gray-500 dark:text-white/70">
+                Enter your AF Home account email and we&apos;ll send you a reset link.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  {success}
+                </div>
+              )}
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-white/80">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder=""
+                  required
+                  className="h-11 w-full rounded-[18px] border border-gray-300 dark:border-white/18 bg-white dark:bg-white/12 px-4 text-sm text-gray-900 dark:text-white outline-none transition-all duration-200 focus:border-sky-400 dark:focus:border-sky-400/60 focus:bg-white dark:focus:bg-white/18"
+                />
+              </div>
+
+              <PrimaryButton
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 px-5 text-sm"
+              >
+                {isSubmitting ? 'Sending reset link...' : 'Send Reset Link'}
+              </PrimaryButton>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-gray-500 dark:text-white/70">
+              <Link href="/login" className="text-sky-500 hover:text-sky-400 font-semibold transition-colors">
+                Back to login
+              </Link>
+            </p>
           </div>
-
-          {error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
-              {error}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/20 px-4 py-2.5 text-sm text-emerald-200">
-              {success}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSubmitting ? 'Sending reset link...' : 'Send Reset Link'}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-white/70">
-          <Link href="/login" className="font-semibold text-orange-400 hover:text-orange-300">
-            Back to login
-          </Link>
-        </p>
+        </motion.div>
       </div>
     </div>
   )
