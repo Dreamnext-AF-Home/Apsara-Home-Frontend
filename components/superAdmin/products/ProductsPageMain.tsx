@@ -712,10 +712,10 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   const [productOverrides, setProductOverrides] = useState<Record<number, Product>>({})
   const [createdProducts, setCreatedProducts] = useState<Product[]>([])
   const [useInitialData,  setUseInitialData]  = useState(Boolean(initialData))
-  const [userPerPage, setUserPerPage] = useState(25)
+  const [userPerPage, setUserPerPage] = useState<number | 'all'>(25)
   const defaultPerPage = 25
   const searchPerPage = 500
-  const perPage = debouncedSearch ? searchPerPage : userPerPage
+  const perPage = debouncedSearch ? searchPerPage : (userPerPage === 'all' ? 10000 : userPerPage)
   const canShowZqSupplierSide = !isSupplierPortal || isZqSupplierAccount
   const zqInlineActive = canShowZqSupplierSide && showZqSupplierInline
   const { data: adminGeneralSettingsData } = useGetAdminGeneralSettingsQuery()
@@ -1109,7 +1109,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
       current_page: 1,
       last_page: 1,
       per_page: visibleProducts.length || perPage,
-      total: visibleProducts.length,
+      total: meta?.total ?? visibleProducts.length,
       from: visibleProducts.length > 0 ? 1 : 0,
       to: visibleProducts.length,
     }
@@ -1390,6 +1390,72 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     setShowManualSelectionModal(false)
     setManualSelectionProducts([])
     setManualSelectionMode('review')
+  }
+
+  const handleExportAllCSV = () => {
+    const allProducts = selectionData?.products || []
+    if (allProducts.length === 0) {
+      showErrorToast('No products to export')
+      return
+    }
+    exportToCSV(allProducts)
+  }
+
+  const handlePushToSpreadsheet = async () => {
+    const productsToExport = selectionData?.products || visibleProducts
+    
+    if (productsToExport.length === 0) {
+      showErrorToast('No products to push to spreadsheet')
+      return
+    }
+
+    const spreadsheetId = '1bt9hMYtxIBvsNcdJ-Q7V7BKdcToa5_9FP942K0XzjCg'
+    const gid = '1242981688'
+
+    try {
+      // Convert products to spreadsheet format
+      const spreadsheetData = productsToExport.map(product => ({
+        ID: product.id,
+        Name: product.name || '',
+        SKU: product.sku || '',
+        Category: product.catid || '',
+        Brand: product.brand || '',
+        Supplier: product.supplierName || '',
+        Price_SRP: product.priceSrp || 0,
+        Price_DP: product.priceDp || 0,
+        Price_Member: product.priceMember || 0,
+        Stock: product.qty || 0,
+        Status: product.status === 1 ? 'Active' : 'Inactive',
+        Must_Have: product.musthave ? 'Yes' : 'No',
+        Bestseller: product.bestseller ? 'Yes' : 'No',
+        Description: product.description || '',
+        Image: product.image || '',
+        Created_At: product.createdAt || '',
+      }))
+
+      const response = await fetch('/api/push-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId,
+          gid,
+          data: spreadsheetData,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Open the spreadsheet in a new tab
+        window.open(result.spreadsheetUrl, '_blank')
+        showSuccessToast('Data prepared! Copy the CSV and paste it into the spreadsheet.')
+      } else {
+        showErrorToast(result.error || 'Failed to push data to spreadsheet')
+      }
+    } catch (error) {
+      console.error('Error pushing to spreadsheet:', error)
+      showErrorToast('Failed to push data to spreadsheet')
+    }
   }
 
   const handleApplyManualCheckout = async () => {
@@ -1731,44 +1797,58 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
           )}
 
           {/* Export section */}
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center">
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-6 py-4 gap-6">
+            <div className="flex items-center gap-4">
+              <div className="h-6 w-6 rounded bg-slate-100 flex items-center justify-center">
                 <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
               </div>
               <div>
-                <p className="text-sm text-slate-700">
-                  Export products
+                <p className="text-sm font-semibold text-slate-700">
+                  Export
                 </p>
-                <p className="text-[10px] text-slate-400">
-                  Only filtered products (by category, brand, supplier) will be exported
+                <p className="text-xs text-slate-400">
+                  {visibleMeta?.from || 0} to {visibleMeta?.to || 0} of {visibleMeta?.total || visibleProducts.length}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-600">Show:</label>
-                <select
-                  value={userPerPage}
-                  onChange={(e) => setUserPerPage(Number(e.target.value))}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-sky-400 focus:outline-none"
-                >
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={200}>200</option>
-                  <option value={500}>500</option>
-                  <option value={1000}>1000</option>
-                  <option value="all">All</option>
-                </select>
+                <label className="text-sm font-semibold text-slate-600">Show:</label>
+                <div className="relative">
+                  <select
+                    value={userPerPage}
+                    onChange={(e) => {
+                      const newValue = e.target.value === 'all' ? 'all' : Number(e.target.value)
+                      setUserPerPage(newValue)
+                      setPage(1)
+                    }}
+                    className="appearance-none rounded border border-slate-200 bg-white px-3 py-2 pr-8 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none hover:border-slate-300 cursor-pointer"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                    <option value="all">All</option>
+                  </select>
+                  <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+                    <svg className="h-3 w-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </div>
+                </div>
               </div>
-              <PrimaryButton onClick={() => exportToCSV(visibleProducts)}>
-                Export CSV
+              <PrimaryButton onClick={() => exportToCSV(visibleProducts)} className="!px-5 !py-2.5 !text-sm">
+                Import CSV
               </PrimaryButton>
-              <PrimaryButton onClick={() => {}}>
-                Export Spreadsheet
+              <PrimaryButton onClick={handleExportAllCSV} className="!px-5 !py-2.5 !text-sm">
+                Import All CSV
+              </PrimaryButton>
+              <PrimaryButton onClick={handlePushToSpreadsheet} className="!px-5 !py-2.5 !text-sm">
+                Push to Spreadsheet
               </PrimaryButton>
             </div>
           </div>
