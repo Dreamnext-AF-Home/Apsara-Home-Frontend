@@ -117,6 +117,11 @@ function readStoredReferral(): string {
     return getStoredReferralCode() || '';
 }
 
+const toPositiveNumber = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
 const CustomerCheckoutMain = ({
     initialCategories = [],
     storefrontPartner,
@@ -225,10 +230,73 @@ const CustomerCheckoutMain = ({
     const resolvedShippingFee = shippingFee ?? 0;
 
     const voucherDiscount = useMemo(() => Math.max(0, Number(voucherInfo?.discount ?? 0)), [voucherInfo?.discount]);
+    const hasMultiItemsCheckout = Boolean((checkoutData?.items?.length ?? 0) > 0);
+    const guestPricing = useMemo(() => {
+        if (!checkoutData || isLoggedIn || hasMultiItemsCheckout) {
+            return {
+                unitPrice: toPositiveNumber(checkoutData?.product?.price ?? 0),
+                subtotal: toPositiveNumber(checkoutData?.subtotal ?? 0),
+                productPv: toPositiveNumber(checkoutData?.product?.prodpv ?? 0),
+            };
+        }
+
+        const normalizedSku = String(checkoutData.selectedSku ?? '').trim().toLowerCase();
+        const normalizedColor = String(checkoutData.selectedColor ?? '').trim().toLowerCase();
+        const normalizedSize = String(checkoutData.selectedSize ?? '').trim().toLowerCase();
+        const normalizedType = String(checkoutData.selectedType ?? '').trim().toLowerCase();
+        const variants = fullProductData?.variants ?? [];
+
+        const matchedVariant =
+            variants.find((variant) => normalizedSku !== '' && String(variant.sku ?? '').trim().toLowerCase() === normalizedSku)
+            ?? variants.find((variant) => {
+                const vColor = String(variant.color ?? '').trim().toLowerCase();
+                const vSize = String(variant.size ?? '').trim().toLowerCase();
+                const vType = String(variant.name ?? '').trim().toLowerCase();
+                if (normalizedColor !== '' && normalizedSize !== '') {
+                    return vColor === normalizedColor && vSize === normalizedSize;
+                }
+                if (normalizedType !== '') {
+                    return vType === normalizedType;
+                }
+                return false;
+            });
+
+        const unitPrice = toPositiveNumber(
+            matchedVariant?.priceSrp
+            ?? fullProductData?.priceSrp
+            ?? checkoutData.product.price
+            ?? 0
+        );
+
+        const quantity = Math.max(1, Number(checkoutData.quantity || 1));
+        const productPv = toPositiveNumber(
+            matchedVariant?.prodpv
+            ?? fullProductData?.prodpv
+            ?? checkoutData.product.prodpv
+            ?? 0
+        );
+
+        return {
+            unitPrice,
+            subtotal: unitPrice * quantity,
+            productPv,
+        };
+    }, [checkoutData, fullProductData, hasMultiItemsCheckout, isLoggedIn]);
+
+    const effectiveSubtotal = useMemo(() => {
+        if (!checkoutData) return 0;
+        return !isLoggedIn ? guestPricing.subtotal : toPositiveNumber(checkoutData.subtotal);
+    }, [checkoutData, guestPricing.subtotal, isLoggedIn]);
+
+    const effectiveProductPv = useMemo(() => {
+        if (!checkoutData) return 0;
+        return !isLoggedIn ? guestPricing.productPv : toPositiveNumber(checkoutData.product.prodpv ?? 0);
+    }, [checkoutData, guestPricing.productPv, isLoggedIn]);
+
     const computedTotal = useMemo(() => {
         if (!checkoutData) return 0;
-        return Math.max(0, checkoutData.subtotal - voucherDiscount) + resolvedShippingFee;
-    }, [checkoutData, resolvedShippingFee, voucherDiscount]);
+        return Math.max(0, effectiveSubtotal - voucherDiscount) + resolvedShippingFee;
+    }, [checkoutData, effectiveSubtotal, resolvedShippingFee, voucherDiscount]);
 
     useEffect(() => {
         if (checkoutData) return;
@@ -253,7 +321,7 @@ const CustomerCheckoutMain = ({
         const handle = setTimeout(async () => {
             try {
                 setVoucherError(null);
-                const res = await validateVoucher({ code, subtotal: checkoutData.subtotal }).unwrap();
+                const res = await validateVoucher({ code, subtotal: effectiveSubtotal }).unwrap();
                 setVoucherInfo({
                     code: res.voucher.code,
                     amount: res.voucher.amount,
@@ -268,7 +336,7 @@ const CustomerCheckoutMain = ({
         }, 450);
 
         return () => clearTimeout(handle);
-    }, [form.voucher_coupon, checkoutData, validateVoucher]);
+    }, [effectiveSubtotal, form.voucher_coupon, checkoutData, validateVoucher]);
 
     const setField = useCallback((key: keyof GuestForm, value: string) => {
         setFormOverrides(prev => ({ ...prev, [key]: value }))
@@ -367,14 +435,14 @@ const CustomerCheckoutMain = ({
                     product_name: checkoutData.product.name,
                     product_id: Number.isFinite(normalizedProductId) ? normalizedProductId : undefined,
                     product_sku: checkoutData.selectedSku ?? checkoutData.product.sku ?? null,
-                    product_pv: checkoutData.product.prodpv ?? 0,
+                    product_pv: effectiveProductPv,
                     product_image: checkoutData.product.image,
                     quantity: checkoutData.quantity,
                     selected_color: checkoutData.selectedColor ?? null,
                     selected_style: checkoutData.selectedStyle ?? null,
                     selected_size: checkoutData.selectedSize ?? null,
                     selected_type: checkoutData.selectedType ?? null,
-                    subtotal: checkoutData.subtotal,
+                    subtotal: effectiveSubtotal,
                     handling_fee: resolvedShippingFee,
                 },
             }).unwrap();
@@ -503,6 +571,8 @@ const CustomerCheckoutMain = ({
                                 onSubmit={handleSubmit}
                                 voucher={voucherInfo ? { code: voucherInfo.code, discount: voucherInfo.discount } : null}
                                 computedTotal={computedTotal}
+                                subtotalOverride={effectiveSubtotal}
+                                unitPriceOverride={!isLoggedIn && !hasMultiItemsCheckout ? guestPricing.unitPrice : undefined}
                                 shippingFee={shippingFee}
                                 shippingRatePending={isShippingRatePending}
                                 shippingRateUnavailable={isShippingRateUnavailable}

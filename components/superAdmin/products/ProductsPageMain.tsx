@@ -957,11 +957,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     }
     router.refresh()
     void revalidateStorefront()
-    if (page !== 1) {
-      setPage(1)
-    } else {
-      void refetchProducts()
-    }
+    void refetchProducts()
     void refetchActiveCount()
     void refetchInactiveCount()
   }
@@ -1101,7 +1097,9 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
       }
     }
 
-    if (!manualHeaderToggle && !debouncedSearch && status !== 'new') {
+    // Keep API pagination totals (meta.total) whenever we're not in client-only "new" status mode.
+    // Manual checkout mode should not change how total results are counted.
+    if (!debouncedSearch && status !== 'new') {
       return meta
     }
 
