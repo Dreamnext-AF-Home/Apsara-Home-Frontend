@@ -641,6 +641,138 @@ function ZqSyncProgressModal({
   )
 }
 
+function SpreadsheetDataModal({
+  isOpen,
+  data,
+  error,
+  onClose,
+}: {
+  isOpen: boolean
+  data: string[][]
+  error: string | null
+  onClose: () => void
+}) {
+  if (!isOpen) return null
+
+  const hasError = !!error
+  const hasData = data.length > 0
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 18, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.97 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-slate-800">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-600">
+                {hasError ? 'Spreadsheet Error' : 'Spreadsheet Data'}
+              </p>
+              <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+                {hasError ? 'Failed to Push to Spreadsheet' : 'Data Successfully Pushed'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {hasError
+                  ? 'An error occurred while pushing data to the spreadsheet. Please check the error details below.'
+                  : 'The data has been successfully written to the spreadsheet. You can view the real-time data below.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Close
+            </button>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ delay: 0.05, duration: 0.2, ease: 'easeOut' }}
+            className="space-y-4 p-6"
+          >
+            {hasError ? (
+              <div className="overflow-hidden rounded-2xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-900/20">
+                <div className="p-6">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">Error Details</p>
+                  <p className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</p>
+                </div>
+              </div>
+            ) : hasData ? (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="max-h-[55vh] overflow-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/70 sticky top-0">
+                      <tr className="border-b border-slate-100 dark:border-slate-800">
+                        {data[0]?.map((header, index) => (
+                          <th
+                            key={index}
+                            className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300 whitespace-nowrap"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
+                      {data.slice(1).map((row, rowIndex) => (
+                        <tr key={rowIndex} className="bg-white dark:bg-slate-900">
+                          {row.map((cell, cellIndex) => (
+                            <td
+                              key={cellIndex}
+                              className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap max-w-xs truncate"
+                              title={cell}
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60">
+                <div className="p-6 text-center">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No data available</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {hasError
+                  ? 'Please try again or contact support if the issue persists.'
+                  : `${data.length} row${data.length !== 1 ? 's' : ''} in spreadsheet`}
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
 export default function ProductsPageMain({ initialData = null, initialBrandType }: ProductsPageMainProps) {
   const selectionPerPage = 5000
   const router = useRouter()
@@ -689,6 +821,10 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     }
   })
   const [showZqSyncModal, setShowZqSyncModal] = useState(false)
+  const [showSpreadsheetModal, setShowSpreadsheetModal] = useState(false)
+  const [spreadsheetData, setSpreadsheetData] = useState<string[][]>([])
+  const [spreadsheetError, setSpreadsheetError] = useState<string | null>(null)
+  const [isPushingToSpreadsheet, setIsPushingToSpreadsheet] = useState(false)
   const [isSyncingAllZq, setIsSyncingAllZq] = useState(false)
   const [hasStartedZqImport, setHasStartedZqImport] = useState(false)
   const [isDiscoveringZqTotal, setIsDiscoveringZqTotal] = useState(false)
@@ -712,10 +848,10 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   const [productOverrides, setProductOverrides] = useState<Record<number, Product>>({})
   const [createdProducts, setCreatedProducts] = useState<Product[]>([])
   const [useInitialData,  setUseInitialData]  = useState(Boolean(initialData))
-  const [userPerPage, setUserPerPage] = useState(25)
+  const [userPerPage, setUserPerPage] = useState<number | 'all'>(25)
   const defaultPerPage = 25
   const searchPerPage = 500
-  const perPage = debouncedSearch ? searchPerPage : userPerPage
+  const perPage = debouncedSearch ? searchPerPage : (userPerPage === 'all' ? 10000 : userPerPage)
   const canShowZqSupplierSide = !isSupplierPortal || isZqSupplierAccount
   const zqInlineActive = canShowZqSupplierSide && showZqSupplierInline
   const { data: adminGeneralSettingsData } = useGetAdminGeneralSettingsQuery()
@@ -1107,7 +1243,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
       current_page: 1,
       last_page: 1,
       per_page: visibleProducts.length || perPage,
-      total: visibleProducts.length,
+      total: meta?.total ?? visibleProducts.length,
       from: visibleProducts.length > 0 ? 1 : 0,
       to: visibleProducts.length,
     }
@@ -1388,6 +1524,83 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     setShowManualSelectionModal(false)
     setManualSelectionProducts([])
     setManualSelectionMode('review')
+  }
+
+  const handleExportAllCSV = () => {
+    const allProducts = selectionData?.products || []
+    if (allProducts.length === 0) {
+      showErrorToast('No products to export')
+      return
+    }
+    exportToCSV(allProducts)
+  }
+
+  const handlePushToSpreadsheet = async () => {
+    const productsToExport = selectionData?.products || visibleProducts
+
+    if (productsToExport.length === 0) {
+      showErrorToast('No products to push to spreadsheet')
+      return
+    }
+
+    const spreadsheetId = '1bt9hMYtxIBvsNcdJ-Q7V7BKdcToa5_9FP942K0XzjCg'
+    const gid = '1242981688'
+
+    setIsPushingToSpreadsheet(true)
+    setSpreadsheetError(null)
+
+    try {
+      // Convert products to spreadsheet format
+      const spreadsheetData = productsToExport.map(product => ({
+        ID: product.id,
+        Name: product.name || '',
+        SKU: product.sku || '',
+        Category: product.catid || '',
+        Brand: product.brand || '',
+        Supplier: product.supplierName || '',
+        Price_SRP: product.priceSrp || 0,
+        Price_DP: product.priceDp || 0,
+        Price_Member: product.priceMember || 0,
+        Stock: product.qty || 0,
+        Status: product.status === 1 ? 'Active' : 'Inactive',
+        Must_Have: product.musthave ? 'Yes' : 'No',
+        Bestseller: product.bestseller ? 'Yes' : 'No',
+        Description: product.description || '',
+        Image: product.image || '',
+        Created_At: product.createdAt || '',
+      }))
+
+      const response = await fetch('/api/admin/products/push-spreadsheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId,
+          gid,
+          data: spreadsheetData,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setSpreadsheetData(result.data || [])
+        setShowSpreadsheetModal(true)
+        showSuccessToast(result.message || 'Data successfully pushed to spreadsheet')
+      } else {
+        const errorMessage = result.details ? `${result.error}: ${result.details}` : (result.error || 'Failed to push data to spreadsheet')
+        setSpreadsheetError(errorMessage)
+        setShowSpreadsheetModal(true)
+        showErrorToast(errorMessage)
+      }
+    } catch (error) {
+      console.error('Error pushing to spreadsheet:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to push data to spreadsheet'
+      setSpreadsheetError(errorMessage)
+      setShowSpreadsheetModal(true)
+      showErrorToast(errorMessage)
+    } finally {
+      setIsPushingToSpreadsheet(false)
+    }
   }
 
   const handleApplyManualCheckout = async () => {
@@ -1674,6 +1887,13 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
         onCancel={handleCancelZqImport}
       />
 
+      <SpreadsheetDataModal
+        isOpen={showSpreadsheetModal}
+        data={spreadsheetData}
+        error={spreadsheetError}
+        onClose={() => setShowSpreadsheetModal(false)}
+      />
+
       {!zqInlineActive && isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadErrorMessage}</div>
       ) : !zqInlineActive && isLoading && !data && !initialData ? (
@@ -1729,44 +1949,58 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
           )}
 
           {/* Export section */}
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                <svg className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-6 py-4 gap-6">
+            <div className="flex items-center gap-4">
+              <div className="h-6 w-6 rounded bg-slate-100 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
               </div>
               <div>
-                <p className="text-sm text-slate-700 dark:text-slate-100">
-                  Export products
+                <p className="text-sm font-semibold text-slate-700">
+                  Export
                 </p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                  Only filtered products (by category, brand, supplier) will be exported
+                <p className="text-xs text-slate-400">
+                  {visibleMeta?.from || 0} to {visibleMeta?.to || 0} of {visibleMeta?.total || visibleProducts.length}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-600 dark:text-slate-300">Show:</label>
-                <select
-                  value={userPerPage}
-                  onChange={(e) => setUserPerPage(Number(e.target.value))}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-sky-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={200}>200</option>
-                  <option value={500}>500</option>
-                  <option value={1000}>1000</option>
-                  <option value="all">All</option>
-                </select>
+                <label className="text-sm font-semibold text-slate-600">Show:</label>
+                <div className="relative">
+                  <select
+                    value={userPerPage}
+                    onChange={(e) => {
+                      const newValue = e.target.value === 'all' ? 'all' : Number(e.target.value)
+                      setUserPerPage(newValue)
+                      setPage(1)
+                    }}
+                    className="appearance-none rounded border border-slate-200 bg-white px-3 py-2 pr-8 text-sm font-semibold text-slate-700 focus:border-sky-400 focus:outline-none hover:border-slate-300 cursor-pointer"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                    <option value="all">All</option>
+                  </select>
+                  <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">
+                    <svg className="h-3 w-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </div>
+                </div>
               </div>
-              <PrimaryButton onClick={() => exportToCSV(visibleProducts)}>
-                Export CSV
+              <PrimaryButton onClick={() => exportToCSV(visibleProducts)} className="!px-5 !py-2.5 !text-sm">
+                Import CSV
               </PrimaryButton>
-              <PrimaryButton onClick={() => {}}>
-                Export Spreadsheet
+              <PrimaryButton onClick={handleExportAllCSV} className="!px-5 !py-2.5 !text-sm">
+                Import All CSV
+              </PrimaryButton>
+              <PrimaryButton onClick={handlePushToSpreadsheet} disabled={isPushingToSpreadsheet} className="!px-5 !py-2.5 !text-sm">
+                {isPushingToSpreadsheet ? 'Pushing...' : 'Push to Spreadsheet'}
               </PrimaryButton>
             </div>
           </div>
