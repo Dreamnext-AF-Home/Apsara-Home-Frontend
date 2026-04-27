@@ -30,7 +30,7 @@ export default function RankingPageClient() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = data?.items ?? []
+    let list = data?.members ?? []
     if (q) {
       list = list.filter((m) =>
         m.name.toLowerCase().includes(q) ||
@@ -40,7 +40,7 @@ export default function RankingPageClient() {
     }
     list.sort((a, b) => b.earnings - a.earnings)
     return list
-  }, [search, data?.items])
+  }, [search, data?.members])
 
   const top3 = filtered.slice(0, 3)
   const remaining = filtered.slice(3)
