@@ -8,6 +8,7 @@ import { useGetAdminPaymentsOverviewQuery } from '@/store/api/adminPaymentsApi'
 import { useGetExpensesSummaryQuery } from '@/store/api/expensesApi'
 import { useGetMembersStatsQuery } from '@/store/api/membersApi'
 import { useGetSupplierStatsQuery } from '@/store/api/suppliersApi'
+import type { StatsGridInitialData } from './statsGridTypes'
 
 interface StatCard {
   label: string
@@ -25,6 +26,7 @@ interface StatCard {
 interface ResolvedStatCard extends StatCard {
   value: string
   change: string
+  modalSummary?: string
   href?: string
 }
 
@@ -192,7 +194,7 @@ const statHrefMap: Record<string, string> = {
   'Total Rewards Computed': '/admin/members/wallet',
   'Withdrawals Released': '/admin/encashment/released',
   'Withdrawals Pending': '/admin/encashment/pending',
-  'Total Expenses': '/admin/accounting',
+  'Total Expenses': '/admin/expenses',
   'Total Members': '/admin/members',
   'Total Suppliers': '/admin/suppliers',
   'Suppliers Performance': '/admin/suppliers',
@@ -204,17 +206,28 @@ const statHrefMap: Record<string, string> = {
   'Monthly Revenue': '/admin/payments',
 }
 
-const StatsGrid = () => {
+type StatsGridProps = {
+  initialData?: StatsGridInitialData
+}
+
+const StatsGrid = ({ initialData }: StatsGridProps) => {
   const [selectedStat, setSelectedStat] = useState<ResolvedStatCard | null>(null)
   const currentMonth = useMemo(() => monthRange(0), [])
   const lastMonth = useMemo(() => monthRange(-1), [])
 
-  const { data: ordersData } = useGetAdminOrdersQuery({ page: 1, perPage: 1, filter: 'all' })
-  const { data: membersStats } = useGetMembersStatsQuery()
-  const { data: paymentsOverview } = useGetAdminPaymentsOverviewQuery()
-  const { data: supplierStats } = useGetSupplierStatsQuery()
-  const { data: currentExpenses } = useGetExpensesSummaryQuery({ from: currentMonth.from, to: currentMonth.to, status: 1 })
-  const { data: lastExpenses } = useGetExpensesSummaryQuery({ from: lastMonth.from, to: lastMonth.to, status: 1 })
+  const { data: fetchedOrdersData } = useGetAdminOrdersQuery({ page: 1, perPage: 1, filter: 'all' })
+  const { data: fetchedMembersStats } = useGetMembersStatsQuery()
+  const { data: fetchedPaymentsOverview } = useGetAdminPaymentsOverviewQuery()
+  const { data: fetchedSupplierStats } = useGetSupplierStatsQuery()
+  const { data: fetchedCurrentExpenses } = useGetExpensesSummaryQuery({ from: currentMonth.from, to: currentMonth.to, status: 1 })
+  const { data: fetchedLastExpenses } = useGetExpensesSummaryQuery({ from: lastMonth.from, to: lastMonth.to, status: 1 })
+
+  const ordersData = fetchedOrdersData ?? initialData?.ordersData
+  const membersStats = fetchedMembersStats ?? initialData?.membersStats
+  const paymentsOverview = fetchedPaymentsOverview ?? initialData?.paymentsOverview
+  const supplierStats = fetchedSupplierStats ?? initialData?.supplierStats
+  const currentExpenses = fetchedCurrentExpenses ?? initialData?.currentExpenses
+  const lastExpenses = fetchedLastExpenses ?? initialData?.lastExpenses
 
   const resolvedStats = useMemo<ResolvedStatCard[]>(() => {
     const currentExpenseTotal = Number(currentExpenses?.total_amount ?? 0)
@@ -242,7 +255,9 @@ const StatsGrid = () => {
     const paymentMethods = paymentsOverview?.payment_methods ?? []
 
     const releasedRequests = Number(paymentsOverview?.encashment_summary?.released_requests ?? 0)
-    const releasedAmount = Number(paymentsOverview?.encashment_summary?.released_amount ?? 0)
+    const releasedAmount = releasedRequests > 0
+      ? Number(paymentsOverview?.encashment_summary?.released_amount ?? 0)
+      : 0
     const pendingRequests = Number(paymentsOverview?.encashment_summary?.pending_requests ?? 0)
 
     const totalSuppliers = Number(supplierStats?.summary?.total_suppliers ?? 0)
@@ -260,12 +275,19 @@ const StatsGrid = () => {
     const eWalletFloat = paymentMethods
       .filter((item) => ['gcash', 'maya', 'paymaya', 'e-wallet', 'ewallet'].includes(String(item.key ?? '').toLowerCase()))
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0)
+    const eWalletMethods = paymentMethods.filter((item) =>
+      ['gcash', 'maya', 'paymaya', 'e-wallet', 'ewallet'].includes(String(item.key ?? '').toLowerCase()) && Number(item.amount ?? 0) > 0,
+    )
+    const eWalletMethodCount = eWalletMethods.length
+    const eWalletMethodLabels = eWalletMethods
+      .map((item) => String(item.label ?? item.key ?? '').trim())
+      .filter(Boolean)
 
     const gcFloat = paymentMethods
       .filter((item) => ['gift_certificate', 'gift-certificate', 'gc'].includes(String(item.key ?? '').toLowerCase()))
       .reduce((sum, item) => sum + Number(item.amount ?? 0), 0)
 
-    const liveStatMap: Record<string, Pick<ResolvedStatCard, 'value' | 'change' | 'changeType'>> = {
+    const liveStatMap: Record<string, Pick<ResolvedStatCard, 'value' | 'change' | 'changeType' | 'modalSummary'>> = {
       'Total Orders': {
         value: formatCount(totalOrders),
         change: totalOrders > 0 ? `${pluralize(totalOrders, 'order')} found in the database` : 'No orders found in the database yet',
@@ -330,6 +352,9 @@ const StatsGrid = () => {
           ? 'Collected from live e-wallet payment methods'
           : 'No e-wallet collections returned by the live overview',
         changeType: eWalletFloat > 0 ? 'up' : 'neutral',
+        modalSummary: eWalletFloat > 0
+          ? `${pluralize(eWalletMethodCount, 'e-wallet method')} currently contribute to this float. Active sources: ${eWalletMethodLabels.join(', ')}.`
+          : 'No successful e-wallet collections were returned by the live payments overview.',
       },
       'Total GC Float': {
         value: formatMoney(gcFloat),
@@ -369,6 +394,7 @@ const StatsGrid = () => {
       value: liveStatMap[stat.label]?.value ?? '--',
       change: liveStatMap[stat.label]?.change ?? 'Live data is not connected yet',
       changeType: liveStatMap[stat.label]?.changeType ?? 'neutral',
+      modalSummary: liveStatMap[stat.label]?.modalSummary ?? liveStatMap[stat.label]?.change ?? 'Live data is not connected yet',
       href: statHrefMap[stat.label],
     }))
   }, [currentExpenses?.total_amount, lastExpenses?.total_amount, membersStats?.newMembers, membersStats?.total, ordersData?.meta?.total, paymentsOverview, supplierStats])
@@ -494,7 +520,7 @@ const StatsGrid = () => {
                     <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                   )}
                   <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {selectedStat.change}
+                    {selectedStat.modalSummary ?? selectedStat.change}
                   </p>
                 </div>
               </motion.div>

@@ -259,51 +259,51 @@ export default function BulkEditClient() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">Web Content</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Bulk Edit</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-400">Web Content</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Bulk Edit</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
           Upload a spreadsheet to update product details in bulk (name, category, room, material, prices,
           quantity, and dimensions).
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-cyan-100/60 blur-3xl animate-pulse" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-sky-100/70 blur-3xl animate-pulse" />
 
         <div className="relative">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-700">Bulk Workspace</p>
-              <h2 className="mt-2 text-xl font-bold text-slate-900">Bulk Edit Interface</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-400">Bulk Workspace</p>
+              <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Bulk Edit Interface</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                 Upload a CSV file to apply product updates across multiple items in one streamlined pass.
                 Use SKU or Product ID plus any fields you want to change. Suggested headers:
-                <span className="block mt-2 text-xs text-slate-500">
+                <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">
                   Product Name, Category, Shop By Room, Material, SRP Price, Member Price, Dealer Price,
                   Quantity (or Qty), Weight, Width, Length, Height, Package Weight.
                 </span>
               </p>
             </div>
-            <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-cyan-700">Tip</p>
-              <p className="mt-1 text-sm font-medium text-cyan-900">Use the latest export to avoid ID mismatches.</p>
+            <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 dark:border-cyan-900/40 dark:bg-cyan-950/30">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Tip</p>
+              <p className="mt-1 text-sm font-medium text-cyan-900 dark:text-cyan-100">Use the latest export to avoid ID mismatches.</p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
             <label
               htmlFor="bulk-edit-upload"
-              className="group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-6 text-center transition hover:border-cyan-300 hover:shadow-md"
+              className="group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-6 text-center transition hover:border-cyan-300 hover:shadow-md dark:border-cyan-900/40 dark:from-cyan-950/20 dark:via-slate-900 dark:to-sky-950/20"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-cyan-100">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-cyan-100 dark:bg-slate-800 dark:ring-cyan-900/30">
                 <svg className="h-6 w-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 16V6m0 0l-3 3m3-3l3 3M4 16.5a2.5 2.5 0 002.5 2.5h11a2.5 2.5 0 002.5-2.5" />
                 </svg>
               </div>
-              <p className="mt-3 text-sm font-semibold text-slate-900">Drop your file here</p>
-              <p className="mt-1 text-xs text-slate-500">CSV up to 10MB</p>
+              <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Drop your file here</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">CSV up to 10MB</p>
               <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-xs font-semibold text-white transition group-hover:bg-cyan-700">
                 Browse Files
                 <span className="inline-flex h-2 w-2 rounded-full bg-white/90 animate-ping" />
@@ -320,8 +320,8 @@ export default function BulkEditClient() {
               />
             </label>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Quick Actions</p>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Quick Actions</p>
               <div className="mt-4 space-y-3">
                 <button
                   type="button"
@@ -338,29 +338,29 @@ export default function BulkEditClient() {
                   Upload & Preview Changes
                 </button>
               </div>
-              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs text-slate-500">
+              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Preview shows current values and the fields that will be updated.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1">File: {fileName || 'None'}</span>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1">Rows loaded: {parsedRows.length}</span>
+          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-800">File: {fileName || 'None'}</span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-800">Rows loaded: {parsedRows.length}</span>
           </div>
         </div>
       </div>
 
       {(previewRows.length > 0 || previewSummary) && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Preview</p>
-              <h3 className="mt-2 text-lg font-bold text-slate-900">Proposed Price Updates</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Preview</p>
+              <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Proposed Price Updates</h3>
               {previewSummary && (
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   Total: {previewSummary.total} · Ready: {previewSummary.ready} · Failed: {previewSummary.failed}
                 </p>
               )}
@@ -375,8 +375,8 @@ export default function BulkEditClient() {
             </button>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
-            <div className="grid grid-cols-[80px_140px_1.2fr_1.6fr_120px] gap-0 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase text-slate-500">
+          <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-[80px_140px_1.2fr_1.6fr_120px] gap-0 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-300">
               <span>Row</span>
               <span>SKU</span>
               <span>Product</span>
@@ -387,12 +387,12 @@ export default function BulkEditClient() {
               {previewRows.map((row: any) => (
                 <div
                   key={`${row.row}-${row.sku}-${row.status}`}
-                  className="grid grid-cols-[80px_140px_1.2fr_1.6fr_120px] items-center gap-0 border-t border-slate-100 px-4 py-3 text-sm"
+                  className="grid grid-cols-[80px_140px_1.2fr_1.6fr_120px] items-center gap-0 border-t border-slate-100 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <span className="text-xs text-slate-500">#{row.row}</span>
-                  <span className="font-mono text-xs text-slate-600">{row.sku || '—'}</span>
-                  <span className="text-slate-800">{row.name || row.message}</span>
-                  <div className="text-xs text-slate-600">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">#{row.row}</span>
+                  <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{row.sku || '—'}</span>
+                  <span className="text-slate-800 dark:text-slate-100">{row.name || row.message}</span>
+                  <div className="text-xs text-slate-600 dark:text-slate-300">
                     {row.current && row.next
                       ? Object.keys(row.next).map((key: string) => {
                         const labelMap: Record<string, string> = {
@@ -434,7 +434,7 @@ export default function BulkEditClient() {
           </div>
 
           {applySummary && (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
               Applied updates: {applySummary.updated} succeeded, {applySummary.failed} failed, out of {applySummary.total}.
             </div>
           )}

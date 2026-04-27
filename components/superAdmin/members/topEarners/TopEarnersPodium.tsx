@@ -91,7 +91,7 @@ export default function TopEarnersPodium({ top3 }: TopEarnersPodiumProps) {
     >
       <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Podium</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {ordered.map((earner, i) => {
+        {ordered.map((earner) => {
           if (!earner) return null
           const rank = (earner === top3[0] ? 1 : earner === top3[1] ? 2 : 3) as 1 | 2 | 3
           return <PodiumCard key={earner.id} earner={earner} rank={rank} />

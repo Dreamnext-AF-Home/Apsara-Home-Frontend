@@ -216,9 +216,9 @@ function StatCard({
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-2xl font-bold text-slate-800 leading-none">{value}</p>
-        <p className="text-xs text-slate-500 mt-0.5 truncate">{label}</p>
-        {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
+        <p className="text-2xl font-bold leading-none text-slate-800 dark:text-slate-100">{value}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-300">{label}</p>
+        {sub && <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">{sub}</p>}
       </div>
     </div>
   )
@@ -1516,7 +1516,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
         className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Products</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-300">
             {manualHeaderToggle ? 'Viewing products assigned to manual checkout.' : 'Manage your product catalog'}
           </p>
         </div>
@@ -1527,8 +1527,8 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
               disabled={isSavingManualMode}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
                 manualHeaderToggle
-                  ? 'border-teal-200 bg-teal-50 text-teal-700'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/40 dark:bg-teal-900/20 dark:text-teal-300'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <div className={`relative h-5 w-9 rounded-full transition-colors ${manualHeaderToggle ? 'bg-teal-500' : 'bg-slate-200'}`}>
@@ -1552,8 +1552,8 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
               disabled={isSyncingAllZq}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
                 zqInlineActive
-                  ? 'border-sky-300 bg-sky-100 text-sky-800'
-                  : 'border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700'
+                  ? 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-900/40 dark:bg-sky-900/20 dark:text-sky-300'
+                  : 'border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700 dark:border-sky-900/40 dark:bg-sky-900/20 dark:text-sky-300 dark:hover:bg-sky-900/30'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1567,7 +1567,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
           ) : null}
           <button
             onClick={() => setShowActivityLogs(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-semibold transition-colors border border-slate-200"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 9 2 2 4-4"/>
@@ -1687,33 +1687,33 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
 
           {/* Bulk action bar */}
           {selectedIds.length > 0 && (
-            <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 gap-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 dark:border-red-900/40 dark:bg-red-950/20">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-lg bg-red-100 flex items-center justify-center">
                   <svg className="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-red-700 dark:text-red-300">
                   <span className="font-semibold">{selectedIds.length}</span> product{selectedIds.length !== 1 ? 's' : ''} selected
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openManualSelectionModal(selectedProducts)}
-                  className="flex items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 transition-colors hover:border-teal-300 hover:bg-teal-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 transition-colors hover:border-teal-300 hover:bg-teal-50 dark:border-teal-900/40 dark:bg-slate-900 dark:text-teal-300 dark:hover:bg-slate-800"
                 >
                   Add to Manual Checkout
                 </button>
                 <button
                   onClick={() => setShowBulkEdit(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-slate-700 border border-red-200 hover:border-teal-300 hover:text-teal-700 transition-colors text-xs font-semibold"
+                  className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-teal-300 hover:text-teal-700 dark:border-red-900/40 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-teal-300"
                 >
                   Bulk Edit
                 </button>
                 <button
                   onClick={() => setSelectedIds([])}
-                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
+                  className="text-xs font-semibold text-red-500 transition-colors hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
                 >
                   Clear
                 </button>
@@ -1729,29 +1729,29 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
           )}
 
           {/* Export section */}
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 gap-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
+                <svg className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
               </div>
               <div>
-                <p className="text-sm text-slate-700">
+                <p className="text-sm text-slate-700 dark:text-slate-100">
                   Export products
                 </p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
                   Only filtered products (by category, brand, supplier) will be exported
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-600">Show:</label>
+                <label className="text-xs text-slate-600 dark:text-slate-300">Show:</label>
                 <select
                   value={userPerPage}
                   onChange={(e) => setUserPerPage(Number(e.target.value))}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-sky-400 focus:outline-none"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-sky-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   <option value={25}>25</option>
                   <option value={50}>50</option>

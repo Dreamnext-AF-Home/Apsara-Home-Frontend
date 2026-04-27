@@ -204,20 +204,20 @@ export default function AssemblyGuidesManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] border border-cyan-100 bg-[linear-gradient(135deg,_#f0fdfa,_#ffffff_58%,_#ecfeff)] shadow-[0_24px_70px_rgba(15,118,110,0.08)]">
+    <div className="space-y-6 dark:bg-slate-950 dark:text-slate-100">
+      <section className="overflow-hidden rounded-[2rem] border border-cyan-100 bg-[linear-gradient(135deg,_#f0fdfa,_#ffffff_58%,_#ecfeff)] shadow-[0_24px_70px_rgba(15,118,110,0.08)] dark:border-cyan-900/30 dark:bg-[linear-gradient(135deg,_rgba(8,51,68,0.35),_rgba(15,23,42,0.96)_58%,_rgba(8,47,73,0.42))]">
         <div className="grid gap-6 px-6 py-7 lg:grid-cols-[1.3fr_0.7fr] lg:px-8">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-700">PDF Workspace</p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900">Assembly Guides Manager</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-700 dark:text-cyan-400">PDF Workspace</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">Assembly Guides Manager</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
               Add direct PDF guides for the public Assembly Guides page. Keep the form simple: title, PDF link, optional cover image, then publish.
             </p>
           </div>
 
-          <div className="rounded-[1.5rem] border border-cyan-100 bg-white/80 p-5">
-            <p className="text-sm font-bold text-slate-900">Quick rules</p>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+          <div className="rounded-[1.5rem] border border-cyan-100 bg-white/80 p-5 dark:border-cyan-900/30 dark:bg-slate-900/70">
+            <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Quick rules</p>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
               <li>Use a direct PDF URL</li>
               <li>Cover image is optional</li>
               <li>Inactive guides stay hidden from public page</li>
@@ -228,13 +228,13 @@ export default function AssemblyGuidesManager() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <form onSubmit={handleSubmit} className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-400">
                 {editTarget ? 'Edit Mode' : 'Create'}
               </p>
-              <h2 className="mt-2 text-xl font-bold text-slate-900">
+              <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">
                 {editTarget ? 'Update PDF Guide' : 'Add Assembly Guide'}
               </h2>
             </div>
@@ -243,7 +243,7 @@ export default function AssemblyGuidesManager() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel Edit
               </button>
@@ -284,7 +284,7 @@ export default function AssemblyGuidesManager() {
                   />
                 ) : null}
 
-                <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/80">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">Attach PDF file</p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -322,7 +322,7 @@ export default function AssemblyGuidesManager() {
 
             <Field label="Cover Image URL">
               <div className="space-y-3">
-                <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/80">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">Attach cover image</p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -370,7 +370,7 @@ export default function AssemblyGuidesManager() {
               </Field>
 
               <Field label="Visibility">
-                <label className="flex h-[46px] items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700">
+                <label className="flex h-[46px] items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   <span>{form.is_active ? 'Visible on public page' : 'Hidden from public page'}</span>
                   <input
                     type="checkbox"
@@ -382,7 +382,7 @@ export default function AssemblyGuidesManager() {
               </Field>
             </div>
 
-            <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-cyan-800">
+            <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-cyan-800 dark:border-cyan-900/30 dark:bg-cyan-950/20 dark:text-cyan-200">
               Tip: the PDF URL is auto-generated from the attached file and stays locked to avoid accidental edits. If you need a different file, just attach a new PDF or switch to a Google Drive link.
             </div>
           </div>
@@ -398,17 +398,17 @@ export default function AssemblyGuidesManager() {
           </div>
         </form>
 
-        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
-          <div className="mt-2 rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-4">
+        <div className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mt-2 rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/60">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Recently Added</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">Recently Assembly Guides Uploaded</p>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Recently Added</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">Recently Assembly Guides Uploaded</p>
               </div>
             </div>
 
             {latestItems.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-500">No guides added yet.</p>
+              <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">No guides added yet.</p>
             ) : (
               <div className="mt-4 grid gap-3">
                 {latestItems.map((item) => {
@@ -477,11 +477,11 @@ export default function AssemblyGuidesManager() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-700">{label}</span>
+      <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
       {children}
     </label>
   )
 }
 
 const inputClassName =
-  'w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100'
+  'w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'

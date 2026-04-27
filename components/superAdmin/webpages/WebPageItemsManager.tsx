@@ -149,7 +149,7 @@ export default function WebPageItemsManager({ type, title, description }: Props)
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 dark:bg-slate-950 dark:text-slate-100">
       <div>
         <h1 className="text-xl font-bold text-slate-800">{title}</h1>
         <p className="text-sm text-slate-500 mt-0.5">{description}</p>

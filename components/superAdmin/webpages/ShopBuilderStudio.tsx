@@ -690,24 +690,24 @@ export default function ShopBuilderStudio() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 dark:bg-slate-950 dark:text-slate-100">
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-600">Shop Builder Studio</p>
-          <h1 className="mt-1 text-xl font-bold text-slate-900">Page Editor</h1>
-          <p className="mt-0.5 text-sm text-slate-400">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-400">Shop Builder Studio</p>
+          <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">Page Editor</h1>
+          <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">
             {savedCount} of {sections.length} sections saved · Edit sections and click Save to publish.
           </p>
         </div>
         <div className="flex items-center gap-3">
           {isDirty ? (
-            <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700">
+            <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
               Unsaved changes
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
+            <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               All saved
             </span>
@@ -716,7 +716,7 @@ export default function ShopBuilderStudio() {
             href="/shop"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
           >
             View Live /shop
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -732,10 +732,10 @@ export default function ShopBuilderStudio() {
       <div className="grid gap-4 xl:grid-cols-[256px_minmax(0,1fr)_348px]">
 
         {/* ── LEFT: Section nav ── */}
-        <aside className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <aside className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Sections</p>
-            <p className="mt-0.5 text-xs text-slate-400">{sections.length} blocks total</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Sections</p>
+            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{sections.length} blocks total</p>
           </div>
           <nav className="space-y-1 p-3">
             {sections.map((section, index) => {
@@ -750,27 +750,27 @@ export default function ShopBuilderStudio() {
                   onClick={() => setSelectedSectionId(section.id)}
                   className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
                     active
-                      ? 'bg-cyan-50 text-cyan-900'
-                      : 'text-slate-700 hover:bg-slate-50'
+                      ? 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-100'
+                      : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/80'
                   }`}
                 >
                   <span className={`flex h-8 w-8 flex-none items-center justify-center rounded-xl transition ${
-                    active ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                    active ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700'
                   }`}>
                     <SectionIcon id={section.id} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className={`text-sm font-semibold leading-none ${active ? 'text-cyan-900' : 'text-slate-900'}`}>
+                      <p className={`text-sm font-semibold leading-none ${active ? 'text-cyan-900 dark:text-cyan-100' : 'text-slate-900 dark:text-slate-100'}`}>
                         {section.label}
                       </p>
                       {dirty ? <span className="h-1.5 w-1.5 flex-none rounded-full bg-amber-400" title="Unsaved" /> : null}
                     </div>
                     <div className="mt-1.5 flex items-center gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                      <p className="text-[11px] text-slate-400">{sc.label}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">{sc.label}</p>
                       <span className="text-[11px] text-slate-300">·</span>
-                      <p className="text-[11px] text-slate-400">Block {index + 1}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">Block {index + 1}</p>
                     </div>
                   </div>
                 </button>
@@ -780,18 +780,18 @@ export default function ShopBuilderStudio() {
         </aside>
 
         {/* ── CENTER: Preview canvas ── */}
-        <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Live Preview</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-800">/shop Visual Canvas</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Live Preview</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-100">/shop Visual Canvas</p>
             </div>
-            <p className="text-[11px] text-slate-400">Click a section to edit it</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">Click a section to edit it</p>
           </div>
 
           <div className="p-4">
-            <div className="rounded-[28px] bg-slate-100 p-3">
-              <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)]">
+            <div className="rounded-[28px] bg-slate-100 p-3 dark:bg-slate-950">
+              <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)] dark:bg-slate-900 dark:shadow-[0_20px_60px_rgba(2,6,23,0.45)]">
                 <PreviewShopHeader section={sections[0]} selectedId={selectedSection.id} onSelect={setSelectedSectionId} />
                 <PreviewAnnouncements section={sections[1]} selectedId={selectedSection.id} onSelect={setSelectedSectionId} />
                 <PreviewCampaignBanners section={sections[2]} selectedId={selectedSection.id} onSelect={setSelectedSectionId} />
@@ -805,14 +805,14 @@ export default function ShopBuilderStudio() {
         </section>
 
         {/* ── RIGHT: Editor panel ── */}
-        <aside className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <aside className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           {/* Section header */}
           <div className={`rounded-t-3xl bg-linear-to-br ${selectedSection.accent} p-5`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{selectedSection.eyebrow}</p>
-                <h2 className="mt-1.5 text-lg font-bold text-slate-900">{selectedSection.label}</h2>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{selectedSection.description}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-600">{selectedSection.eyebrow}</p>
+                <h2 className="mt-1.5 text-lg font-bold text-slate-900 dark:text-slate-100">{selectedSection.label}</h2>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{selectedSection.description}</p>
               </div>
               <span className={`mt-0.5 flex-none rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusConfig[selectedSection.status].badge}`}>
                 {statusConfig[selectedSection.status].label}
@@ -829,7 +829,7 @@ export default function ShopBuilderStudio() {
                   className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold capitalize transition ${
                     selectedSection.status === s
                       ? statusConfig[s].badge
-                      : 'border-slate-200 bg-white/60 text-slate-500 hover:bg-white'
+                      : 'border-slate-200 bg-white/60 text-slate-500 hover:bg-white dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800'
                   }`}
                 >
                   {s}
@@ -840,11 +840,11 @@ export default function ShopBuilderStudio() {
 
           {/* Fields */}
           <div className="flex flex-col gap-4 overflow-y-auto px-5 pb-2">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">Fields</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Fields</p>
 
             {visibleSelectedFields.map((field) => (
               <div key={field.key}>
-                <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                   {field.label}
                 </label>
                 {field.key === 'marquee_messages' ? (
@@ -857,7 +857,7 @@ export default function ShopBuilderStudio() {
                     <input
                       value={field.value}
                       onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
-                      className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                      className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
                     />
                     <TrustItemsEditor
                       section={selectedSection}
@@ -869,7 +869,7 @@ export default function ShopBuilderStudio() {
                     value={field.value}
                     onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
                     rows={3}
-                    className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                    className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
                   />
                 ) : field.kind === 'video' || field.key.includes('image') ? (
                   <div className="mt-1.5 space-y-2">
@@ -877,9 +877,9 @@ export default function ShopBuilderStudio() {
                       value={field.value}
                       onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
                       placeholder={field.kind === 'video' ? 'Paste video URL or upload below' : 'Paste URL or upload below'}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
                     />
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-3.5 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-white">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-3.5 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-white dark:border-cyan-900/40 dark:bg-cyan-950/30 dark:text-cyan-300 dark:hover:bg-cyan-950/40">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="16 16 12 12 8 16" />
                         <line x1="12" y1="12" x2="12" y2="21" />
@@ -895,9 +895,9 @@ export default function ShopBuilderStudio() {
                           event.currentTarget.value = ''
                         }}
                       />
-                      {uploadingFieldKey === field.key ? 'Uploading…' : field.kind === 'video' ? 'Upload Video' : 'Upload Image'}
+                      {uploadingFieldKey === field.key ? 'Uploading...' : field.kind === 'video' ? 'Upload Video' : 'Upload Image'}
                     </label>
-                    <div className="relative h-28 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                    <div className="relative h-28 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                       {(() => {
                         const fallbackPoster =
                           field.kind === 'video' && selectedSection.id === 'campaign-banners'
@@ -938,7 +938,7 @@ export default function ShopBuilderStudio() {
                         ) : null
                       })()}
                       {isFieldUploading(field.key) ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/75 backdrop-blur-[1px]">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/75 backdrop-blur-[1px] dark:bg-slate-900/75">
                           <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent" />
                           <p className="text-xs font-semibold text-cyan-700">{field.kind === 'video' ? 'Uploading video...' : 'Uploading image...'}</p>
                         </div>
@@ -953,14 +953,14 @@ export default function ShopBuilderStudio() {
                     <input
                       value={field.value}
                       onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
                     />
                     {/^https?:\/\//i.test(field.value.trim()) ? (
                       <a
                         href={field.value.trim()}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100"
                       >
                         Open Link
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1018,7 +1018,7 @@ export default function ShopBuilderStudio() {
           </div>
 
           {/* Save button */}
-          <div className="mt-auto border-t border-slate-100 p-5">
+          <div className="mt-auto border-t border-slate-100 p-5 dark:border-slate-800">
             <button
               type="button"
               onClick={() => void saveSection()}
@@ -1030,7 +1030,7 @@ export default function ShopBuilderStudio() {
               {isSaving ? (
                 <>
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Saving…
+                  Saving...
                 </>
               ) : isDirty ? (
                 <>
@@ -1050,8 +1050,8 @@ export default function ShopBuilderStudio() {
                 </>
               )}
             </button>
-            <p className="mt-3 text-center text-[11px] text-slate-400">
-              Changes publish to <span className="font-semibold text-slate-600">/shop</span> immediately after saving.
+            <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
+              Changes publish to <span className="font-semibold text-slate-600 dark:text-slate-300">/shop</span> immediately after saving.
             </p>
           </div>
         </aside>
@@ -1200,16 +1200,16 @@ function PreviewAnnouncements(props: { section: BuilderSection; selectedId: Buil
 
   return (
     <PreviewSection {...props}>
-      <div className="bg-white px-4 py-3">
-        <div className="rounded-xl border border-orange-100 bg-orange-50 px-3 py-2">
+      <div className="bg-white px-4 py-3 dark:bg-slate-900">
+        <div className="rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 dark:border-orange-900/40 dark:bg-orange-950/30">
           <div className="flex flex-wrap items-center gap-2">
             {chips.map((item) => (
-              <span key={item} className="inline-flex rounded-full border border-orange-100 bg-white px-3 py-1 text-[11px] font-semibold text-orange-700">
+              <span key={item} className="inline-flex rounded-full border border-orange-100 bg-white px-3 py-1 text-[11px] font-semibold text-orange-700 dark:border-orange-900/40 dark:bg-slate-900 dark:text-orange-300">
                 {item}
               </span>
             ))}
             {chips.length === 0 ? (
-              <span className="text-xs text-slate-400">No chips set</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">No chips set</span>
             ) : null}
           </div>
         </div>
@@ -1250,16 +1250,16 @@ function PreviewShopHeader(props: { section: BuilderSection; selectedId: Builder
           </div>
         </div>
       </div>
-      <div className="border-b border-slate-100 dark:border-slate-800 bg-white px-4 py-4">
+      <div className="border-b border-slate-100 dark:border-slate-800 bg-white px-4 py-4 dark:bg-slate-900">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {trustItems.map((item, index) => (
-            <div key={`${item.index}-${item.title}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-              <p className="text-xs font-semibold text-slate-800">{item.title || `Trust Item ${index + 1}`}</p>
-              <p className="mt-1 text-[10px] text-slate-500">{item.desc || 'Description'}</p>
+            <div key={`${item.index}-${item.title}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{item.title || `Trust Item ${index + 1}`}</p>
+              <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">{item.desc || 'Description'}</p>
             </div>
           ))}
           {trustItems.length === 0 ? (
-            <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
+            <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
               No trust items set yet.
             </div>
           ) : null}
@@ -1395,7 +1395,7 @@ function PreviewFeaturedCollection(props: {
 
   return (
     <PreviewSection {...props}>
-      <div className="bg-gray-50 px-4 py-10">
+      <div className="bg-gray-50 px-4 py-10 dark:bg-slate-950">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           {/* Lead image */}
           <div className="group relative aspect-4/5 overflow-hidden rounded-3xl">
@@ -1428,25 +1428,25 @@ function PreviewFeaturedCollection(props: {
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-orange-500">
               {getFieldValue(props.section, 'right_eyebrow') || 'Sale Items'}
             </p>
-            <h2 className="mb-5 text-xl font-bold text-slate-900">
+            <h2 className="mb-5 text-xl font-bold text-slate-900 dark:text-slate-100">
               {getFieldValue(props.section, 'right_heading') || 'Top Picks This Week'}
             </h2>
             {products.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
                 {products.map((product) => (
-                  <div key={product.id} className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-                    <div className="relative h-28 bg-slate-100">
+                  <div key={product.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <div className="relative h-28 bg-slate-100 dark:bg-slate-800">
                       <Image src={product.image || fallbackImage} alt={product.name} fill className="object-cover" unoptimized />
                     </div>
                     <div className="p-3">
-                      <p className="line-clamp-2 text-xs font-semibold text-slate-800">{product.name}</p>
+                      <p className="line-clamp-2 text-xs font-semibold text-slate-800 dark:text-slate-100">{product.name}</p>
                       <p className="mt-1 text-sm font-bold text-orange-500">PHP {product.priceSrp.toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
                 Select a category to preview Top Picks.
               </div>
             )}
@@ -1530,10 +1530,10 @@ function PreviewNewsletter(props: { section: BuilderSection; selectedId: Builder
 
 function HelperPanel({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{title}</p>
-      <div className="mt-2 max-h-36 space-y-1 overflow-y-auto text-xs text-slate-500">
-        {items.length > 0 ? items.map((item) => <p key={item}>{item}</p>) : <p className="text-slate-400">No data yet.</p>}
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{title}</p>
+      <div className="mt-2 max-h-36 space-y-1 overflow-y-auto text-xs text-slate-500 dark:text-slate-400">
+        {items.length > 0 ? items.map((item) => <p key={item}>{item}</p>) : <p className="text-slate-400 dark:text-slate-500">No data yet.</p>}
       </div>
     </div>
   )
@@ -1573,9 +1573,9 @@ function MarqueeMessagesEditor({
   }
 
   return (
-    <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+    <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-slate-500">Manage rotating top banner messages.</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Manage rotating top banner messages.</p>
       </div>
 
       <div className="mt-3 flex items-center gap-2">
@@ -1589,13 +1589,13 @@ function MarqueeMessagesEditor({
             }
           }}
           placeholder="Enter marquee message"
-          className="flex-1 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+          className="flex-1 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         />
         <button
           type="button"
           onClick={addItem}
           disabled={!draftMessage.trim()}
-          className="inline-flex h-11 flex-none items-center gap-1.5 rounded-2xl border border-cyan-200 bg-white px-4 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-45"
+          className="inline-flex h-11 flex-none items-center gap-1.5 rounded-2xl border border-cyan-200 bg-white px-4 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-950/30"
         >
           <span className="text-base leading-none">+</span>
           Add
@@ -1604,16 +1604,16 @@ function MarqueeMessagesEditor({
 
       <div className="mt-3 space-y-2">
         {items.length > 0 ? items.map((item, index) => (
-          <div key={`${index}-${item}`} className="rounded-xl border border-slate-200 bg-white p-2">
+          <div key={`${index}-${item}`} className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-start gap-2">
-              <div className="mt-2 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500">
+              <div className="mt-2 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 {index + 1}
               </div>
               <input
                 value={item}
                 onChange={(event) => updateItem(index, event.target.value)}
                 placeholder="Enter marquee message"
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
               />
               <button
                 type="button"
@@ -1626,7 +1626,7 @@ function MarqueeMessagesEditor({
             </div>
           </div>
         )) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
             No marquee messages yet. Click Add to create one.
           </div>
         )}
@@ -1656,13 +1656,13 @@ function TrustItemsEditor({
   }
 
   return (
-    <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+    <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-slate-500">Manage trust highlights shown below the top bar.</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Manage trust highlights shown below the top bar.</p>
         <button
           type="button"
           onClick={addItem}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-50"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-950/30"
         >
           <span className="text-sm leading-none">+</span>
           Add
@@ -1671,13 +1671,13 @@ function TrustItemsEditor({
 
       <div className="mt-3 space-y-2">
         {items.length > 0 ? items.map((item, index) => (
-          <div key={`trust-item-${item.index}`} className="rounded-xl border border-slate-200 bg-white p-3">
+          <div key={`trust-item-${item.index}`} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-2 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                   {index + 1}
                 </div>
-                <p className="text-xs font-semibold text-slate-500">Trust item {index + 1}</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Trust item {index + 1}</p>
               </div>
               <button
                 type="button"
@@ -1693,18 +1693,18 @@ function TrustItemsEditor({
                 value={item.title}
                 onChange={(event) => onChange(`trust_item_${item.index}_title`, event.target.value)}
                 placeholder="Trust item title"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
               />
               <input
                 value={item.desc}
                 onChange={(event) => onChange(`trust_item_${item.index}_desc`, event.target.value)}
                 placeholder="Trust item description"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
               />
             </div>
           </div>
         )) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
             No trust items yet. Click Add to create one.
           </div>
         )}
@@ -1723,9 +1723,9 @@ function CategoryPickerPanel({
   onToggle: (categoryId: number) => void
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Category picker</p>
-      <p className="mt-1 text-[11px] text-slate-400">Toggle categories to include them in the shop carousel.</p>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Category picker</p>
+      <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Toggle categories to include them in the shop carousel.</p>
       <div className="mt-3 max-h-52 space-y-1.5 overflow-y-auto">
         {categories.map((category) => {
           const active = selectedIds.includes(category.id)
@@ -1736,18 +1736,18 @@ function CategoryPickerPanel({
               onClick={() => onToggle(category.id)}
               className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition ${
                 active
-                  ? 'border-cyan-300 bg-cyan-50 text-cyan-900'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  ? 'border-cyan-300 bg-cyan-50 text-cyan-900 dark:border-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-100'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
               }`}
             >
               <div>
                 <p className="text-xs font-semibold">{category.name}</p>
-                <p className="text-[10px] text-slate-400">ID {category.id}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">ID {category.id}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400">{category.product_count ?? 0}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">{category.product_count ?? 0}</span>
                 <span className={`h-4 w-4 rounded-full border-2 transition ${
-                  active ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 bg-white'
+                  active ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'
                 }`} />
               </div>
             </button>
@@ -1768,16 +1768,16 @@ function FeaturedCategoryPickerPanel({
   onSelect: (categoryId: number) => void
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Auto product source</p>
-          <p className="mt-1 text-[11px] text-slate-400">Assign one category to auto-fill the right-side product cards.</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Auto product source</p>
+          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Assign one category to auto-fill the right-side product cards.</p>
         </div>
         <button
           type="button"
           onClick={() => onSelect(0)}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
         >
           Clear
         </button>
@@ -1792,18 +1792,18 @@ function FeaturedCategoryPickerPanel({
               onClick={() => onSelect(category.id)}
               className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition ${
                 active
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
               }`}
             >
               <div>
                 <p className="text-xs font-semibold">{category.name}</p>
-                <p className="text-[10px] text-slate-400">ID {category.id}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">ID {category.id}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400">{category.product_count ?? 0}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">{category.product_count ?? 0}</span>
                 <span className={`h-4 w-4 rounded-full border-2 transition ${
-                  active ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white'
+                  active ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'
                 }`} />
               </div>
             </button>
