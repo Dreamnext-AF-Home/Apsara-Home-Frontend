@@ -81,23 +81,23 @@ export default function AddsContentClient() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">Web Content</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Ads Content</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-400">Web Content</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Ads Content</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
           This page will manage advertising placements, promos, and sponsored content blocks once connected to the
           web content service.
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-orange-100/70 blur-3xl animate-pulse" />
         <div className="pointer-events-none absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-amber-100/70 blur-3xl animate-pulse" />
 
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-600">Campaign Builder</p>
-            <h2 className="mt-2 text-xl font-bold text-slate-900">Add New Content</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-600 dark:text-amber-400">Campaign Builder</p>
+            <h2 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Add New Content</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
               Create advertising placements, promo tiles, and sponsored content blocks with a single action.
               You can later attach images, links, and scheduling windows.
             </p>
@@ -128,7 +128,7 @@ export default function AddsContentClient() {
 
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-amber-200 hover:text-amber-700"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-amber-200 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-amber-700 dark:hover:text-amber-300"
           >
             View Drafts
           </button>
@@ -138,19 +138,19 @@ export default function AddsContentClient() {
       {isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
-          <div className="relative z-[61] w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="relative z-[61] w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-600">New Campaign</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-600 dark:text-amber-400">New Campaign</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">
                   {editingItemId ? 'Edit Content Details' : 'Add Content Details'}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">Fill in image, video, and schedule details.</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Fill in image, video, and schedule details.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-amber-200 hover:text-amber-700"
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-amber-200 hover:text-amber-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-amber-700 dark:hover:text-amber-300"
               >
                 Close
               </button>
@@ -494,13 +494,13 @@ export default function AddsContentClient() {
         </div>
       )}
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Library</p>
-            <h3 className="mt-2 text-lg font-bold text-slate-900">Uploaded Content</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Library</p>
+            <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Uploaded Content</h3>
           </div>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             {isAddsLoading ? 'Loading...' : `${addsContentData?.items?.length ?? 0} items`}
           </span>
         </div>

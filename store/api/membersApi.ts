@@ -91,6 +91,31 @@ export interface AdminReferralTreeResponse {
   roots: AdminReferralNode[]
 }
 
+export interface TopEarnerResponseItem {
+  id: number
+  name: string
+  email: string
+  tier: MemberTier
+  earnings: number
+  orders: number
+  referrals: number
+  status: MemberStatus
+  joinedAt: string
+  lastActive: string
+  totalSpent: number
+}
+
+export interface TopEarnersResponse {
+  summary: {
+    totalEarnings: number
+    activeEarners: number
+    avgEarnings: number
+    topEarnerAmount: number
+    totalMembers: number
+  }
+  members: TopEarnerResponseItem[]
+}
+
 interface MembersQueryParams {
   page?: number
   perPage?: number
@@ -100,6 +125,12 @@ interface MembersQueryParams {
   registration?: 'new' | 'referred' | 'direct'
   profilePhoto?: 'with_photo' | 'no_photo'
   sort?: 'default' | 'newest_registered' | 'oldest_registered' | 'earnings_low_high' | 'earnings_high_low' | 'referrals_high_low'
+}
+
+interface TopEarnersQueryParams {
+  search?: string
+  tier?: MemberTier | 'All Tiers'
+  sort?: 'earnings' | 'orders' | 'referrals' | 'total_spent'
 }
 
 export interface UpdateMemberPayload {
@@ -230,6 +261,19 @@ export const membersApi = baseApi.injectEndpoints({
       keepUnusedDataFor: 120,
       providesTags: ['Members'],
     }),
+    getTopEarners: builder.query<TopEarnersResponse, TopEarnersQueryParams | void>({
+      query: (params) => ({
+        url: '/api/admin/members/top-earners',
+        method: 'GET',
+        params: {
+          q: params?.search?.trim() ? params.search.trim() : undefined,
+          tier: params?.tier && params.tier !== 'All Tiers' ? params.tier : undefined,
+          sort: params?.sort ?? 'earnings',
+        },
+      }),
+      keepUnusedDataFor: 120,
+      providesTags: ['Members'],
+    }),
     getMembersKyc: builder.query<MemberKycResponse, MemberKycQueryParams | void>({
       query: (params) => ({
         url: '/api/admin/members/kyc',
@@ -291,6 +335,7 @@ export const {
   useGetMembersStatsQuery,
   useLazyGetMemberStatDetailsQuery,
   useGetMembersReferralTreeQuery,
+  useGetTopEarnersQuery,
   useGetMembersKycQuery,
   useUpdateMemberMutation,
   useDeleteMemberMutation,

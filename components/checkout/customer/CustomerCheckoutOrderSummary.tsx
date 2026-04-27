@@ -17,6 +17,8 @@ interface Props {
   onSubmit: () => void;
   voucher?: { code: string; discount: number } | null;
   computedTotal?: number;
+  subtotalOverride?: number;
+  unitPriceOverride?: number;
   shippingFee?: number | null;
   shippingRatePending?: boolean;
   shippingRateUnavailable?: boolean;
@@ -31,6 +33,8 @@ export default function CustomerCheckoutOrderSummary({
   onSubmit,
   voucher,
   computedTotal,
+  subtotalOverride,
+  unitPriceOverride,
   shippingFee,
   shippingRatePending = false,
   shippingRateUnavailable = false,
@@ -59,6 +63,8 @@ export default function CustomerCheckoutOrderSummary({
     ? items.reduce((sum, item) => sum + (Number(item.prodpv ?? 0) * item.quantity), 0)
     : Number(product.prodpv ?? 0);
   const totalPv = hasSelectedItems ? unitPv : unitPv * quantity;
+  const displayUnitPrice = typeof unitPriceOverride === 'number' ? unitPriceOverride : product.price;
+  const displaySubtotal = typeof subtotalOverride === 'number' ? subtotalOverride : subtotal;
   const voucherDiscount = Math.max(0, Number(voucher?.discount ?? 0));
   const displayTotal = typeof computedTotal === 'number' ? computedTotal : total;
   const displayShippingFee = typeof shippingFee === 'number' ? shippingFee : Number(handlingFee ?? 0);
@@ -112,7 +118,7 @@ export default function CustomerCheckoutOrderSummary({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug line-clamp-2">{product.name}</p>
-            <p className="text-orange-500 font-extrabold text-sm mt-1">PHP {product.price.toLocaleString()}</p>
+            <p className="text-orange-500 font-extrabold text-sm mt-1">PHP {displayUnitPrice.toLocaleString()}</p>
             <div className="flex flex-wrap gap-1 mt-1.5">
               <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full">Qty: {quantity}</span>
               {selectedColor && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedColor}</span>}
@@ -229,7 +235,7 @@ export default function CustomerCheckoutOrderSummary({
         <div className="space-y-2.5 text-sm border-t border-slate-200 dark:border-slate-700 pt-3">
           <div className="flex justify-between text-slate-500 dark:text-slate-400">
             <span>Subtotal ({quantity}x)</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">PHP {subtotal.toLocaleString()}</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">PHP {displaySubtotal.toLocaleString()}</span>
           </div>
           {voucherDiscount > 0 ? (
             <div className="flex justify-between text-emerald-600">

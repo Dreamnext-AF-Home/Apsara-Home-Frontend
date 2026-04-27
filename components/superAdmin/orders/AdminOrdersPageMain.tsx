@@ -15,6 +15,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   AdminCourier,
+  AdminOrdersResponse,
   AdminShipmentStatus,
   useBookAdminOrderCourierMutation,
   useCancelAdminOrderCourierMutation,
@@ -30,6 +31,7 @@ import {
   useUpdateAdminOrderFulfillmentModeMutation,
   useUpdateAdminOrderShipmentStatusMutation,
 } from '@/store/api/adminOrdersApi'
+import { useGetAdminGeneralSettingsQuery } from '@/store/api/adminSettingsApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 
 /* ─── constants ────────────────────────────────────────────── */
@@ -359,12 +361,16 @@ function AdminOrderStaticValue({
   )
 }
 
-interface Props { initialFilter?: string }
+interface Props {
+  initialFilter?: string
+  initialData?: AdminOrdersResponse | null
+}
 
-export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
+export default function AdminOrdersPageMain({ initialFilter = 'all', initialData = null }: Props) {
   const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: adminGeneralSettingsData } = useGetAdminGeneralSettingsQuery()
   const [search,      setSearch]      = useState('')
   const [page,        setPage]        = useState(1)
   const [busyId,      setBusyId]      = useState<number | null>(null)
@@ -374,10 +380,18 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
   const [sortBy,      setSortBy]      = useState<'default' | 'customer_az' | 'amount_low_high'>('default')
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null)
   const [payloadPreview, setPayloadPreview] = useState<{ checkoutId: string; payload: Record<string, unknown> | Array<unknown> | null } | null>(null)
+  const [stableData, setStableData] = useState<AdminOrdersResponse | null>(initialData)
 
   const role       = (session?.user?.role ?? '').toLowerCase()
   const canApprove = role === 'super_admin' || role === 'admin' || role === 'merchant_admin'
   const canTrack   = canApprove || role === 'csr'
+  const manualCheckoutModeEnabled = Boolean(adminGeneralSettingsData?.settings?.enable_manual_checkout_mode)
+  const availableFulfillmentModeOptions = useMemo(
+    () => (manualCheckoutModeEnabled
+      ? FULFILLMENT_MODE_OPTIONS.filter((option) => option.value === 'manual')
+      : FULFILLMENT_MODE_OPTIONS),
+    [manualCheckoutModeEnabled],
+  )
 
   const effectiveFilter = useMemo(() => {
     const normalized = initialFilter.trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_')
@@ -392,7 +406,17 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
 
   const { data, isLoading, isError, isFetching } = useGetAdminOrdersQuery({
     filter: effectiveFilter, search: search.trim() || undefined, page, perPage: 20,
+  }, {
+    skip: Boolean(initialData && effectiveFilter === 'all' && page === 1 && search.trim() === ''),
   })
+
+  useEffect(() => {
+    if (data) {
+      setStableData(data)
+    }
+  }, [data])
+
+  const effectiveData = data ?? stableData ?? initialData ?? null
 
   useEffect(() => {
     setPage(1)
@@ -412,7 +436,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
   const [syncZqTracking] = useSyncAdminOrderZqTrackingMutation()
 
   const visibleOrders = useMemo(() => {
-    const list = [...(data?.orders ?? [])]
+    const list = [...(effectiveData?.orders ?? [])]
     return list.sort((a, b) => {
       if (overdueFirst) {
         const aOver = a.sla?.state === 'overdue' ? 1 : 0
@@ -433,14 +457,14 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
       if (timeDiff !== 0) return timeDiff
       return (b.id ?? 0) - (a.id ?? 0)
     })
-  }, [data?.orders, overdueFirst, sortBy])
+  }, [effectiveData?.orders, overdueFirst, sortBy])
 
   useEffect(() => {
-    if (!data?.orders?.length) return
+    if (!effectiveData?.orders?.length) return
 
     setCourierByOrder((prev) => {
       const next = { ...prev }
-      for (const order of data.orders) {
+      for (const order of effectiveData.orders) {
         const courier = ((order.courier ?? '').toLowerCase() === 'xde' ? 'xde' : 'jnt') as AdminCourier
         if (!next[order.id]) {
           next[order.id] = courier
@@ -448,14 +472,14 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
       }
       return next
     })
-  }, [data?.orders])
+  }, [effectiveData?.orders])
 
   useEffect(() => {
-    if (!data?.orders?.length) return
+    if (!effectiveData?.orders?.length) return
 
     setFulfillmentModeByOrder((prev) => {
       const next = { ...prev }
-      for (const order of data.orders) {
+      for (const order of effectiveData.orders) {
         const hasExistingZqFlow = Boolean(order.zq_platform_order_id || order.zq_order_id || order.zq_status)
         if (!next[order.id]) {
           next[order.id] = (order.fulfillment_mode as FulfillmentMode | undefined)
@@ -464,7 +488,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
       }
       return next
     })
-  }, [data?.orders])
+  }, [effectiveData?.orders])
 
   useEffect(() => {
     const raw = searchParams.get('highlightOrderId')
@@ -686,9 +710,9 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
     } finally { setBusyId(null) }
   }
 
-  const counts = data?.counts
-  const currentPage = data?.meta?.current_page ?? 1
-  const totalPages = data?.meta?.last_page ?? 1
+  const counts = effectiveData?.counts
+  const currentPage = effectiveData?.meta?.current_page ?? 1
+  const totalPages = effectiveData?.meta?.last_page ?? 1
   const paginationPages = useMemo(() => getPaginationPages(currentPage, totalPages), [currentPage, totalPages])
   const handleFilterChange = (value: string) => {
     if (value === effectiveFilter) return
@@ -875,7 +899,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
       )}
 
       {/* ── Loading ── */}
-      {isLoading ? (
+      {isLoading && !effectiveData ? (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white animate-pulse dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-100 dark:border-slate-800 px-5 py-4 dark:border-slate-800">
             <div className="h-4 w-28 rounded-lg bg-slate-100 dark:bg-slate-800" />
@@ -1124,7 +1148,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
                                 <AdminOrderSelect
                                   ariaLabel={`Fulfillment mode for order ${order.checkout_id}`}
                                   value={selectedFulfillmentMode}
-                                  options={FULFILLMENT_MODE_OPTIONS}
+                                  options={availableFulfillmentModeOptions}
                                   isDisabled={isBusy || order.approval_status !== 'approved' || hasZqOrder}
                                   onChange={(value) => handleFulfillmentModeChange(order.id, value as FulfillmentMode)}
                                 />
@@ -1389,9 +1413,9 @@ export default function AdminOrdersPageMain({ initialFilter = 'all' }: Props) {
             {totalPages > 1 && (
               <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(data?.meta?.from ?? 0).toLocaleString()}</span> to{' '}
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">{(data?.meta?.to ?? 0).toLocaleString()}</span> of{' '}
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">{(data?.meta?.total ?? 0).toLocaleString()}</span> orders
+                  Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(effectiveData?.meta?.from ?? 0).toLocaleString()}</span> to{' '}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{(effectiveData?.meta?.to ?? 0).toLocaleString()}</span> of{' '}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{(effectiveData?.meta?.total ?? 0).toLocaleString()}</span> orders
                 </p>
                 <Pagination size="sm" className="w-full justify-start gap-3 md:justify-end">
                   <Pagination.Content>

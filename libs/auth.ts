@@ -29,10 +29,15 @@ export const authOptions: NextAuthOptions = {
                 resend_otp: { label: 'Resend OTP', type: 'text' },
                 mfa_challenge_token: { label: 'MFA Challenge Token', type: 'text' },
                 resend_mfa_approval: { label: 'Resend MFA Approval', type: 'text' },
+                passkey_challenge_token: { label: 'Passkey Challenge Token', type: 'text' },
+                passkey_assertion: { label: 'Passkey Assertion', type: 'text' },
                 cf_turnstile_response: { label: 'Turnstile Response', type: 'text' },
             },
             async authorize(credentials, req) {
-                if (!credentials?.email || !credentials?.password) {
+                const hasEmail = Boolean(credentials?.email)
+                const hasPassword = Boolean(credentials?.password)
+                const hasPasskeyFlow = Boolean(credentials?.passkey_challenge_token && credentials?.passkey_assertion)
+                if (!hasEmail || (!hasPassword && !hasPasskeyFlow)) {
                     console.log('[Auth] Missing credentials')
                     return null
                 }
@@ -40,10 +45,13 @@ export const authOptions: NextAuthOptions = {
                 try {
                     const isResendOtp = credentials.resend_otp === '1'
                     const isResendMfaApproval = credentials.resend_mfa_approval === '1'
+                    const isPasskey = !isResendOtp && !isResendMfaApproval && hasPasskeyFlow
                     const url = isResendOtp
                         ? `${process.env.LARAVEL_API_URL}/api/auth/login/2fa/resend`
                         : isResendMfaApproval
                           ? `${process.env.LARAVEL_API_URL}/api/auth/login/mfa/resend`
+                        : isPasskey
+                          ? `${process.env.LARAVEL_API_URL}/api/auth/passkeys/login/verify`
                         : `${process.env.LARAVEL_API_URL}/api/auth/login`
                     console.log('[Auth] Calling:', url, 'email:', credentials.email)
 
@@ -78,6 +86,18 @@ export const authOptions: NextAuthOptions = {
                                   ? {
                                       mfa_challenge_token: credentials.mfa_challenge_token,
                                   }
+                                : isPasskey
+                                  ? {
+                                      identifier: credentials.email,
+                                      challenge_token: credentials.passkey_challenge_token,
+                                      credential: (() => {
+                                          try {
+                                              return JSON.parse(String(credentials.passkey_assertion || '{}'))
+                                          } catch {
+                                              return null
+                                          }
+                                      })(),
+                                  }
                                 : {
                                     email: credentials.email,
                                     password: credentials.password,
@@ -108,6 +128,8 @@ export const authOptions: NextAuthOptions = {
                         const message =
                             data?.message ||
                             data?.errors?.email?.[0] ||
+                            data?.errors?.identifier?.[0] ||
+                            data?.errors?.credential?.[0] ||
                             data?.errors?.login?.[0] ||
                             'Invalid email or password. Please try again.'
                         console.log('[Auth] Laravel error body:', data)

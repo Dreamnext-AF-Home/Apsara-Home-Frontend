@@ -69,7 +69,7 @@ const BuyNowOptionsModal = ({
   forceRealPrice = false,
   onVariantSelect,
 }: BuyNowOptionsModalProps) => {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const { data: publicSettingsData } = useGetPublicGeneralSettingsQuery();
   const [notice, setNotice] = useState('');
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
@@ -113,11 +113,14 @@ const BuyNowOptionsModal = ({
   const activeSelectedStyle = activeVariant?.style ?? selectedStyle ?? null;
   const activeSelectedSize = activeVariant?.size ?? selectedSize ?? null;
   const activeSelectedType = activeVariant?.name ?? selectedType ?? null;
+  const role = String(session?.user?.role ?? '').toLowerCase();
+  const canUseMemberPrice = status === 'authenticated' && (role === 'customer' || role === '');
   const baseSrp = toPositiveNumber(product.originalPrice) ?? toPositiveNumber(product.price) ?? 0;
   const srpPrice = toPositiveNumber(activeVariant?.priceSrp) ?? baseSrp;
   const memberPrice = toPositiveNumber(activeVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
   const hasMemberPrice = memberPrice > 0 && memberPrice < srpPrice;
-  const unitPrice = !forceRealPrice && hasMemberPrice ? memberPrice : srpPrice;
+  // Guest checkout must always use SRP. Member price applies only for authenticated customer accounts.
+  const unitPrice = !forceRealPrice && canUseMemberPrice && hasMemberPrice ? memberPrice : srpPrice;
   const unitPv = toPositiveNumber(activeVariant?.prodpv) ?? Number(product.prodpv ?? 0);
   const selectedVariantImage = activeVariant?.images?.[0] || product.image;
   const colorOptions = useMemo(() => {

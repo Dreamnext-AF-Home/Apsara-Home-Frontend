@@ -5,7 +5,8 @@ import { motion } from 'framer-motion'
 import RankingPodium from './RankingPodium'
 import RankingLeaderboard from './RankingLeaderboard'
 import RankingFilters from './RankingFilters'
-import { MOCK_EARNERS, php } from '@/components/superAdmin/members/topEarners/types'
+import { php } from '@/components/superAdmin/members/topEarners/types'
+import { useGetTopEarnersQuery } from '@/store/api/membersApi'
 
 const PREVIOUS_RANKS: Record<number, number> = {
   1: 2, 2: 1, 3: 4, 4: 3, 5: 7,
@@ -17,6 +18,7 @@ export default function RankingPageClient() {
   const [period, setPeriod] = useState('all-time')
   const [search, setSearch] = useState('')
   const [demoStep, setDemoStep] = useState(0)
+  const { data, isLoading, isError } = useGetTopEarnersQuery()
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -28,7 +30,7 @@ export default function RankingPageClient() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = [...MOCK_EARNERS]
+    let list = data?.members ?? []
     if (q) {
       list = list.filter((m) =>
         m.name.toLowerCase().includes(q) ||
@@ -38,7 +40,7 @@ export default function RankingPageClient() {
     }
     list.sort((a, b) => b.earnings - a.earnings)
     return list
-  }, [search])
+  }, [search, data?.members])
 
   const top3 = filtered.slice(0, 3)
   const remaining = filtered.slice(3)

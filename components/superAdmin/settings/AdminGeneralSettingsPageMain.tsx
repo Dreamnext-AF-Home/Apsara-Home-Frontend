@@ -150,110 +150,110 @@ export default function AdminGeneralSettingsPageMain() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm">
-        <div className="pointer-events-none absolute -right-24 -top-20 h-48 w-48 rounded-full bg-cyan-200/50 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-amber-200/40 blur-3xl" />
-        <p className="text-xs font-bold uppercase tracking-[0.32em] text-cyan-700">Settings</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">General Settings</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm dark:border-slate-700 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900">
+        <div className="pointer-events-none absolute -right-24 -top-20 h-48 w-48 rounded-full bg-cyan-200/50 blur-3xl dark:bg-cyan-600/20" />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-amber-200/40 blur-3xl dark:bg-amber-600/20" />
+        <p className="text-xs font-bold uppercase tracking-[0.32em] text-cyan-700 dark:text-cyan-300">Settings</p>
+        <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">General Settings</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
           Configure system identity details and localization defaults for your admin experience.
         </p>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">System Information</p>
-            <h2 className="mt-2 text-lg font-bold text-slate-900">Brand & Contact</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">System Information</p>
+            <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-white">Brand & Contact</h2>
           </div>
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase text-amber-700">Top priority</span>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase text-amber-700 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200">Top priority</span>
         </div>
 
         <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             System Name
             <input
               value={systemName}
               onChange={(event) => setSystemName(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="Apsara Home"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Company Name
             <input
               value={companyName}
               onChange={(event) => setCompanyName(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="Company name"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Support Email
             <input
               type="email"
               value={supportEmail}
               onChange={(event) => setSupportEmail(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="support@company.com"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Contact Number
             <input
               value={contactNumber}
               onChange={(event) => setContactNumber(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="+63"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700 md:col-span-2">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300 md:col-span-2">
             Address
             <input
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="Company address"
             />
           </label>
 
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 md:col-span-2">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 md:col-span-2 dark:border-slate-700 dark:from-slate-700/50 dark:to-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Company Branches</p>
-                <p className="text-sm text-slate-600">Add office name and address entries.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Company Branches</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">Add office name and address entries.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsBranchesModalOpen(true)}
-                className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md"
+                className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md dark:bg-slate-700 dark:text-cyan-300 dark:ring-slate-600"
               >
                 Manage Branches
               </button>
             </div>
             {branches.length === 0 ? (
-              <p className="text-sm text-slate-500">No branches added yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No branches added yet.</p>
             ) : (
-              <ul className="space-y-2 text-sm text-slate-700">
+              <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
                 {branches.map((branch, index) => (
-                  <li key={`${branch.name}-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <p className="font-semibold text-slate-800">{branch.name}</p>
-                    <p className="text-xs text-slate-500">{branch.address}</p>
+                  <li key={`${branch.name}-${index}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-700">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{branch.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{branch.address}</p>
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Upload Logo</p>
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 dark:border-slate-700 dark:from-slate-700/50 dark:to-slate-800">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Upload Logo</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md dark:bg-slate-700 dark:text-cyan-300 dark:ring-slate-600">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-300">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 16.5V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v9.5a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 16.5z" />
                   </svg>
@@ -266,21 +266,21 @@ export default function AdminGeneralSettingsPageMain() {
                   className="sr-only"
                 />
               </label>
-              <span className="text-xs text-slate-500">{logoFile ? logoFile.name : 'No file selected'}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{logoFile ? logoFile.name : 'No file selected'}</span>
             </div>
             {logoUrl ? (
-              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500">
+              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
                 <img src={logoUrl} alt="Current logo" className="h-8 w-8 rounded-md object-contain" />
                 <span>Current logo uploaded.</span>
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Upload Favicon</p>
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 dark:border-slate-700 dark:from-slate-700/50 dark:to-slate-800">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Upload Favicon</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md dark:bg-slate-700 dark:text-cyan-300 dark:ring-slate-600">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-300">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 16.5V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v9.5a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 16.5z" />
                   </svg>
@@ -293,22 +293,22 @@ export default function AdminGeneralSettingsPageMain() {
                   className="sr-only"
                 />
               </label>
-              <span className="text-xs text-slate-500">{faviconFile ? faviconFile.name : 'No file selected'}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{faviconFile ? faviconFile.name : 'No file selected'}</span>
             </div>
             {faviconUrl ? (
-              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500">
+              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
                 <img src={faviconUrl} alt="Current favicon" className="h-8 w-8 rounded-md object-contain" />
                 <span>Current favicon uploaded.</span>
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 md:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Upload Website QR Code</p>
-            <p className="mt-1 text-sm text-slate-600">Shown on the website for customers to scan.</p>
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 md:col-span-2 dark:border-slate-700 dark:from-slate-700/50 dark:to-slate-800">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Upload Website QR Code</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Shown on the website for customers to scan.</p>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition hover:shadow-md dark:bg-slate-700 dark:text-cyan-300 dark:ring-slate-600">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-300">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 16.5V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v9.5a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 16.5z" />
                   </svg>
@@ -321,10 +321,10 @@ export default function AdminGeneralSettingsPageMain() {
                   className="sr-only"
                 />
               </label>
-              <span className="text-xs text-slate-500">{websiteQrCodeFile ? websiteQrCodeFile.name : 'No file selected'}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{websiteQrCodeFile ? websiteQrCodeFile.name : 'No file selected'}</span>
             </div>
             {websiteQrCodeUrl ? (
-              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500">
+              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-400">
                 <img src={websiteQrCodeUrl} alt="Current website QR code" className="h-16 w-16 rounded-md object-contain" />
                 <span>Current QR code uploaded.</span>
               </div>
@@ -333,19 +333,19 @@ export default function AdminGeneralSettingsPageMain() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Localization</p>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">PH-based defaults</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Localization</p>
+          <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-white">PH-based defaults</h2>
         </div>
 
         <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Timezone
             <select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
             >
               <option value="Asia/Manila">Asia/Manila</option>
               <option value="Asia/Shanghai">Asia/Shanghai</option>
@@ -353,12 +353,12 @@ export default function AdminGeneralSettingsPageMain() {
             </select>
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Currency
             <select
               value={currency}
               onChange={(event) => setCurrency(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
             >
               <option value="PHP">PHP (₱)</option>
               <option value="USD">USD ($)</option>
@@ -366,12 +366,12 @@ export default function AdminGeneralSettingsPageMain() {
             </select>
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Date Format
             <select
               value={dateFormat}
               onChange={(event) => setDateFormat(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
             >
               <option value="MM/DD/YYYY">MM/DD/YYYY</option>
               <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -379,12 +379,12 @@ export default function AdminGeneralSettingsPageMain() {
             </select>
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Language
             <select
               value={language}
               onChange={(event) => setLanguage(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
             >
               <option value="English">English</option>
               <option value="Filipino">Filipino</option>
@@ -393,29 +393,29 @@ export default function AdminGeneralSettingsPageMain() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Checkout Payments</p>
-            <h2 className="mt-2 text-lg font-bold text-slate-900">Test Payment Visibility</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Checkout Payments</p>
+            <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-white">Test Payment Visibility</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               When enabled, customers on the live website can see the test/live payment mode switch during checkout.
             </p>
           </div>
           <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase ${
             enableTestPayments
-              ? 'border-amber-200 bg-amber-50 text-amber-700'
-              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
           }`}>
             {enableTestPayments ? 'Test visible on checkout' : 'Live only'}
           </span>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 dark:border-slate-700 dark:from-slate-700/50 dark:to-slate-800">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="max-w-2xl">
-              <p className="text-sm font-semibold text-slate-800">Enable Test Payments on Customer Checkout</p>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Enable Test Payments on Customer Checkout</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Recommended to keep this off in production unless you intentionally want customers to access PayMongo test mode.
               </p>
             </div>
@@ -426,8 +426,8 @@ export default function AdminGeneralSettingsPageMain() {
               onClick={() => setEnableTestPayments((prev) => !prev)}
               className={`relative inline-flex h-8 w-15 shrink-0 items-center rounded-full border transition-all ${
                 enableTestPayments
-                  ? 'border-orange-300 bg-orange-500'
-                  : 'border-slate-300 bg-slate-200'
+                  ? 'border-orange-300 bg-orange-500 dark:border-orange-600 dark:bg-orange-600'
+                  : 'border-slate-300 bg-slate-200 dark:border-slate-600 dark:bg-slate-600'
               }`}
             >
               <span
@@ -497,7 +497,7 @@ export default function AdminGeneralSettingsPageMain() {
             }
           }}
           disabled={isSaving || isFetching}
-          className="rounded-full bg-gradient-to-r from-cyan-600 to-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-full bg-gradient-to-r from-cyan-600 to-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 dark:from-cyan-700 dark:to-sky-600"
         >
           {isSaving ? 'Saving...' : 'Save Settings'}
         </button>
@@ -506,17 +506,17 @@ export default function AdminGeneralSettingsPageMain() {
       {isBranchesModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsBranchesModalOpen(false)} />
-          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Branches</p>
-                <h3 className="mt-2 text-lg font-bold text-slate-900">Company Offices</h3>
-                <p className="mt-1 text-sm text-slate-500">Add office name and address details.</p>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Branches</p>
+                <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-white">Company Offices</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Add office name and address details.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsBranchesModalOpen(false)}
-                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600"
+                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300"
               >
                 Close
               </button>
@@ -524,39 +524,39 @@ export default function AdminGeneralSettingsPageMain() {
 
             <div className="mt-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 text-sm font-semibold text-slate-700">
+                <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Office Name
                   <input
                     value={branchDraftName}
                     onChange={(event) => setBranchDraftName(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
                     placeholder="Main Office"
                   />
                 </label>
-                <label className="space-y-2 text-sm font-semibold text-slate-700">
+                <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Office Address
                   <input
                     value={branchDraftAddress}
                     onChange={(event) => setBranchDraftAddress(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
                     placeholder="123 Makati Ave, Metro Manila"
                   />
                 </label>
-                <label className="space-y-2 text-sm font-semibold text-slate-700">
+                <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Google Map Link
                   <input
                     value={branchDraftGoogleMapLink}
                     onChange={(event) => setBranchDraftGoogleMapLink(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
                     placeholder="https://maps.app.goo.gl/..."
                   />
                 </label>
-                <label className="space-y-2 text-sm font-semibold text-slate-700">
+                <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Waze Link
                   <input
                     value={branchDraftWazeLink}
                     onChange={(event) => setBranchDraftWazeLink(event.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
                     placeholder="https://waze.com/ul?..."
                   />
                 </label>
@@ -586,7 +586,7 @@ export default function AdminGeneralSettingsPageMain() {
                     branchesTouched.current = true
                     resetBranchDraft()
                   }}
-                  className="rounded-full bg-gradient-to-r from-cyan-600 to-sky-500 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:shadow-md"
+                  className="rounded-full bg-gradient-to-r from-cyan-600 to-sky-500 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:shadow-md dark:from-cyan-700 dark:to-sky-600"
                 >
                   {editingBranchIndex !== null ? 'Update Branch' : 'Add Branch'}
                 </button>
@@ -594,7 +594,7 @@ export default function AdminGeneralSettingsPageMain() {
                   <button
                     type="button"
                     onClick={resetBranchDraft}
-                    className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200"
+                    className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:ring-slate-600"
                   >
                     Cancel Edit
                   </button>
@@ -604,22 +604,22 @@ export default function AdminGeneralSettingsPageMain() {
 
             <div className="mt-6 space-y-3">
               {branches.length === 0 ? (
-                <p className="text-sm text-slate-500">No branches added yet.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No branches added yet.</p>
               ) : (
                 branches.map((branch, index) => (
                   <div
                     key={`${branch.name}-${index}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-700/50"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">{branch.name}</p>
-                      <p className="text-xs text-slate-500">{branch.address}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{branch.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{branch.address}</p>
                       {branch.google_map_link?.trim() ? (
                         <a
                           href={branch.google_map_link}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-1 block text-xs font-semibold text-cyan-700 hover:text-cyan-800"
+                          className="mt-1 block text-xs font-semibold text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
                         >
                           Google Map
                         </a>
@@ -629,7 +629,7 @@ export default function AdminGeneralSettingsPageMain() {
                           href={branch.waze_link}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-1 block text-xs font-semibold text-cyan-700 hover:text-cyan-800"
+                          className="mt-1 block text-xs font-semibold text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
                         >
                           Waze
                         </a>
@@ -644,7 +644,7 @@ export default function AdminGeneralSettingsPageMain() {
                         setBranchDraftGoogleMapLink(branch.google_map_link || '')
                         setBranchDraftWazeLink(branch.waze_link || '')
                       }}
-                      className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100"
+                      className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 dark:bg-slate-700 dark:text-cyan-300 dark:ring-slate-600"
                     >
                       Edit
                     </button>

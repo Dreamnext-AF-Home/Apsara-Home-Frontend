@@ -2,14 +2,13 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
-import Link from 'next/link'
-import { useCart } from '@/context/CartContext'
+import { useCart, type CartItem } from '@/context/CartContext'
 import { usePathname, useRouter } from 'next/navigation'
 import type { CustomerCheckoutLineItem } from '@/types/CustomerCheckout/types'
 import { useMemo } from 'react'
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton'
 import { resolveCheckoutSource } from '@/libs/checkoutSource'
-import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting'
+import { buildStorefrontProductPath, extractPartnerSlugFromPath } from '@/libs/storefrontRouting'
 
 export default function CartDrawer() {
   const router = useRouter()
@@ -100,6 +99,17 @@ export default function CartDrawer() {
     if (selectedIds.length === 0) return
 
     selectedIds.forEach((id) => removeFromCart(id))
+  }
+
+  const handleOpenCartItem = (item: CartItem) => {
+    const productId = Number(item.productId)
+    const targetPath = buildStorefrontProductPath(
+      item.name,
+      Number.isFinite(productId) && productId > 0 ? productId : undefined,
+      pathname,
+    )
+    setIsOpen(false)
+    router.push(targetPath)
   }
 
   return (
@@ -198,13 +208,24 @@ export default function CartDrawer() {
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, x: 60 }}
     transition={{ duration: 0.2 }}
-    className="flex gap-3 rounded-2xl bg-gray-50 dark:bg-gray-700/50 p-3"
+    className="flex gap-3 rounded-2xl bg-gray-50 dark:bg-gray-700/50 p-3 cursor-pointer"
+    onClick={() => handleOpenCartItem(item)}
+    onKeyDown={(event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        handleOpenCartItem(item)
+      }
+    }}
+    tabIndex={0}
+    role="button"
+    aria-label={`Open ${item.name}`}
   >
-                            <label className="mt-1 flex items-start cursor-pointer">
+                            <label className="mt-1 flex items-start cursor-pointer" onClick={(event) => event.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={selectedIds.includes(item.id)}
                                 onChange={() => toggleItemSelected(item.id)}
+                                onClick={(event) => event.stopPropagation()}
                                 className="h-4 w-4 rounded border-gray-300 text-sky-500 focus:ring-sky-200 cursor-pointer"
                                 style={{ cursor: 'pointer' }}
                               />
@@ -251,14 +272,20 @@ export default function CartDrawer() {
       </div>
       <div className="mt-2 flex items-center gap-2">
         <button
-          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+          onClick={(event) => {
+            event.stopPropagation()
+            updateQuantity(item.id, item.quantity - 1)
+          }}
           className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-lg font-bold leading-none transition-colors hover:border-sky-400 hover:text-sky-500 dark:hover:border-sky-500 dark:hover:text-sky-400 text-slate-700 dark:text-gray-300"
         >
           -
         </button>
         <span className="w-5 text-center text-sm font-semibold text-slate-700 dark:text-gray-300">{item.quantity}</span>
         <button
-          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+          onClick={(event) => {
+            event.stopPropagation()
+            updateQuantity(item.id, item.quantity + 1)
+          }}
           className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-lg font-bold leading-none transition-colors hover:border-sky-400 hover:text-sky-500 dark:hover:border-sky-500 dark:hover:text-sky-400 text-slate-700 dark:text-gray-300"
         >
           +
@@ -268,7 +295,10 @@ export default function CartDrawer() {
 
     <div className="flex flex-col items-end justify-between">
       <button
-        onClick={() => removeFromCart(item.id)}
+        onClick={(event) => {
+          event.stopPropagation()
+          removeFromCart(item.id)
+        }}
         className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 dark:hover:text-red-400 cursor-pointer"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

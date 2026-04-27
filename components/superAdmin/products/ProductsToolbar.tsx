@@ -63,14 +63,18 @@ function ToolbarSelect({
       isDisabled={isDisabled}
       className="w-full"
     >
-      <Select.Trigger className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-left text-sm text-slate-700 transition-all duration-200 hover:bg-slate-50 focus:border-sky-400 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:border-sky-400">
+      <Select.Trigger className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-left text-sm text-slate-700 transition-all duration-200 hover:bg-slate-50 focus:border-sky-400 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/14 dark:focus:border-sky-400/70 dark:focus:bg-white/14">
         <span className="truncate">{selectedLabel}</span>
-        <Select.Indicator className="h-4 w-4 text-slate-400" />
+        <Select.Indicator className="h-4 w-4 text-slate-400 dark:text-slate-400" />
       </Select.Trigger>
-      <Select.Popover className="min-w-[var(--trigger-width)]">
-        <ListBox className="p-1">
+      <Select.Popover className="min-w-[var(--trigger-width)] rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <ListBox className="p-1 text-slate-700 dark:text-slate-100">
           {options.map((option) => (
-            <ListBoxItem id={option.value} key={`${option.value}-${option.label}`}>
+            <ListBoxItem
+              id={option.value}
+              key={`${option.value}-${option.label}`}
+              className="rounded-xl text-slate-700 transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-800 data-[selected=true]:bg-sky-50 data-[selected=true]:text-sky-700 dark:data-[selected=true]:bg-sky-900/30 dark:data-[selected=true]:text-sky-200"
+            >
               {option.label}
             </ListBoxItem>
           ))}
@@ -151,7 +155,7 @@ export default function ProductsToolbar({
                 onPress={() => onStatus(tab.value)}
                 className={status === tab.value
                   ? 'rounded-xl bg-sky-600 px-4 text-xs font-semibold text-white hover:bg-sky-700'
-                  : 'rounded-xl border border-transparent px-4 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:hover:bg-slate-800'}
+                  : 'rounded-xl border border-transparent bg-slate-100 px-4 text-xs font-semibold text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:bg-white/12 dark:text-slate-200 dark:hover:bg-white/18 dark:hover:text-white'}
               >
                 {tab.label}
               </Button>
@@ -167,13 +171,13 @@ export default function ProductsToolbar({
                 className="w-full"
               >
                 <Label className="sr-only">Search products</Label>
-                <SearchField.Group className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 transition-all duration-200 focus-within:border-sky-400 focus-within:bg-white dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-sky-400">
-                  <SearchField.SearchIcon className="h-4 w-4 text-slate-400" />
+                <SearchField.Group className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 transition-all duration-200 focus-within:border-sky-400 focus-within:bg-white dark:border-white/15 dark:bg-white/10 dark:focus-within:border-sky-400/70 dark:focus-within:bg-white/14">
+                  <SearchField.SearchIcon className="h-4 w-4 text-slate-400 dark:text-slate-400" />
                   <SearchField.Input
                     placeholder="Search by name or SKU..."
-                    className="flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                    className="flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-400"
                   />
-                  {search ? <SearchField.ClearButton className="text-slate-400 transition hover:text-slate-600" /> : null}
+                  {search ? <SearchField.ClearButton className="text-slate-400 transition hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200" /> : null}
                 </SearchField.Group>
               </SearchField>
             </div>
@@ -184,7 +188,7 @@ export default function ProductsToolbar({
                   size="sm"
                   variant="secondary"
                   onPress={onViewManualCheckout}
-                  className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                  className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/15 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/14"
                 >
                   View Manual Checkout
                 </Button>
@@ -250,17 +254,17 @@ export default function ProductsToolbar({
 
           <div className="flex items-center justify-start xl:justify-end">
             <Chip size="sm" variant="soft" className="h-11 border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              <span className="font-semibold text-slate-800">{resultCount.toLocaleString()}</span>&nbsp;results
+              <span className="font-semibold text-slate-800 dark:text-slate-100">{resultCount.toLocaleString()}</span>&nbsp;results
             </Chip>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            <span className="font-semibold text-slate-700">{resultCount.toLocaleString()}</span> product{resultCount !== 1 ? 's' : ''}
-            {hasFilter ? <span className="ml-1 text-teal-600">filtered</span> : null}
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{resultCount.toLocaleString()}</span> product{resultCount !== 1 ? 's' : ''}
+            {hasFilter ? <span className="ml-1 text-teal-600 dark:text-teal-300">filtered</span> : null}
           </p>
-          <p className="text-slate-400">Products filters now use the same HeroUI search and select pattern as the newer admin sections.</p>
+          <p className="text-slate-400 dark:text-slate-500">Products filters now use the same HeroUI search and select pattern as the newer admin sections.</p>
         </div>
       </Card.Content>
     </Card>

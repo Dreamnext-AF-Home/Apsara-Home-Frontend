@@ -10,6 +10,8 @@ export interface Expense {
   id: number
   category: ExpenseCategoryRef
   category_id: number
+  sub_category_name?: string | null
+  invoice_url?: string | null
   amount: number
   intent: string
   transaction_date: string
@@ -22,6 +24,10 @@ export interface Expense {
 interface ExpensesResponse {
   expenses: Expense[]
   total: number
+  filtered_total_amount?: number
+  current_page?: number
+  per_page?: number
+  last_page?: number
 }
 
 export interface ExpensesSummaryResponse {
@@ -33,12 +39,17 @@ export interface ExpensesSummaryResponse {
 
 export interface GetExpensesParams {
   search?: string
+  categoryId?: number
   dateFrom?: string
   dateTo?: string
+  page?: number
+  perPage?: number
 }
 
 export interface ExpensePayload {
   category_id: number
+  sub_category_name?: string
+  invoice_url?: string
   amount: number
   intent: string
   transaction_date: string
@@ -53,13 +64,16 @@ export const expensesApi = baseApi.injectEndpoints({
         method: 'GET',
         params: {
           q: params?.search,
+          category_id: params?.categoryId,
           date_from: params?.dateFrom,
           date_to: params?.dateTo,
+          page: params?.page,
+          per_page: params?.perPage,
         },
       }),
       providesTags: ['Expenses'],
     }),
-    createExpense: builder.mutation<{ message: string; expense: Expense }, ExpensePayload>({
+    createExpense: builder.mutation<{ message: string; expense: Expense }, ExpensePayload | FormData>({
       query: (body) => ({
         url: '/api/admin/expenses',
         method: 'POST',
@@ -67,12 +81,25 @@ export const expensesApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Expenses'],
     }),
-    updateExpense: builder.mutation<{ message: string; expense: Expense }, { id: number; data: ExpensePayload }>({
-      query: ({ id, data }) => ({
-        url: `/api/admin/expenses/${id}`,
-        method: 'PUT',
-        body: data,
-      }),
+    updateExpense: builder.mutation<{ message: string; expense: Expense }, { id: number; data: ExpensePayload | FormData }>({
+      query: ({ id, data }) => {
+        if (data instanceof FormData) {
+          const body = data
+          if (!body.has('_method')) {
+            body.append('_method', 'PUT')
+          }
+          return {
+            url: `/api/admin/expenses/${id}`,
+            method: 'POST',
+            body,
+          }
+        }
+        return {
+          url: `/api/admin/expenses/${id}`,
+          method: 'PUT',
+          body: data,
+        }
+      },
       invalidatesTags: ['Expenses'],
     }),
     deleteExpense: builder.mutation<{ message: string }, number>({
@@ -99,6 +126,7 @@ export const expensesApi = baseApi.injectEndpoints({
 
 export const {
   useGetExpensesQuery,
+  useLazyGetExpensesQuery,
   useCreateExpenseMutation,
   useUpdateExpenseMutation,
   useDeleteExpenseMutation,
