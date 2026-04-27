@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import { colorNameToHex, hexToColorName } from '@/libs/colorUtils'
@@ -50,6 +50,21 @@ interface UploadedImage {
 const CLOUD_NAME = 'dc05ncs6l'
 const API_KEY = '492967473972197'
 
+const generateSkuFromName = (name: string) => {
+  const letters = name.toUpperCase().replace(/[^A-Z]/g, '')
+  if (!letters) return ''
+  const vowels = new Set(['A', 'E', 'I', 'O', 'U'])
+  const consonants = letters.split('').filter(ch => !vowels.has(ch))
+  const vowelChars = letters.split('').filter(ch => vowels.has(ch))
+  const prefix = [
+    consonants[0] ?? letters[0] ?? 'P',
+    consonants[1] ?? letters[1] ?? 'R',
+    consonants[2] ?? letters[2] ?? 'D',
+    vowelChars[0] ?? letters[3] ?? 'X',
+  ].join('')
+  return `${prefix}-${Date.now().toString().slice(-5)}`
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function ImportImagePageMain() {
@@ -67,6 +82,14 @@ export default function ImportImagePageMain() {
   const [colorName, setColorName] = useState('')
   const [colorHex, setColorHex] = useState('#94a3b8')
   const [colorCopied, setColorCopied] = useState(false)
+
+  // SKU generator state
+  const [skuProductName, setSkuProductName] = useState('')
+  const [skuCopied, setSkuCopied] = useState(false)
+  const generatedSku = useMemo(
+    () => generateSkuFromName(skuProductName),
+    [skuProductName],
+  )
 
   // Load Cloudinary widget script once
   useEffect(() => {
@@ -222,6 +245,13 @@ export default function ImportImagePageMain() {
     await copyToClipboard(colorHex)
     setColorCopied(true)
     setTimeout(() => setColorCopied(false), 2000)
+  }
+
+  const handleCopySku = async () => {
+    if (!generatedSku) return
+    await copyToClipboard(generatedSku)
+    setSkuCopied(true)
+    setTimeout(() => setSkuCopied(false), 2000)
   }
 
   return (
@@ -502,92 +532,149 @@ export default function ImportImagePageMain() {
         </div>
       </div>
 
-      {/* ── Color to Hex ──────────────────────────────────────────────────── */}
+      {/* ── SKU Generator + Color to Hex (side by side) ───────────────────── */}
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3">
-          <p className="text-sm font-semibold text-slate-800">Color to Hex</p>
+          <p className="text-sm font-semibold text-slate-800">SKU Generator &amp; Color to Hex</p>
           <p className="text-xs text-slate-500 mt-0.5">
-            Type a color name or pick from the color picker to get the hex code.
+            Generate a product SKU from a product name, or convert a color name to its hex code.
           </p>
         </div>
 
-        <div className="p-4 space-y-3">
-          {/* Color input row — same pattern as AddProductModal */}
-          <div className="flex gap-2 items-center p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-            {/* Swatch / native color picker */}
-            <label className="shrink-0 cursor-pointer relative group">
-              <div
-                className="h-9 w-9 rounded-lg border-2 border-white ring-1 ring-slate-200 group-hover:ring-teal-400 transition-all shadow-sm"
-                style={{ backgroundColor: colorHex }}
-              />
-              <input
-                type="color"
-                value={colorHex}
-                onChange={(e) => {
-                  const hex = e.target.value
-                  setColorHex(hex)
-                  setColorName(hexToColorName(hex))
-                  setColorCopied(false)
-                }}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-            </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+          {/* ── SKU Generator ── */}
+          <div className="p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-600">SKU Generator</p>
 
-            {/* Color name text input */}
-            <input
-              type="text"
-              value={colorName}
-              onChange={(e) => {
-                const name = e.target.value
-                setColorName(name)
-                const matched = colorNameToHex(name)
-                if (matched) setColorHex(matched)
-                setColorCopied(false)
-              }}
-              placeholder="Color name (e.g. Matte Black, Walnut, Navy Blue)"
-              className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={skuProductName}
+                onChange={(e) => {
+                  setSkuProductName(e.target.value)
+                  setSkuCopied(false)
+                }}
+                placeholder="Product name (e.g. Jasper Sofa)"
+                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400"
+              />
+            </div>
+
+            {generatedSku && (
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 leading-none mb-0.5">Generated SKU</p>
+                  <p className="font-mono text-base font-bold text-slate-800">{generatedSku}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopySku}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                    skuCopied
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-800 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {skuCopied ? (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy SKU
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Hex result + copy */}
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div
-              className="h-10 w-10 shrink-0 rounded-xl border border-slate-200 shadow-sm"
-              style={{ backgroundColor: colorHex }}
-            />
-            <div className="flex-1 min-w-0">
-              {colorName.trim() && (
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 leading-none mb-0.5">
-                  {colorName}
-                </p>
-              )}
-              <p className="font-mono text-base font-bold text-slate-800">{colorHex}</p>
+          {/* ── Color to Hex ── */}
+          <div className="p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-600">Color to Hex</p>
+
+            {/* Color input row — same pattern as AddProductModal */}
+            <div className="flex gap-2 items-center p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+              {/* Swatch / native color picker */}
+              <label className="shrink-0 cursor-pointer relative group">
+                <div
+                  className="h-9 w-9 rounded-lg border-2 border-white ring-1 ring-slate-200 group-hover:ring-teal-400 transition-all shadow-sm"
+                  style={{ backgroundColor: colorHex }}
+                />
+                <input
+                  type="color"
+                  value={colorHex}
+                  onChange={(e) => {
+                    const hex = e.target.value
+                    setColorHex(hex)
+                    setColorName(hexToColorName(hex))
+                    setColorCopied(false)
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </label>
+
+              {/* Color name text input */}
+              <input
+                type="text"
+                value={colorName}
+                onChange={(e) => {
+                  const name = e.target.value
+                  setColorName(name)
+                  const matched = colorNameToHex(name)
+                  if (matched) setColorHex(matched)
+                  setColorCopied(false)
+                }}
+                placeholder="Color name (e.g. Matte Black, Walnut, Navy Blue)"
+                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 focus:border-teal-400"
+              />
             </div>
-            <button
-              type="button"
-              onClick={handleCopyHex}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition ${
-                colorCopied
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-slate-800 text-white hover:bg-slate-700'
-              }`}
-            >
-              {colorCopied ? (
-                <>
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy Hex
-                </>
-              )}
-            </button>
+
+            {/* Hex result + copy */}
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div
+                className="h-10 w-10 shrink-0 rounded-xl border border-slate-200 shadow-sm"
+                style={{ backgroundColor: colorHex }}
+              />
+              <div className="flex-1 min-w-0">
+                {colorName.trim() && (
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 leading-none mb-0.5">
+                    {colorName}
+                  </p>
+                )}
+                <p className="font-mono text-base font-bold text-slate-800">{colorHex}</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyHex}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+                  colorCopied
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-slate-800 text-white hover:bg-slate-700'
+                }`}
+              >
+                {colorCopied ? (
+                  <>
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy Hex
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
