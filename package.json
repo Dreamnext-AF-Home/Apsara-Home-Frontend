@@ -8,11 +8,7 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-<<<<<<< HEAD
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build --webpack",
-=======
-    "build": "node --max-old-space-size=4096 ./node_modules/.bin/next build --webpack",
->>>>>>> 1a14ac78f6e9ea1d1333bd0752b09bf3ec12ed31
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --pool=threads"
