@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ChangeEvent, type FocusEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FocusEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLazyCheckEmailAvailabilityQuery, useLazyCheckReferralAvailabilityQuery, useLazyCheckUsernameAvailabilityQuery, useRegisterMutation } from '@/store/api/authApi'
@@ -125,6 +125,7 @@ const termsSections = [
 
 interface SignUpFormProps {
   onSwitchToLogin: () => void
+  turnstileSiteKey?: string
 }
 
 type FieldAvailability = {
@@ -146,9 +147,12 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 
 const isReferralCodeFormatValid = (value: string) => /^[A-Za-z0-9]+$/.test(value)
 
-export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
+export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: SignUpFormProps) {
   const searchParams = useSearchParams()
   const [register, { isLoading }] = useRegisterMutation()
+  const turnstileRef = useRef<HTMLDivElement>(null)
+  const widgetIdRef = useRef<string>('')
+  const [turnstileToken, setTurnstileToken] = useState('')
   const [checkEmailAvailability] = useLazyCheckEmailAvailabilityQuery()
   const [checkReferralAvailability] = useLazyCheckReferralAvailabilityQuery()
   const [checkUsernameAvailability] = useLazyCheckUsernameAvailabilityQuery()
@@ -213,6 +217,55 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
     setIsMounted(true)
     return () => setIsMounted(false)
   }, [])
+
+  useEffect(() => {
+    if (!turnstileSiteKey) return
+
+    let cancelled = false
+
+    const doRender = () => {
+      if (cancelled || !turnstileRef.current || !window.turnstile) return
+      widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: turnstileSiteKey,
+        callback: (token) => { if (!cancelled) setTurnstileToken(token) },
+        'expired-callback': () => { if (!cancelled) setTurnstileToken('') },
+        'error-callback': () => { if (!cancelled) setTurnstileToken('') },
+        theme: 'auto',
+      })
+    }
+
+    const SCRIPT_ID = 'cf-turnstile-script'
+    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+    if (!script) {
+      script = document.createElement('script')
+      script.id = SCRIPT_ID
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+      script.async = true
+      document.head.appendChild(script)
+    }
+
+    if (window.turnstile) {
+      doRender()
+    } else {
+      script.addEventListener('load', doRender, { once: true })
+    }
+
+    return () => {
+      cancelled = true
+      if (widgetIdRef.current && window.turnstile) {
+        try { window.turnstile.remove(widgetIdRef.current) } catch {}
+        widgetIdRef.current = ''
+      }
+      setTurnstileToken('')
+    }
+  }, [turnstileSiteKey])
+
+  const resetTurnstile = () => {
+    if (widgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(widgetIdRef.current)
+    }
+    setTurnstileToken('')
+  }
 
   useEffect(() => {
     const email = normalizedEmail
@@ -348,6 +401,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
       referred_by: referral,
       password: form.password,
       password_confirmation: form.confirmPassword,
+      cf_turnstile_response: turnstileToken || undefined,
     })
 
     if ('error' in result) {
@@ -357,6 +411,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         : errorData?.message || 'Registration failed. Please try again.'
       showError(firstError)
       showErrorToast(firstError)
+      resetTurnstile()
       return
     }
 
@@ -408,143 +463,175 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FloatingInput id="signup-first-name" label="First Name" required value={form.firstName} onChange={(e) => setForm((prev) => ({ ...prev, firstName: e.target.value }))} />
-            <FloatingInput id="signup-last-name" label="Last Name" required value={form.lastName} onChange={(e) => setForm((prev) => ({ ...prev, lastName: e.target.value }))} />
-          </div>
-
-          <FloatingInput
-            id="signup-mobile-number"
-            type="tel"
-            label="Mobile Number"
-            required
-            value={form.mobileNumber}
-            onChange={(e) => setForm((prev) => ({ ...prev, mobileNumber: formatPhilippineMobile(e.target.value) }))}
-          />
-          <p className="text-[11px] text-gray-500 dark:text-white/55 -mt-2">Use 11 digits only. Format: 0929-226-0447.</p>
-          {mobileNumberStatus ? (
-            <p className={`text-[11px] -mt-2 ${mobileNumberStatus.type === 'valid' ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}`}>
-              {mobileNumberStatus.message}
-            </p>
-          ) : null}
-
-          <FloatingInput id="signup-email" type="email" label="Email Address" required value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
-          {emailAvailability.message ? (
-            <p className={`text-[11px] -mt-2 ${emailAvailability.status === 'available' ? 'text-emerald-600 dark:text-emerald-300' : emailAvailability.status === 'checking' ? 'text-sky-600 dark:text-sky-300' : 'text-red-600 dark:text-red-300'}`}>
-              {emailAvailability.message}
-            </p>
-          ) : null}
-
-          <FloatingInput
-            id="signup-username"
-            label="Username"
-            required
-            value={form.username}
-            onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value.replace(/\s+/g, '') }))}
-          />
-          <p className="text-[11px] text-gray-500 dark:text-white/55 -mt-2">Letters and numbers only, no spaces or symbols.</p>
-          {usernameAvailability.message ? (
-            <p className={`text-[11px] -mt-2 ${usernameAvailability.status === 'available' ? 'text-emerald-600 dark:text-emerald-300' : usernameAvailability.status === 'checking' ? 'text-sky-600 dark:text-sky-300' : 'text-red-600 dark:text-red-300'}`}>
-              {usernameAvailability.message}
-            </p>
-          ) : null}
-
-          <FloatingInput
-            id="signup-referred-by"
-            label="Referral Code / Referral Link"
-            value={form.referredBy}
-            onChange={(e) => handleReferralInputChange(e.target.value)}
-            required
-          />
-          {referralAvailability.message ? (
-            <p className={`text-[11px] -mt-2 ${
-              referralAvailability.status === 'available'
-                ? 'text-emerald-600 dark:text-emerald-300'
-                : referralAvailability.status === 'checking'
-                  ? 'text-sky-600 dark:text-sky-300'
-                  : 'text-red-600 dark:text-red-300'
-            }`}>
-              {referralAvailability.message}
-            </p>
-          ) : null}
-
-          <div>
-            <FloatingInput
-              type={showPass ? 'text' : 'password'}
-              id="signup-password"
-              label="Password"
-              required
-              value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              endContent={(
-                <button type="button" onClick={() => setShowPass((p) => !p)} className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors cursor-pointer">
-                  <EyeIcon open={showPass} />
-                </button>
-              )}
-            />
-            <div className="mt-2 grid grid-cols-1 gap-1 pt-1">
-              {passwordRequirements.map((item) => (
-                <p key={item.label} className={`text-[11px] flex items-center gap-2 ${item.passed ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-400 dark:text-white/55'}`}>
-                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${item.passed ? 'bg-emerald-400' : 'bg-gray-300 dark:bg-white/25'}`} />
-                  {item.label}
-                </p>
-              ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+            {/* First Name */}
+            <div>
+              <FloatingInput id="signup-first-name" label="First Name" required value={form.firstName} onChange={(e) => setForm((prev) => ({ ...prev, firstName: e.target.value }))} />
             </div>
-          </div>
 
-          <FloatingInput
-            type={showConfirm ? 'text' : 'password'}
-            id="signup-confirm-password"
-            label="Password Confirmation"
-            required
-            value={form.confirmPassword}
-            onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-            endContent={(
-              <button type="button" onClick={() => setShowConfirm((p) => !p)} className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors cursor-pointer">
-                <EyeIcon open={showConfirm} />
-              </button>
-              )}
-            />
-          {confirmPasswordStatus ? (
-            <p className={`text-[11px] -mt-2 ${confirmPasswordStatus.type === 'match' ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}`}>
-              {confirmPasswordStatus.message}
-            </p>
-          ) : null}
+            {/* Last Name */}
+            <div>
+              <FloatingInput id="signup-last-name" label="Last Name" required value={form.lastName} onChange={(e) => setForm((prev) => ({ ...prev, lastName: e.target.value }))} />
+            </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3 dark:border-white/10 dark:bg-white/5">
-            <button
-              type="button"
-              onClick={() => setShowTermsModal(true)}
-              className="flex w-full items-start gap-3 text-left"
-            >
-              <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] font-bold ${
-                acceptedTerms
-                  ? 'border-emerald-500 bg-emerald-500 text-white'
-                  : 'border-gray-300 bg-white text-transparent dark:border-white/20 dark:bg-transparent'
-              }`}>
-                ✓
-              </span>
-              <span className="text-xs leading-relaxed text-gray-600 dark:text-white/70">
-                I have read and agree to the{' '}
-                <span className="font-semibold text-sky-600 dark:text-sky-300">Terms and Conditions</span>.
-                <span className="block mt-1 text-[11px] text-gray-500 dark:text-white/50">
-                  Click here to review the agreement before continuing.
+            {/* Mobile Number */}
+            <div>
+              <FloatingInput
+                id="signup-mobile-number"
+                type="tel"
+                label="Mobile Number"
+                required
+                value={form.mobileNumber}
+                onChange={(e) => setForm((prev) => ({ ...prev, mobileNumber: formatPhilippineMobile(e.target.value) }))}
+              />
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-white/55">Use 11 digits only. Format: 0929-226-0447.</p>
+              {mobileNumberStatus ? (
+                <p className={`mt-1 text-[11px] ${mobileNumberStatus.type === 'valid' ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}`}>
+                  {mobileNumberStatus.message}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Email */}
+            <div>
+              <FloatingInput id="signup-email" type="email" label="Email Address" required value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+              {emailAvailability.message ? (
+                <p className={`mt-1 text-[11px] ${emailAvailability.status === 'available' ? 'text-emerald-600 dark:text-emerald-300' : emailAvailability.status === 'checking' ? 'text-sky-600 dark:text-sky-300' : 'text-red-600 dark:text-red-300'}`}>
+                  {emailAvailability.message}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Username */}
+            <div>
+              <FloatingInput
+                id="signup-username"
+                label="Username"
+                required
+                value={form.username}
+                onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value.replace(/\s+/g, '') }))}
+              />
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-white/55">Letters and numbers only, no spaces or symbols.</p>
+              {usernameAvailability.message ? (
+                <p className={`mt-1 text-[11px] ${usernameAvailability.status === 'available' ? 'text-emerald-600 dark:text-emerald-300' : usernameAvailability.status === 'checking' ? 'text-sky-600 dark:text-sky-300' : 'text-red-600 dark:text-red-300'}`}>
+                  {usernameAvailability.message}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Referral Code */}
+            <div>
+              <FloatingInput
+                id="signup-referred-by"
+                label="Referral Code / Referral Link"
+                value={form.referredBy}
+                onChange={(e) => handleReferralInputChange(e.target.value)}
+                required
+              />
+              {referralAvailability.message ? (
+                <p className={`mt-1 text-[11px] ${
+                  referralAvailability.status === 'available'
+                    ? 'text-emerald-600 dark:text-emerald-300'
+                    : referralAvailability.status === 'checking'
+                      ? 'text-sky-600 dark:text-sky-300'
+                      : 'text-red-600 dark:text-red-300'
+                }`}>
+                  {referralAvailability.message}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Password */}
+            <div>
+              <FloatingInput
+                type={showPass ? 'text' : 'password'}
+                id="signup-password"
+                label="Password"
+                required
+                value={form.password}
+                onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                endContent={(
+                  <button type="button" onClick={() => setShowPass((p) => !p)} className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors cursor-pointer">
+                    <EyeIcon open={showPass} />
+                  </button>
+                )}
+              />
+              <div className="mt-2 grid grid-cols-1 gap-1">
+                {passwordRequirements.map((item) => (
+                  <p key={item.label} className={`text-[11px] flex items-center gap-2 ${item.passed ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-400 dark:text-white/55'}`}>
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${item.passed ? 'bg-emerald-400' : 'bg-gray-300 dark:bg-white/25'}`} />
+                    {item.label}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <FloatingInput
+                type={showConfirm ? 'text' : 'password'}
+                id="signup-confirm-password"
+                label="Password Confirmation"
+                required
+                value={form.confirmPassword}
+                onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                endContent={(
+                  <button type="button" onClick={() => setShowConfirm((p) => !p)} className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors cursor-pointer">
+                    <EyeIcon open={showConfirm} />
+                  </button>
+                )}
+              />
+              {confirmPasswordStatus ? (
+                <p className={`mt-1 text-[11px] ${confirmPasswordStatus.type === 'match' ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}`}>
+                  {confirmPasswordStatus.message}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Terms & Conditions — full width */}
+            <div className="sm:col-span-2 rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="flex w-full items-start gap-3 text-left"
+              >
+                <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] font-bold ${
+                  acceptedTerms
+                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                    : 'border-gray-300 bg-white text-transparent dark:border-white/20 dark:bg-transparent'
+                }`}>
+                  ✓
                 </span>
-              </span>
-            </button>
-          </div>
+                <span className="text-xs leading-relaxed text-gray-600 dark:text-white/70">
+                  I have read and agree to the{' '}
+                  <span className="font-semibold text-sky-600 dark:text-sky-300">Terms and Conditions</span>.
+                  <span className="block mt-1 text-[11px] text-gray-500 dark:text-white/50">
+                    Click here to review the agreement before continuing.
+                  </span>
+                </span>
+              </button>
+            </div>
 
-          <div className="flex gap-3 pt-2">
-            <PrimaryButton type="submit" disabled={isLoading} className="flex-1 py-3 px-5 text-sm">
-              {isLoading ? (
-                <>
-                  <Loading size={14} />
-                  <span>SENDING OTP...</span>
-                </>
-              ) : (
-                <span>SIGN UP</span>
-              )}
-            </PrimaryButton>
+            {/* Turnstile — full width */}
+            {turnstileSiteKey && (
+              <div className="sm:col-span-2 flex justify-center">
+                <div ref={turnstileRef} />
+              </div>
+            )}
+
+            {/* Submit — full width */}
+            <div className="sm:col-span-2 flex gap-3 pt-2">
+              <PrimaryButton type="submit" disabled={isLoading || (!!turnstileSiteKey && !turnstileToken)} className="flex-1 py-3 px-5 text-sm">
+                {isLoading ? (
+                  <>
+                    <Loading size={14} />
+                    <span>SENDING OTP...</span>
+                  </>
+                ) : (
+                  <span>SIGN UP</span>
+                )}
+              </PrimaryButton>
+            </div>
           </div>
         </form>
       )}

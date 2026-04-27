@@ -11,6 +11,7 @@ interface RegisterPayload {
   password_confirmation: string
   username: string
   referred_by: string
+  cf_turnstile_response?: string
 }
 
 interface RegisterResponse {

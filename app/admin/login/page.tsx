@@ -4,7 +4,7 @@ export const metadata = buildPageMetadata({ title: 'Admin Login', description: '
 
 import AdminLoginForm from "@/components/admin/auth/AdminLoginForm"
 
-
 export default function AdminLoginPage() {
-        return <AdminLoginForm />
+  const turnstileSiteKey = process.env.ADMIN_LOGIN_CLOUDFLARE_SITE_KEY ?? '';
+  return <AdminLoginForm turnstileSiteKey={turnstileSiteKey} />;
 }

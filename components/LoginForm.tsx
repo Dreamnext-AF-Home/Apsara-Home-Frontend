@@ -11,6 +11,25 @@ import { showErrorToast, showInfoToast, showSuccessToast } from '@/libs/toast'
 import { clearAccessTokenCache } from "@/store/api/baseApi";
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton';
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement | string,
+        options: {
+          sitekey: string;
+          callback: (token: string) => void;
+          'expired-callback'?: () => void;
+          'error-callback'?: () => void;
+          theme?: 'light' | 'dark' | 'auto';
+        },
+      ) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
+
 const REMEMBER_USER_EMAIL_KEY = 'afhome_user_login'
 const BLOCKED_KEYWORDS = ['banned', 'blocked', 'contact support']
 const TWO_FACTOR_PREFIX = '2FA_REQUIRED|'
@@ -104,9 +123,10 @@ function FloatingInput({ id, type = 'text', label, value, onChange, autoComplete
 interface LoginFormProps {
     onSwitchToSignUp: () => void;
     onRequirePasswordChange: () => void;
+    turnstileSiteKey?: string;
 }
 
-const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps) => {
+const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey = '' }: LoginFormProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { update: updateSession } = useSession();
@@ -124,6 +144,9 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
     const callbackPath = resolveCallbackPath(searchParams.get('callback') || searchParams.get('callbackUrl'))
     const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim()
     const autoLoginInFlightRef = useRef(false)
+    const turnstileRef = useRef<HTMLDivElement>(null)
+    const widgetIdRef = useRef<string>('')
+    const [turnstileToken, setTurnstileToken] = useState('')
 
     const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm(f => ({ ...f, [field]: e.target.value }))
@@ -142,6 +165,55 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
         })
     }, [])
 
+    useEffect(() => {
+        if (!turnstileSiteKey) return
+
+        let cancelled = false
+
+        const doRender = () => {
+            if (cancelled || !turnstileRef.current || !window.turnstile) return
+            widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+                sitekey: turnstileSiteKey,
+                callback: (token) => { if (!cancelled) setTurnstileToken(token) },
+                'expired-callback': () => { if (!cancelled) setTurnstileToken('') },
+                'error-callback': () => { if (!cancelled) setTurnstileToken('') },
+                theme: 'auto',
+            })
+        }
+
+        const SCRIPT_ID = 'cf-turnstile-script'
+        let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+        if (!script) {
+            script = document.createElement('script')
+            script.id = SCRIPT_ID
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+            script.async = true
+            document.head.appendChild(script)
+        }
+
+        if (window.turnstile) {
+            doRender()
+        } else {
+            script.addEventListener('load', doRender, { once: true })
+        }
+
+        return () => {
+            cancelled = true
+            if (widgetIdRef.current && window.turnstile) {
+                try { window.turnstile.remove(widgetIdRef.current) } catch {}
+                widgetIdRef.current = ''
+            }
+            setTurnstileToken('')
+        }
+    }, [turnstileSiteKey])
+
+    const resetTurnstile = () => {
+        if (widgetIdRef.current && window.turnstile) {
+            window.turnstile.reset(widgetIdRef.current)
+        }
+        setTurnstileToken('')
+    }
+
     const attemptSignIn = useCallback(async (source: 'manual' | 'auto' = 'manual') => {
         setError('');
         setIsLoading(true);
@@ -155,6 +227,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
             email: form.email,
             password: form.password,
             mfa_challenge_token: mfaChallengeToken || undefined,
+            cf_turnstile_response: turnstileToken || undefined,
             redirect: false,
             callbackUrl: callbackPath,
         })
@@ -217,8 +290,9 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
                 : 'Invalid email or password. Please try again.'
             setError(message)
             showErrorToast(message)
+            resetTurnstile()
         }
-    }, [callbackPath, form.email, form.password, form.rememberMe, mfaChallengeToken, onRequirePasswordChange, router, updateSession])
+    }, [callbackPath, form.email, form.password, form.rememberMe, mfaChallengeToken, onRequirePasswordChange, router, turnstileToken, updateSession])
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -403,9 +477,15 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
                     </Link>
                 </div>
 
+                {turnstileSiteKey && !mfaChallengeToken && (
+                    <div className="flex justify-center">
+                        <div ref={turnstileRef} />
+                    </div>
+                )}
+
                 <PrimaryButton
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || (!!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
                     className="w-full py-3 px-5 text-sm"
                 >
                     {isLoading ? (

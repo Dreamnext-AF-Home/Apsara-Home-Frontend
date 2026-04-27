@@ -28,6 +28,7 @@ export const adminAuthOptions: NextAuthOptions = {
         otp: { label: 'OTP', type: 'text' },
         otp_challenge_token: { label: 'OTP Challenge Token', type: 'text' },
         resend_otp: { label: 'Resend OTP', type: 'text' },
+        cf_turnstile_response: { label: 'Turnstile Response', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.login || !credentials?.password) {
@@ -48,6 +49,7 @@ export const adminAuthOptions: NextAuthOptions = {
                 password: credentials.password,
                 otp: credentials.otp?.trim() || undefined,
                 otp_challenge_token: credentials.otp_challenge_token || undefined,
+                cf_turnstile_response: credentials.cf_turnstile_response || undefined,
               };
           const res = await fetch(url, {
             method: 'POST',

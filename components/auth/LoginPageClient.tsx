@@ -21,7 +21,12 @@ function resolveCallbackPath(value: string | null | undefined): string {
   return normalized;
 }
 
-export default function LoginPageClient() {
+interface LoginPageClientProps {
+  turnstileSiteKey?: string;
+  signupTurnstileSiteKey?: string;
+}
+
+export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstileSiteKey = '' }: LoginPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, data: session } = useSession();
@@ -93,9 +98,10 @@ export default function LoginPageClient() {
                   key="login"
                   onSwitchToSignUp={() => setManualMode('signup')}
                   onRequirePasswordChange={() => setManualMode('login')}
+                  turnstileSiteKey={turnstileSiteKey}
                 />
               ) : mode === 'signup' ? (
-                <SignUpForm key="signup" onSwitchToLogin={() => setManualMode('login')} />
+                <SignUpForm key="signup" onSwitchToLogin={() => setManualMode('login')} turnstileSiteKey={signupTurnstileSiteKey} />
               ) : (
                 <ForcedPasswordChangeForm key="force-password-change" />
               )}
