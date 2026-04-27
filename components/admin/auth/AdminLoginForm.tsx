@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -74,7 +74,7 @@ function parseLockoutError(rawMessage: string): { seconds: number; message: stri
     }
 }
 
-const AdminLoginForm = () => {
+const AdminLoginForm = ({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }) => {
     const dispatch = useAppDispatch();
     const router = useRouter();
     const pathname = usePathname();
@@ -91,6 +91,9 @@ const AdminLoginForm = () => {
     const [otpChallengeToken, setOtpChallengeToken] = useState('');
     const [lockoutSeconds, setLockoutSeconds] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const turnstileRef = useRef<HTMLDivElement>(null);
+    const widgetIdRef = useRef<string>('');
+    const [turnstileToken, setTurnstileToken] = useState('');
 
     useEffect(() => {
         if (lockoutSeconds <= 0) return
@@ -99,6 +102,55 @@ const AdminLoginForm = () => {
         }, 1000)
         return () => window.clearInterval(timer)
     }, [lockoutSeconds])
+
+    useEffect(() => {
+        if (!turnstileSiteKey) return
+
+        let cancelled = false
+
+        const doRender = () => {
+            if (cancelled || !turnstileRef.current || !window.turnstile) return
+            widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+                sitekey: turnstileSiteKey,
+                callback: (token) => { if (!cancelled) setTurnstileToken(token) },
+                'expired-callback': () => { if (!cancelled) setTurnstileToken('') },
+                'error-callback': () => { if (!cancelled) setTurnstileToken('') },
+                theme: 'auto',
+            })
+        }
+
+        const SCRIPT_ID = 'cf-turnstile-script'
+        let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+        if (!script) {
+            script = document.createElement('script')
+            script.id = SCRIPT_ID
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+            script.async = true
+            document.head.appendChild(script)
+        }
+
+        if (window.turnstile) {
+            doRender()
+        } else {
+            script.addEventListener('load', doRender, { once: true })
+        }
+
+        return () => {
+            cancelled = true
+            if (widgetIdRef.current && window.turnstile) {
+                try { window.turnstile.remove(widgetIdRef.current) } catch {}
+                widgetIdRef.current = ''
+            }
+            setTurnstileToken('')
+        }
+    }, [turnstileSiteKey])
+
+    const resetTurnstile = () => {
+        if (widgetIdRef.current && window.turnstile) {
+            window.turnstile.reset(widgetIdRef.current)
+        }
+        setTurnstileToken('')
+    }
 
     const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [field]: e.target.value }));
 
@@ -129,6 +181,7 @@ const AdminLoginForm = () => {
                 password: form.password,
                 otp: otpChallengeToken ? otpCode : undefined,
                 otp_challenge_token: otpChallengeToken || undefined,
+                cf_turnstile_response: !otpChallengeToken ? turnstileToken || undefined : undefined,
                 redirect: false,
             })
 
@@ -139,12 +192,14 @@ const AdminLoginForm = () => {
                     setOtpChallengeToken(twoFactor.token)
                     setOtpCode('')
                     setError(twoFactor.message)
+                    resetTurnstile()
                     return
                 }
                 const lockout = parseLockoutError(msg)
                 if (lockout) {
                     setLockoutSeconds(lockout.seconds)
                     setError('')
+                    resetTurnstile()
                     return
                 }
                 if (isBanMessage(msg)) {
@@ -152,6 +207,7 @@ const AdminLoginForm = () => {
                 } else {
                     setError(msg || 'Invalid email/username or password')
                 }
+                resetTurnstile()
                 return;
             }
 
@@ -348,9 +404,15 @@ const AdminLoginForm = () => {
                                         </div>
                                     ) : null}
 
+                                    {turnstileSiteKey && !otpChallengeToken && (
+                                        <div className="flex justify-center">
+                                            <div ref={turnstileRef} />
+                                        </div>
+                                    )}
+
                                     <PrimaryButton
                                         type="submit"
-                                        disabled={isLoading || lockoutSeconds > 0}
+                                        disabled={isLoading || lockoutSeconds > 0 || (!!turnstileSiteKey && !turnstileToken && !otpChallengeToken)}
                                         className="w-full py-3 px-5 text-sm"
                                     >
                                         {isLoading ? (

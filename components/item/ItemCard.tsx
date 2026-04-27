@@ -463,19 +463,19 @@ export default function ItemCard({
           </div>
         )}
 
-        {/* Discount Badge */}
-        {showMemberPrice && !hideDiscountBadge ? (
-          <div className="absolute top-0 left-0 bg-sky-500 text-white text-xs font-bold px-2 py-1">
-            {isLoggedIn ? `Enjoy ${Math.round(((srpPrice - memberPrice) / srpPrice) * 100)}% off` : `Register to get ${Math.round(((srpPrice - memberPrice) / srpPrice) * 100)}% discount`}
-          </div>
-        ) : null}
-
-        {/* Bestseller Badge */}
-        {product.bestseller && !showMemberPrice && (
-          <div className="absolute top-0 left-0 bg-purple-500 text-white text-xs font-bold px-2 py-1">
-            Bestseller
-          </div>
-        )}
+        {/* Badges */}
+        <div className="absolute top-0 left-0 flex flex-col">
+          {showMemberPrice && !hideDiscountBadge && (
+            <div className="bg-sky-500 text-white text-xs font-bold px-2 py-1">
+              {isLoggedIn ? `Enjoy ${Math.round(((srpPrice - memberPrice) / srpPrice) * 100)}% off` : `Register to get ${Math.round(((srpPrice - memberPrice) / srpPrice) * 100)}% discount`}
+            </div>
+          )}
+          {product.bestseller && (
+            <div className="bg-purple-500 text-white text-xs font-bold px-2 py-1">
+              Bestseller
+            </div>
+          )}
+        </div>
 
         {/* Add to Cart Button */}
         <button

@@ -682,7 +682,7 @@ const groupVariantRows = (rows: BulkImportProductsRow[]): BulkImportProductsRow[
   return [...grouped, ...noSkuRows]
 }
 
-const VIEW_TEMPLATE_LOW_END_URL = 'https://docs.google.com/spreadsheets/d/1bt9hMYtxIBvsNcdJ-Q7V7BKdcToa5_9FP942K0XzjCg/edit?gid=1772224111#gid=1772224111'
+const VIEW_TEMPLATE_LOW_END_URL = 'https://docs.google.com/spreadsheets/d/1bt9hMYtxIBvsNcdJ-Q7V7BKdcToa5_9FP942K0XzjCg/edit?gid=6170168#gid=6170168'
 const VIEW_TEMPLATE_HIGH_END_URL: string | null = null
 
 export default function BulkProductImportPanel({ onClose, onImported }: BulkProductImportPanelProps) {

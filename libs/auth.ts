@@ -31,6 +31,7 @@ export const authOptions: NextAuthOptions = {
                 resend_mfa_approval: { label: 'Resend MFA Approval', type: 'text' },
                 passkey_challenge_token: { label: 'Passkey Challenge Token', type: 'text' },
                 passkey_assertion: { label: 'Passkey Assertion', type: 'text' },
+                cf_turnstile_response: { label: 'Turnstile Response', type: 'text' },
             },
             async authorize(credentials, req) {
                 const hasEmail = Boolean(credentials?.email)
@@ -103,6 +104,7 @@ export const authOptions: NextAuthOptions = {
                                     otp: credentials.otp?.trim() || undefined,
                                     otp_challenge_token: credentials.otp_challenge_token || undefined,
                                     mfa_challenge_token: credentials.mfa_challenge_token || undefined,
+                                    cf_turnstile_response: credentials.cf_turnstile_response || undefined,
                                 }
                         ),
                     })

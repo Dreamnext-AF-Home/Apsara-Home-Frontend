@@ -21,7 +21,12 @@ function resolveCallbackPath(value: string | null | undefined): string {
   return normalized;
 }
 
-export default function LoginPageClient() {
+interface LoginPageClientProps {
+  turnstileSiteKey?: string;
+  signupTurnstileSiteKey?: string;
+}
+
+export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstileSiteKey = '' }: LoginPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, data: session } = useSession();
@@ -80,7 +85,7 @@ export default function LoginPageClient() {
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1]}}
           className={`w-full transition-all duration-300 ${mode === 'signup' ? 'max-w-4xl' : 'max-w-md'}`}
         >
-          <div className={`bg-white/90 dark:bg-slate-800/85 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl ${mode === 'signup' ? 'p-9 sm:p-10' : 'p-8'}`}>
+          <div className={`bg-white dark:bg-slate-800 border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl ${mode === 'signup' ? 'p-9 sm:p-10' : 'p-8'}`}>
             {mode !== 'force-password-change' && (
               <AuthTabs mode={mode === 'signup' ? 'signup' : 'login'} setMode={handleTabChange} />
             )}
@@ -93,9 +98,10 @@ export default function LoginPageClient() {
                   key="login"
                   onSwitchToSignUp={() => setManualMode('signup')}
                   onRequirePasswordChange={() => setManualMode('login')}
+                  turnstileSiteKey={turnstileSiteKey}
                 />
               ) : mode === 'signup' ? (
-                <SignUpForm key="signup" onSwitchToLogin={() => setManualMode('login')} />
+                <SignUpForm key="signup" onSwitchToLogin={() => setManualMode('login')} turnstileSiteKey={signupTurnstileSiteKey} />
               ) : (
                 <ForcedPasswordChangeForm key="force-password-change" />
               )}
