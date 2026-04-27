@@ -61,6 +61,41 @@ async function waitForAuthenticatedSession(maxAttempts = 12, delayMs = 150): Pro
     return false
 }
 
+const base64UrlToUint8Array = (value: string): Uint8Array => {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const binary = atob(padded)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+}
+
+const uint8ArrayToBase64Url = (input: ArrayBuffer | Uint8Array): string => {
+    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i += 1) {
+        binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+const parsePasskeyError = (error: unknown): string => {
+    if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') return 'Passkey request was cancelled or timed out.'
+        if (error.name === 'SecurityError') return 'Passkey is unavailable on this origin/domain.'
+        if (error.name === 'NotSupportedError') return 'This browser/device does not support passkeys.'
+    }
+    if (error instanceof Error) return error.message
+    return 'Passkey sign-in failed.'
+}
+
+type PasskeyAllowCredential = {
+    id: string
+    transports?: AuthenticatorTransport[]
+}
+
 const EyeIcon = ({ open }: { open: boolean }) => open
     ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
     : <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -112,6 +147,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
     const { update: updateSession } = useSession();
     const [showPass, setShowPass] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
     const [error, setError] = useState('');
     const [mfaChallengeToken, setMfaChallengeToken] = useState('');
     const [form, setForm] = useState({
@@ -124,6 +160,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
     const callbackPath = resolveCallbackPath(searchParams.get('callback') || searchParams.get('callbackUrl'))
     const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim()
     const autoLoginInFlightRef = useRef(false)
+    const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential && !!navigator.credentials
 
     const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm(f => ({ ...f, [field]: e.target.value }))
@@ -214,7 +251,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
             const isBlockedError = BLOCKED_KEYWORDS.some((keyword) => rawError.toLowerCase().includes(keyword))
             const message = isBlockedError
                 ? 'Your account has been banned. Please contact support for assistance.'
-                : 'Invalid email or password. Please try again.'
+                : (rawError || 'Invalid email or password. Please try again.')
             setError(message)
             showErrorToast(message)
         }
@@ -224,6 +261,135 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
         e.preventDefault();
         await attemptSignIn('manual')
     };
+
+    const handlePasskeySignIn = async () => {
+        if (!apiBaseUrl) {
+            setError('API URL is not configured for passkey sign-in.')
+            return
+        }
+        if (!passkeySupported) {
+            setError('Passkeys are not supported on this browser/device.')
+            return
+        }
+
+        const identifier = form.email.trim()
+        if (!identifier) {
+            setError('Enter your email/username first, then use passkey sign-in.')
+            return
+        }
+
+        setError('')
+        setIsPasskeyLoading(true)
+
+        try {
+            const beginRes = await fetch(`${apiBaseUrl}/api/auth/passkeys/login/options`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ identifier }),
+            })
+            const beginData = await beginRes.json().catch(() => null)
+            if (!beginRes.ok) {
+                const msg = String(
+                    beginData?.message
+                    || beginData?.errors?.identifier?.[0]
+                    || 'Unable to start passkey sign-in.',
+                )
+                throw new Error(msg)
+            }
+
+            const publicKey = beginData?.public_key
+            if (!publicKey?.challenge) {
+                throw new Error('Passkey options are invalid.')
+            }
+
+            const credential = await navigator.credentials.get({
+                publicKey: {
+                    challenge: base64UrlToUint8Array(String(publicKey.challenge)),
+                    rpId: publicKey.rpId ? String(publicKey.rpId) : undefined,
+                    timeout: Number(publicKey.timeout ?? 60000),
+                    userVerification: publicKey.userVerification === 'required' ? 'required' : 'preferred',
+                    allowCredentials: Array.isArray(publicKey.allowCredentials)
+                        ? (publicKey.allowCredentials as PasskeyAllowCredential[]).map((item) => ({
+                            type: 'public-key',
+                            id: base64UrlToUint8Array(String(item?.id ?? '')),
+                            transports: Array.isArray(item?.transports) ? item.transports : undefined,
+                          }))
+                        : undefined,
+                },
+            })
+
+            if (!credential || !(credential instanceof PublicKeyCredential)) {
+                throw new Error('No passkey credential was returned.')
+            }
+            const response = credential.response as AuthenticatorAssertionResponse
+            const assertionPayload = {
+                id: credential.id,
+                rawId: uint8ArrayToBase64Url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: uint8ArrayToBase64Url(response.clientDataJSON),
+                    authenticatorData: uint8ArrayToBase64Url(response.authenticatorData),
+                    signature: uint8ArrayToBase64Url(response.signature),
+                    userHandle: response.userHandle ? uint8ArrayToBase64Url(response.userHandle) : null,
+                },
+            }
+
+            clearAccessTokenCache()
+            await signOut({ redirect: false })
+            const result = await signIn('credentials', {
+                email: identifier,
+                password: 'passkey',
+                passkey_challenge_token: String(beginData.challenge_token || ''),
+                passkey_assertion: JSON.stringify(assertionPayload),
+                redirect: false,
+                callbackUrl: callbackPath,
+            })
+
+            if (!result?.ok) {
+                throw new Error(String(result?.error || 'Passkey sign-in failed.'))
+            }
+
+            if (typeof window !== 'undefined') {
+                if (form.rememberMe) {
+                    window.localStorage.setItem(REMEMBER_USER_EMAIL_KEY, identifier)
+                } else {
+                    window.localStorage.removeItem(REMEMBER_USER_EMAIL_KEY)
+                }
+            }
+
+            const session = await getSession()
+            const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired)
+            if (updateSession) {
+                await updateSession()
+            }
+
+            if (passwordChangeRequired) {
+                showInfoToast('Create a new password first before continuing to the shop.')
+                onRequirePasswordChange()
+                return
+            }
+
+            showSuccessToast('Passkey sign-in successful. Welcome back!')
+            const sessionReady = await waitForAuthenticatedSession()
+            const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
+            router.replace(targetPath)
+            router.refresh()
+            if (!sessionReady && typeof window !== 'undefined') {
+                window.setTimeout(() => {
+                    window.location.replace(targetPath)
+                }, 250)
+            }
+        } catch (err: unknown) {
+            const message = parsePasskeyError(err)
+            setError(message)
+            showErrorToast(message)
+        } finally {
+            setIsPasskeyLoading(false)
+        }
+    }
 
     useEffect(() => {
         if (!mfaChallengeToken || !apiBaseUrl) return
@@ -403,9 +569,21 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange }: LoginFormProps
                     </Link>
                 </div>
 
+                <button
+                    type="button"
+                    onClick={handlePasskeySignIn}
+                    disabled={isLoading || isPasskeyLoading}
+                    className="w-full rounded-[14px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
+                >
+                    {isPasskeyLoading ? 'Checking passkey...' : 'Sign in with Passkey'}
+                </button>
+                {!passkeySupported ? (
+                    <p className="text-[11px] text-slate-500">Passkeys are not supported in this browser.</p>
+                ) : null}
+
                 <PrimaryButton
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || isPasskeyLoading}
                     className="w-full py-3 px-5 text-sm"
                 >
                     {isLoading ? (

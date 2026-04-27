@@ -52,6 +52,40 @@ const hasRealPhoneNumber = (value?: string | null) => {
   return digits.length >= 10;
 };
 
+const base64UrlToUint8Array = (value: string): Uint8Array => {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+const uint8ArrayToBase64Url = (input: ArrayBuffer | Uint8Array): string => {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+};
+
+type PasskeyListItem = {
+  id: number;
+  name: string;
+  credential_id: string;
+  sign_count: number;
+  last_used_at?: string | null;
+  created_at?: string | null;
+};
+
+type PasskeyCredentialDescriptor = {
+  id: string;
+  transports?: AuthenticatorTransport[];
+};
+
 
 type ProfileFormState = {
   name: string;
@@ -265,6 +299,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const searchParams = useSearchParams();
   const { data: session, status, update: updateSession } = useSession();
   const role = String(session?.user?.role ?? '').toLowerCase();
+  const accessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '');
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim();
+  const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential && !!navigator.credentials;
   const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '');
   const { data } = useMeQuery(undefined, {
     skip: !isCustomerSession,
@@ -316,6 +353,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [passkeys, setPasskeys] = useState<PasskeyListItem[]>([]);
+  const [passkeyName, setPasskeyName] = useState('');
+  const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(false);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [removingPasskeyId, setRemovingPasskeyId] = useState<number | null>(null);
 
   const [prefs, setPrefs] = useState<PreferencesState>({
     marketingEmails: true,
@@ -1322,6 +1364,187 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
+  const loadPasskeys = useCallback(async () => {
+    if (!apiBaseUrl || !accessToken || !isCustomerSession) return;
+    setIsLoadingPasskeys(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/passkeys`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(String(payload?.message || 'Failed to load passkeys.'));
+      }
+      const rows = Array.isArray(payload?.passkeys) ? payload.passkeys : [];
+      setPasskeys(rows);
+    } catch (err: unknown) {
+      setPasskeys([]);
+      setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load passkeys.' });
+    } finally {
+      setIsLoadingPasskeys(false);
+    }
+  }, [accessToken, apiBaseUrl, isCustomerSession]);
+
+  const handleRegisterPasskey = async () => {
+    if (!apiBaseUrl || !accessToken || !isCustomerSession) return;
+    if (!passkeySupported) {
+      setProfileMsg({ type: 'error', text: 'Passkeys are not supported on this browser/device.' });
+      return;
+    }
+
+    setIsRegisteringPasskey(true);
+    try {
+      const startResponse = await fetch(`${apiBaseUrl}/api/auth/passkeys/register/options`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: passkeyName.trim() || undefined,
+        }),
+      });
+      const startPayload = await startResponse.json().catch(() => null);
+      if (!startResponse.ok) {
+        throw new Error(String(startPayload?.message || 'Failed to start passkey registration.'));
+      }
+
+      const publicKey = startPayload?.public_key;
+      if (!publicKey?.challenge || !publicKey?.user?.id || !publicKey?.rp?.id || !publicKey?.rp?.name) {
+        throw new Error('Invalid passkey options from server.');
+      }
+
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: base64UrlToUint8Array(String(publicKey.challenge)),
+          rp: {
+            id: String(publicKey.rp.id),
+            name: String(publicKey.rp.name),
+          },
+          user: {
+            id: base64UrlToUint8Array(String(publicKey.user.id)),
+            name: String(publicKey.user.name),
+            displayName: String(publicKey.user.displayName),
+          },
+          pubKeyCredParams: Array.isArray(publicKey.pubKeyCredParams) ? publicKey.pubKeyCredParams : [],
+          timeout: Number(publicKey.timeout ?? 60000),
+          attestation: 'none',
+          authenticatorSelection: publicKey.authenticatorSelection ?? undefined,
+          excludeCredentials: Array.isArray(publicKey.excludeCredentials)
+            ? (publicKey.excludeCredentials as PasskeyCredentialDescriptor[]).map((item) => ({
+                type: 'public-key',
+                id: base64UrlToUint8Array(String(item?.id ?? '')),
+                transports: Array.isArray(item?.transports) ? item.transports : undefined,
+              }))
+            : undefined,
+        },
+      });
+
+      if (!credential || !(credential instanceof PublicKeyCredential)) {
+        throw new Error('No passkey credential returned by device.');
+      }
+
+      const attestationResponse = credential.response as AuthenticatorAttestationResponse & {
+        getPublicKey?: () => ArrayBuffer | null;
+        getPublicKeyAlgorithm?: () => number;
+        getTransports?: () => string[];
+      };
+      const publicKeyBuffer = attestationResponse.getPublicKey ? attestationResponse.getPublicKey() : null;
+      if (!publicKeyBuffer) {
+        throw new Error('This browser does not expose passkey public key bytes. Try latest Chrome/Safari/Edge.');
+      }
+
+      const verifyResponse = await fetch(`${apiBaseUrl}/api/auth/passkeys/register/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          challenge_token: String(startPayload.challenge_token || ''),
+          name: passkeyName.trim() || undefined,
+          credential: {
+            id: credential.id,
+            rawId: uint8ArrayToBase64Url(credential.rawId),
+            type: credential.type,
+            response: {
+              clientDataJSON: uint8ArrayToBase64Url(attestationResponse.clientDataJSON),
+              attestationObject: uint8ArrayToBase64Url(attestationResponse.attestationObject),
+              publicKey: uint8ArrayToBase64Url(publicKeyBuffer),
+              publicKeyAlgorithm: typeof attestationResponse.getPublicKeyAlgorithm === 'function'
+                ? attestationResponse.getPublicKeyAlgorithm()
+                : undefined,
+              transports: typeof attestationResponse.getTransports === 'function'
+                ? attestationResponse.getTransports()
+                : undefined,
+            },
+          },
+        }),
+      });
+      const verifyPayload = await verifyResponse.json().catch(() => null);
+      if (!verifyResponse.ok) {
+        const errorMessage = String(
+          verifyPayload?.message
+          || verifyPayload?.errors?.credential?.[0]
+          || verifyPayload?.errors?.challenge_token?.[0]
+          || 'Failed to register passkey.',
+        );
+        throw new Error(errorMessage);
+      }
+
+      setPasskeyName('');
+      setProfileMsg({ type: 'success', text: String(verifyPayload?.message || 'Passkey added successfully.') });
+      await loadPasskeys();
+    } catch (err: unknown) {
+      const message = err instanceof DOMException
+        ? (err.name === 'NotAllowedError'
+            ? 'Passkey registration was cancelled or timed out.'
+            : err.name === 'SecurityError'
+              ? 'Passkey is unavailable for this website origin/domain.'
+              : 'Passkey registration failed.')
+        : (err instanceof Error ? err.message : 'Failed to register passkey.');
+      setProfileMsg({ type: 'error', text: message });
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
+
+  const handleRemovePasskey = async (id: number) => {
+    if (!apiBaseUrl || !accessToken || !isCustomerSession) return;
+    if (!window.confirm('Remove this passkey from your account?')) return;
+    setRemovingPasskeyId(id);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/auth/passkeys/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(String(payload?.message || 'Failed to remove passkey.'));
+      }
+      setProfileMsg({ type: 'success', text: String(payload?.message || 'Passkey removed.') });
+      await loadPasskeys();
+    } catch (err: unknown) {
+      setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to remove passkey.' });
+    } finally {
+      setRemovingPasskeyId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'security') return;
+    void loadPasskeys();
+  }, [activeTab, loadPasskeys]);
+
 
   return (
     <>
@@ -2128,6 +2351,63 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         </div>
                       </div>
                       <Toggle checked={prefs.twoFactorEnabled} onChange={handleToggleTwoFactor} disabled={isUpdatingTwoFactor} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
+                    <div className="mb-4">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Passkeys</h3>
+                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                        Add a passkey to sign in with Face ID, fingerprint, or device PIN.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <input
+                        type="text"
+                        value={passkeyName}
+                        onChange={(event) => setPasskeyName(event.target.value)}
+                        placeholder="Passkey name (optional, e.g. My iPhone)"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRegisterPasskey}
+                        disabled={isRegisteringPasskey || !passkeySupported}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isRegisteringPasskey ? 'Adding...' : 'Add Passkey'}
+                      </button>
+                    </div>
+                    {!passkeySupported ? (
+                      <p className="mt-2 text-xs text-slate-500 dark:text-gray-400">Passkeys are not supported in this browser.</p>
+                    ) : null}
+
+                    <div className="mt-4 space-y-2">
+                      {isLoadingPasskeys ? (
+                        <p className="text-sm text-slate-500 dark:text-gray-400">Loading passkeys...</p>
+                      ) : passkeys.length > 0 ? (
+                        passkeys.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 px-4 py-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-800 dark:text-gray-200 truncate">{item.name || 'My Passkey'}</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
+                                Last used: {item.last_used_at ? formatRelativeTime(item.last_used_at) : 'Never'}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePasskey(item.id)}
+                              disabled={removingPasskeyId === item.id}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-700 hover:text-white transition-colors disabled:opacity-50"
+                            >
+                              {removingPasskeyId === item.id ? 'Removing...' : 'Remove'}
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500 dark:text-gray-400">No passkeys registered yet.</p>
+                      )}
                     </div>
                   </div>
 
