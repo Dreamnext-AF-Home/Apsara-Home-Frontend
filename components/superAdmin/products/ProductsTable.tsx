@@ -663,12 +663,12 @@ export default function ProductsTable({
       </div>
 
       <div className="border-t border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-        {totalPages > 1 ? (
-          <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              {(from ?? 0).toLocaleString()} to {(to ?? 0).toLocaleString()} of {totalRecords.toLocaleString()} results
-            </p>
+        <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            {(from ?? 0).toLocaleString()} to {(to ?? 0).toLocaleString()} of {totalRecords.toLocaleString()} results
+          </p>
 
+          {totalPages > 1 && (
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -713,14 +713,8 @@ export default function ProductsTable({
                 Next
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="flex w-full items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-            <span>
-              {(from ?? 0).toLocaleString()} to {(to ?? 0).toLocaleString()} of {totalRecords.toLocaleString()} results
-            </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
