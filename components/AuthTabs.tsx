@@ -23,7 +23,7 @@ const AuthTabs = ({ mode, setMode }: AuthTabsProps) => {
             {mode === tab && (
                 <motion.span
                     layoutId="auto-tab"
-                    className="absolute inset-0 bg-gradient-to-r from-sky-500 to-blue-600 rounded-lg shadow-lg"
+                    className="absolute inset-0 bg-sky-500 rounded-lg shadow-lg"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                 />
             )}
