@@ -132,6 +132,7 @@ const navItems: NavItem[] = [
       { label: 'Inventory', path: '/admin/products/inventory' },
       { label: 'Reviews', path: '/admin/products/reviews' },
       { label: 'Import Image', path: '/admin/products/import-image' },
+      { label: 'CSV Import Tutorial', path: '/admin/products/csv-import-tutorial' },
     ],
   },
   {
