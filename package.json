@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build --webpack",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --pool=threads"
@@ -49,6 +49,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
