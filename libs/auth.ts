@@ -16,6 +16,7 @@ type TokenUser = {
 };
 
 const isProd = process.env.NODE_ENV === 'production';
+const apiBaseUrl = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim()
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -44,16 +45,19 @@ export const authOptions: NextAuthOptions = {
                 const safeCredentials = credentials!
 
                 try {
+                    if (!apiBaseUrl) {
+                        throw new Error('Authentication service is not configured (LARAVEL_API_URL).')
+                    }
                     const isResendOtp = safeCredentials.resend_otp === '1'
                     const isResendMfaApproval = safeCredentials.resend_mfa_approval === '1'
                     const isPasskey = !isResendOtp && !isResendMfaApproval && hasPasskeyFlow
                     const url = isResendOtp
-                        ? `${process.env.LARAVEL_API_URL}/api/auth/login/2fa/resend`
+                        ? `${apiBaseUrl}/api/auth/login/2fa/resend`
                         : isResendMfaApproval
-                          ? `${process.env.LARAVEL_API_URL}/api/auth/login/mfa/resend`
+                          ? `${apiBaseUrl}/api/auth/login/mfa/resend`
                         : isPasskey
-                          ? `${process.env.LARAVEL_API_URL}/api/auth/passkeys/login/verify`
-                        : `${process.env.LARAVEL_API_URL}/api/auth/login`
+                          ? `${apiBaseUrl}/api/auth/passkeys/login/verify`
+                        : `${apiBaseUrl}/api/auth/login`
                     console.log('[Auth] Calling:', url, 'email:', safeCredentials.email)
 
                     const incomingHeaders = req?.headers ?? {}
@@ -172,7 +176,10 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 try {
-                    const url = `${process.env.LARAVEL_API_URL}/api/supplier/auth/login`
+                    if (!apiBaseUrl) {
+                        throw new Error('Authentication service is not configured (LARAVEL_API_URL).')
+                    }
+                    const url = `${apiBaseUrl}/api/supplier/auth/login`
                     const res = await fetch(url, {
                         method: 'POST',
                         headers: {
