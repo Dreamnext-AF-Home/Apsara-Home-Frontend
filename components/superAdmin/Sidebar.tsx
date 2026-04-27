@@ -583,7 +583,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200
                                 ${isExactActive(child.path)
                                   ? 'text-sky-700 dark:text-sky-300 font-semibold bg-sky-50 dark:bg-sky-900/30'
-                                  : 'text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-transparent'}
+                                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70'}
                               `}
                             >
                               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isExactActive(child.path) ? 'bg-sky-500 dark:bg-sky-400' : 'bg-slate-300 dark:bg-slate-600'}`} />

@@ -4,11 +4,16 @@ import SalesChart from "@/components/superAdmin/dashboard/SalesChart";
 import StatsGrid from "@/components/superAdmin/dashboard/StatsGrid";
 import TopProducts from "@/components/superAdmin/dashboard/TopProducts";
 import RecentAdminProductActivity from "@/components/superAdmin/dashboard/RecentAdminProductActivity";
+import type { StatsGridInitialData } from "@/components/superAdmin/dashboard/statsGridTypes";
 
-export default function AdminDashboardHome() {
+type AdminDashboardHomeProps = {
+  initialStatsData?: StatsGridInitialData
+}
+
+export default function AdminDashboardHome({ initialStatsData }: AdminDashboardHomeProps) {
   return (
     <div className="space-y-6">
-      <StatsGrid />
+      <StatsGrid initialData={initialStatsData} />
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <SalesChart />

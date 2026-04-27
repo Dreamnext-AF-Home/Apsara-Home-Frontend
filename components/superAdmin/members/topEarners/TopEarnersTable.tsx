@@ -85,9 +85,11 @@ function TableRow({ earner, rank, maxEarnings }: TableRowProps) {
 interface TopEarnersTableProps {
   earners: TopEarner[]
   sortKey: string
+  isLoading?: boolean
+  isError?: boolean
 }
 
-export default function TopEarnersTable({ earners, sortKey }: TopEarnersTableProps) {
+export default function TopEarnersTable({ earners, sortKey, isLoading = false, isError = false }: TopEarnersTableProps) {
   const maxEarnings = earners[0]?.earnings ?? 1
   const totalShown  = earners.reduce((s, m) => s + m.earnings, 0)
 
@@ -125,7 +127,19 @@ export default function TopEarnersTable({ earners, sortKey }: TopEarnersTablePro
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {earners.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={9} className="px-5 py-14 text-center">
+                  <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Loading top earners...</p>
+                </td>
+              </tr>
+            ) : isError ? (
+              <tr>
+                <td colSpan={9} className="px-5 py-14 text-center">
+                  <p className="text-sm font-semibold text-red-500">Unable to load top earners right now.</p>
+                </td>
+              </tr>
+            ) : earners.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-5 py-14 text-center">
                   <div className="flex flex-col items-center gap-2">

@@ -78,6 +78,18 @@ const toDraft = (item?: WebPageItem): DraftState => {
   }
 }
 
+const panelClass =
+  'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
+
+const inputClass =
+  'w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800'
+
+const selectClass =
+  'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:bg-slate-800'
+
+const softCardClass =
+  'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70'
+
 export default function PartnerStorefrontStudio() {
   const [selectedId, setSelectedId] = useState<number | 'new'>('new')
   const [draft, setDraft] = useState<DraftState>(emptyDraft)
@@ -641,30 +653,30 @@ export default function PartnerStorefrontStudio() {
   }, [helperCategoryId, fetchProducts])
 
   if (isLoading) {
-    return <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-sm">Loading partner storefronts...</div>
+    return <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">Loading partner storefronts...</div>
   }
 
   if (isError) {
-    return <div className="rounded-3xl border border-red-200 bg-red-50 p-12 text-center text-sm font-semibold text-red-600 shadow-sm">Failed to load partner storefronts.</div>
+    return <div className="rounded-3xl border border-red-200 bg-red-50 p-12 text-center text-sm font-semibold text-red-600 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">Failed to load partner storefronts.</div>
   }
 
   const saving = isCreating || isUpdating
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] text-slate-900 dark:text-slate-100">
       <aside className="space-y-4">
-        <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-white p-5 shadow-sm">
+        <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-white p-5 shadow-sm dark:border-emerald-900/50 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 dark:shadow-black/20">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">Partner Storefronts</p>
-              <h1 className="mt-2 text-xl font-bold text-slate-900">Control Panel</h1>
-              <p className="mt-1 text-sm text-slate-500">Create branded partner shop pages like `synergy-shop` and control their visible categories.</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Partner Storefronts</p>
+              <h1 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">Control Panel</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Create branded partner shop pages like `synergy-shop` and control their visible categories.</p>
             </div>
             {!isPartnerScoped ? (
               <button
                 type="button"
                 onClick={() => selectStorefront()}
-                className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
+                className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
               >
                 New
               </button>
@@ -672,7 +684,7 @@ export default function PartnerStorefrontStudio() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20">
           <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
             {storefronts.map(({ item, config }) => {
               const active = selectedId === item.id
@@ -682,18 +694,20 @@ export default function PartnerStorefrontStudio() {
                   type="button"
                   onClick={() => selectStorefront(item)}
                   className={`w-full rounded-2xl border p-3 text-left transition ${
-                    active ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'
+                    active
+                      ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-500/10'
+                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
                   }`}
                 >
-                  <p className="text-sm font-semibold text-slate-900">{config.displayName}</p>
-                  <p className="mt-1 text-xs text-slate-500">/{config.slug}</p>
-                  <p className="mt-2 text-xs text-slate-400">{config.allowedCategoryIds.length} selected categories</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                  <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
                 </button>
               )
             })}
 
             {storefronts.length === 0 ? (
-              <p className="p-3 text-sm text-slate-500">
+              <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
                 {isPartnerScoped ? 'No storefront assigned to this account yet.' : 'No partner storefronts yet.'}
               </p>
             ) : null}
@@ -702,13 +716,13 @@ export default function PartnerStorefrontStudio() {
       </aside>
 
       <section className="space-y-5">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+        <div className={panelClass}>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700">Identity</p>
-              <p className="mt-1 text-sm text-slate-600">Configure core storefront details and branding.</p>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Identity</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Configure core storefront details and branding.</p>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
               Live
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
@@ -720,7 +734,7 @@ export default function PartnerStorefrontStudio() {
                 onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
                 onBlur={(event) => setDraft((current) => ({ ...current, slug: toSlug(event.target.value) }))}
                 placeholder="synergy-shop"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white"
+                className={inputClass}
               />
             </Field>
             <Field label="Display Name">
@@ -728,7 +742,7 @@ export default function PartnerStorefrontStudio() {
                 value={draft.displayName}
                 onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))}
                 placeholder="Synergy Shop"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white"
+                className={inputClass}
               />
             </Field>
             <Field label="Hero Title">
@@ -736,7 +750,7 @@ export default function PartnerStorefrontStudio() {
                 value={draft.heroTitle}
                 onChange={(event) => setDraft((current) => ({ ...current, heroTitle: event.target.value }))}
                 placeholder="Synergy Shop Furniture Store"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white"
+                className={inputClass}
               />
             </Field>
             <Field label="Partner Notification Email">
@@ -744,16 +758,16 @@ export default function PartnerStorefrontStudio() {
                 value={draft.notificationEmail}
                 onChange={(event) => setDraft((current) => ({ ...current, notificationEmail: event.target.value }))}
                 placeholder="ops@synergy.com"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white"
+                className={inputClass}
               />
             </Field>
             
             <Field label="Logo Upload">
               <div className="space-y-3">
-                <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className={`${softCardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">Upload storefront logo</p>
-                    <p className="mt-1 text-xs text-slate-500">PNG, JPG, or WebP. Upload directly from your device.</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Upload storefront logo</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">PNG, JPG, or WebP. Upload directly from your device.</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <input
@@ -767,7 +781,7 @@ export default function PartnerStorefrontStudio() {
                       <button
                         type="button"
                         onClick={() => void handleRemoveLogo()}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         Remove
                       </button>
@@ -776,51 +790,51 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => logoInputRef.current?.click()}
                       disabled={isUploadingLogo}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
                       {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
                     </button>
                   </div>
                 </div>
                 {draft.logoUrl ? (
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div className="h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
                       <img
                         src={`${draft.logoUrl}${draft.logoUrl.includes('?') ? '&' : '?'}v=${logoVersion || draft.logoVersion || '1'}`}
                         alt="Uploaded logo preview"
                         className="h-full w-full object-contain p-1"
                       />
                     </div>
-                    <p className="text-xs text-slate-500">Logo uploaded.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Logo uploaded.</p>
                   </div>
                 ) : null}
               </div>
             </Field>
             <Field label="Referral Upload">
               <div className="space-y-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-800">Upload referral link</p>
-                  <p className="mt-1 text-xs text-slate-500">Paste your referral URL for this storefront.</p>
+                <div className={softCardClass}>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Upload referral link</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste your referral URL for this storefront.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     value={draft.referralLink}
                     onChange={(event) => setDraft((current) => ({ ...current, referralLink: event.target.value }))}
                     placeholder="https://www.afhome.ph/signup?ref=yourcode"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-300"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-300 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500"
                   />
                   {draft.referralLink.trim() ? (
                     <button
                       type="button"
                       onClick={() => void handleRemoveReferralLink()}
                       disabled={saving}
-                      className="shrink-0 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="shrink-0 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:bg-slate-800 dark:text-red-300 dark:hover:bg-red-950/30"
                     >
                       Remove
                     </button>
                   ) : null}
                 </div>
-                <p className="text-[11px] text-slate-500">Saved when you click <span className="font-semibold">Save Storefront</span>.</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved when you click <span className="font-semibold text-slate-700 dark:text-slate-200">Save Storefront</span>.</p>
               </div>
             </Field>
             <Field label="Hero Subtitle" className="md:col-span-2">
@@ -829,7 +843,7 @@ export default function PartnerStorefrontStudio() {
                 onChange={(event) => setDraft((current) => ({ ...current, heroSubtitle: event.target.value }))}
                 placeholder="Curated home furniture for condo buyers."
                 rows={3}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white"
+                className={inputClass}
               />
             </Field>
             <Field label="Theme Color">
@@ -837,7 +851,7 @@ export default function PartnerStorefrontStudio() {
                 type="color"
                 value={draft.themeColor}
                 onChange={(event) => setDraft((current) => ({ ...current, themeColor: event.target.value }))}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-2 py-2"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800/80"
               />
             </Field>
             <Field label="Accent Color">
@@ -845,20 +859,20 @@ export default function PartnerStorefrontStudio() {
                 type="color"
                 value={draft.accentColor}
                 onChange={(event) => setDraft((current) => ({ ...current, accentColor: event.target.value }))}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-2 py-2"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800/80"
               />
             </Field>
             {canManageAiSupport ? (
-              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2 dark:border-slate-700 dark:bg-slate-800/70">
                 <input
                   type="checkbox"
                   checked={draft.enableAiSupport}
                   onChange={(event) => setDraft((current) => ({ ...current, enableAiSupport: event.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-900"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Enable AI Support</p>
-                  <p className="text-xs text-slate-500">Show the floating AI chat widget on this partner storefront.</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Enable AI Support</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Show the floating AI chat widget on this partner storefront.</p>
                 </div>
               </label>
             ) : null}
@@ -877,7 +891,11 @@ export default function PartnerStorefrontStudio() {
               href={draft.slug ? `/shop/${draft.slug}` : '#'}
               target="_blank"
               rel="noreferrer"
-              className={`rounded-2xl border px-5 py-3 text-sm font-semibold ${draft.slug ? 'border-slate-300 bg-white text-slate-700' : 'pointer-events-none border-slate-200 bg-slate-100 text-slate-400'}`}
+              className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition ${
+                draft.slug
+                  ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
+                  : 'pointer-events-none border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-500'
+              }`}
             >
               Open Preview
             </a>
@@ -886,13 +904,13 @@ export default function PartnerStorefrontStudio() {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-5">
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={panelClass}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-slate-900">Allowed Categories</h2>
-                <p className="mt-1 text-sm text-slate-500">Only these categories will appear on the partner shop page.</p>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Allowed Categories</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Only these categories will appear on the partner shop page.</p>
               </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 {draft.allowedCategoryIds.length} selected
               </span>
             </div>
@@ -906,30 +924,32 @@ export default function PartnerStorefrontStudio() {
                     type="button"
                     onClick={() => toggleCategory(category.id)}
                     className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                      active ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+                      active
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:border-slate-600'
                     }`}
                   >
                     <div>
                       <p className="text-sm font-semibold">{category.name}</p>
                       <p className="text-xs text-slate-400">ID {category.id} · {category.product_count ?? 0} items</p>
                     </div>
-                    <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white'}`} />
+                    <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'}`} />
                   </button>
                 )
               })}
               </div>
             </div>
 
-            <div className="flex h-[500px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className={`flex h-[500px] flex-col ${panelClass}`}>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-bold text-slate-900">Selected Products</h2>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Selected Products</h2>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   {draft.featuredProductIds.length} selected
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-500">Products checked in Product Helper will appear here and auto-save.</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Products checked in Product Helper will appear here and auto-save.</p>
               <label className="mt-3 block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Filter Category</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Filter Category</span>
                 <select
                   value={selectedProductsCategoryFilter}
                   onChange={(event) => {
@@ -941,7 +961,7 @@ export default function PartnerStorefrontStudio() {
                     const nextId = Number.parseInt(next, 10)
                     setSelectedProductsCategoryFilter(Number.isFinite(nextId) ? nextId : 'all')
                   }}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-emerald-300 focus:bg-white"
+                  className={selectClass}
                 >
                   <option value="all">All Categories</option>
                   {selectedProductCategoryOptions.map((category) => (
@@ -962,24 +982,24 @@ export default function PartnerStorefrontStudio() {
                       : undefined)
 
                   return (
-                    <div key={product.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    <div key={product.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
                         {imageUrl ? (
                           <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold uppercase text-slate-400">
+                          <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold uppercase text-slate-400 dark:text-slate-500">
                             No Image
                           </div>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900">{product.name}</p>
-                        <p className="text-xs text-slate-500">ID {product.id} - Category {product.catid}</p>
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">ID {product.id} - Category {product.catid}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => toggleFeaturedProduct(product.id)}
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         Remove
                       </button>
@@ -987,19 +1007,19 @@ export default function PartnerStorefrontStudio() {
                   )
                 })}
                 {filteredMissingSelectedProductIds.map((id) => (
-                  <div key={id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-xs text-slate-500">Product ID {id}</p>
+                  <div key={id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Product ID {id}</p>
                     <button
                       type="button"
                       onClick={() => toggleFeaturedProduct(id)}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       Remove
                     </button>
                   </div>
                 ))}
                 {filteredSelectedProducts.length === 0 && filteredMissingSelectedProductIds.length === 0 ? (
-                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400">
                     {draft.featuredProductIds.length === 0 ? 'No selected products yet.' : 'No selected products in this category.'}
                   </p>
                 ) : null}
@@ -1008,23 +1028,23 @@ export default function PartnerStorefrontStudio() {
           </div>
 
           <div className="space-y-5">
-            <div className="hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-bold text-slate-900">Featured Product IDs</h2>
-              <p className="mt-1 text-sm text-slate-500">These IDs can be used by shop builder sections for curated product cards.</p>
+            <div className={`hidden ${panelClass}`}>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Featured Product IDs</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">These IDs can be used by shop builder sections for curated product cards.</p>
               <textarea
                 value={draft.featuredProductIds.join(',')}
                 onChange={(event) => setDraft((current) => ({ ...current, featuredProductIds: parseIdList(event.target.value) }))}
                 rows={4}
                 placeholder="12,18,25,36"
-                className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-300 focus:bg-white"
+                className={`mt-3 ${inputClass}`}
               />
             </div>
 
-            <div className="flex h-[500px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-bold text-slate-900">Product Helper</h2>
-              <p className="mt-1 text-sm text-slate-500">All active products in the selected category.</p>
+            <div className={`flex h-[500px] flex-col ${panelClass}`}>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Product Helper</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">All active products in the selected category.</p>
               <label className="mt-3 block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Category</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Category</span>
                 <select
                   value={helperCategoryId}
                   onChange={(event) => {
@@ -1032,7 +1052,7 @@ export default function PartnerStorefrontStudio() {
                     setHelperCategoryId(Number.isFinite(nextId) ? nextId : '')
                   }}
                   disabled={allowedCategoryOptions.length === 0}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-emerald-300 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`${selectClass} disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {allowedCategoryOptions.length === 0 ? (
                     <option value="">Select allowed categories first</option>
@@ -1046,7 +1066,7 @@ export default function PartnerStorefrontStudio() {
               </label>
               <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                 {isLoadingHelperProducts ? (
-                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400">
                     Loading products...
                   </p>
                 ) : null}
@@ -1065,7 +1085,7 @@ export default function PartnerStorefrontStudio() {
                       key={product.id}
                       type="button"
                       onClick={() => toggleFeaturedProduct(product.id)}
-                      className="relative w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition hover:border-slate-300"
+                      className="relative w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/70 dark:hover:border-slate-600"
                     >
                       <span className="absolute right-3 top-3">
                         <input
@@ -1073,29 +1093,29 @@ export default function PartnerStorefrontStudio() {
                           checked={isFeatured}
                           onChange={() => toggleFeaturedProduct(product.id)}
                           onClick={(event) => event.stopPropagation()}
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-900"
                         />
                       </span>
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
                           {imageUrl ? (
                             <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase text-slate-400">
+                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
                               No Image
                             </div>
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="line-clamp-2 text-sm font-semibold text-slate-900">{product.name}</p>
-                          <p className="mt-1 text-xs text-slate-500">ID {product.id} - Category {product.catid}</p>
+                          <p className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">ID {product.id} - Category {product.catid}</p>
                         </div>
                       </div>
                     </button>
                   )
                 })}
                 {!isLoadingHelperProducts && allowedCategoryOptions.length > 0 && helperProducts.length === 0 ? (
-                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400">
                     No active products found for this category.
                   </p>
                 ) : null}
@@ -1119,7 +1139,7 @@ function Field({
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{label}</span>
+      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</span>
       {children}
     </label>
   )

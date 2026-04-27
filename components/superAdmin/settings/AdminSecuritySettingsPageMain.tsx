@@ -29,63 +29,63 @@ export default function AdminSecuritySettingsPageMain() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm">
-        <div className="pointer-events-none absolute -right-20 -top-16 h-48 w-48 rounded-full bg-cyan-200/50 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-emerald-200/40 blur-3xl" />
-        <p className="text-xs font-bold uppercase tracking-[0.32em] text-cyan-700">Settings</p>
-        <h1 className="mt-2 text-3xl font-bold text-slate-900">Security Settings</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm dark:border-slate-700 dark:from-slate-800 dark:via-slate-800 dark:to-slate-900">
+        <div className="pointer-events-none absolute -right-20 -top-16 h-48 w-48 rounded-full bg-cyan-200/50 blur-3xl dark:bg-cyan-600/20" />
+        <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-600/20" />
+        <p className="text-xs font-bold uppercase tracking-[0.32em] text-cyan-700 dark:text-cyan-300">Settings</p>
+        <h1 className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">Security Settings</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-300">
           Adjust authentication limits, session safety, and password rules for the admin platform.
         </p>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Session & Access</p>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">Security Rules</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Session & Access</p>
+          <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-white">Security Rules</h2>
         </div>
 
         <div className="mt-6 grid gap-5 md:grid-cols-2">
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Session Timeout (minutes)
             <input
               value={sessionTimeout}
               onChange={(event) => setSessionTimeout(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="30"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Max Login Attempts
             <input
               value={maxLoginAttempts}
               onChange={(event) => setMaxLoginAttempts(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="5"
             />
           </label>
 
-          <label className="space-y-2 text-sm font-semibold text-slate-700">
+          <label className="space-y-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Password Minimum Length
             <input
               value={passwordMinLength}
               onChange={(event) => setPasswordMinLength(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
               placeholder="8"
             />
           </label>
 
-          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-3 dark:border-slate-700 dark:from-slate-700/50 dark:to-slate-800">
             <div>
-              <p className="text-sm font-semibold text-slate-800">Enable 2FA</p>
-              <p className="text-xs text-slate-500">Optional security layer for admin logins.</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Enable 2FA</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Optional security layer for admin logins.</p>
             </div>
             <button
               type="button"
               onClick={() => setEnable2fa((prev) => !prev)}
               className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
-                enable2fa ? 'bg-emerald-500' : 'bg-slate-300'
+                enable2fa ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'
               }`}
               aria-pressed={enable2fa}
             >
@@ -139,7 +139,7 @@ export default function AdminSecuritySettingsPageMain() {
             }
           }}
           disabled={isSaving || isFetching}
-          className="rounded-full bg-gradient-to-r from-cyan-600 to-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md"
+          className="rounded-full bg-gradient-to-r from-cyan-600 to-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:shadow-md dark:from-cyan-700 dark:to-sky-600"
         >
           {isSaving ? 'Saving...' : 'Save Settings'}
         </button>

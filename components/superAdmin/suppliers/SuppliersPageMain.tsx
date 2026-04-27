@@ -423,7 +423,7 @@ export default function SuppliersPageMain() {
         </div>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
             Allowed Categories
           </p>
           <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Assigned Product Categories</h2>
@@ -450,7 +450,7 @@ export default function SuppliersPageMain() {
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <div className="mb-5">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
               Supplier Access
             </p>
             <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -526,21 +526,21 @@ export default function SuppliersPageMain() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-800">Suppliers</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Suppliers</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Create supplier companies here, then invite each company&apos;s login so they can use
           the separate supplier portal.
         </p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <div className="mb-5">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
               Step 1
             </p>
-            <h2 className="mt-2 text-lg font-bold text-slate-900">Add Supplier Company</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Add Supplier Company</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Create the supplier company profile first before you invite its users.
             </p>
           </div>
@@ -610,22 +610,22 @@ export default function SuppliersPageMain() {
             <button
               type="submit"
               disabled={isCreatingSupplier}
-              className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-cyan-600 dark:hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isCreatingSupplier ? 'Creating supplier...' : 'Create Supplier Company'}
             </button>
           </form>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <div className="mb-5">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
               Step 2
             </p>
-            <h2 className="mt-2 text-lg font-bold text-slate-900">
+            <h2 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">
               Invite Supplier Login
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Create the main supplier owner account here. That owner can later invite their own
               sub-supplier users from the supplier portal.
             </p>
@@ -699,139 +699,194 @@ export default function SuppliersPageMain() {
         </section>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-800">Supplier Directory</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Showing {paginatedSuppliers.length} of {filteredSuppliers.length} supplier companies
-            </p>
-          </div>
-          <div className="relative w-full md:max-w-sm">
-            <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={supplierSearch}
-              onChange={(event) => {
-                setSupplierSearch(event.target.value)
-                setSupplierPage(1)
-              }}
-              placeholder="Search supplier, email, or contact..."
-              className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
-            />
+      <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))] shadow-[0_24px_80px_rgba(15,23,42,0.08)] dark:border-white/8 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.9))] dark:shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
+        <div className="border-b border-slate-200/80 bg-[linear-gradient(135deg,rgba(240,249,255,0.9),rgba(255,255,255,0.96)_42%,rgba(236,254,255,0.88))] px-5 py-5 dark:border-white/8 dark:bg-[linear-gradient(135deg,rgba(8,47,73,0.28),rgba(15,23,42,0.96)_42%,rgba(8,145,178,0.12))]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-700 shadow-sm dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200">
+                <span className="h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_14px_rgba(6,182,212,0.8)]" />
+                Supplier Directory
+              </div>
+              <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                    Manage supplier companies in one workspace
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    Search faster, inspect account status instantly, and jump straight into users, categories, or edits.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-full border border-slate-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                    {filteredSuppliers.length} total
+                  </span>
+                  <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 shadow-sm dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200">
+                    {paginatedSuppliers.length} on this page
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative w-full xl:max-w-md">
+              <svg className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors duration-200 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={supplierSearch}
+                onChange={(event) => {
+                  setSupplierSearch(event.target.value)
+                  setSupplierPage(1)
+                }}
+                placeholder="Search supplier, email, or contact..."
+                className="w-full rounded-[20px] border border-white/70 bg-white/80 py-3.5 pl-11 pr-4 text-sm text-slate-800 shadow-sm outline-none transition-all duration-300 placeholder:text-slate-400 focus:-translate-y-0.5 focus:border-cyan-300 focus:shadow-[0_14px_35px_rgba(6,182,212,0.12)] focus:ring-4 focus:ring-cyan-100 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-400/40 dark:focus:shadow-[0_14px_35px_rgba(8,145,178,0.2)] dark:focus:ring-cyan-500/10"
+              />
+            </div>
           </div>
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
-            <tr className="border-b border-slate-200">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-sm">
+            <thead className="bg-slate-50/90 dark:bg-slate-900/70">
+              <tr className="border-b border-slate-200/80 dark:border-white/8">
+                <th className="px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Company
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                </th>
+                <th className="px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Contact
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                </th>
+                <th className="px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Email
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                </th>
+                <th className="px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                </th>
+                <th className="px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
                 Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
-            {paginatedSuppliers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
-                  {supplierSearch.trim()
-                    ? `No suppliers found for "${supplierSearch.trim()}".`
-                    : 'No suppliers found.'}
-                </td>
+                </th>
               </tr>
-            ) : null}
-            {paginatedSuppliers.map((supplier) => (
-              <Fragment key={supplier.id}>
+            </thead>
+            <tbody className="divide-y divide-slate-100/90 dark:divide-white/[0.06]">
+              {paginatedSuppliers.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-slate-800">
-                      {supplier.company || supplier.name}
-                    </p>
-                    <p className="text-xs text-slate-400">{supplier.name}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{supplier.contact || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{supplier.email || '-'}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                        supplier.status === 1
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 bg-slate-50 text-slate-600'
-                      }`}
-                    >
-                      {supplier.status === 1 ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedSupplierTreeId((prev) => (prev === supplier.id ? null : supplier.id))
-                        }
-                        className="rounded-xl border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                      >
-                        {expandedSupplierTreeId === supplier.id ? 'Hide Users' : 'Users'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openCategoryManager(supplier)}
-                        className="rounded-xl border border-cyan-200 px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-50"
-                      >
-                        Categories
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => startEditSupplier(supplier)}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(supplier)}
-                        disabled={isDeletingSupplier}
-                        className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Delete
-                      </button>
+                  <td colSpan={5} className="px-5 py-14">
+                    <div className="mx-auto max-w-md rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900/60">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-slate-800">
+                        <svg className="h-6 w-6 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {supplierSearch.trim()
+                          ? `No suppliers found for "${supplierSearch.trim()}".`
+                          : 'No suppliers found.'}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Try a different keyword or clear the current search.
+                      </p>
                     </div>
                   </td>
                 </tr>
-                {expandedSupplierTreeId === supplier.id ? (
-                  <tr className="bg-slate-50/70">
-                    <td colSpan={5} className="px-4 py-4">
-                      <SupplierUsersTree supplierId={supplier.id} />
+              ) : null}
+              {paginatedSuppliers.map((supplier, index) => (
+                <Fragment key={supplier.id}>
+                  <tr
+                    className="group animate-fade-up-in border-l-2 border-transparent transition-all duration-300 hover:border-cyan-400/60 hover:bg-[linear-gradient(90deg,rgba(236,254,255,0.55),rgba(248,250,252,0.1))] dark:hover:border-cyan-400/30 dark:hover:bg-[linear-gradient(90deg,rgba(8,145,178,0.12),rgba(15,23,42,0.06))]"
+                    style={{ animationDelay: `${index * 45}ms` }}
+                  >
+                    <td className="px-5 py-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-bold text-slate-900 transition-colors duration-300 group-hover:text-cyan-700 dark:text-slate-100 dark:group-hover:text-cyan-200">
+                          {supplier.company || supplier.name}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{supplier.name}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{supplier.contact || '-'}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{supplier.email || '-'}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-transform duration-300 group-hover:scale-[1.03] ${
+                          supplier.status === 1
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200'
+                            : 'border-slate-200 bg-slate-100 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${supplier.status === 1 ? 'bg-emerald-500' : 'bg-slate-400 dark:bg-slate-500'}`} />
+                        {supplier.status === 1 ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedSupplierTreeId((prev) => (prev === supplier.id ? null : supplier.id))
+                          }
+                          className="rounded-full border border-emerald-200/90 bg-emerald-50/80 px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/15"
+                        >
+                          {expandedSupplierTreeId === supplier.id ? 'Hide Users' : 'Users'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openCategoryManager(supplier)}
+                          className="rounded-full border border-cyan-200/90 bg-cyan-50/80 px-3.5 py-2 text-xs font-semibold text-cyan-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-100 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/15"
+                        >
+                          Categories
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEditSupplier(supplier)}
+                          className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(supplier)}
+                          disabled={isDeletingSupplier}
+                          className="rounded-full border border-red-200/90 bg-red-50/75 px-3.5 py-2 text-xs font-semibold text-red-600 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : null}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs text-slate-500">
-            Page {normalizedSupplierPage} of {supplierTotalPages}
-          </p>
+                  {expandedSupplierTreeId === supplier.id ? (
+                    <tr className="animate-fade-up-in bg-slate-50/70 dark:bg-slate-800/30">
+                      <td colSpan={5} className="px-5 py-5">
+                        <div className="rounded-[22px] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/8 dark:bg-slate-950/60">
+                          <SupplierUsersTree supplierId={supplier.id} />
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-col gap-4 border-t border-slate-200/80 bg-slate-50/85 px-5 py-4 dark:border-white/8 dark:bg-slate-900/70 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+              Pagination
+            </p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Page <span className="font-bold text-slate-900 dark:text-white">{normalizedSupplierPage}</span> of{' '}
+              <span className="font-bold text-slate-900 dark:text-white">{supplierTotalPages}</span>
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setSupplierPage((prev) => Math.max(1, prev - 1))}
               disabled={normalizedSupplierPage <= 1}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
@@ -839,25 +894,25 @@ export default function SuppliersPageMain() {
               type="button"
               onClick={() => setSupplierPage((prev) => Math.min(supplierTotalPages, prev + 1))}
               disabled={normalizedSupplierPage >= supplierTotalPages}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-xs font-semibold text-cyan-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-cyan-100 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-200 dark:hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {categoryTarget ? (
         <ModalShell onClose={() => setCategoryTarget(null)}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">
                 Supplier Categories
               </p>
-              <h3 className="mt-2 text-xl font-bold text-slate-900">
+              <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">
                 Assign Allowed Categories
               </h3>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 {categoryTarget.company || categoryTarget.name} will only be able to use the
                 categories you enable here.
               </p>
@@ -865,15 +920,15 @@ export default function SuppliersPageMain() {
             <button
               type="button"
               onClick={() => setCategoryTarget(null)}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Close
             </button>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
             {allCategories.length === 0 ? (
-              <p className="text-sm text-amber-700">Create master categories first before assigning them to suppliers.</p>
+              <p className="text-sm text-amber-700 dark:text-amber-200">Create master categories first before assigning them to suppliers.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {allCategories.map((category) => {
@@ -884,8 +939,8 @@ export default function SuppliersPageMain() {
                       key={category.id}
                       className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
                         checked
-                          ? 'border-cyan-300 bg-cyan-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-cyan-300 bg-cyan-50 dark:border-cyan-500/30 dark:bg-cyan-500/10'
+                          : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600'
                       }`}
                     >
                       <input
@@ -895,8 +950,8 @@ export default function SuppliersPageMain() {
                         className="mt-1 h-4 w-4 accent-cyan-600"
                       />
                       <div>
-                        <p className="text-sm font-semibold text-slate-800">{category.name}</p>
-                        <p className="text-xs text-slate-500">/{category.url || 'no-slug'}</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{category.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">/{category.url || 'no-slug'}</p>
                       </div>
                     </label>
                   )
@@ -915,7 +970,7 @@ export default function SuppliersPageMain() {
             <button
               type="button"
               onClick={() => setCategoryTarget(null)}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Cancel
             </button>
@@ -935,15 +990,15 @@ export default function SuppliersPageMain() {
         <ModalShell onClose={cancelEditSupplier}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">
                 Edit Supplier
               </p>
-              <h3 className="mt-2 text-xl font-bold text-slate-900">Update Supplier Company</h3>
+              <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Update Supplier Company</h3>
             </div>
             <button
               type="button"
               onClick={cancelEditSupplier}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Close
             </button>
@@ -1008,7 +1063,7 @@ export default function SuppliersPageMain() {
               <button
                 type="button"
                 onClick={cancelEditSupplier}
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -1031,18 +1086,18 @@ export default function SuppliersPageMain() {
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-red-500">
                 Delete Supplier
               </p>
-              <h3 className="mt-2 text-xl font-bold text-slate-900">Confirm Delete</h3>
+              <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Confirm Delete</h3>
             </div>
             <button
               type="button"
               onClick={() => setDeleteTarget(null)}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Close
             </button>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-700">
+          <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
             Delete <span className="font-semibold">{deleteTarget.company || deleteTarget.name}</span>?
             This will only work if there are no linked supplier accounts or products.
           </div>
@@ -1051,7 +1106,7 @@ export default function SuppliersPageMain() {
             <button
               type="button"
               onClick={() => setDeleteTarget(null)}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Cancel
             </button>
@@ -1157,17 +1212,17 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-slate-500">Loading supplier users...</p>
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading supplier users...</p>
   }
 
   if (isError) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
         <p>{getErrorMessage(error, 'Failed to load supplier users.')}</p>
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+          className="mt-3 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-200 dark:hover:bg-red-500/10"
         >
           Retry
         </button>
@@ -1186,34 +1241,34 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Supplier User Tree</p>
-        <h4 className="mt-2 text-sm font-bold text-slate-900">Main Supplier and Sub-Suppliers</h4>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Supplier User Tree</p>
+        <h4 className="mt-2 text-sm font-bold text-slate-900 dark:text-slate-100">Main Supplier and Sub-Suppliers</h4>
       </div>
       {users.map((user) => (
         <div
           key={user.id}
           className={`rounded-2xl border px-4 py-3 ${
             user.is_main_supplier
-              ? 'border-cyan-200 bg-cyan-50'
-              : 'border-slate-200 bg-white'
+              ? 'border-cyan-200 bg-cyan-50 dark:border-cyan-500/20 dark:bg-cyan-500/10'
+              : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950'
           }`}
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-slate-900">{user.fullname || user.username}</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.fullname || user.username}</p>
                 <span
                   className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
                     user.is_main_supplier
-                      ? 'border-cyan-200 bg-white text-cyan-700'
-                      : 'border-slate-200 bg-slate-50 text-slate-600'
+                      ? 'border-cyan-200 bg-white text-cyan-700 dark:border-cyan-500/20 dark:bg-slate-950 dark:text-cyan-200'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
                   {user.role_label || (user.is_main_supplier ? 'Main Supplier' : 'Sub Supplier')}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-500">@{user.username}</p>
-              <p className="mt-1 text-xs text-slate-500">{user.email || 'No email provided'}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">@{user.username}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{user.email || 'No email provided'}</p>
             </div>
 
             {canManageAccounts ? (
@@ -1221,7 +1276,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
                 <button
                   type="button"
                   onClick={() => openEdit(user)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-500/30 dark:hover:text-cyan-200"
                 >
                   Manage Account
                 </button>
@@ -1229,7 +1284,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
                   type="button"
                   onClick={() => requestDelete(user)}
                   disabled={isDeleting || Boolean(user.is_main_supplier)}
-                  className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/20 dark:text-red-300 dark:hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Delete
                 </button>
@@ -1243,14 +1298,14 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
         <ModalShell onClose={() => setEditing(null)}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Manage Account</p>
-              <h3 className="mt-2 text-xl font-bold text-slate-900">Update supplier portal user</h3>
-              <p className="mt-2 text-sm text-slate-500">Keep the password blank if you don’t want to change it.</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Manage Account</p>
+              <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Update supplier portal user</h3>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Keep the password blank if you don’t want to change it.</p>
             </div>
             <button
               type="button"
               onClick={() => setEditing(null)}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Close
             </button>
@@ -1261,7 +1316,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
               <input
                 value={editing.fullname}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, fullname: e.target.value } : prev))}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-cyan-500/20"
                 required
               />
             </FormField>
@@ -1269,7 +1324,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
               <input
                 value={editing.username}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, username: e.target.value } : prev))}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-cyan-500/20"
                 required
               />
             </FormField>
@@ -1278,7 +1333,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
                 type="email"
                 value={editing.email}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, email: e.target.value } : prev))}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-cyan-500/20"
                 placeholder="Optional"
               />
             </FormField>
@@ -1287,7 +1342,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
                 type="password"
                 value={editing.password}
                 onChange={(e) => setEditing((prev) => (prev ? { ...prev, password: e.target.value } : prev))}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-cyan-500/20"
                 placeholder="Leave blank if you don't want to change it"
               />
             </FormField>
@@ -1298,7 +1353,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -1319,12 +1374,12 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-red-600">Confirm Delete</p>
-              <h3 className="mt-2 text-xl font-bold text-slate-900">Remove supplier user?</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                This will remove access for <span className="font-semibold text-slate-900">{confirmDelete.label}</span>.
+              <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Remove supplier user?</h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                This will remove access for <span className="font-semibold text-slate-900 dark:text-slate-100">{confirmDelete.label}</span>.
               </p>
               {confirmDelete.isMain ? (
-                <p className="mt-2 text-sm text-amber-700">
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-200">
                   The main supplier owner account cannot be deleted here.
                 </p>
               ) : null}
@@ -1332,7 +1387,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
             <button
               type="button"
               onClick={() => setConfirmDelete(null)}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Close
             </button>
@@ -1344,7 +1399,7 @@ function SupplierUsersTree({ supplierId }: { supplierId: number }) {
             <button
               type="button"
               onClick={() => setConfirmDelete(null)}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Cancel
             </button>
