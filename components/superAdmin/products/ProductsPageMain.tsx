@@ -118,7 +118,9 @@ const exportToCSV = (products: Product[]) => {
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
   link.setAttribute('href', url)
-  link.setAttribute('download', `products-export-${new Date().toISOString().split('T')[0]}.csv`)
+  const now = new Date()
+  const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+  link.setAttribute('download', `products-export-${timestamp}.csv`)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
@@ -1421,7 +1423,9 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
       a.href = objectUrl
       const disposition = response.headers.get('content-disposition')
       const match = disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-      a.download = match?.[1]?.replace(/['"]/g, '') ?? 'products-export.csv'
+      const now = new Date()
+      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+      a.download = match?.[1]?.replace(/['"]/g, '') ?? `products-export-${timestamp}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -1434,13 +1438,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   }
 
   const handleExportCSV = () => {
-    downloadExportCSV({
-      q: debouncedSearch || undefined,
-      cat_id: catId,
-      brand_type: brandType,
-      supplier_id: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : supplierFilterId,
-      status: status || undefined,
-    })
+    exportToCSV(visibleProducts)
   }
 
   const handleExportAllCSV = () => {
@@ -1834,8 +1832,8 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
                   </div>
                 </div>
               </div>
-              <PrimaryButton onClick={handleExportCSV} disabled={isExporting} className="!px-5 !py-2.5 !text-sm">
-                {isExporting ? 'Exporting...' : 'Export CSV'}
+              <PrimaryButton onClick={handleExportCSV} className="!px-5 !py-2.5 !text-sm">
+                Export CSV
               </PrimaryButton>
               <PrimaryButton onClick={handleExportAllCSV} disabled={isExporting} className="!px-5 !py-2.5 !text-sm">
                 {isExporting ? 'Exporting...' : 'Export All CSV'}
