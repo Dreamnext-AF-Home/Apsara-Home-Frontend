@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import VideoBackground from "@/components/VideoBackground";
+import { motion } from "framer-motion";
+import Header from "@/components/landing-page/Header";
+import PrimaryButton from "@/components/ui/buttons/PrimaryButton";
 
 type ResetPayload = {
   email: string
@@ -37,14 +41,11 @@ export default function ResetPasswordForm({ token }: Props) {
 
   const getFirstApiError = (value: unknown): string | null => {
     if (!value || typeof value !== 'object') return null
-
     const errorMap = value as Record<string, unknown>
     const firstEntry = Object.values(errorMap)[0]
-
     if (Array.isArray(firstEntry) && typeof firstEntry[0] === 'string') {
       return firstEntry[0]
     }
-
     return null
   }
 
@@ -63,9 +64,7 @@ export default function ResetPasswordForm({ token }: Props) {
       try {
         const res = await fetch(`${apiUrl}/api/auth/reset-password/${encodeURIComponent(token)}`, {
           cache: 'no-store',
-          headers: {
-            Accept: 'application/json',
-          },
+          headers: { Accept: 'application/json' },
         })
 
         const data = await res.json().catch(() => ({}))
@@ -89,9 +88,7 @@ export default function ResetPasswordForm({ token }: Props) {
 
     loadReset()
 
-    return () => {
-      isMounted = false
-    }
+    return () => { isMounted = false }
   }, [apiUrl, token])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,90 +143,109 @@ export default function ResetPasswordForm({ token }: Props) {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex items-center justify-center bg-slate-950 px-4 py-12">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-800/85 p-8 shadow-2xl backdrop-blur-xl">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Reset Password</h1>
-          <p className="mt-2 text-sm text-white/70">
-            Choose a new password for your AF Home account.
-          </p>
-        </div>
+    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col">
+      <VideoBackground />
+      <div className="absolute inset-0 bg-black/25 dark:bg-black/55 backdrop-blur-[2px]" />
 
-        {isLoading ? (
-          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-            Loading reset details...
-          </div>
-        ) : error && !reset ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
-            {error}
-          </div>
-        ) : reset ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
-              <p><span className="font-semibold text-white">Name:</span> {reset.name}</p>
-              <p className="mt-1"><span className="font-semibold text-white">Email:</span> {reset.email}</p>
+      <div className="relative z-20">
+        <Header cartCount={0} />
+      </div>
+
+      <div className="relative z-10 flex justify-center w-full px-4 flex-1 items-center py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 32, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md transition-all duration-300"
+        >
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl p-8">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reset Password</h1>
+              <p className="mt-2 text-sm text-gray-500 dark:text-white/70">
+                Choose a new password for your AF Home account.
+              </p>
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-white">New Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create your new password"
-                className="w-full rounded-xl border border-white/25 bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:bg-white/20 focus:outline-none focus:ring-2 focus:ring-orange-400/60"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-white">Confirm Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your new password"
-                className="w-full rounded-xl border border-white/25 bg-white/15 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:bg-white/20 focus:outline-none focus:ring-2 focus:ring-orange-400/60"
-              />
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-              <p className="text-sm font-semibold text-white">Password requirements</p>
-              <ul className="mt-2 space-y-1 text-sm text-white/70">
-                <li className={checks.length ? 'text-emerald-300' : ''}>At least 8 characters</li>
-                <li className={checks.uppercase ? 'text-emerald-300' : ''}>At least one uppercase letter</li>
-                <li className={checks.lowercase ? 'text-emerald-300' : ''}>At least one lowercase letter</li>
-                <li className={checks.number ? 'text-emerald-300' : ''}>At least one number</li>
-                <li className={checks.special ? 'text-emerald-300' : ''}>At least one special character</li>
-              </ul>
-            </div>
-
-            {error ? (
+            {isLoading ? (
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-sm text-gray-600 dark:text-white/70">
+                Loading reset details...
+              </div>
+            ) : error && !reset ? (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
                 {error}
               </div>
+            ) : reset ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-4 text-sm text-gray-700 dark:text-white/80">
+                  <p><span className="font-semibold text-gray-900 dark:text-white">Name:</span> {reset.name}</p>
+                  <p className="mt-1"><span className="font-semibold text-gray-900 dark:text-white">Email:</span> {reset.email}</p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-white/80">New Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create your new password"
+                    required
+                    className="h-11 w-full rounded-[18px] border border-gray-300 dark:border-white/18 bg-white dark:bg-white/12 px-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/40 outline-none transition-all duration-200 focus:border-sky-400 dark:focus:border-sky-400/60 focus:bg-white dark:focus:bg-white/18"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-600 dark:text-white/80">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your new password"
+                    required
+                    className="h-11 w-full rounded-[18px] border border-gray-300 dark:border-white/18 bg-white dark:bg-white/12 px-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/40 outline-none transition-all duration-200 focus:border-sky-400 dark:focus:border-sky-400/60 focus:bg-white dark:focus:bg-white/18"
+                  />
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">Password requirements</p>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    <li className={checks.length ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-500 dark:text-white/70'}>At least 8 characters</li>
+                    <li className={checks.uppercase ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-500 dark:text-white/70'}>At least one uppercase letter</li>
+                    <li className={checks.lowercase ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-500 dark:text-white/70'}>At least one lowercase letter</li>
+                    <li className={checks.number ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-500 dark:text-white/70'}>At least one number</li>
+                    <li className={checks.special ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-500 dark:text-white/70'}>At least one special character</li>
+                  </ul>
+                </div>
+
+                {error ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
+                    {error}
+                  </div>
+                ) : null}
+
+                {success ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/20 dark:text-emerald-300">
+                    {success}{' '}
+                    <Link href="/login" className="font-semibold underline">Go to login</Link>
+                  </div>
+                ) : null}
+
+                <PrimaryButton
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 px-5 text-sm"
+                >
+                  {isSubmitting ? 'Resetting password...' : 'Reset Password'}
+                </PrimaryButton>
+              </form>
             ) : null}
 
-            {success ? (
-              <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/20 px-4 py-2.5 text-sm text-emerald-200">
-                {success} <Link href="/login" className="font-semibold underline">Go to login</Link>
-              </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmitting ? 'Resetting password...' : 'Reset Password'}
-            </button>
-          </form>
-        ) : null}
-
-        <p className="mt-6 text-center text-sm text-white/70">
-          <Link href="/login" className="font-semibold text-orange-400 hover:text-orange-300">
-            Back to login
-          </Link>
-        </p>
+            <p className="mt-6 text-center text-sm text-gray-500 dark:text-white/70">
+              <Link href="/login" className="text-sky-500 hover:text-sky-400 font-semibold transition-colors">
+                Back to login
+              </Link>
+            </p>
+          </div>
+        </motion.div>
       </div>
     </div>
   )
