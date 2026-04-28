@@ -755,8 +755,8 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
     image: primaryImage ?? images[0] ?? null,
     images,
     variants: uniqueVariants,
-    createdAt: typeof input.createdAt === 'string' ? input.createdAt : null,
-    updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : null,
+    createdAt: typeof input.createdAt === 'string' ? input.createdAt : (typeof (input as Record<string, unknown>).created_at === 'string' ? (input as Record<string, unknown>).created_at as string : null),
+    updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : (typeof (input as Record<string, unknown>).updated_at === 'string' ? (input as Record<string, unknown>).updated_at as string : null),
   }
 }
 
