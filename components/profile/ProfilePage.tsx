@@ -10,6 +10,7 @@ import { MemberTier } from '@/types/members/types';
 import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/landing-page/Footer';
+import { showErrorToast, showSuccessToast } from '@/libs/toast';
 
 const TIER_BADGE_IMAGE: Record<MemberTier, string> = {
   'Home Starter': '/Badge/homeStarter.png',
@@ -52,11 +53,12 @@ const hasRealPhoneNumber = (value?: string | null) => {
   return digits.length >= 10;
 };
 
-const base64UrlToUint8Array = (value: string): Uint8Array => {
+const base64UrlToUint8Array = (value: string): Uint8Array<ArrayBuffer> => {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
   const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
   for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.charCodeAt(i);
   }
@@ -393,6 +395,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const completeInformationRef = useRef<HTMLDivElement | null>(null);
   const phAddress = usePhAddress();
   const profileData = data ?? initialProfile;
+
+  const setPasskeyError = useCallback((text: string) => {
+    setProfileMsg({ type: 'error', text });
+    showErrorToast(text);
+  }, []);
+
+  const setPasskeySuccess = useCallback((text: string) => {
+    setProfileMsg({ type: 'success', text });
+    showSuccessToast(text);
+  }, []);
 
   const buildProfileFormState = useCallback((): ProfileFormState => ({
     name: profileData?.name ?? session?.user?.name ?? '',
@@ -1364,15 +1376,46 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
+  const resolveCustomerAccessToken = useCallback(async (): Promise<string> => {
+    if (accessToken) return accessToken;
+
+    try {
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      const sessionPayload = await response.json().catch(() => null);
+      const token = String((sessionPayload?.user as { accessToken?: string } | undefined)?.accessToken ?? '');
+      return token;
+    } catch {
+      return '';
+    }
+  }, [accessToken]);
+
   const loadPasskeys = useCallback(async () => {
-    if (!apiBaseUrl || !accessToken || !isCustomerSession) return;
+    if (!isCustomerSession) return;
+    if (!apiBaseUrl) {
+      setPasskeyError('API URL is not configured for passkeys.');
+      return;
+    }
+
+    const token = await resolveCustomerAccessToken();
+    if (!token) {
+      setPasskeyError('Your session token is missing. Please sign in again.');
+      return;
+    }
+
     setIsLoadingPasskeys(true);
     try {
       const response = await fetch(`${apiBaseUrl}/api/auth/passkeys`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       const payload = await response.json().catch(() => null);
@@ -1383,16 +1426,32 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       setPasskeys(rows);
     } catch (err: unknown) {
       setPasskeys([]);
-      setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load passkeys.' });
+      setPasskeyError(err instanceof Error ? err.message : 'Failed to load passkeys.');
     } finally {
       setIsLoadingPasskeys(false);
     }
-  }, [accessToken, apiBaseUrl, isCustomerSession]);
+  }, [apiBaseUrl, isCustomerSession, resolveCustomerAccessToken, setPasskeyError]);
 
   const handleRegisterPasskey = async () => {
-    if (!apiBaseUrl || !accessToken || !isCustomerSession) return;
+    if (!isCustomerSession) {
+      setPasskeyError('You need to be signed in to add a passkey.');
+      return;
+    }
+    if (!apiBaseUrl) {
+      setPasskeyError('API URL is not configured for passkeys.');
+      return;
+    }
+    const token = await resolveCustomerAccessToken();
+    if (!token) {
+      setPasskeyError('Your session token is missing. Please sign in again.');
+      return;
+    }
     if (!passkeySupported) {
-      setProfileMsg({ type: 'error', text: 'Passkeys are not supported on this browser/device.' });
+      setPasskeyError('Passkeys are not supported on this browser/device.');
+      return;
+    }
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setPasskeyError('Passkeys require a secure context (HTTPS or localhost).');
       return;
     }
 
@@ -1403,7 +1462,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: passkeyName.trim() || undefined,
@@ -1464,7 +1523,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           challenge_token: String(startPayload.challenge_token || ''),
@@ -1499,7 +1558,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       }
 
       setPasskeyName('');
-      setProfileMsg({ type: 'success', text: String(verifyPayload?.message || 'Passkey added successfully.') });
+      setPasskeySuccess(String(verifyPayload?.message || 'Passkey added successfully.'));
       await loadPasskeys();
     } catch (err: unknown) {
       const message = err instanceof DOMException
@@ -1509,14 +1568,26 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               ? 'Passkey is unavailable for this website origin/domain.'
               : 'Passkey registration failed.')
         : (err instanceof Error ? err.message : 'Failed to register passkey.');
-      setProfileMsg({ type: 'error', text: message });
+      setPasskeyError(message);
     } finally {
       setIsRegisteringPasskey(false);
     }
   };
 
   const handleRemovePasskey = async (id: number) => {
-    if (!apiBaseUrl || !accessToken || !isCustomerSession) return;
+    if (!isCustomerSession) {
+      setPasskeyError('You need to be signed in to remove a passkey.');
+      return;
+    }
+    if (!apiBaseUrl) {
+      setPasskeyError('API URL is not configured for passkeys.');
+      return;
+    }
+    const token = await resolveCustomerAccessToken();
+    if (!token) {
+      setPasskeyError('Your session token is missing. Please sign in again.');
+      return;
+    }
     if (!window.confirm('Remove this passkey from your account?')) return;
     setRemovingPasskeyId(id);
     try {
@@ -1524,17 +1595,17 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         method: 'DELETE',
         headers: {
           Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(String(payload?.message || 'Failed to remove passkey.'));
       }
-      setProfileMsg({ type: 'success', text: String(payload?.message || 'Passkey removed.') });
+      setPasskeySuccess(String(payload?.message || 'Passkey removed.'));
       await loadPasskeys();
     } catch (err: unknown) {
-      setProfileMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to remove passkey.' });
+      setPasskeyError(err instanceof Error ? err.message : 'Failed to remove passkey.');
     } finally {
       setRemovingPasskeyId(null);
     }
@@ -2385,7 +2456,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       <button
                         type="button"
                         onClick={handleRegisterPasskey}
-                        disabled={isRegisteringPasskey || !passkeySupported}
+                        disabled={isRegisteringPasskey}
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {isRegisteringPasskey ? 'Adding...' : 'Add Passkey'}
