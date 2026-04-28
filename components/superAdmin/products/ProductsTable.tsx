@@ -442,7 +442,7 @@ export default function ProductsTable({
               <th className="min-w-[160px] border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Uploaded', 'createdAt')}
               </th>
-              <th className="border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">Actions</th>
+              <th className="sticky right-0 z-20 border-b border-l border-slate-200 bg-slate-50/95 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-[-4px_0_8px_-2px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]">Actions</th>
             </tr>
           </thead>
 
@@ -622,7 +622,7 @@ export default function ProductsTable({
                             {new Date(product.createdAt).toLocaleDateString('en-CA')}
                           </p>
                           <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-                            {new Date(product.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {new Date(product.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                           </p>
                         </div>
                       ) : (
@@ -630,7 +630,10 @@ export default function ProductsTable({
                       )}
                     </td>
 
-                    <td className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
+                    <td className={cn(
+                      'sticky right-0 z-10 border-b border-l border-slate-100 px-4 py-4 shadow-[-4px_0_8px_-2px_rgba(15,23,42,0.06)] dark:border-slate-800/70 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]',
+                      isSelected ? 'bg-teal-50/40 dark:bg-teal-500/10' : 'bg-white dark:bg-slate-950',
+                    )}>
                       <div className="flex items-center justify-end gap-1">
                         <ActionButton
                           ariaLabel={`View ${product.name}`}
