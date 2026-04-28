@@ -3,6 +3,16 @@ import { google } from 'googleapis'
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
+function columnToLetter(col: number): string {
+  let letter = ''
+  while (col > 0) {
+    const remainder = (col - 1) % 26
+    letter = String.fromCharCode(65 + remainder) + letter
+    col = Math.floor((col - 1) / 26)
+  }
+  return letter
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -53,24 +63,25 @@ export async function POST(request: Request) {
 
     // Convert data to array of arrays for Google Sheets
     const headers = Object.keys(data[0])
-    const rows = data.map((row: any) => 
+    const lastCol = columnToLetter(headers.length)
+    const rows = data.map((row: any) =>
       headers.map(header => {
         const value = row[header]
         return value !== null && value !== undefined ? String(value) : ''
       })
     )
 
-    // Clear existing data in the sheet (optional - remove if you want to append)
+    // Clear existing data in the sheet
     const sheetGid = gid || '0'
     await sheets.spreadsheets.values.clear({
       spreadsheetId,
-      range: `Sheet1!A1:Z`, // Clear a large range to ensure all data is cleared
+      range: `EXPORTED DATA!A:${lastCol}`,
     })
 
     // Write new data to the sheet
     const response = await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Sheet1!A1`,
+      range: `EXPORTED DATA!A1`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [headers, ...rows]
@@ -80,7 +91,7 @@ export async function POST(request: Request) {
     // Read back the data from the spreadsheet to show real-time data in modal
     const readResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `Sheet1!A1:Z`,
+      range: `EXPORTED DATA!A:${lastCol}`,
     })
 
     const spreadsheetData = readResponse.data.values || []
