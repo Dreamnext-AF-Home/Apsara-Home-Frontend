@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, LinkedAccount } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -146,6 +146,88 @@ const openGoogleAuthPopup = (systemEmail: string): Promise<GoogleAuthResult> => 
         });
       } else {
         resolve({ success: false, error: 'Failed to get Google credentials' });
+      }
+    };
+
+    window.addEventListener('message', messageHandler);
+
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', messageHandler);
+        resolve({ success: false, error: 'Authentication cancelled' });
+      }
+    }, 500);
+  });
+};
+
+// Facebook OAuth popup handler
+type FacebookAuthResult = {
+  success: true;
+  provider_id: string;
+  token: string;
+  email: string;
+  name: string;
+} | {
+  success: false;
+  error: string;
+};
+
+const openFacebookAuthPopup = (): Promise<FacebookAuthResult> => {
+  return new Promise((resolve) => {
+    const clientId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    if (!clientId) {
+      resolve({ success: false, error: 'Facebook App ID not configured' });
+      return;
+    }
+
+    const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/facebook/callback` : '';
+    const state = Math.random().toString(36).substring(2, 15);
+
+    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+      `client_id=${clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=token` +
+      `&scope=email,public_profile` +
+      `&state=${state}`;
+
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const popup = window.open(
+      authUrl,
+      'facebookAuth',
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+    );
+
+    if (!popup) {
+      resolve({ success: false, error: 'Popup blocked. Please allow popups for this site.' });
+      return;
+    }
+
+    const messageHandler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'FACEBOOK_AUTH_CALLBACK') return;
+
+      window.removeEventListener('message', messageHandler);
+      clearInterval(checkClosed);
+
+      const { error, access_token, provider_id, email, name } = event.data;
+
+      if (error) {
+        resolve({ success: false, error });
+      } else if (access_token && provider_id && email) {
+        resolve({
+          success: true,
+          token: access_token,
+          provider_id,
+          email,
+          name: name || email.split('@')[0],
+        });
+      } else {
+        resolve({ success: false, error: 'Failed to get Facebook credentials' });
       }
     };
 
@@ -421,9 +503,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   });
   const [linkGoogleAccount, { isLoading: isLinkingGoogle }] = useLinkGoogleAccountMutation();
   const [unlinkGoogleAccount, { isLoading: isUnlinkingGoogle }] = useUnlinkGoogleAccountMutation();
+  const [linkFacebookAccount, { isLoading: isLinkingFacebook }] = useLinkFacebookAccountMutation();
+  const [unlinkFacebookAccount, { isLoading: isUnlinkingFacebook }] = useUnlinkFacebookAccountMutation();
 
   const isGoogleLinked = useMemo(() => {
     return linkedAccountsData?.accounts?.some((account: LinkedAccount) => account.provider === 'google') ?? false;
+  }, [linkedAccountsData]);
+
+  const isFacebookLinked = useMemo(() => {
+    return linkedAccountsData?.accounts?.some((account: LinkedAccount) => account.provider === 'facebook') ?? false;
   }, [linkedAccountsData]);
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
@@ -863,6 +951,47 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string } };
       setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to unlink Google account.' });
+    }
+  };
+
+  const handleConnectFacebook = async () => {
+    setProfileMsg(null);
+    const result = await openFacebookAuthPopup();
+
+    if (!result.success) {
+      setProfileMsg({ type: 'error', text: result.error });
+      return;
+    }
+
+    try {
+      await linkFacebookAccount({
+        provider_id: result.provider_id,
+        token: result.token,
+        email: result.email,
+        name: result.name,
+      }).unwrap();
+
+      await refetchLinkedAccounts();
+      setProfileMsg({ type: 'success', text: 'Facebook account linked successfully. You can now log in with Facebook.' });
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string }; status?: number };
+      if (apiError?.status === 409) {
+        setProfileMsg({ type: 'error', text: 'This Facebook account is already linked to another user.' });
+      } else {
+        setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to link Facebook account.' });
+      }
+    }
+  };
+
+  const handleUnlinkFacebook = async () => {
+    setProfileMsg(null);
+    try {
+      await unlinkFacebookAccount().unwrap();
+      await refetchLinkedAccounts();
+      setProfileMsg({ type: 'success', text: 'Facebook account unlinked successfully.' });
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to unlink Facebook account.' });
     }
   };
 
@@ -2317,6 +2446,58 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                 {isGoogleLinked
                                   ? 'Your Google account is linked. You can log in with either email/password or Google.'
                                   : 'Link your Google account to enable seamless login with your Google credentials.'}
+                              </p>
+
+                              {/* Facebook */}
+                              {isFacebookLinked ? (
+                                <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2.5">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
+                                        <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                                      </svg>
+                                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Facebook Connected</span>
+                                      <span className="text-xs text-emerald-600 dark:text-emerald-500">&#10003;</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={handleUnlinkFacebook}
+                                      disabled={isUnlinkingFacebook}
+                                      className="text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
+                                    >
+                                      {isUnlinkingFacebook ? 'Unlinking...' : 'Unlink my Facebook account'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={handleConnectFacebook}
+                                  disabled={isLinkingFacebook}
+                                  className="mt-2 flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-sm font-medium text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isLinkingFacebook ? (
+                                    <>
+                                      <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                      Connecting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
+                                        <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                                      </svg>
+                                      Link with Facebook
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-1.5">
+                                {isFacebookLinked
+                                  ? 'Your Facebook account is linked. You can log in with either email/password or Facebook.'
+                                  : 'Link your Facebook account to enable seamless login with your Facebook credentials.'}
                               </p>
                             </>
                           )}
