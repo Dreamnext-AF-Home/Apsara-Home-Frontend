@@ -849,11 +849,10 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                     </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex items-stretch justify-center gap-3">
                     {/* Google */}
                     <button
                         type="button"
-                        title="Google"
                         onClick={() => {
                             if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
                                 setError('Please complete the verification checkbox to sign in with Google.')
@@ -862,7 +861,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                             handleGoogleSignIn()
                         }}
                         disabled={isLoading || isPasskeyLoading || isGoogleLoading}
-                        className="flex-1 h-11 flex items-center justify-center rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                        className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                     >
                         {isGoogleLoading ? (
                             <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -877,25 +876,25 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                             </svg>
                         )}
+                        <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Google</span>
                     </button>
 
                     {/* Facebook */}
                     <button
                         type="button"
-                        title="Facebook"
                         disabled={isLoading || isPasskeyLoading || isGoogleLoading}
-                        className="flex-1 h-11 flex items-center justify-center rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                        className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                     >
                         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
                             <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
                         </svg>
+                        <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Facebook</span>
                     </button>
 
                     {/* Passkey */}
                     {isMounted && (
                         <button
                             type="button"
-                            title="Passkey"
                             onClick={() => {
                                 if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
                                     setError('Please complete the verification checkbox to sign in with Passkey.')
@@ -904,7 +903,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                                 handlePasskeySignIn()
                             }}
                             disabled={isLoading || isPasskeyLoading || isGoogleLoading}
-                            className="flex-1 h-11 flex items-center justify-center rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                            className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                         >
                             {isPasskeyLoading ? (
                                 <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -916,6 +915,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                                 </svg>
                             )}
+                            <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Passkey</span>
                         </button>
                     )}
                 </div>
