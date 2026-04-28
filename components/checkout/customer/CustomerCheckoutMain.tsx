@@ -227,6 +227,7 @@ const CustomerCheckoutMain = ({
     const shippingAddressLabel = [form.city.trim(), form.province.trim()].filter(Boolean).join(', ');
     const isShippingRatePending = manualCheckoutModeEnabledByAdmin && hasShippingAddress && (shippingRatesLoading || shippingRatesFetching);
     const isShippingRateUnavailable = manualCheckoutModeEnabledByAdmin && hasShippingAddress && !isShippingRatePending && shippingFee === null;
+    const canProceedWithoutShippingRate = manualCheckoutModeEnabledByAdmin && isShippingRateUnavailable;
     const resolvedShippingFee = shippingFee ?? 0;
 
     const voucherDiscount = useMemo(() => Math.max(0, Number(voucherInfo?.discount ?? 0)), [voucherInfo?.discount]);
@@ -399,7 +400,7 @@ const CustomerCheckoutMain = ({
             alert('Shipping fee is still loading. Please wait a moment.');
             return;
         }
-        if (isShippingRateUnavailable) {
+        if (isShippingRateUnavailable && !canProceedWithoutShippingRate) {
             alert('No shipping rate is configured for the selected province and city.');
             return;
         }
@@ -580,7 +581,7 @@ const CustomerCheckoutMain = ({
                                 checkoutDisabledReason={
                                     isShippingRatePending
                                         ? 'Checking shipping rate...'
-                                        : isShippingRateUnavailable
+                                        : (isShippingRateUnavailable && !canProceedWithoutShippingRate)
                                             ? 'No shipping rate for selected location'
                                             : undefined
                                 }
