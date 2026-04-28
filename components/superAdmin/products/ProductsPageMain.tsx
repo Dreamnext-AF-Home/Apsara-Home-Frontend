@@ -641,138 +641,6 @@ function ZqSyncProgressModal({
   )
 }
 
-function SpreadsheetDataModal({
-  isOpen,
-  data,
-  error,
-  onClose,
-}: {
-  isOpen: boolean
-  data: string[][]
-  error: string | null
-  onClose: () => void
-}) {
-  if (!isOpen) return null
-
-  const hasError = !!error
-  const hasData = data.length > 0
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 18, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 12, scale: 0.97 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
-          className="w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-        >
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-slate-800">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-600">
-                {hasError ? 'Spreadsheet Error' : 'Spreadsheet Data'}
-              </p>
-              <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
-                {hasError ? 'Failed to Push to Spreadsheet' : 'Data Successfully Pushed'}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {hasError
-                  ? 'An error occurred while pushing data to the spreadsheet. Please check the error details below.'
-                  : 'The data has been successfully written to the spreadsheet. You can view the real-time data below.'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Close
-            </button>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ delay: 0.05, duration: 0.2, ease: 'easeOut' }}
-            className="space-y-4 p-6"
-          >
-            {hasError ? (
-              <div className="overflow-hidden rounded-2xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-900/20">
-                <div className="p-6">
-                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">Error Details</p>
-                  <p className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</p>
-                </div>
-              </div>
-            ) : hasData ? (
-              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-                <div className="max-h-[55vh] overflow-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-800/70 sticky top-0">
-                      <tr className="border-b border-slate-100 dark:border-slate-800">
-                        {data[0]?.map((header, index) => (
-                          <th
-                            key={index}
-                            className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300 whitespace-nowrap"
-                          >
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
-                      {data.slice(1).map((row, rowIndex) => (
-                        <tr key={rowIndex} className="bg-white dark:bg-slate-900">
-                          {row.map((cell, cellIndex) => (
-                            <td
-                              key={cellIndex}
-                              className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap max-w-xs truncate"
-                              title={cell}
-                            >
-                              {cell}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60">
-                <div className="p-6 text-center">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No data available</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {hasError
-                  ? 'Please try again or contact support if the issue persists.'
-                  : `${data.length} row${data.length !== 1 ? 's' : ''} in spreadsheet`}
-              </p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  )
-}
-
 export default function ProductsPageMain({ initialData = null, initialBrandType }: ProductsPageMainProps) {
   const selectionPerPage = 5000
   const router = useRouter()
@@ -821,10 +689,6 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     }
   })
   const [showZqSyncModal, setShowZqSyncModal] = useState(false)
-  const [showSpreadsheetModal, setShowSpreadsheetModal] = useState(false)
-  const [spreadsheetData, setSpreadsheetData] = useState<string[][]>([])
-  const [spreadsheetError, setSpreadsheetError] = useState<string | null>(null)
-  const [isPushingToSpreadsheet, setIsPushingToSpreadsheet] = useState(false)
   const [isSyncingAllZq, setIsSyncingAllZq] = useState(false)
   const [hasStartedZqImport, setHasStartedZqImport] = useState(false)
   const [isDiscoveringZqTotal, setIsDiscoveringZqTotal] = useState(false)
@@ -1526,82 +1390,65 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     setManualSelectionMode('review')
   }
 
-  const handleExportAllCSV = () => {
-    const allProducts = selectionData?.products || []
-    if (allProducts.length === 0) {
-      showErrorToast('No products to export')
-      return
-    }
-    exportToCSV(allProducts)
-  }
+  const [isExporting, setIsExporting] = useState(false)
 
-  const handlePushToSpreadsheet = async () => {
-    const productsToExport = selectionData?.products || visibleProducts
-
-    if (productsToExport.length === 0) {
-      showErrorToast('No products to push to spreadsheet')
-      return
-    }
-
-    const spreadsheetId = '1bt9hMYtxIBvsNcdJ-Q7V7BKdcToa5_9FP942K0XzjCg'
-    const gid = '1242981688'
-
-    setIsPushingToSpreadsheet(true)
-    setSpreadsheetError(null)
-
+  const downloadExportCSV = async (params: Record<string, string | number | undefined>) => {
+    if (isExporting) return
+    setIsExporting(true)
     try {
-      // Convert products to spreadsheet format
-      const spreadsheetData = productsToExport.map(product => ({
-        ID: product.id,
-        Name: product.name || '',
-        SKU: product.sku || '',
-        Category: product.catid || '',
-        Brand: product.brand || '',
-        Supplier: product.supplierName || '',
-        Price_SRP: product.priceSrp || 0,
-        Price_DP: product.priceDp || 0,
-        Price_Member: product.priceMember || 0,
-        Stock: product.qty || 0,
-        Status: product.status === 1 ? 'Active' : 'Inactive',
-        Must_Have: product.musthave ? 'Yes' : 'No',
-        Bestseller: product.bestseller ? 'Yes' : 'No',
-        Description: product.description || '',
-        Image: product.image || '',
-        Created_At: product.createdAt || '',
-      }))
-
-      const response = await fetch('/api/admin/products/push-spreadsheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spreadsheetId,
-          gid,
-          data: spreadsheetData,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        setSpreadsheetData(result.data || [])
-        setShowSpreadsheetModal(true)
-        showSuccessToast(result.message || 'Data successfully pushed to spreadsheet')
-      } else {
-        const errorMessage = result.details ? `${result.error}: ${result.details}` : (result.error || 'Failed to push data to spreadsheet')
-        setSpreadsheetError(errorMessage)
-        setShowSpreadsheetModal(true)
-        showErrorToast(errorMessage)
+      const searchParams = new URLSearchParams()
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== '' && value !== null) {
+          searchParams.set(key, String(value))
+        }
       }
-    } catch (error) {
-      console.error('Error pushing to spreadsheet:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to push data to spreadsheet'
-      setSpreadsheetError(errorMessage)
-      setShowSpreadsheetModal(true)
-      showErrorToast(errorMessage)
+      const qs = searchParams.toString()
+      const url = `${process.env.NEXT_PUBLIC_LARAVEL_API_URL}/api/admin/products/export${qs ? `?${qs}` : ''}`
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${sessionAccessToken}`,
+          Accept: 'text/csv,application/octet-stream,*/*',
+        },
+      })
+      if (!response.ok) {
+        showErrorToast('Export failed. Please try again.')
+        return
+      }
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      const disposition = response.headers.get('content-disposition')
+      const match = disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      a.download = match?.[1]?.replace(/['"]/g, '') ?? 'products-export.csv'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+    } catch {
+      showErrorToast('Export failed. Please try again.')
     } finally {
-      setIsPushingToSpreadsheet(false)
+      setIsExporting(false)
     }
   }
+
+  const handleExportCSV = () => {
+    downloadExportCSV({
+      q: debouncedSearch || undefined,
+      cat_id: catId,
+      brand_type: brandType,
+      supplier_id: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : supplierFilterId,
+      status: status || undefined,
+    })
+  }
+
+  const handleExportAllCSV = () => {
+    downloadExportCSV({
+      supplier_id: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : undefined,
+    })
+  }
+
 
   const handleApplyManualCheckout = async () => {
     if (manualSelectionProducts.length === 0) {
@@ -1887,12 +1734,6 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
         onCancel={handleCancelZqImport}
       />
 
-      <SpreadsheetDataModal
-        isOpen={showSpreadsheetModal}
-        data={spreadsheetData}
-        error={spreadsheetError}
-        onClose={() => setShowSpreadsheetModal(false)}
-      />
 
       {!zqInlineActive && isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadErrorMessage}</div>
@@ -1993,14 +1834,11 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
                   </div>
                 </div>
               </div>
-              <PrimaryButton onClick={() => exportToCSV(visibleProducts)} className="!px-5 !py-2.5 !text-sm">
-                Import CSV
+              <PrimaryButton onClick={handleExportCSV} disabled={isExporting} className="!px-5 !py-2.5 !text-sm">
+                {isExporting ? 'Exporting...' : 'Export CSV'}
               </PrimaryButton>
-              <PrimaryButton onClick={handleExportAllCSV} className="!px-5 !py-2.5 !text-sm">
-                Import All CSV
-              </PrimaryButton>
-              <PrimaryButton onClick={handlePushToSpreadsheet} disabled={isPushingToSpreadsheet} className="!px-5 !py-2.5 !text-sm">
-                {isPushingToSpreadsheet ? 'Pushing...' : 'Push to Spreadsheet'}
+              <PrimaryButton onClick={handleExportAllCSV} disabled={isExporting} className="!px-5 !py-2.5 !text-sm">
+                {isExporting ? 'Exporting...' : 'Export All CSV'}
               </PrimaryButton>
             </div>
           </div>
