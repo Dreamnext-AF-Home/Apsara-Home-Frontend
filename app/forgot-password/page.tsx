@@ -9,5 +9,6 @@ export const metadata = buildPageMetadata({
 });
 
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />;
+  const turnstileSiteKey = process.env.USER_FORGOT_PASSWORD_CLOUDFLARE_SITE_KEY ?? '';
+  return <ForgotPasswordForm turnstileSiteKey={turnstileSiteKey} />;
 }
