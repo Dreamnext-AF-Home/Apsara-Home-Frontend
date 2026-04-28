@@ -9,24 +9,20 @@ import { getSession, signIn, signOut, useSession } from "next-auth/react";
 import Loading from '@/components/Loading'
 import { showErrorToast, showInfoToast, showSuccessToast } from '@/libs/toast'
 import { clearAccessTokenCache } from "@/store/api/baseApi";
-import PrimaryButton from '@/components/ui/buttons/PrimaryButton';
 
 declare global {
   interface Window {
     turnstile?: {
-      render: (
-        container: HTMLElement | string,
-        options: {
-          sitekey: string;
-          callback: (token: string) => void;
-          'expired-callback'?: () => void;
-          'error-callback'?: () => void;
-          theme?: 'light' | 'dark' | 'auto';
-        },
-      ) => string;
-      reset: (widgetId?: string) => void;
-      remove: (widgetId?: string) => void;
-    };
+      render: (container: HTMLElement | string, options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        'expired-callback': () => void;
+        'error-callback': () => void;
+        theme?: string;
+      }) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    }
   }
 }
 
@@ -111,6 +107,88 @@ const parsePasskeyError = (error: unknown): string => {
     return 'Passkey sign-in failed.'
 }
 
+// Google OAuth popup handler for login
+type GoogleAuthResult = {
+    success: true;
+    email: string;
+    name: string;
+    id_token: string;
+} | {
+    success: false;
+    error: string;
+};
+
+const openGoogleAuthPopup = (): Promise<GoogleAuthResult> => {
+    return new Promise((resolve) => {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+        if (!clientId) {
+            resolve({ success: false, error: 'Google Client ID not configured' });
+            return;
+        }
+
+        const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/google/callback` : '';
+        const scope = encodeURIComponent('openid email profile');
+        const state = Math.random().toString(36).substring(2, 15);
+
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+            `client_id=${clientId}` +
+            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+            `&response_type=token` +
+            `&scope=${scope}` +
+            `&state=${state}` +
+            `&prompt=consent`;
+
+        const width = 500;
+        const height = 600;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+
+        const popup = window.open(
+            authUrl,
+            'googleAuth',
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+        );
+
+        if (!popup) {
+            resolve({ success: false, error: 'Popup blocked. Please allow popups for this site.' });
+            return;
+        }
+
+        const messageHandler = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+            if (event.data?.type !== 'GOOGLE_AUTH_CALLBACK') return;
+
+            window.removeEventListener('message', messageHandler);
+            clearInterval(checkClosed);
+
+            const { error, access_token, id_token, email, name } = event.data;
+
+            if (error) {
+                resolve({ success: false, error });
+            } else if ((access_token || id_token) && email) {
+                resolve({
+                    success: true,
+                    email,
+                    name: name || email.split('@')[0],
+                    id_token: id_token || access_token, // Use id_token if available, fallback to access_token
+                });
+            } else {
+                resolve({ success: false, error: 'Failed to get Google credentials' });
+            }
+        };
+
+        window.addEventListener('message', messageHandler);
+
+        const checkClosed = setInterval(() => {
+            if (popup.closed) {
+                clearInterval(checkClosed);
+                window.removeEventListener('message', messageHandler);
+                resolve({ success: false, error: 'Authentication cancelled' });
+            }
+        }, 500);
+    });
+};
+
 type PasskeyAllowCredential = {
     id: string
     transports?: AuthenticatorTransport[]
@@ -171,6 +249,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
     const [error, setError] = useState('');
     const [mfaChallengeToken, setMfaChallengeToken] = useState('');
+    const [isMounted, setIsMounted] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [form, setForm] = useState({
         email: '',
         password: '',
@@ -185,6 +265,11 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     const turnstileRef = useRef<HTMLDivElement>(null)
     const widgetIdRef = useRef<string>('')
     const [turnstileToken, setTurnstileToken] = useState('')
+
+    // Prevent hydration mismatch for Turnstile widget
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm(f => ({ ...f, [field]: e.target.value }))
@@ -204,7 +289,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     }, [])
 
     useEffect(() => {
-        if (!turnstileSiteKey) return
+        if (!turnstileSiteKey || !isMounted) return
 
         let cancelled = false
 
@@ -243,7 +328,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             }
             setTurnstileToken('')
         }
-    }, [turnstileSiteKey])
+    }, [turnstileSiteKey, isMounted])
 
     const resetTurnstile = () => {
         if (widgetIdRef.current && window.turnstile) {
@@ -466,6 +551,89 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
         }
     }
 
+    const handleGoogleSignIn = async () => {
+        setError('')
+        setIsGoogleLoading(true)
+
+        try {
+            const result = await openGoogleAuthPopup()
+
+            if (!result.success) {
+                setError(result.error)
+                showErrorToast(result.error)
+                return
+            }
+
+            if (!result.id_token) {
+                const msg = 'Google sign-in failed: No token received from Google.'
+                setError(msg)
+                showErrorToast(msg)
+                return
+            }
+
+            clearAccessTokenCache()
+            await signOut({ redirect: false })
+
+            const signInResult = await signIn('credentials', {
+                google_access_token: result.id_token,
+                email: result.email,
+                password: 'google_oauth',
+                redirect: false,
+                callbackUrl: callbackPath,
+            })
+
+            if (!signInResult?.ok) {
+                const rawError = String(signInResult?.error ?? '').trim()
+
+                if (rawError === 'GOOGLE_NOT_LINKED') {
+                    router.push('/auth/google-not-connected')
+                    return
+                }
+
+                const message = rawError || 'Google sign-in failed. Please try again.'
+                setError(message)
+                showErrorToast(message)
+                return
+            }
+
+            const session = await getSession()
+
+            if (!session?.user?.accessToken) {
+                router.push('/auth/google-not-connected')
+                return
+            }
+
+            const passwordChangeRequired = Boolean(session.user?.passwordChangeRequired)
+
+            if (updateSession) {
+                await updateSession()
+            }
+
+            if (passwordChangeRequired) {
+                showInfoToast('Create a new password first before continuing to the shop.')
+                onRequirePasswordChange()
+                return
+            }
+
+            showSuccessToast('Google sign-in successful. Welcome back!')
+            const sessionReady = await waitForAuthenticatedSession()
+            const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
+            router.replace(targetPath)
+            router.refresh()
+            if (!sessionReady && typeof window !== 'undefined') {
+                window.setTimeout(() => {
+                    window.location.replace(targetPath)
+                }, 250)
+            }
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.'
+            setError(message)
+            showErrorToast(message)
+        } finally {
+            setIsGoogleLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (!mfaChallengeToken || !apiBaseUrl) return
 
@@ -644,38 +812,111 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                     </Link>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={handlePasskeySignIn}
-                    disabled={isLoading || isPasskeyLoading}
-                    className="w-full rounded-[14px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
-                >
-                    {isPasskeyLoading ? 'Checking passkey...' : 'Sign in with Passkey'}
-                </button>
-                {!passkeySupported ? (
-                    <p className="text-[11px] text-slate-500">Passkeys are not supported in this browser.</p>
-                ) : null}
-
-                {turnstileSiteKey && !mfaChallengeToken && (
+                {isMounted && turnstileSiteKey && !mfaChallengeToken && (
                     <div className="flex justify-center">
                         <div ref={turnstileRef} />
                     </div>
                 )}
 
-                <PrimaryButton
+                <button
                     type="submit"
-                    disabled={isLoading || isPasskeyLoading || (!!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
-                    className="w-full py-3 px-5 text-sm"
+                    disabled={isLoading || isPasskeyLoading || isGoogleLoading || (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
+                    className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] bg-sky-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-600 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (
                         <>
-                            <Loading size={14} />
+                            <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
                             <span>Signing in...</span>
                         </>
                     ) : (
                         <span>{mfaChallengeToken ? 'Continue Sign in' : 'Sign in'}</span>
                     )}
-                </PrimaryButton>
+                </button>
+
+                {/* Social Login Options */}
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-4 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">Or continue with</span>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
+                                setError('Please complete the verification checkbox to sign in with Google.')
+                                return
+                            }
+                            handleGoogleSignIn()
+                        }}
+                        disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                        className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
+                    >
+                        {isGoogleLoading ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Signing in with Google...</span>
+                            </>
+                        ) : (
+                            <>
+                                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                </svg>
+                                <span>Sign in with Google</span>
+                            </>
+                        )}
+                    </button>
+
+                    {isMounted && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
+                                        setError('Please complete the verification checkbox to sign in with Passkey.')
+                                        return
+                                    }
+                                    handlePasskeySignIn()
+                                }}
+                                disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                                className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
+                            >
+                                {isPasskeyLoading ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Checking passkey...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                        </svg>
+                                        <span>Sign in with Passkey</span>
+                                    </>
+                                )}
+                            </button>
+                            {!passkeySupported ? (
+                                <p className="text-[11px] text-center text-slate-500 dark:text-gray-400">Passkeys are not supported in this browser.</p>
+                            ) : null}
+                        </>
+                    )}
+                </div>
             </form>
         </motion.div>
     )

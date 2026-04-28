@@ -33,13 +33,14 @@ export const authOptions: NextAuthOptions = {
                 passkey_challenge_token: { label: 'Passkey Challenge Token', type: 'text' },
                 passkey_assertion: { label: 'Passkey Assertion', type: 'text' },
                 cf_turnstile_response: { label: 'Turnstile Response', type: 'text' },
+                google_access_token: { label: 'Google Access Token', type: 'text' },
             },
             async authorize(credentials, req) {
                 const hasEmail = Boolean(credentials?.email)
                 const hasPassword = Boolean(credentials?.password)
                 const hasPasskeyFlow = Boolean(credentials?.passkey_challenge_token && credentials?.passkey_assertion)
-                if (!hasEmail || (!hasPassword && !hasPasskeyFlow)) {
-                    console.log('[Auth] Missing credentials')
+                const hasGoogleToken = Boolean(credentials?.google_access_token)
+                if (!hasGoogleToken && (!hasEmail || (!hasPassword && !hasPasskeyFlow))) {
                     return null
                 }
                 const safeCredentials = credentials!
@@ -51,14 +52,16 @@ export const authOptions: NextAuthOptions = {
                     const isResendOtp = safeCredentials.resend_otp === '1'
                     const isResendMfaApproval = safeCredentials.resend_mfa_approval === '1'
                     const isPasskey = !isResendOtp && !isResendMfaApproval && hasPasskeyFlow
+                    const isGoogleOAuth = !isResendOtp && !isResendMfaApproval && !hasPasskeyFlow && hasGoogleToken
                     const url = isResendOtp
                         ? `${apiBaseUrl}/api/auth/login/2fa/resend`
                         : isResendMfaApproval
                           ? `${apiBaseUrl}/api/auth/login/mfa/resend`
                         : isPasskey
-                          ? `${apiBaseUrl}/api/auth/passkeys/login/verify`
-                        : `${apiBaseUrl}/api/auth/login`
-                    console.log('[Auth] Calling:', url, 'email:', safeCredentials.email)
+                          ? `${process.env.LARAVEL_API_URL}/api/auth/passkeys/login/verify`
+                        : isGoogleOAuth
+                          ? `${process.env.LARAVEL_API_URL}/api/auth/callback/google`
+                        : `${process.env.LARAVEL_API_URL}/api/auth/login`
 
                     const incomingHeaders = req?.headers ?? {}
                     const forwardedFor = String(
@@ -103,6 +106,10 @@ export const authOptions: NextAuthOptions = {
                                           }
                                       })(),
                                   }
+                                : isGoogleOAuth
+                                  ? {
+                                      id_token: credentials.google_access_token,
+                                  }
                                 : {
                                     email: safeCredentials.email,
                                     password: safeCredentials.password,
@@ -113,8 +120,6 @@ export const authOptions: NextAuthOptions = {
                                 }
                         ),
                     })
-
-                    console.log('[Auth] Laravel response status:', res.status)
 
                     const data = await res.json().catch(() => null)
 
@@ -130,6 +135,26 @@ export const authOptions: NextAuthOptions = {
                     }
 
                     if (!res.ok) {
+                        if (isGoogleOAuth) {
+                            const googleErrorCode = String(data?.error ?? '')
+                            const googleErrorMsg = String(data?.message ?? '').toLowerCase()
+                            const isNotLinked =
+                                googleErrorCode === 'social_account_not_found' ||
+                                googleErrorCode === 'account_not_linked' ||
+                                googleErrorCode === 'google_not_linked' ||
+                                googleErrorMsg.includes('no google account') ||
+                                googleErrorMsg.includes('not linked') ||
+                                googleErrorMsg.includes('link your google') ||
+                                googleErrorMsg.includes('not connected') ||
+                                (res.status === 404 && googleErrorMsg.includes('google'))
+                            if (isNotLinked) {
+                                throw new Error('GOOGLE_NOT_LINKED')
+                            }
+                            throw new Error(
+                                data?.message ||
+                                'Google sign-in failed. Make sure your Google account is linked to your AF Home account.'
+                            )
+                        }
                         const message =
                             data?.message ||
                             data?.errors?.email?.[0] ||
@@ -137,11 +162,8 @@ export const authOptions: NextAuthOptions = {
                             data?.errors?.credential?.[0] ||
                             data?.errors?.login?.[0] ||
                             'Invalid email or password. Please try again.'
-                        console.log('[Auth] Laravel error body:', data)
                         throw new Error(message)
                     }
-
-                    console.log('[Auth] Laravel data keys:', Object.keys(data))
 
                     if (isResendOtp || isResendMfaApproval) {
                         return null
@@ -158,7 +180,6 @@ export const authOptions: NextAuthOptions = {
                         passwordChangeRequired: Boolean(data.user.password_change_required),
                     }
                 } catch (e) {
-                    console.log('[Auth] Fetch error:', e)
                     throw e instanceof Error ? e : new Error('Unable to sign in right now.')
                 }
             }

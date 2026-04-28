@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BulkImportProductsPayload, BulkImportProductsResponse, BulkImportProductsRow, CreateProductVariantPayload, useBulkImportProductsMutation, useLazyGetProductsQuery } from '@/store/api/productsApi'
+import { BulkImportProductsPayload, BulkImportProductsResponse, BulkImportProductsRow, CreateProductVariantPayload, Product, useBulkImportProductsMutation, useLazyGetProductsQuery } from '@/store/api/productsApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { useGetProductBrandsQuery } from '@/store/api/productBrandsApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
@@ -457,6 +457,34 @@ const buildPayloadChecklist = (payload: BulkImportProductsPayload) => {
   ]
 }
 
+const compareField = (csvVal: unknown, dbVal: unknown, isNumeric = false): boolean => {
+  const csv = csvVal !== undefined && csvVal !== null ? String(csvVal).trim() : ''
+  if (csv === '') return true // blank = not overriding, treat as unchanged
+  if (isNumeric) return Number(csv) === Number(dbVal ?? 0)
+  return csv === String(dbVal ?? '').trim()
+}
+
+const isProductRowUnchanged = (row: BulkImportProductsRow, existing: Product): boolean =>
+  compareField(row.pd_name, existing.name) &&
+  compareField(row.pd_catid, existing.catid, true) &&
+  compareField(row.pd_price_srp, existing.priceSrp, true) &&
+  compareField(row.pd_price_dp, existing.priceDp, true) &&
+  compareField(row.pd_price_member, existing.priceMember, true) &&
+  compareField(row.pd_prodpv, existing.prodpv, true) &&
+  compareField(row.pd_qty, existing.qty, true) &&
+  compareField(row.pd_weight, existing.weight, true) &&
+  compareField(row.pd_room_type, existing.roomType, true) &&
+  compareField(row.pd_brand_type, existing.brandType, true) &&
+  compareField(row.pd_status, existing.status, true) &&
+  compareField(row.pd_type, existing.type, true) &&
+  compareField(row.pd_musthave, existing.musthave ? 1 : 0, true) &&
+  compareField(row.pd_bestseller, existing.bestseller ? 1 : 0, true) &&
+  compareField(row.pd_salespromo, existing.salespromo ? 1 : 0, true) &&
+  compareField(row.pd_assembly_required, existing.assemblyRequired ? 1 : 0, true) &&
+  compareField(row.pd_verified, existing.verified ? 1 : 0, true) &&
+  compareField(row.pd_material, existing.material) &&
+  compareField(row.pd_warranty, existing.warranty)
+
 const detectDelimiter = (line: string) => {
   const candidates = [',', '\t', ';']
   let best = ','
@@ -858,6 +886,19 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
     }
   }, [parsed])
 
+  const unchangedSkus = useMemo(() => {
+    if (!normalizedRows || existingProducts.length === 0) return new Set<string>()
+    const existingBySku = new Map(existingProducts.map((p) => [p.sku, p]))
+    const skus = new Set<string>()
+    for (const row of normalizedRows) {
+      const sku = String(row.pd_parent_sku ?? '').trim()
+      if (!sku) continue
+      const existing = existingBySku.get(sku)
+      if (existing && isProductRowUnchanged(row, existing)) skus.add(sku)
+    }
+    return skus
+  }, [normalizedRows, existingProducts])
+
   // Reset selection and edits whenever the CSV source changes
   useEffect(() => {
     setEditedCells({})
@@ -1126,32 +1167,8 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
         showErrorToast(`Import finished with errors: ${summary.created} created, ${summary.updated} updated, ${summary.failed} failed.`)
         if (summary.created > 0 || summary.updated > 0) onImported?.()
       } else if (summary.created === 0 && summary.updated === 0) {
-        const firstRow = rows[0] as Record<string, unknown> | undefined
-        const fieldSummary = firstRow ? getFieldSummary(firstRow, REQUIRED_IMPORT_FIELDS) : []
-        const missingRequired = fieldSummary.filter((item) => !item.present).map((item) => item.field)
-        const variantRows = rows.filter((row) => (row.pd_variants?.length ?? 0) > 0).length
-        
-        // Additional debugging info
-        const debugInfo = [
-          `Import Mode: ${importMode}`,
-          `Total Rows: ${rows.length}`,
-          `Rows with Variants: ${variantRows}`,
-          `Backend Response: ${JSON.stringify(response)}`,
-        ].join('\n')
-        
-        const details = [
-          `rows sent=${rows.length}`,
-          `variant rows=${variantRows}`,
-          `missing required in first row=${missingRequired.length > 0 ? missingRequired.join(', ') : 'none'}`,
-          `first row=${firstRow ? JSON.stringify(firstRow) : 'n/a'}`,
-          `\n--- DEBUG INFO ---\n${debugInfo}`,
-        ].join(' | ')
-        setImportErrorModal({
-          title: 'Import finished with no processed rows',
-          details: `Import finished: 0 created, 0 updated. No rows were processed.\n${details}`,
-          payload,
-          checklist: buildPayloadChecklist(payload),
-        })
+        showSuccessToast('No changes detected — all rows already match the current database.')
+        onClose()
       } else {
         showSuccessToast(`Import finished: ${summary.created} created, ${summary.updated} updated.`)
         onImported?.()
@@ -1564,6 +1581,11 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
                         {importStats.totalVariants} variant{importStats.totalVariants !== 1 ? 's' : ''}
                       </span>
                     )}
+                    {unchangedSkus.size > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 font-semibold text-slate-400">
+                        {unchangedSkus.size} unchanged
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -1572,10 +1594,15 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
                   <div key={`${row.index}-${row.sku}-${row.name}`} className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">#{row.index}</span>
-                      <p className="text-sm font-semibold text-slate-800">{row.name}</p>
+                      <p className={`text-sm font-semibold ${unchangedSkus.has(row.sku) ? 'text-slate-400' : 'text-slate-800'}`}>{row.name}</p>
                       {row.variantCount > 0 && (
                         <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
                           {row.variantCount} variant{row.variantCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {unchangedSkus.has(row.sku) && (
+                        <span className="inline-flex rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-400">
+                          No changes
                         </span>
                       )}
                     </div>
@@ -1671,8 +1698,10 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
                     {parsed.isVariantSheet
                       ? (parsed.rawRows ?? []).map((row: BulkImportProductsRow, index: number) => {
                           const isSelected = selectedRowIndices.has(index)
+                          const rowSku = String(row.pd_parent_sku ?? '').trim()
+                          const isUnchanged = unchangedSkus.has(rowSku)
                           return (
-                            <tr key={index} className={`align-top transition-opacity ${isSelected ? 'bg-white' : 'bg-slate-50 opacity-50'}`}>
+                            <tr key={index} className={`align-top transition-opacity ${isSelected ? (isUnchanged ? 'bg-slate-50' : 'bg-white') : 'bg-slate-50 opacity-50'}`}>
                               <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   <input
@@ -1681,7 +1710,14 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
                                     onChange={() => toggleRowSelection(index)}
                                     className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600"
                                   />
-                                  <span className="font-semibold text-slate-500">{index + 1}</span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-semibold text-slate-500">{index + 1}</span>
+                                    {isUnchanged && isSelected && (
+                                      <span className="inline-flex rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 leading-none whitespace-nowrap">
+                                        no changes
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
                               {VARIANT_PREVIEW_COLUMNS.map((header) => (
@@ -1694,8 +1730,9 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
                         })
                       : previewRows.map((preview: (typeof previewRows)[number], i: number) => {
                           const isSelected = selectedRowIndices.has(i)
+                          const isUnchanged = unchangedSkus.has(preview.sku)
                           return (
-                            <tr key={preview.index} className={`align-top transition-opacity ${isSelected ? 'bg-white' : 'bg-slate-50 opacity-50'}`}>
+                            <tr key={preview.index} className={`align-top transition-opacity ${isSelected ? (isUnchanged ? 'bg-slate-50' : 'bg-white') : 'bg-slate-50 opacity-50'}`}>
                               <td className="sticky left-0 z-10 bg-inherit px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   <input
@@ -1704,7 +1741,14 @@ export default function BulkProductImportPanel({ onClose, onImported }: BulkProd
                                     onChange={() => toggleRowSelection(i)}
                                     className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600"
                                   />
-                                  <span className="font-semibold text-slate-500">{preview.index}</span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-semibold text-slate-500">{preview.index}</span>
+                                    {isUnchanged && isSelected && (
+                                      <span className="inline-flex rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400 leading-none whitespace-nowrap">
+                                        no changes
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
                               {PREVIEW_COLUMNS.map((header) => (

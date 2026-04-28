@@ -613,7 +613,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
             </div>
 
             {/* Turnstile — full width */}
-            {turnstileSiteKey && (
+            {isMounted && turnstileSiteKey && (
               <div className="sm:col-span-2 flex justify-center">
                 <div ref={turnstileRef} />
               </div>
