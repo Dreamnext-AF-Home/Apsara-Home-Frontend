@@ -1,18 +1,90 @@
 'use client';
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import VideoBackground from "@/components/VideoBackground";
 import { motion } from "framer-motion";
 import Header from "@/components/landing-page/Header";
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton';
 
-export default function ForgotPasswordForm() {
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement | string, options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        'expired-callback': () => void;
+        'error-callback': () => void;
+        theme?: string;
+      }) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    }
+  }
+}
+
+type Props = {
+  turnstileSiteKey?: string;
+}
+
+export default function ForgotPasswordForm({ turnstileSiteKey = '' }: Props) {
   const apiUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const turnstileRef = useRef<HTMLDivElement>(null)
+  const widgetIdRef = useRef<string>('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+
+  useEffect(() => {
+    if (!turnstileSiteKey) return
+
+    let cancelled = false
+
+    const doRender = () => {
+      if (cancelled || !turnstileRef.current || !window.turnstile) return
+      widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: turnstileSiteKey,
+        callback: (token) => { if (!cancelled) setTurnstileToken(token) },
+        'expired-callback': () => { if (!cancelled) setTurnstileToken('') },
+        'error-callback': () => { if (!cancelled) setTurnstileToken('') },
+        theme: 'auto',
+      })
+    }
+
+    const SCRIPT_ID = 'cf-turnstile-script'
+    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+    if (!script) {
+      script = document.createElement('script')
+      script.id = SCRIPT_ID
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+      script.async = true
+      document.head.appendChild(script)
+    }
+
+    if (window.turnstile) {
+      doRender()
+    } else {
+      script.addEventListener('load', doRender, { once: true })
+    }
+
+    return () => {
+      cancelled = true
+      if (widgetIdRef.current && window.turnstile) {
+        try { window.turnstile.remove(widgetIdRef.current) } catch {}
+        widgetIdRef.current = ''
+      }
+      setTurnstileToken('')
+    }
+  }, [turnstileSiteKey])
+
+  const resetTurnstile = () => {
+    if (widgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(widgetIdRef.current)
+    }
+    setTurnstileToken('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +104,7 @@ export default function ForgotPasswordForm() {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, cf_turnstile_response: turnstileToken || undefined }),
       })
 
       const data = await res.json().catch(() => ({}))
@@ -43,6 +115,7 @@ export default function ForgotPasswordForm() {
       setSuccess(data?.message || 'If that email exists, a reset link has been sent.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to send reset email.')
+      resetTurnstile()
     } finally {
       setIsSubmitting(false)
     }
@@ -97,9 +170,15 @@ export default function ForgotPasswordForm() {
                 />
               </div>
 
+              {turnstileSiteKey && (
+                <div className="flex justify-center">
+                  <div ref={turnstileRef} />
+                </div>
+              )}
+
               <PrimaryButton
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!!turnstileSiteKey && !turnstileToken)}
                 className="w-full py-3 px-5 text-sm"
               >
                 {isSubmitting ? 'Sending reset link...' : 'Send Reset Link'}
