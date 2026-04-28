@@ -36,6 +36,7 @@ type SortableProductColumn =
   | 'priceMember'
   | 'stock'
   | 'status'
+  | 'createdAt'
 
 type SortDirection = 'ascending' | 'descending'
 
@@ -153,6 +154,8 @@ const getSortableValue = (product: Product, column: SortableProductColumn) => {
       return getEffectiveStockQty(product)
     case 'status':
       return isActiveStatus(product.status) ? 1 : 0
+    case 'createdAt':
+      return product.createdAt ? new Date(product.createdAt).getTime() : 0
     default:
       return ''
   }
@@ -311,14 +314,14 @@ export default function ProductsTable({
 }: ProductsTableProps) {
   const [confirmId, setConfirmId] = useState<number | null>(null)
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: 'name',
-    direction: 'ascending',
+    column: 'createdAt',
+    direction: 'descending',
   })
 
   const isDeleting = (id: number) => isDeletingIds.includes(id)
   const paginationPages = useMemo(() => getPaginationPages(currentPage, totalPages), [currentPage, totalPages])
   const isZqMode = tableMode === 'zq'
-  const columnCount = isZqMode ? 11 : 13
+  const columnCount = isZqMode ? 12 : 14
   const allVisibleSelected = rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))
 
   const sortedRows = useMemo(() => {
@@ -435,6 +438,9 @@ export default function ProductsTable({
               </th>
               <th className="border-b border-slate-200 px-4 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Status', 'status', 'center')}
+              </th>
+              <th className="min-w-[160px] border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                {renderSortableHeader('Uploaded', 'createdAt')}
               </th>
               <th className="border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">Actions</th>
             </tr>
@@ -607,6 +613,21 @@ export default function ProductsTable({
                       >
                         {statusLabel}
                       </TableChip>
+                    </td>
+
+                    <td className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
+                      {product.createdAt ? (
+                        <div className="min-w-[140px]">
+                          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {new Date(product.createdAt).toLocaleDateString('en-CA')}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            {new Date(product.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                      )}
                     </td>
 
                     <td className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
