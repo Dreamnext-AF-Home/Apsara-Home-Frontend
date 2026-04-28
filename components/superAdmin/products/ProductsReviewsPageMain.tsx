@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight, MessageSquareText, Star, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   Product,
   ProductReview,
@@ -73,6 +74,8 @@ export default function ProductsReviewsPageMain() {
   const [isHydratingPages, setIsHydratingPages] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [activeMediaReviewId, setActiveMediaReviewId] = useState<number | null>(null)
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0)
   const triggerGetProductsRef = useRef(triggerGetProducts)
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({ 5: null, 4: null, 3: null, 2: null, 1: null })
 
@@ -203,6 +206,20 @@ export default function ProductsReviewsPageMain() {
     const row = rowRefs.current[stars]
     if (!row) return
     row.scrollBy({ left: direction === 'left' ? -420 : 420, behavior: 'smooth' })
+  }
+
+  const buildReviewMedia = (review: ProductReview): Array<{ type: 'image' | 'video'; url: string }> => {
+    const imageLinks = (review.review_images && review.review_images.length > 0)
+      ? review.review_images
+      : (review.review_image ? [review.review_image] : [])
+    const videoLinks = (review.review_videos && review.review_videos.length > 0)
+      ? review.review_videos
+      : (review.review_video ? [review.review_video] : [])
+
+    return [
+      ...imageLinks.map((url) => ({ type: 'image' as const, url })),
+      ...videoLinks.map((url) => ({ type: 'video' as const, url })),
+    ]
   }
 
   return (
@@ -368,8 +385,25 @@ export default function ProductsReviewsPageMain() {
                       key={review.id}
                       className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60"
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{review.customer_name}</p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                            {review.customer_avatar ? (
+                              <Image
+                                src={review.customer_avatar}
+                                alt={review.customer_name}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-slate-500 dark:text-slate-300">
+                                {(review.customer_name || 'Customer').trim().charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{review.customer_name}</p>
+                        </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(review.created_at)}</p>
                       </div>
                       <div className="mt-1">
@@ -378,6 +412,65 @@ export default function ProductsReviewsPageMain() {
                       <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                         {review.review?.trim() ? review.review : 'No comment provided.'}
                       </p>
+                      {((review.review_images?.length ?? 0) > 0 || (review.review_videos?.length ?? 0) > 0 || review.review_image || review.review_video) && (
+                        <div className="mt-3">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Customer Media</p>
+                          <div className="flex gap-2">
+                            {(() => {
+                              const imageLinks = (review.review_images && review.review_images.length > 0)
+                                ? review.review_images
+                                : (review.review_image ? [review.review_image] : [])
+                              const videoLinks = (review.review_videos && review.review_videos.length > 0)
+                                ? review.review_videos
+                                : (review.review_video ? [review.review_video] : [])
+                              const media = [
+                                ...imageLinks.map((url) => ({ type: 'image' as const, url })),
+                                ...videoLinks.map((url) => ({ type: 'video' as const, url })),
+                              ]
+                              const previewMedia = media.slice(0, 3)
+                              const remaining = Math.max(0, media.length - previewMedia.length)
+
+                              return previewMedia.map((item, idx) => (
+                                <button
+                                  key={`media-${review.id}-${idx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMediaReviewId(review.id)
+                                    setActiveMediaIndex(idx)
+                                  }}
+                                  className="group relative block h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm dark:border-slate-600 dark:bg-slate-700"
+                                >
+                                  {item.type === 'image' ? (
+                                    <Image
+                                      src={item.url}
+                                      alt={`Review media ${idx + 1}`}
+                                      fill
+                                      className="object-cover transition group-hover:scale-105"
+                                      unoptimized
+                                    />
+                                  ) : (
+                                    <video
+                                      src={item.url}
+                                      preload="metadata"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  )}
+                                  {item.type === 'video' && (
+                                    <span className="pointer-events-none absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                      Video
+                                    </span>
+                                  )}
+                                  {remaining > 0 && idx === previewMedia.length - 1 && (
+                                    <span className="pointer-events-none absolute bottom-1 right-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-bold text-white">
+                                      +{remaining}
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                            })()}
+                          </div>
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -386,6 +479,95 @@ export default function ProductsReviewsPageMain() {
           </div>
         </div>
       ) : null}
+
+      {selectedProduct && activeMediaReviewId !== null ? (() => {
+        const review = selectedReviews.find((item: ProductReview) => item.id === activeMediaReviewId)
+        if (!review) return null
+        const media = buildReviewMedia(review)
+        if (media.length === 0) return null
+        const safeIndex = Math.max(0, Math.min(activeMediaIndex, media.length - 1))
+        const active = media[safeIndex]
+
+        return (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="absolute inset-0" onClick={() => setActiveMediaReviewId(null)} />
+            <div className="relative z-[91] w-full max-w-5xl">
+              <div className="mb-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveMediaReviewId(null)}
+                  className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white hover:bg-white/30"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl">
+                <div className="relative flex h-[70vh] items-center justify-center bg-black">
+                  <AnimatePresence mode="wait">
+                    {active.type === 'image' ? (
+                      <motion.div
+                        key={`active-image-${safeIndex}-${active.url}`}
+                        initial={{ opacity: 0, x: 24, scale: 0.98 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -24, scale: 0.98 }}
+                        transition={{ duration: 0.28, ease: 'easeOut' }}
+                        className="absolute inset-0"
+                      >
+                        <Image
+                          src={active.url}
+                          alt={`Review media ${safeIndex + 1}`}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={`active-video-${safeIndex}-${active.url}`}
+                        initial={{ opacity: 0, x: 24, scale: 0.98 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -24, scale: 0.98 }}
+                        transition={{ duration: 0.28, ease: 'easeOut' }}
+                        className="absolute inset-0 flex items-center justify-center"
+                      >
+                        <video
+                          src={active.url}
+                          controls
+                          autoPlay
+                          className="max-h-full max-w-full"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                {media.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto border-t border-white/10 bg-black/80 p-3">
+                    {media.map((item, idx) => (
+                      <button
+                        key={`media-thumb-${review.id}-${idx}`}
+                        type="button"
+                        onClick={() => setActiveMediaIndex(idx)}
+                        className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border ${
+                          idx === safeIndex ? 'border-orange-400' : 'border-white/20'
+                        }`}
+                      >
+                        {item.type === 'image' ? (
+                          <Image src={item.url} alt={`Media thumb ${idx + 1}`} fill className="object-cover" unoptimized />
+                        ) : (
+                          <>
+                            <video src={item.url} className="h-full w-full object-cover" />
+                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">VID</span>
+                          </>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })() : null}
     </div>
   )
 }

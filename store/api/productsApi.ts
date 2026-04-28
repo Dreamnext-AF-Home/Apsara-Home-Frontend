@@ -89,6 +89,10 @@ export interface ProductReview {
   id: number
   rating: number
   review: string
+  review_image?: string | null
+  review_video?: string | null
+  review_images?: string[]
+  review_videos?: string[]
   customer_name: string
   customer_avatar?: string | null
   created_at?: string | null

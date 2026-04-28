@@ -283,7 +283,7 @@ export default function CustomerCheckoutOrderSummary({
           <svg className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
             {shippingRateUnavailable
-              ? `Shipping is not available for this address${shippingAddressLabel ? ` (${shippingAddressLabel})` : ''}.`
+              ? `Shipping is not available for this address${shippingAddressLabel ? ` (${shippingAddressLabel})` : ''}. Checkout will continue with PHP 0.00 shipping fee.`
               : 'Shipping fee updates automatically based on the selected delivery city and province.'}
           </p>
         </div>
