@@ -66,7 +66,7 @@ const PvWalletTab = ({
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <PvStatCard 
-            label="Affiliate Retail Profit"
+            label="Direct Referral Commission"
             value={currentPv}
             accent="blue"
             helper="Available direct referral earnings from delivered referred purchases"
