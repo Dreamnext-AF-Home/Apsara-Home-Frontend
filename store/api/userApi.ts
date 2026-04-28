@@ -155,14 +155,11 @@ export interface MemberActivityItem {
 export interface MemberSessionItem {
     id: number;
     token_id: number;
-    device: string;
-    platform: string;
-    browser: string;
-    location: string;
     ip_address?: string;
     user_agent?: string;
-    created_at?: string | null;
-    last_active_at?: string | null;
+    location?: string;
+    created_at: string;
+    last_used_at?: string;
     is_current: boolean;
 }
 
@@ -194,6 +191,22 @@ export interface SubmitUsernameChangePayload {
 export interface SubmitUsernameChangeResponse {
     message: string;
     request: UsernameChangeRequest;
+}
+
+export interface LinkedAccount {
+    provider: string;
+    linked_at: string;
+}
+
+export interface LinkedAccountsResponse {
+    accounts: LinkedAccount[];
+}
+
+export interface LinkGooglePayload {
+    provider_id: string;
+    token: string;
+    email: string;
+    name: string;
 }
 
 export const userApi = baseApi.injectEndpoints({
@@ -305,6 +318,31 @@ export const userApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['User'],
         }),
+
+        linkedAccounts: builder.query<LinkedAccountsResponse, void>({
+            query: () => ({
+                url: '/api/auth/linked-accounts',
+                method: 'GET',
+            }),
+            providesTags: ['User'],
+        }),
+
+        linkGoogleAccount: builder.mutation<{ message: string }, LinkGooglePayload>({
+            query: (body) => ({
+                url: '/api/auth/link/google',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        unlinkGoogleAccount: builder.mutation<{ message: string }, void>({
+            query: () => ({
+                url: '/api/auth/unlink/google',
+                method: 'POST',
+            }),
+            invalidatesTags: ['User'],
+        }),
     })
 })
 
@@ -322,4 +360,7 @@ export const {
     useMemberActivityQuery,
     useMemberSessionsQuery,
     useRevokeMemberSessionMutation,
+    useLinkedAccountsQuery,
+    useLinkGoogleAccountMutation,
+    useUnlinkGoogleAccountMutation,
 } = userApi
