@@ -3,7 +3,7 @@
 import { cn } from 'tailwind-variants'
 import { Eye, Pencil, Trash2, TriangleAlert } from 'lucide-react'
 import Image from 'next/image'
-import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Product } from '@/store/api/productsApi'
 
 interface ProductsTableProps {
@@ -313,6 +313,33 @@ export default function ProductsTable({
   tableMode = 'local',
 }: ProductsTableProps) {
   const [confirmId, setConfirmId] = useState<number | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('button, input, a, [role="button"]')) return
+    const el = scrollRef.current
+    if (!el) return
+    dragState.current = { isDragging: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft }
+    setIsDragging(true)
+  }, [])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragState.current.isDragging) return
+    e.preventDefault()
+    const el = scrollRef.current
+    if (!el) return
+    const x = e.pageX - el.offsetLeft
+    el.scrollLeft = dragState.current.scrollLeft - (x - dragState.current.startX) * 1.2
+  }, [])
+
+  const stopDrag = useCallback(() => {
+    dragState.current.isDragging = false
+    setIsDragging(false)
+  }, [])
+
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: 'createdAt',
     direction: 'descending',
@@ -389,7 +416,14 @@ export default function ProductsTable({
 
   return (
     <div className="w-full overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-[0_18px_50px_-28px_rgba(15,23,42,0.28)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_24px_70px_-34px_rgba(2,132,199,0.18)]">
-      <div className="overflow-x-auto">
+      <div
+        ref={scrollRef}
+        className={cn('overflow-x-auto', isDragging ? 'cursor-grabbing select-none' : 'cursor-grab')}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={stopDrag}
+        onMouseLeave={stopDrag}
+      >
         <table className={cn('w-full border-separate border-spacing-0 text-sm text-slate-700 dark:text-slate-200', isZqMode ? 'min-w-[1080px]' : 'min-w-[1260px]')}>
           <thead className="bg-slate-50/95 dark:bg-slate-900">
             <tr>
