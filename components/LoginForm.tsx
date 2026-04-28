@@ -80,7 +80,8 @@ const base64UrlToUint8Array = (value: string): Uint8Array<ArrayBuffer> => {
     const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
     const binary = atob(padded)
-    const bytes = new Uint8Array(binary.length)
+    const buffer = new ArrayBuffer(binary.length)
+    const bytes = new Uint8Array(buffer)
     for (let i = 0; i < binary.length; i += 1) {
         bytes[i] = binary.charCodeAt(i)
     }

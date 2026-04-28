@@ -16,6 +16,7 @@ type TokenUser = {
 };
 
 const isProd = process.env.NODE_ENV === 'production';
+const apiBaseUrl = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim()
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -42,16 +43,20 @@ export const authOptions: NextAuthOptions = {
                 if (!hasGoogleToken && (!hasEmail || (!hasPassword && !hasPasskeyFlow))) {
                     return null
                 }
+                const safeCredentials = credentials!
 
                 try {
-                    const isResendOtp = credentials.resend_otp === '1'
-                    const isResendMfaApproval = credentials.resend_mfa_approval === '1'
+                    if (!apiBaseUrl) {
+                        throw new Error('Authentication service is not configured (LARAVEL_API_URL).')
+                    }
+                    const isResendOtp = safeCredentials.resend_otp === '1'
+                    const isResendMfaApproval = safeCredentials.resend_mfa_approval === '1'
                     const isPasskey = !isResendOtp && !isResendMfaApproval && hasPasskeyFlow
                     const isGoogleOAuth = !isResendOtp && !isResendMfaApproval && !hasPasskeyFlow && hasGoogleToken
                     const url = isResendOtp
-                        ? `${process.env.LARAVEL_API_URL}/api/auth/login/2fa/resend`
+                        ? `${apiBaseUrl}/api/auth/login/2fa/resend`
                         : isResendMfaApproval
-                          ? `${process.env.LARAVEL_API_URL}/api/auth/login/mfa/resend`
+                          ? `${apiBaseUrl}/api/auth/login/mfa/resend`
                         : isPasskey
                           ? `${process.env.LARAVEL_API_URL}/api/auth/passkeys/login/verify`
                         : isGoogleOAuth
@@ -83,19 +88,19 @@ export const authOptions: NextAuthOptions = {
                         body: JSON.stringify(
                             isResendOtp
                                 ? {
-                                    otp_challenge_token: credentials.otp_challenge_token,
+                                    otp_challenge_token: safeCredentials.otp_challenge_token,
                                 }
                                 : isResendMfaApproval
                                   ? {
-                                      mfa_challenge_token: credentials.mfa_challenge_token,
+                                      mfa_challenge_token: safeCredentials.mfa_challenge_token,
                                   }
                                 : isPasskey
                                   ? {
-                                      identifier: credentials.email,
-                                      challenge_token: credentials.passkey_challenge_token,
+                                      identifier: safeCredentials.email,
+                                      challenge_token: safeCredentials.passkey_challenge_token,
                                       credential: (() => {
                                           try {
-                                              return JSON.parse(String(credentials.passkey_assertion || '{}'))
+                                              return JSON.parse(String(safeCredentials.passkey_assertion || '{}'))
                                           } catch {
                                               return null
                                           }
@@ -106,12 +111,12 @@ export const authOptions: NextAuthOptions = {
                                       id_token: credentials.google_access_token,
                                   }
                                 : {
-                                    email: credentials.email,
-                                    password: credentials.password,
-                                    otp: credentials.otp?.trim() || undefined,
-                                    otp_challenge_token: credentials.otp_challenge_token || undefined,
-                                    mfa_challenge_token: credentials.mfa_challenge_token || undefined,
-                                    cf_turnstile_response: credentials.cf_turnstile_response || undefined,
+                                    email: safeCredentials.email,
+                                    password: safeCredentials.password,
+                                    otp: safeCredentials.otp?.trim() || undefined,
+                                    otp_challenge_token: safeCredentials.otp_challenge_token || undefined,
+                                    mfa_challenge_token: safeCredentials.mfa_challenge_token || undefined,
+                                    cf_turnstile_response: safeCredentials.cf_turnstile_response || undefined,
                                 }
                         ),
                     })
@@ -192,7 +197,10 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 try {
-                    const url = `${process.env.LARAVEL_API_URL}/api/supplier/auth/login`
+                    if (!apiBaseUrl) {
+                        throw new Error('Authentication service is not configured (LARAVEL_API_URL).')
+                    }
+                    const url = `${apiBaseUrl}/api/supplier/auth/login`
                     const res = await fetch(url, {
                         method: 'POST',
                         headers: {
