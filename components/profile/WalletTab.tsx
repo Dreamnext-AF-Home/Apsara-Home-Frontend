@@ -53,10 +53,11 @@ const walletMeta = {
 
 type WalletTabProps = {
   isVerified?: boolean;
+  initialWalletType?: WalletTypeFilter;
 };
 
-export default function WalletTab({ isVerified = false }: WalletTabProps) {
-  const [walletType, setWalletType] = useState<WalletTypeFilter>('all');
+export default function WalletTab({ isVerified = false, initialWalletType = 'all' }: WalletTabProps) {
+  const [walletType, setWalletType] = useState<WalletTypeFilter>(initialWalletType);
   const [page, setPage] = useState(1);
   const [createAffiliateVoucher, { isLoading: isCreatingVoucher }] = useCreateAffiliateVoucherMutation();
   const { data, isLoading, isFetching, isError } = useGetWalletOverviewQuery({

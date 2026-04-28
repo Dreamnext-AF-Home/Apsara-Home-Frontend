@@ -117,7 +117,7 @@ type PreferencesState = {
   currency: 'PHP' | 'USD';
 };
 
-type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'referrals';
+type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'pv' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'referrals';
 
 type AlertMsg = { type: 'success' | 'error'; text: string };
 type TreeStatusFilter = 'all' | 'verified' | 'pending_review' | 'not_verified' | 'blocked';
@@ -1322,6 +1322,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     { key: 'security', label: 'Security', Icon: Icon.Shield },
     { key: 'preferences', label: 'Preferences', Icon: Icon.Bell },
     { key: 'wallet', label: 'Wallet', Icon: Icon.Wallet },
+    { key: 'pv', label: 'AF Voucher', Icon: Icon.Star },
     { key: 'encashment', label: 'Encashment', Icon: Icon.Bag },
     { key: 'interior-requests', label: 'Interior Requests', Icon: Icon.Package },
     { key: 'activity', label: 'Activity', Icon: Icon.Activity },
@@ -2618,6 +2619,18 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   transition={{ duration: 0.25 }}
                 >
                   <WalletTab isVerified={isVerified} />
+                </motion.div>
+              )}
+
+              {activeTab === 'pv' && (
+                <motion.div
+                  key="pv"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <WalletTab isVerified={isVerified} initialWalletType="pv" />
                 </motion.div>
               )}
 
