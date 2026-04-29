@@ -10,6 +10,19 @@ const nextConfig: NextConfig = {
   // Workaround for Windows file locking issues on `.next` (EPERM unlink build-manifest.json).
   // Using a separate build directory avoids touching a locked `.next` folder.
   distDir: process.env.NEXT_DIST_DIR || ".next_build",
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

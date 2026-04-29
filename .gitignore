@@ -52,3 +52,4 @@ next-env.d.ts
 .next_build
 .next_build*
 node_modules
+public/sw.js
