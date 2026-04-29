@@ -39,7 +39,7 @@ const footerLinks = {
   support: [
     { name: 'Contact Us', href: '/#contact' },
     { name: 'Our Branches', href: '/branches' },
-    { name: 'FAQs', href: '#' },
+    { name: 'FAQs', href: '/faq' },
     { name: 'Shipping Info', href: '#' },
     { name: 'Returns', href: '#' },
   ],
