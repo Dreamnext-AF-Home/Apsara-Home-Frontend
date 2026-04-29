@@ -462,6 +462,14 @@ export interface PublicProductResponse {
   product: Product
 }
 
+export interface ProductViewerHeartbeatResponse {
+  product_id: number
+  viewer_id: string
+  active_viewers: number
+  ttl_seconds: number
+  updated_at: string
+}
+
 export interface CreateProductPayload {
   pd_name: string
   pd_catid: number
@@ -848,6 +856,15 @@ export const productsApi = baseApi.injectEndpoints({
       },
       providesTags: ['Products'],
     }),
+    heartbeatProductViewer: builder.mutation<ProductViewerHeartbeatResponse, { productId: number; viewerId?: string }>({
+      query: ({ productId, viewerId }) => ({
+        url: `/api/products/${productId}/viewers/heartbeat`,
+        method: 'POST',
+        body: cleanParams({
+          viewer_id: viewerId,
+        }),
+      }),
+    }),
     getProducts: builder.query<ProductsResponse, ProductsQueryParams | void>({
       query: (params) => ({
         url: '/api/admin/products',
@@ -1050,6 +1067,7 @@ export const {
   useLazyGetPublicProductQuery,
   useGetProductReviewsQuery,
   useGetProductBrandQuery,
+  useHeartbeatProductViewerMutation,
   useGetProductsQuery,
   useLazyGetProductsQuery,
   useGetProductActivityLogsQuery,
