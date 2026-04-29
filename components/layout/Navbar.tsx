@@ -735,24 +735,22 @@ function NavbarInner({
                     )}
                   </button>
                 <div className="relative" ref={notifMenuRef}>
+                  {/* Bell button — matches admin style */}
                   <button
                     onClick={() => {
                       setNotifMenuOpen((prev) => !prev)
                       setProfileMenuOpen(false)
-                      if (!notifMenuOpen) {
-                        refetchNotifications()
-                      }
+                      if (!notifMenuOpen) refetchNotifications()
                     }}
-                    className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer text-slate-600 dark:text-gray-300"
+                    className="relative flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-all hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                     title="Notifications"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
-                      <path d="M9 17a3 3 0 0 0 6 0" />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
                     {unreadNotificationCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-sky-500 text-white text-[10px] rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
-                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                      <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                        {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
                       </span>
                     )}
                   </button>
@@ -760,41 +758,41 @@ function NavbarInner({
                   <AnimatePresence>
                     {notifMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="fixed left-2 right-2 top-16 mt-0 w-auto rounded-2xl border border-gray-100 dark:border-gray-800 !bg-white dark:!bg-gray-900 shadow-xl shadow-black/10 overflow-hidden z-50 sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2 sm:w-[360px] sm:max-w-[calc(100vw-1rem)]"
+                        className="fixed left-2 right-2 top-16 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/40 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 sm:fixed-none"
                       >
                         {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-sky-50 to-white dark:from-sky-950/20 dark:to-gray-900 border-b border-sky-100/80 dark:border-sky-800/50">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Notifications</p>
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">Notifications</span>
                             {unreadNotificationCount > 0 && (
-                              <span className="bg-sky-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center leading-none">
+                              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
                                 {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                               </span>
                             )}
                           </div>
                           <button
                             onClick={markAllCustomerNotificationsAsRead}
-                            className="shrink-0 text-xs font-semibold text-sky-600 hover:text-sky-700 transition-colors"
+                            className="text-xs font-semibold text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                           >
                             Mark all read
                           </button>
                         </div>
 
                         {/* List */}
-                        <div className="max-h-[60vh] overflow-y-auto sm:max-h-[52vh] divide-y divide-gray-50 dark:divide-gray-800">
+                        <div className="max-h-[60vh] overflow-y-auto overscroll-contain sm:max-h-96">
                           {isNotificationsLoading ? (
-                            <div className="flex flex-col items-center justify-center py-10 gap-3">
-                              <div className="h-7 w-7 rounded-full border-2 border-sky-200 border-t-sky-500 animate-spin" />
-                              <p className="text-xs text-gray-400 dark:text-gray-500">Loading...</p>
+                            <div className="flex flex-col items-center justify-center gap-3 py-10">
+                              <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-slate-400 dark:border-slate-700 dark:border-t-slate-500" />
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Loading...</p>
                             </div>
                           ) : isNotificationsError ? (
                             <div className="px-4 py-8 text-center">
-                              <p className="text-sm text-red-500 font-medium">Failed to load notifications</p>
-                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Please try again later.</p>
+                              <p className="text-sm font-medium text-red-500 dark:text-red-400">Failed to load notifications</p>
+                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Please try again later.</p>
                             </div>
                           ) : visibleCustomerNotifications.length ? (
                             visibleCustomerNotifications.map((item) => {
@@ -807,52 +805,64 @@ function NavbarInner({
                                     markCustomerNotificationAsRead(item)
                                     setNotifMenuOpen(false)
                                   }}
-                                  className={`flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-sky-50/60 ${!isRead ? 'bg-sky-50/30' : ''}`}
+                                  className={`flex w-full items-start gap-3.5 px-5 py-3.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border-l-2 ${
+                                    !isRead
+                                      ? 'border-l-emerald-500 bg-slate-50 dark:bg-slate-800/30'
+                                      : 'border-l-transparent'
+                                  }`}
                                 >
-                                  <div className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold ${
-                                    !isRead ? 'bg-sky-100 text-sky-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                                  }`}>
-                                    {item.title.charAt(0).toUpperCase()}
+                                  {/* Dot */}
+                                  <div className="mt-1 flex h-2.5 w-2.5 shrink-0 items-center justify-center">
+                                    <div className={`h-2.5 w-2.5 rounded-full ${
+                                      !isRead
+                                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                        : 'bg-slate-300 dark:bg-slate-600'
+                                    }`} />
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-1.5">
-                                      <p className={`text-sm leading-snug ${!isRead ? 'font-semibold text-gray-900 dark:text-gray-100' : 'font-medium text-gray-600 dark:text-gray-300'}`}>{item.title}</p>
-                                      {!isRead && <span className="shrink-0 mt-1 h-2 w-2 bg-sky-500 rounded-full" />}
-                                    </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed line-clamp-2">{item.description}</p>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                      {formatCustomerNotificationTime(item.latest_at) && (
-                                        <span className="text-[11px] text-gray-400 dark:text-gray-500">{formatCustomerNotificationTime(item.latest_at)} PHT</span>
-                                      )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className={`text-sm leading-snug ${
+                                        !isRead
+                                          ? 'font-bold text-slate-900 dark:text-white'
+                                          : 'font-medium text-slate-600 dark:text-slate-400'
+                                      }`}>
+                                        {item.title}
+                                      </p>
                                       {item.count > 1 && (
-                                        <span className="text-[11px] bg-sky-100 text-sky-600 font-semibold rounded-full px-1.5 py-0.5 leading-none">?{item.count}</span>
+                                        <span className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide ${
+                                          !isRead
+                                            ? 'border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                            : 'border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'
+                                        }`}>
+                                          ×{item.count}
+                                        </span>
                                       )}
                                     </div>
+                                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-2">{item.description}</p>
+                                    {formatCustomerNotificationTime(item.latest_at) && (
+                                      <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                                        {formatCustomerNotificationTime(item.latest_at)} PHT
+                                      </p>
+                                    )}
                                   </div>
                                 </Link>
                               )
                             })
                           ) : (
-                            <div className="flex flex-col items-center justify-center py-10 gap-3">
-                              <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
-                                  <path d="M9 17a3 3 0 0 0 6 0" />
+                            <div className="flex flex-col items-center justify-center gap-3 py-10">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800/60">
+                                <svg className="h-5 w-5 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
                               </div>
                               <div className="text-center">
-                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">You&apos;re all caught up!</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">No new notifications</p>
+                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">All caught up!</p>
+                                <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">No new notifications</p>
                               </div>
                             </div>
                           )}
                         </div>
 
-                        {/* Footer */}
-                        <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 flex items-center gap-1.5">
-                          <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                          <p className="text-[11px] text-gray-400 dark:text-gray-500">Auto-refresh every 30 seconds</p>
-                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
