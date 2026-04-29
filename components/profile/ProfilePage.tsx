@@ -207,15 +207,17 @@ const openFacebookAuthPopup = (): Promise<FacebookAuthResult> => {
       return;
     }
 
-    const messageHandler = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== 'FACEBOOK_AUTH_CALLBACK') return;
+    const broadcast = new BroadcastChannel('facebook_auth');
 
-      window.removeEventListener('message', messageHandler);
+    const cleanup = () => {
+      broadcast.close();
       clearInterval(checkClosed);
+      window.removeEventListener('message', legacyMessageHandler);
+    };
 
-      const { error, access_token, provider_id, email, name } = event.data;
-
+    const handleResult = (data: Record<string, unknown>) => {
+      cleanup();
+      const { error, access_token, provider_id, email, name } = data as Record<string, string>;
       if (error) {
         resolve({ success: false, error });
       } else if (access_token && provider_id && email) {
@@ -231,12 +233,19 @@ const openFacebookAuthPopup = (): Promise<FacebookAuthResult> => {
       }
     };
 
-    window.addEventListener('message', messageHandler);
+    broadcast.onmessage = (event) => handleResult(event.data);
+
+    // fallback: window.opener.postMessage for browsers that still support it
+    const legacyMessageHandler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'FACEBOOK_AUTH_CALLBACK') return;
+      handleResult(event.data);
+    };
+    window.addEventListener('message', legacyMessageHandler);
 
     const checkClosed = setInterval(() => {
       if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener('message', messageHandler);
+        cleanup();
         resolve({ success: false, error: 'Authentication cancelled' });
       }
     }, 500);
@@ -515,6 +524,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   }, [linkedAccountsData]);
 
   const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [googleLinkSuccess, setGoogleLinkSuccess] = useState(false);
+  const [facebookLinkSuccess, setFacebookLinkSuccess] = useState(false);
   const profileDraftDirtyRef = useRef(false);
 
   const [form, setForm] = useState<ProfileFormState>({
@@ -931,6 +942,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       }).unwrap();
 
       await refetchLinkedAccounts();
+      setGoogleLinkSuccess(true);
+      setTimeout(() => setGoogleLinkSuccess(false), 3000);
       setProfileMsg({ type: 'success', text: 'Google account linked successfully. You can now log in with Google.' });
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string }; status?: number };
@@ -972,6 +985,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       }).unwrap();
 
       await refetchLinkedAccounts();
+      setFacebookLinkSuccess(true);
+      setTimeout(() => setFacebookLinkSuccess(false), 3000);
       setProfileMsg({ type: 'success', text: 'Facebook account linked successfully. You can now log in with Facebook.' });
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string }; status?: number };
@@ -2390,116 +2405,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             <p className="text-[11px] text-slate-400 dark:text-gray-500">Go to the Change Username tab to submit a request.</p>
                           )}
                           {field === 'email' && (
-                            <>
-                              {isGoogleLinked ? (
-                                <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2.5">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <svg className="h-5 w-5" viewBox="0 0 24 24">
-                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                      </svg>
-                                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Google Connected</span>
-                                      <span className="text-xs text-emerald-600 dark:text-emerald-500">&#10003;</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={handleUnlinkGoogle}
-                                      disabled={isUnlinkingGoogle}
-                                      className="text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                                    >
-                                      {isUnlinkingGoogle ? 'Unlinking...' : 'Unlink my Google account'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={handleConnectGoogle}
-                                  disabled={isLinkingGoogle}
-                                  className="mt-2 flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-sm font-medium text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isLinkingGoogle ? (
-                                    <>
-                                      <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                      </svg>
-                                      Connecting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg className="h-5 w-5" viewBox="0 0 24 24">
-                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                      </svg>
-                                      Link with Google
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-1.5">
-                                {isGoogleLinked
-                                  ? 'Your Google account is linked. You can log in with either email/password or Google.'
-                                  : 'Link your Google account to enable seamless login with your Google credentials.'}
-                              </p>
-
-                              {/* Facebook */}
-                              {isFacebookLinked ? (
-                                <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2.5">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
-                                        <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
-                                      </svg>
-                                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Facebook Connected</span>
-                                      <span className="text-xs text-emerald-600 dark:text-emerald-500">&#10003;</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={handleUnlinkFacebook}
-                                      disabled={isUnlinkingFacebook}
-                                      className="text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                                    >
-                                      {isUnlinkingFacebook ? 'Unlinking...' : 'Unlink my Facebook account'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={handleConnectFacebook}
-                                  disabled={isLinkingFacebook}
-                                  className="mt-2 flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-sm font-medium text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isLinkingFacebook ? (
-                                    <>
-                                      <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                      </svg>
-                                      Connecting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
-                                        <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
-                                      </svg>
-                                      Link with Facebook
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-1.5">
-                                {isFacebookLinked
-                                  ? 'Your Facebook account is linked. You can log in with either email/password or Facebook.'
-                                  : 'Link your Facebook account to enable seamless login with your Facebook credentials.'}
-                              </p>
-                            </>
+                            <p className="text-[11px] text-slate-400 dark:text-gray-500">To link social accounts, go to the Security tab.</p>
                           )}
                         </div>
                       ))}
@@ -2872,6 +2778,136 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       )}
                     </div>
                   </div>
+
+                  {/* Connected Accounts */}
+                  {isCustomerSession && (
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Connected Accounts</h3>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Link social accounts to sign in without a password.</p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {/* Google */}
+                        {isGoogleLinked ? (
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                              <div>
+                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Google Connected</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">You can sign in with your Google account.</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleUnlinkGoogle}
+                              disabled={isUnlinkingGoogle}
+                              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50 shrink-0"
+                            >
+                              {isUnlinkingGoogle && (
+                                <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                              )}
+                              {isUnlinkingGoogle ? 'Unlinking...' : 'Unlink'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleConnectGoogle}
+                            disabled={isLinkingGoogle || googleLinkSuccess}
+                            className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                              googleLinkSuccess
+                                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50'
+                            }`}
+                          >
+                            {isLinkingGoogle ? (
+                              <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                              </svg>
+                            ) : googleLinkSuccess ? (
+                              <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                            )}
+                            {isLinkingGoogle ? 'Connecting...' : googleLinkSuccess ? 'Google linked successfully!' : 'Link with Google'}
+                          </button>
+                        )}
+
+                        {/* Facebook */}
+                        {isFacebookLinked ? (
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#1877F2">
+                                <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                              </svg>
+                              <div>
+                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Facebook Connected</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">You can sign in with your Facebook account.</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleUnlinkFacebook}
+                              disabled={isUnlinkingFacebook}
+                              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50 shrink-0"
+                            >
+                              {isUnlinkingFacebook && (
+                                <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                              )}
+                              {isUnlinkingFacebook ? 'Unlinking...' : 'Unlink'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleConnectFacebook}
+                            disabled={isLinkingFacebook || facebookLinkSuccess}
+                            className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                              facebookLinkSuccess
+                                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50'
+                            }`}
+                          >
+                            {isLinkingFacebook ? (
+                              <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                              </svg>
+                            ) : facebookLinkSuccess ? (
+                              <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#1877F2">
+                                <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                              </svg>
+                            )}
+                            {isLinkingFacebook ? 'Connecting...' : facebookLinkSuccess ? 'Facebook linked successfully!' : 'Link with Facebook'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Danger zone */}
                   <div className="rounded-2xl border border-red-100 dark:border-red-900/30 bg-white dark:bg-gray-800 p-5 md:p-6">
