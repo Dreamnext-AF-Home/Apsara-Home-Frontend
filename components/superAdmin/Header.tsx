@@ -505,16 +505,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                     )}
                                 </div>
 
-                                {/* Footer */}
-                                <div className="flex items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-5 py-2.5 dark:border-slate-800 dark:bg-slate-900/80">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-500">Realtime · 5-second polling fallback</p>
-                                        {notifications?.generated_at && (
-                                            <p className="text-[11px] text-slate-500 dark:text-slate-500">Updated: {notifications.generated_at}</p>
-                                        )}
-                                    </div>
-                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

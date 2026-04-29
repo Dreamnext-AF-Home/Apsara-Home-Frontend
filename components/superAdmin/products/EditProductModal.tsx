@@ -984,8 +984,9 @@ const mapExpandedVariantToProductVariant = (
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 pt-1">
-      <span className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+    <div className="flex items-center gap-2.5 pt-2">
+      <div className="h-4 w-0.5 shrink-0 rounded-full bg-blue-400" />
+      <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
         {children}
       </span>
       <div className="h-px flex-1 bg-gradient-to-r from-slate-200 via-slate-100 to-transparent" />
@@ -1430,7 +1431,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       if (!IMAGE_MIME_TYPES.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF allowed.'); return }
       if (file.size > MAX_IMAGE_BYTES) { setImageError('File too large. Max 5MB.'); return }
     }
-    const maxNew = 10 - existingImageUrls.length
+    const maxNew = 15 - existingImageUrls.length
     const next = [...imageFiles, ...files].slice(0, maxNew)
     setImageFiles(next)
     setImagePreviews(next.map(f => URL.createObjectURL(f)))
@@ -2041,19 +2042,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
               {/* ── Scrollable form body ── */}
               <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-                <div ref={formContentRef} className="flex-1 space-y-6 overflow-y-auto bg-gradient-to-b from-slate-50/80 via-white to-slate-50/60 px-4 py-4 sm:px-6 sm:py-6">
-
-                  {/* Server error */}
-                  {serverError && (
-                    <div className="flex items-start gap-2.5 p-3.5 bg-red-50 rounded-xl border border-red-100">
-                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                      <p className="text-xs text-red-600">{serverError}</p>
-                    </div>
-                  )}
-
-                  {/* ── Section: Product Images ── */}
+                <div ref={formContentRef} className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Product Images</p>
                   {draftRestored && (
                     <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
                       <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2076,8 +2067,26 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                   <Card variant="default" className={sectionCardCls}>
                     <Card.Content className={sectionCardBodyCls}>
                   {showImageGrid ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:grid-cols-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-700">Images</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                            {existingImageUrls.length + imagePreviews.length} / 15
+                          </span>
+                          {imagePreviews.length > 0 && (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                              +{imagePreviews.length} pending
+                            </span>
+                          )}
+                        </div>
+                        {imagePreviews.length > 0 && (
+                          <button type="button" onClick={handleClearNewImages} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">
+                            Clear new
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
                         {/* Existing images */}
                         {existingImageUrls.map((url, index) => (
                           <motion.div
@@ -2086,7 +2095,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                             onPointerEnter={() => handleExistingImagePointerEnter(index)}
                             onPointerUp={stopExistingImagePointerDrag}
                             onPointerCancel={stopExistingImagePointerDrag}
-                            className="relative h-24 cursor-grab rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group active:cursor-grabbing"
+                            className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 active:cursor-grabbing"
                             layout
                             whileTap={{ scale: 0.97 }}
                             transition={{ type: 'spring', stiffness: 340, damping: 28 }}
@@ -2098,19 +2107,25 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                               className="object-cover pointer-events-none"
                               unoptimized
                             />
+                            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
+                            <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] font-bold text-white">
+                              {index + 1}
+                            </span>
                             {index === 0 && (
-                              <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-md">Main</span>
+                              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">Main</span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveExistingImage(index)}
-                              className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Remove"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
-                              </svg>
-                            </button>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveExistingImage(index)}
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white shadow hover:bg-red-600"
+                                title="Remove"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                              </button>
+                            </div>
                           </motion.div>
                         ))}
                         {/* New (pending upload) images */}
@@ -2121,7 +2136,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                             onPointerEnter={() => handleNewImagePointerEnter(index)}
                             onPointerUp={stopNewImagePointerDrag}
                             onPointerCancel={stopNewImagePointerDrag}
-                            className="relative h-24 cursor-grab rounded-xl overflow-hidden bg-slate-100 border-2 border-emerald-400 group active:cursor-grabbing"
+                            className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 ring-2 ring-emerald-400 active:cursor-grabbing"
                             layout
                             whileTap={{ scale: 0.97 }}
                             transition={{ type: 'spring', stiffness: 340, damping: 28 }}
@@ -2133,19 +2148,20 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                               className="object-cover pointer-events-none"
                               unoptimized
                             />
-                            <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-md">New</span>
-                            <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
+                            <span className="absolute bottom-1.5 left-1.5 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">New</span>
+                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                               <button
                                 type="button"
                                 onClick={() => setActiveNewImageAdjustIndex(index)}
-                                className="h-6 rounded-full bg-white/90 px-2 text-[10px] font-bold text-slate-700 shadow-sm"
+                                className="h-7 rounded-full bg-white/90 px-2.5 text-[10px] font-bold text-slate-700 shadow hover:bg-white"
                               >
                                 Adjust
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveImage(index)}
-                                className="h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white shadow hover:bg-red-600"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
@@ -2155,58 +2171,64 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                           </motion.div>
                         ))}
                         {/* Add more slot */}
-                        {existingImageUrls.length + imagePreviews.length < 10 && (
-                          <label htmlFor="edit-product-image-input" onDragOver={preventFileDropNavigation} onDrop={handleMainImageDrop} className="flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-[20px] border-2 border-dashed border-slate-200 bg-slate-50/90 transition-all hover:border-blue-400 hover:bg-blue-50/30">
-                            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {existingImageUrls.length + imagePreviews.length < 15 && (
+                          <label
+                            htmlFor="edit-product-image-input"
+                            onDragOver={preventFileDropNavigation}
+                            onDrop={handleMainImageDrop}
+                            className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50/30"
+                          >
+                            <svg className="w-5 h-5 text-slate-300 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
                             </svg>
-                            <span className="text-[10px] text-slate-400 font-medium">Add More</span>
+                            <span className="text-[10px] font-medium text-slate-400 group-hover:text-blue-500 transition-colors">Add</span>
                           </label>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <p className="text-xs text-slate-400 flex-1">
-                          {!hasAnyImages
-                            ? 'All images removed — click + to add new images'
-                            : `${existingImageUrls.length} saved · ${imagePreviews.length} pending upload · drag to reorder within each group`}
-                        </p>
-                        {imagePreviews.length > 0 && (
-                          <button type="button" onClick={handleClearNewImages} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">
-                            Clear new
-                          </button>
-                        )}
-                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        {!hasAnyImages
+                          ? 'All images removed — click + to add new images'
+                          : 'Drag to reorder within each group · first image is the main'}
+                      </p>
                     </div>
                   ) : (
                     <label
                       htmlFor="edit-product-image-input"
                       onDragOver={preventFileDropNavigation}
                       onDrop={handleMainImageDrop}
-                      className="group flex h-40 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed border-slate-200 bg-slate-50/90 transition-all hover:border-blue-400 hover:bg-blue-50/40"
+                      className="group flex h-48 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50/30"
                     >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm transition-colors group-hover:bg-blue-100">
-                        <svg className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100 transition-all group-hover:bg-blue-50 group-hover:ring-blue-200">
+                        <svg className="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                         </svg>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-slate-600 group-hover:text-blue-600 transition-colors">Click or drag to upload images</p>
-                        <p className="text-xs text-slate-400 mt-0.5">JPEG, PNG, WEBP, GIF · max 5MB each</p>
+                        <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">Drop images here or click to browse</p>
+                        <p className="mt-1 text-xs text-slate-400">JPEG · PNG · WEBP · GIF &nbsp;·&nbsp; max 5 MB each &nbsp;·&nbsp; up to 15 images</p>
                       </div>
                     </label>
                   )}
                     </Card.Content>
                   </Card>
                   {imageError && (
-                    <p className="text-red-500 text-xs flex items-center gap-1">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
                       <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                       </svg>
                       {imageError}
                     </p>
                   )}
+                </div>
 
-                  {/* ── Section: Product Information ── */}
+                  {serverError && (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3.5">
+                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <p className="text-xs text-red-600">{serverError}</p>
+                    </div>
+                  )}
                   <SectionLabel>Product Information</SectionLabel>
                   <Card variant="default" className={sectionCardCls}>
                     <Card.Content className={`${sectionCardBodyCls} space-y-5`}>
@@ -3131,24 +3153,24 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                   )}
                 </div>
 
-                {/* ── Sticky footer ── */}
-                <div className="flex shrink-0 items-center gap-3 border-t border-slate-200/80 bg-white/95 px-4 py-3 sm:px-6 sm:py-4">
-                  <p className="text-xs text-slate-400 flex-1">
-                    Fields marked <span className="text-red-400 font-semibold">*</span> are required
+                {/* Sticky footer */}
+                <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-5 py-3.5 sm:px-6">
+                  <p className="flex-1 text-xs text-slate-400">
+                    Fields marked <span className="font-semibold text-red-400">*</span> are required
                   </p>
                   <Button
                     type="button"
                     onPress={handleClose}
                     isDisabled={isBusy}
                     variant="outline"
-                    className="h-11 rounded-2xl border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700"
+                    className="h-10 rounded-xl border border-slate-200 bg-slate-100 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-200"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     isDisabled={isBusy}
-                    className="h-11 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 text-sm font-bold text-white shadow-lg shadow-blue-500/25"
+                    className="h-10 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white shadow-sm shadow-blue-500/30 hover:bg-blue-700"
                   >
                     {isBusy ? (
                       <>

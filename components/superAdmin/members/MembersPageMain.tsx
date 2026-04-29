@@ -221,7 +221,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
         }
     }, [statsData])
 
-    const effectiveData = data ?? stableData ?? initialData ?? null
+    const effectiveData = shouldSkipInitialMembersRefetch ? (initialData ?? null) : (data ?? stableData ?? initialData ?? null)
     const effectiveStats = statsData ?? stableStats ?? initialStats ?? null
     const members = useMemo(() => effectiveData?.members ?? [], [effectiveData])
     const sortedMembers = useMemo(() => {
