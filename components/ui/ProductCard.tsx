@@ -16,6 +16,7 @@ interface ProductCardProps {
   id?: number;
   name: string;
   brand?: string | null;
+  manualCheckoutEnabled?: boolean;
   createdAt?: string | null;
   price: number;
   priceMember?: number;
@@ -104,6 +105,7 @@ export default function ProductCard({
   id,
   name,
   brand,
+  manualCheckoutEnabled,
   createdAt,
   price,
   priceMember,
@@ -266,6 +268,7 @@ export default function ProductCard({
       image: variant?.images?.[0] || imageSrc,
       prodpv: Number(variant?.prodpv ?? prodpv ?? 0) || 0,
       brand: brand ?? null,
+      manualCheckoutEnabled: Boolean(manualCheckoutEnabled),
       selectedColor: variant?.color ?? null,
       selectedStyle: variant?.style ?? null,
       selectedSize: variant?.size ?? null,

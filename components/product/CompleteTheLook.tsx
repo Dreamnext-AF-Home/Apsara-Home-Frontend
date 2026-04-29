@@ -67,6 +67,7 @@ type BundleItem = {
   originalPrice?: number;
   image: string;
   brand?: string | null;
+  manualCheckoutEnabled?: boolean;
 };
 
 const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLabel, currentProductId }: CompleteTheLookProps) => {
@@ -110,6 +111,7 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
           originalPrice: effectivePrice < srpPrice ? srpPrice : undefined,
           image: product.image || FALLBACK_IMAGE,
           brand: product.brand ?? null,
+          manualCheckoutEnabled: Boolean(product.manualCheckoutEnabled),
         };
       });
   }, [data, currentProductId, forceRealPrice]);
@@ -154,6 +156,7 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
         originalPrice: typeof item.originalPrice === 'number' ? item.originalPrice : null,
         image: item.image,
         brand: item.brand ?? null,
+        manualCheckoutEnabled: Boolean(item.manualCheckoutEnabled),
       });
     });
   };

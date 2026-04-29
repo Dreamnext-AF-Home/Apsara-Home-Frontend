@@ -754,6 +754,7 @@ const ProductInfo = ({
                 image: selectedVariantImage || product.image,
                 prodpv: variantPv,
                 brand: product.brand ?? null,
+                manualCheckoutEnabled: product.manualCheckoutEnabled,
                 selectedColor: selectedVariant?.color ?? null,
                 selectedStyle: selectedVariant?.style ?? null,
                 selectedSize: selectedVariant?.size ?? null,

@@ -22,6 +22,7 @@ export interface CartItem {
   product_price_member?: number
   product_prodpv?: number
   brand_name?: string
+  product_manual_checkout_enabled?: boolean
 }
 
 export interface CartResponse {
@@ -85,6 +86,9 @@ const normalizeCartItem = (rowInput: unknown): CartItem | null => {
   const product_price_member = asNumber(row.product_price_member) ?? undefined
   const product_prodpv = asNumber(row.product_prodpv) ?? undefined
   const brand_name = asString(row.brand_name) || undefined
+  const product_manual_checkout_enabled = Boolean(
+    row.product_manual_checkout_enabled ?? row.manualCheckoutEnabled ?? row.pd_manual_checkout_enabled,
+  )
 
   if (!crt_id || !crt_product_id) return null
 
@@ -109,6 +113,7 @@ const normalizeCartItem = (rowInput: unknown): CartItem | null => {
     product_price_member,
     product_prodpv,
     brand_name,
+    product_manual_checkout_enabled,
   }
 }
 

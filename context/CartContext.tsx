@@ -26,6 +26,7 @@ export interface CartItem {
   quantity: number
   prodpv?: number | null
   brand?: string | null
+  manualCheckoutEnabled?: boolean
   selectedColor?: string | null
   selectedStyle?: string | null
   selectedSize?: string | null
@@ -84,6 +85,7 @@ export function useCart(): CartContextType {
         quantity: item.crt_quantity,
         prodpv: item.product_prodpv ? Number(item.product_prodpv) : null,
         brand: item.brand_name || null,
+        manualCheckoutEnabled: Boolean(item.product_manual_checkout_enabled),
         selectedColor: item.crt_selected_color || null,
         selectedStyle: item.crt_selected_type || null,
         selectedSize: item.crt_selected_size || null,

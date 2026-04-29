@@ -56,6 +56,7 @@ export default function CartDrawer() {
     selectedSize: item.selectedSize ?? null,
     selectedType: item.selectedType ?? null,
     selectedSku: item.selectedSku ?? null,
+    manualCheckoutEnabled: item.manualCheckoutEnabled ?? undefined,
   }))
 
   const handleCustomerCheckout = () => {
@@ -74,6 +75,7 @@ export default function CartDrawer() {
         price: selectedTotal,
         prodpv: checkoutItems.length === 1 ? (firstItem.prodpv ?? 0) : checkoutItems.reduce((sum, item) => sum + ((item.prodpv ?? 0) * item.quantity), 0),
         sku: checkoutItems.length === 1 ? (firstItem.selectedSku ?? undefined) : undefined,
+        manualCheckoutEnabled: checkoutItems.every((item) => item.manualCheckoutEnabled === true),
       },
       quantity: selectedCount,
       selectedColor: checkoutItems.length === 1 ? (firstItem.selectedColor ?? null) : null,
