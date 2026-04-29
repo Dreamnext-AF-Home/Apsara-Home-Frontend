@@ -50,6 +50,7 @@ export interface MeResponse {
     profile_complete?: boolean;
     profile_completion_percentage?: number;
     two_factor_enabled?: boolean;
+    totp_enabled?: boolean;
 }
 
 export interface CustomerAddress {
@@ -202,11 +203,77 @@ export interface LinkedAccountsResponse {
     accounts: LinkedAccount[];
 }
 
+export interface AccountSnapshot {
+    profile: {
+        id: number;
+        username: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone: string;
+        avatar_url: string;
+        verification_status: string;
+        account_status: string;
+    };
+    loyalty: {
+        tier: string;
+        rank: number;
+        badge_name: string;
+        total_orders: number;
+        total_spent: number;
+        total_earnings: number;
+        pv_balance: number;
+        cash_balance: number;
+        referral_count: number;
+        join_date: string;
+        last_login: string | null;
+    };
+    orders: {
+        total: number;
+        pending: number;
+        paid: number;
+        shipped: number;
+        delivered: number;
+        completed: number;
+        total_spent: number;
+        recent_orders: any[];
+    };
+    wishlist: {
+        total_items: number;
+    };
+    reviews: {
+        total: number;
+        average_rating: number;
+        recent_reviews: any[];
+    };
+    snapshot_date: string;
+}
+
 export interface LinkGooglePayload {
     provider_id: string;
     token: string;
     email: string;
     name: string;
+}
+
+export interface LinkFacebookPayload {
+    provider_id: string;
+    token: string;
+    email: string;
+    name: string;
+}
+
+export interface SetupTotpResponse {
+    qr_code_url: string;
+    secret: string;
+}
+
+export interface EnableTotpPayload {
+    code: string;
+}
+
+export interface DisableTotpPayload {
+    code: string;
 }
 
 export const userApi = baseApi.injectEndpoints({
@@ -218,6 +285,14 @@ export const userApi = baseApi.injectEndpoints({
                 method: 'GET'
             }),
             providesTags: ['User'],
+        }),
+
+        accountSnapshot: builder.query<AccountSnapshot, void>({
+            query: () => ({
+                url: '/api/account/snapshot',
+                method: 'GET'
+            }),
+            providesTags: ['User', 'AccountSnapshot'],
         }),
 
         updateProfile: builder.mutation<MeResponse, UpdateProfilePayload>({
@@ -343,24 +418,70 @@ export const userApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['User'],
         }),
+
+        linkFacebookAccount: builder.mutation<{ message: string }, LinkFacebookPayload>({
+            query: (body) => ({
+                url: '/api/auth/link/facebook',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        unlinkFacebookAccount: builder.mutation<{ message: string }, void>({
+            query: () => ({
+                url: '/api/auth/unlink/facebook',
+                method: 'POST',
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        setupTotp: builder.mutation<SetupTotpResponse, void>({
+            query: () => ({
+                url: '/api/auth/totp/setup',
+                method: 'POST',
+            }),
+        }),
+
+        enableTotp: builder.mutation<{ message: string }, EnableTotpPayload>({
+            query: (body) => ({
+                url: '/api/auth/totp/enable',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        disableTotp: builder.mutation<{ message: string }, DisableTotpPayload>({
+            query: (body) => ({
+                url: '/api/auth/totp/disable',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
     })
 })
 
 export const {
     useMeQuery,
+    useAccountSnapshotQuery,
+    useCustomerAddressesQuery,
     useUpdateProfileMutation,
     useChangePasswordMutation,
-    useReferralTreeQuery,
-    useCustomerAddressesQuery,
-    useCreateCustomerAddressMutation,
-    useSetDefaultCustomerAddressMutation,
     useSendUsernameChangeOtpMutation,
     useSubmitUsernameChangeRequestMutation,
     useUsernameChangeLatestQuery,
+    useReferralTreeQuery,
     useMemberActivityQuery,
     useMemberSessionsQuery,
     useRevokeMemberSessionMutation,
     useLinkedAccountsQuery,
     useLinkGoogleAccountMutation,
     useUnlinkGoogleAccountMutation,
+    useLinkFacebookAccountMutation,
+    useUnlinkFacebookAccountMutation,
+    useSetupTotpMutation,
+    useEnableTotpMutation,
+    useDisableTotpMutation,
 } = userApi

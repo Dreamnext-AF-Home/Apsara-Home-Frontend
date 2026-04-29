@@ -107,6 +107,7 @@ const parsePasskeyError = (error: unknown): string => {
     return 'Passkey sign-in failed.'
 }
 
+
 // Google OAuth popup handler for login
 type GoogleAuthResult = {
     success: true;
@@ -251,6 +252,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     const [mfaChallengeToken, setMfaChallengeToken] = useState('');
     const [isMounted, setIsMounted] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [showTotpField, setShowTotpField] = useState(false);
+    const [totpLoginCode, setTotpLoginCode] = useState('');
     const [form, setForm] = useState({
         email: '',
         password: '',
@@ -351,6 +354,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             password: form.password,
             mfa_challenge_token: mfaChallengeToken || undefined,
             cf_turnstile_response: turnstileToken || undefined,
+            totp_code: totpLoginCode.trim() || undefined,
             redirect: false,
             callbackUrl: callbackPath,
         })
@@ -572,7 +576,10 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             }
 
             clearAccessTokenCache()
-            await signOut({ redirect: false })
+            const existingSession = await getSession()
+            if (existingSession) {
+                await signOut({ redirect: false })
+            }
 
             const signInResult = await signIn('credentials', {
                 google_access_token: result.id_token,
@@ -596,14 +603,15 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                 return
             }
 
-            const session = await getSession()
+            const sessionReady = await waitForAuthenticatedSession()
 
-            if (!session?.user?.accessToken) {
+            if (!sessionReady) {
                 router.push('/auth/google-not-connected')
                 return
             }
 
-            const passwordChangeRequired = Boolean(session.user?.passwordChangeRequired)
+            const session = await getSession()
+            const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired)
 
             if (updateSession) {
                 await updateSession()
@@ -616,15 +624,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             }
 
             showSuccessToast('Google sign-in successful. Welcome back!')
-            const sessionReady = await waitForAuthenticatedSession()
             const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
-            router.replace(targetPath)
-            router.refresh()
-            if (!sessionReady && typeof window !== 'undefined') {
-                window.setTimeout(() => {
-                    window.location.replace(targetPath)
-                }, 250)
-            }
+            window.location.replace(targetPath)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.'
             setError(message)
@@ -633,6 +634,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             setIsGoogleLoading(false)
         }
     }
+
+
 
     useEffect(() => {
         if (!mfaChallengeToken || !apiBaseUrl) return
@@ -708,35 +711,69 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                         Your account has been banned. Please contact support for assistance.
                     </div>
                 )}
-                <FloatingInput
-                    id="login-email"
-                    type="text"
-                    label="Username or Email"
-                    value={form.email}
-                    onChange={set('email')}
-                    autoComplete="username email"
-                />
+                {!showTotpField && (
+                    <>
+                        <FloatingInput
+                            id="login-email"
+                            type="text"
+                            label="Username or Email"
+                            value={form.email}
+                            onChange={set('email')}
+                            autoComplete="username email"
+                        />
 
-                <div>
-                    <FloatingInput
-                        id="login-password"
-                        type={showPass ? 'text' : 'password'}
-                        label="Password"
-                        value={form.password}
-                        onChange={set('password')}
-                        autoComplete="current-password"
-                        endContent={(
+                        <div>
+                            <FloatingInput
+                                id="login-password"
+                                type={showPass ? 'text' : 'password'}
+                                label="Password"
+                                value={form.password}
+                                onChange={set('password')}
+                                autoComplete="current-password"
+                                endContent={(
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPass(p => !p)}
+                                        className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+                                    >
+                                        <EyeIcon open={showPass} />
+                                    </button>
+                                )}
+                            />
+                            <p className="mt-1.5 text-[11px] text-gray-400 dark:text-white/55">Passwords are case-sensitive.</p>
+                        </div>
+                    </>
+                )}
+
+                {showTotpField && (
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between mb-1">
+                            <label htmlFor="login-totp" className="block text-xs font-semibold text-gray-600 dark:text-white/80">
+                                Authenticator Code
+                            </label>
                             <button
                                 type="button"
-                                onClick={() => setShowPass(p => !p)}
-                                className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+                                onClick={() => { setShowTotpField(false); setTotpLoginCode(''); resetTurnstile(); }}
+                                className="text-[11px] font-medium text-gray-400 dark:text-white/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
                             >
-                                <EyeIcon open={showPass} />
+                                ← Back to sign in
                             </button>
-                        )}
-                    />
-                    <p className="mt-1.5 text-[11px] text-gray-400 dark:text-white/55">Passwords are case-sensitive.</p>
-                </div>
+                        </div>
+                        <input
+                            id="login-totp"
+                            type="text"
+                            inputMode="numeric"
+                            value={totpLoginCode}
+                            onChange={(e) => setTotpLoginCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="6-digit code"
+                            maxLength={6}
+                            autoComplete="one-time-code"
+                            autoFocus
+                            className="h-11 w-full rounded-[18px] border border-gray-300 dark:border-white/18 bg-white dark:bg-white/12 px-4 text-sm text-gray-900 dark:text-white outline-none transition-all duration-200 focus:border-sky-400 dark:focus:border-sky-400/60 focus:bg-white dark:focus:bg-white/18 font-mono tracking-widest text-center"
+                        />
+                        <p className="text-[11px] text-gray-400 dark:text-white/55">Enter the 6-digit code from your authenticator app.</p>
+                    </div>
+                )}
 
                 {mfaChallengeToken ? (
                     <div className="">
@@ -794,23 +831,25 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                     </div>
                 ) : null}
 
-                <div className="flex items-center justify-between text-xs">
-                    <label className="flex items-center gap-2 text-gray-500 dark:text-white/70 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={form.rememberMe}
-                            onChange={(e) => setForm((prev) => ({ ...prev, rememberMe: e.target.checked }))}
-                            className="h-4 w-4 rounded border-white/30 bg-white/10 accent-sky-500"
-                        />
-                        <span className="text-xs">Remember me</span>
-                    </label>
-                    <Link
-                        href="/forgot-password"
-                        className="text-sky-500 hover:text-sky-400 font-semibold transition-colors"
-                    >
-                        Forgot Password
-                    </Link>
-                </div>
+                {!showTotpField && (
+                    <div className="flex items-center justify-between text-xs">
+                        <label className="flex items-center gap-2 text-gray-500 dark:text-white/70 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={form.rememberMe}
+                                onChange={(e) => setForm((prev) => ({ ...prev, rememberMe: e.target.checked }))}
+                                className="h-4 w-4 rounded border-white/30 bg-white/10 accent-sky-500"
+                            />
+                            <span className="text-xs">Remember me</span>
+                        </label>
+                        <Link
+                            href="/forgot-password"
+                            className="text-sky-500 hover:text-sky-400 font-semibold transition-colors"
+                        >
+                            Forgot Password
+                        </Link>
+                    </div>
+                )}
 
                 {isMounted && turnstileSiteKey && !mfaChallengeToken && (
                     <div className="flex justify-center">
@@ -832,7 +871,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                             <span>Signing in...</span>
                         </>
                     ) : (
-                        <span>{mfaChallengeToken ? 'Continue Sign in' : 'Sign in'}</span>
+                        <span>{mfaChallengeToken ? 'Continue Sign in' : showTotpField ? 'Verify & Sign in' : 'Sign in'}</span>
                     )}
                 </button>
 
@@ -846,7 +885,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                     </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="flex items-stretch justify-center gap-3">
+                    {/* Google */}
                     <button
                         type="button"
                         onClick={() => {
@@ -857,66 +897,73 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                             handleGoogleSignIn()
                         }}
                         disabled={isLoading || isPasskeyLoading || isGoogleLoading}
-                        className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
+                        className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                     >
                         {isGoogleLoading ? (
-                            <>
+                            <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : (
+                            <svg className="h-5 w-5" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                        )}
+                        <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Google</span>
+                    </button>
+
+                    {/* Authenticator App (TOTP) — temporarily disabled */}
+                    {/* <button
+                        type="button"
+                        onClick={() => {
+                            setShowTotpField((v) => !v)
+                            setTotpLoginCode('')
+                        }}
+                        disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                        className={`flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border transition-colors disabled:opacity-60 ${showTotpField ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700' : 'border-slate-200 bg-white hover:bg-slate-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700'}`}
+                    >
+                        <svg className={`h-5 w-5 ${showTotpField ? 'text-sky-500' : 'text-slate-500 dark:text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="5" y="2" width="14" height="20" rx="2" />
+                            <path d="M12 18h.01" />
+                            <path d="M9 7h6M9 11h4" />
+                        </svg>
+                        <span className={`text-xs font-medium ${showTotpField ? 'text-sky-600 dark:text-sky-400' : 'text-slate-600 dark:text-gray-300'}`}>Authenticator</span>
+                    </button> */}
+
+                    {/* Passkey */}
+                    {isMounted && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
+                                    setError('Please complete the verification checkbox to sign in with Passkey.')
+                                    return
+                                }
+                                handlePasskeySignIn()
+                            }}
+                            disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                            className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                        >
+                            {isPasskeyLoading ? (
                                 <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span>Signing in with Google...</span>
-                            </>
-                        ) : (
-                            <>
-                                <svg className="h-5 w-5" viewBox="0 0 24 24">
-                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            ) : (
+                                <svg className="h-5 w-5 text-slate-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                                 </svg>
-                                <span>Sign in with Google</span>
-                            </>
-                        )}
-                    </button>
-
-                    {isMounted && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
-                                        setError('Please complete the verification checkbox to sign in with Passkey.')
-                                        return
-                                    }
-                                    handlePasskeySignIn()
-                                }}
-                                disabled={isLoading || isPasskeyLoading || isGoogleLoading}
-                                className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
-                            >
-                                {isPasskeyLoading ? (
-                                    <>
-                                        <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span>Checking passkey...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                        </svg>
-                                        <span>Sign in with Passkey</span>
-                                    </>
-                                )}
-                            </button>
-                            {!passkeySupported ? (
-                                <p className="text-[11px] text-center text-slate-500 dark:text-gray-400">Passkeys are not supported in this browser.</p>
-                            ) : null}
-                        </>
+                            )}
+                            <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Passkey</span>
+                        </button>
                     )}
                 </div>
+                {isMounted && !passkeySupported && (
+                    <p className="text-[11px] text-center text-slate-500 dark:text-gray-400">Passkeys are not supported in this browser.</p>
+                )}
             </form>
         </motion.div>
     )

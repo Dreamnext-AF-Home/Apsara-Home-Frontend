@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, LinkedAccount } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -155,6 +155,97 @@ const openGoogleAuthPopup = (systemEmail: string): Promise<GoogleAuthResult> => 
       if (popup.closed) {
         clearInterval(checkClosed);
         window.removeEventListener('message', messageHandler);
+        resolve({ success: false, error: 'Authentication cancelled' });
+      }
+    }, 500);
+  });
+};
+
+// Facebook OAuth popup handler
+type FacebookAuthResult = {
+  success: true;
+  provider_id: string;
+  token: string;
+  email: string;
+  name: string;
+} | {
+  success: false;
+  error: string;
+};
+
+const openFacebookAuthPopup = (): Promise<FacebookAuthResult> => {
+  return new Promise((resolve) => {
+    const clientId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    if (!clientId) {
+      resolve({ success: false, error: 'Facebook App ID not configured' });
+      return;
+    }
+
+    const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/facebook/callback` : '';
+    const state = Math.random().toString(36).substring(2, 15);
+
+    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+      `client_id=${clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=token` +
+      `&scope=email,public_profile` +
+      `&state=${state}`;
+
+    const width = 500;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const popup = window.open(
+      authUrl,
+      'facebookAuth',
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+    );
+
+    if (!popup) {
+      resolve({ success: false, error: 'Popup blocked. Please allow popups for this site.' });
+      return;
+    }
+
+    const broadcast = new BroadcastChannel('facebook_auth');
+
+    const cleanup = () => {
+      broadcast.close();
+      clearInterval(checkClosed);
+      window.removeEventListener('message', legacyMessageHandler);
+    };
+
+    const handleResult = (data: Record<string, unknown>) => {
+      cleanup();
+      const { error, access_token, provider_id, email, name } = data as Record<string, string>;
+      if (error) {
+        resolve({ success: false, error });
+      } else if (access_token && provider_id && email) {
+        resolve({
+          success: true,
+          token: access_token,
+          provider_id,
+          email,
+          name: name || email.split('@')[0],
+        });
+      } else {
+        resolve({ success: false, error: 'Failed to get Facebook credentials' });
+      }
+    };
+
+    broadcast.onmessage = (event) => handleResult(event.data);
+
+    // fallback: window.opener.postMessage for browsers that still support it
+    const legacyMessageHandler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'FACEBOOK_AUTH_CALLBACK') return;
+      handleResult(event.data);
+    };
+    window.addEventListener('message', legacyMessageHandler);
+
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        cleanup();
         resolve({ success: false, error: 'Authentication cancelled' });
       }
     }, 500);
@@ -395,6 +486,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const { data } = useMeQuery(undefined, {
     skip: !isCustomerSession,
   });
+  const { data: accountSnapshot } = useAccountSnapshotQuery(undefined, {
+    skip: !isCustomerSession,
+  });
   const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(data?.id, {
     skip: !isCustomerSession || !data?.id,
     refetchOnMountOrArgChange: true,
@@ -421,12 +515,23 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   });
   const [linkGoogleAccount, { isLoading: isLinkingGoogle }] = useLinkGoogleAccountMutation();
   const [unlinkGoogleAccount, { isLoading: isUnlinkingGoogle }] = useUnlinkGoogleAccountMutation();
+  const [linkFacebookAccount, { isLoading: isLinkingFacebook }] = useLinkFacebookAccountMutation();
+  const [unlinkFacebookAccount, { isLoading: isUnlinkingFacebook }] = useUnlinkFacebookAccountMutation();
+  const [setupTotp] = useSetupTotpMutation();
+  const [enableTotp] = useEnableTotpMutation();
+  const [disableTotp] = useDisableTotpMutation();
 
   const isGoogleLinked = useMemo(() => {
     return linkedAccountsData?.accounts?.some((account: LinkedAccount) => account.provider === 'google') ?? false;
   }, [linkedAccountsData]);
 
+  const isFacebookLinked = useMemo(() => {
+    return linkedAccountsData?.accounts?.some((account: LinkedAccount) => account.provider === 'facebook') ?? false;
+  }, [linkedAccountsData]);
+
   const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [googleLinkSuccess, setGoogleLinkSuccess] = useState(false);
+  const [facebookLinkSuccess, setFacebookLinkSuccess] = useState(false);
   const profileDraftDirtyRef = useRef(false);
 
   const [form, setForm] = useState<ProfileFormState>({
@@ -456,6 +561,14 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(false);
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
   const [removingPasskeyId, setRemovingPasskeyId] = useState<number | null>(null);
+
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpStep, setTotpStep] = useState<'idle' | 'confirm-disable'>('idle');
+  const [totpSetupData, setTotpSetupData] = useState<SetupTotpResponse | null>(null);
+  const [totpModalOpen, setTotpModalOpen] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpLoading, setTotpLoading] = useState(false);
+  const [totpError, setTotpError] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<PreferencesState>({
     marketingEmails: true,
@@ -526,7 +639,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   useEffect(() => {
     if (!profileData) return;
     setPrefs((prev) => ({ ...prev, twoFactorEnabled: Boolean(profileData.two_factor_enabled) }));
-  }, [profileData?.two_factor_enabled, profileData]);
+    setTotpEnabled(Boolean(profileData.totp_enabled));
+  }, [profileData?.two_factor_enabled, profileData?.totp_enabled, profileData]);
 
   useEffect(() => {
     if (!isAddressModalOpen) return;
@@ -825,6 +939,65 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
+  const handleInitiateTotpSetup = async () => {
+    setTotpError(null);
+    setTotpLoading(true);
+    try {
+      const data = await setupTotp().unwrap();
+      setTotpSetupData(data);
+      setTotpCode('');
+      setTotpModalOpen(true);
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setTotpError(apiError?.data?.message || 'Failed to initiate authenticator setup.');
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
+  const handleVerifyTotp = async () => {
+    if (totpCode.length !== 6) {
+      setTotpError('Please enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    setTotpError(null);
+    setTotpLoading(true);
+    try {
+      await enableTotp({ code: totpCode }).unwrap();
+      setTotpEnabled(true);
+      setTotpModalOpen(false);
+      setTotpSetupData(null);
+      setTotpCode('');
+      showSuccessToast('Authenticator app enabled successfully.');
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setTotpError(apiError?.data?.message || 'Invalid code. Please try again.');
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
+  const handleDisableTotp = async () => {
+    if (totpCode.length !== 6) {
+      setTotpError('Please enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    setTotpError(null);
+    setTotpLoading(true);
+    try {
+      await disableTotp({ code: totpCode }).unwrap();
+      setTotpEnabled(false);
+      setTotpStep('idle');
+      setTotpCode('');
+      showSuccessToast('Authenticator app removed successfully.');
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setTotpError(apiError?.data?.message || 'Invalid code. Please try again.');
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
   const handleConnectGoogle = async () => {
     setProfileMsg(null);
     const result = await openGoogleAuthPopup(form.email.toLowerCase().trim());
@@ -843,6 +1016,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       }).unwrap();
 
       await refetchLinkedAccounts();
+      setGoogleLinkSuccess(true);
+      setTimeout(() => setGoogleLinkSuccess(false), 3000);
       setProfileMsg({ type: 'success', text: 'Google account linked successfully. You can now log in with Google.' });
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string }; status?: number };
@@ -863,6 +1038,49 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string } };
       setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to unlink Google account.' });
+    }
+  };
+
+  const handleConnectFacebook = async () => {
+    setProfileMsg(null);
+    const result = await openFacebookAuthPopup();
+
+    if (!result.success) {
+      setProfileMsg({ type: 'error', text: result.error });
+      return;
+    }
+
+    try {
+      await linkFacebookAccount({
+        provider_id: result.provider_id,
+        token: result.token,
+        email: result.email,
+        name: result.name,
+      }).unwrap();
+
+      await refetchLinkedAccounts();
+      setFacebookLinkSuccess(true);
+      setTimeout(() => setFacebookLinkSuccess(false), 3000);
+      setProfileMsg({ type: 'success', text: 'Facebook account linked successfully. You can now log in with Facebook.' });
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string }; status?: number };
+      if (apiError?.status === 409) {
+        setProfileMsg({ type: 'error', text: 'This Facebook account is already linked to another user.' });
+      } else {
+        setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to link Facebook account.' });
+      }
+    }
+  };
+
+  const handleUnlinkFacebook = async () => {
+    setProfileMsg(null);
+    try {
+      await unlinkFacebookAccount().unwrap();
+      await refetchLinkedAccounts();
+      setProfileMsg({ type: 'success', text: 'Facebook account unlinked successfully.' });
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to unlink Facebook account.' });
     }
   };
 
@@ -1379,12 +1597,12 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
-  const loyaltyTier: MemberTier = rankToTier(profileData?.rank ?? 0);
+  const loyaltyTier: MemberTier = rankToTier(accountSnapshot?.loyalty?.rank ?? 0);
 
   const accountStats = [
-    { label: 'Orders', value: '14', Icon: Icon.Package, onClick: () => router.push('/orders') },
-    { label: 'Wishlist', value: '27', Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
-    { label: 'Reviews', value: '9', Icon: Icon.Activity, onClick: () => {} },
+    { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push('/orders') },
+    { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
+    { label: 'Reviews', value: String(accountSnapshot?.reviews?.total ?? 0), Icon: Icon.Activity, onClick: () => {} },
     { label: 'Loyalty', value: loyaltyTier, Icon: Icon.Shield, onClick: () => {} },
   ];
 
@@ -1943,6 +2161,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   </span>
                 )}
 
+                {/* Account stats from snapshot */}
+                <div className="mt-3 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-gray-400">
+                  {accountSnapshot?.loyalty?.join_date && (
+                    <span>Joined {new Date(accountSnapshot.loyalty.join_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  )}
+                  {accountSnapshot?.loyalty?.referral_count > 0 && (
+                    <span>{accountSnapshot.loyalty.referral_count} referrals</span>
+                  )}
+                </div>
+
                 {isUploadingAvatar && (
                   <p className="mt-2 text-xs text-sky-500 font-medium animate-pulse">Uploading photo...</p>
                 )}
@@ -2261,64 +2489,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             <p className="text-[11px] text-slate-400 dark:text-gray-500">Go to the Change Username tab to submit a request.</p>
                           )}
                           {field === 'email' && (
-                            <>
-                              {isGoogleLinked ? (
-                                <div className="mt-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3.5 py-2.5">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <svg className="h-5 w-5" viewBox="0 0 24 24">
-                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                      </svg>
-                                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Google Connected</span>
-                                      <span className="text-xs text-emerald-600 dark:text-emerald-500">&#10003;</span>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={handleUnlinkGoogle}
-                                      disabled={isUnlinkingGoogle}
-                                      className="text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-                                    >
-                                      {isUnlinkingGoogle ? 'Unlinking...' : 'Unlink my Google account'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={handleConnectGoogle}
-                                  disabled={isLinkingGoogle}
-                                  className="mt-2 flex items-center justify-center gap-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 text-sm font-medium text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isLinkingGoogle ? (
-                                    <>
-                                      <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                      </svg>
-                                      Connecting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg className="h-5 w-5" viewBox="0 0 24 24">
-                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                      </svg>
-                                      Link with Google
-                                    </>
-                                  )}
-                                </button>
-                              )}
-                              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-1.5">
-                                {isGoogleLinked
-                                  ? 'Your Google account is linked. You can log in with either email/password or Google.'
-                                  : 'Link your Google account to enable seamless login with your Google credentials.'}
-                              </p>
-                            </>
+                            <p className="text-[11px] text-slate-400 dark:text-gray-500">To link social accounts, go to the Security tab.</p>
                           )}
                         </div>
                       ))}
@@ -2641,6 +2812,299 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     </div>
                   </div>
 
+                  {/* Authenticator App (TOTP) */}
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Authenticator App (TOTP)</h3>
+                        {/* Info icon inline next to label */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            aria-label="Learn about TOTP"
+                            className="h-5 w-5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-700 flex items-center justify-center text-slate-400 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:border-sky-300 dark:hover:border-sky-700 transition-colors"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="16" x2="12" y2="12" />
+                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                          </button>
+                          {/* Tooltip panel */}
+                          <div className="pointer-events-none absolute left-0 top-7 z-50 w-72 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 shadow-xl shadow-slate-200/60 dark:shadow-black/40 px-4 py-4 space-y-3">
+                              <p className="text-xs font-semibold text-sky-700 dark:text-sky-400">What is a TOTP / Authenticator App?</p>
+                              <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">
+                                A <span className="font-medium text-slate-700 dark:text-gray-300">Time-based One-Time Password (TOTP)</span> is a 6-digit code your app generates every 30 seconds. Because it changes constantly, it cannot be reused or stolen.
+                              </p>
+                              <div>
+                                <p className="text-xs font-semibold text-sky-700 dark:text-sky-400 mb-1.5">Why is it better than SMS?</p>
+                                <ul className="text-xs text-slate-600 dark:text-gray-400 space-y-1.5 leading-relaxed">
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">Works offline</span> — no signal needed.</span></li>
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">SIM-swap proof</span> — can&apos;t be hijacked via your phone number.</span></li>
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">No interception</span> — codes never travel over the network.</span></li>
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">Expires in 30 s</span> — useless moments after it&apos;s seen.</span></li>
+                                </ul>
+                              </div>
+                              <p className="text-[11px] text-slate-400 dark:text-gray-500">Apps: Google Authenticator · Authy · Microsoft Authenticator · 1Password</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                        Use Google Authenticator, Authy, or any TOTP-compatible app to generate sign-in codes.
+                      </p>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {totpError && (
+                        <motion.div
+                          key="totp-error"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="mb-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800"
+                        >
+                          <Icon.Warning className="h-4 w-4 shrink-0" />
+                          {totpError}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {totpStep === 'idle' && !totpEnabled && (
+                      <button
+                        type="button"
+                        onClick={handleInitiateTotpSetup}
+                        disabled={totpLoading}
+                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-sky-200"
+                      >
+                        {totpLoading ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Setting up...
+                          </>
+                        ) : 'Set Up Authenticator App'}
+                      </button>
+                    )}
+
+
+                    {totpStep === 'idle' && totpEnabled && (
+                      <div className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <Icon.Shield className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Authenticator App Active</p>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Your account is protected with TOTP codes.</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setTotpStep('confirm-disable'); setTotpCode(''); setTotpError(null); }}
+                          className="flex-shrink-0 text-xs font-semibold text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+
+                    {totpStep === 'confirm-disable' && (
+                      <motion.div
+                        key="totp-disable"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Enter 6-digit code to confirm</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={totpCode}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                              setTotpCode(v);
+                              setTotpError(null);
+                            }}
+                            placeholder="Enter 6-digit code"
+                            maxLength={6}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 focus:border-red-300 dark:focus:border-red-600 transition-colors font-mono tracking-widest"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleDisableTotp}
+                            disabled={totpLoading || totpCode.length !== 6}
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {totpLoading ? (
+                              <>
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Removing...
+                              </>
+                            ) : 'Confirm Remove'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setTotpStep('idle'); setTotpCode(''); setTotpError(null); }}
+                            disabled={totpLoading}
+                            className="text-sm font-medium text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* TOTP Setup Modal — fixed to top of viewport */}
+                  <AnimatePresence>
+                    {totpModalOpen && totpSetupData && (
+                      <>
+                        <motion.div
+                          key="totp-modal-backdrop"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm"
+                          onClick={() => { if (!totpLoading) { setTotpModalOpen(false); setTotpSetupData(null); setTotpCode(''); setTotpError(null); } }}
+                        />
+                        <motion.div
+                          key="totp-modal-panel"
+                          initial={{ opacity: 0, y: -32 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -32 }}
+                          transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                          className="fixed inset-x-0 top-0 z-[301] mx-auto w-full max-w-lg overflow-y-auto max-h-[92vh] bg-white dark:bg-gray-800 rounded-b-2xl shadow-2xl shadow-slate-900/20"
+                        >
+                          {/* Modal header */}
+                          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-5 py-4">
+                            <div>
+                              <h3 className="text-base font-bold text-slate-900 dark:text-white">Set Up Authenticator App</h3>
+                              <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Follow the steps below to link your app.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => { if (!totpLoading) { setTotpModalOpen(false); setTotpSetupData(null); setTotpCode(''); setTotpError(null); } }}
+                              disabled={totpLoading}
+                              className="h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* Modal body */}
+                          <div className="px-5 py-5 space-y-6">
+                            {/* Error */}
+                            <AnimatePresence>
+                              {totpError && (
+                                <motion.div
+                                  key="totp-modal-error"
+                                  initial={{ opacity: 0, y: -6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -6 }}
+                                  className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800"
+                                >
+                                  <Icon.Warning className="h-4 w-4 shrink-0" />
+                                  {totpError}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            {/* Step 1 */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Step 1 — Install an authenticator app</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400">Download any of these free apps:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { name: 'Google Authenticator', android: 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2', ios: 'https://apps.apple.com/app/google-authenticator/id388497605' },
+                                  { name: 'Authy', android: 'https://play.google.com/store/apps/details?id=com.authy.authy', ios: 'https://apps.apple.com/app/authy/id494168017' },
+                                  { name: 'Microsoft Authenticator', android: 'https://play.google.com/store/apps/details?id=com.azure.authenticator', ios: 'https://apps.apple.com/app/microsoft-authenticator/id983156458' },
+                                ].map((app) => (
+                                  <div key={app.name} className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-900 px-3 py-1.5">
+                                    <span className="text-xs font-medium text-slate-700 dark:text-gray-300">{app.name}</span>
+                                    <a href={app.android} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline">Android</a>
+                                    <span className="text-slate-300 dark:text-slate-600 text-[10px]">·</span>
+                                    <a href={app.ios} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline">iOS</a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Step 2 — Scan the QR code</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400">Open your authenticator app and scan the QR code to link your account.</p>
+                              <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white p-4 w-fit">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={totpSetupData.qr_code_url} alt="TOTP QR Code" className="h-40 w-40 object-contain" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Or enter this key manually</label>
+                                <div className="flex items-center gap-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-900 px-3.5 py-2.5">
+                                  <code className="flex-1 text-sm font-mono text-slate-800 dark:text-gray-200 tracking-widest break-all select-all">{totpSetupData.secret}</code>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Step 3 — Enter the 6-digit code</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={totpCode}
+                                onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setTotpCode(v); setTotpError(null); }}
+                                placeholder="Enter 6-digit code"
+                                maxLength={6}
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600 transition-colors font-mono tracking-widest"
+                              />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-3 pb-1">
+                              <button
+                                type="button"
+                                onClick={handleVerifyTotp}
+                                disabled={totpLoading || totpCode.length !== 6}
+                                className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-sky-200"
+                              >
+                                {totpLoading ? (
+                                  <>
+                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Verifying...
+                                  </>
+                                ) : 'Verify & Enable'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { if (!totpLoading) { setTotpModalOpen(false); setTotpSetupData(null); setTotpCode(''); setTotpError(null); } }}
+                                disabled={totpLoading}
+                                className="text-sm font-medium text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
                     <div className="mb-4">
                       <h3 className="text-base font-bold text-slate-900 dark:text-white">Passkeys</h3>
@@ -2697,6 +3161,136 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       )}
                     </div>
                   </div>
+
+                  {/* Connected Accounts */}
+                  {isCustomerSession && (
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
+                      <div className="mb-4">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Connected Accounts</h3>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Link social accounts to sign in without a password.</p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {/* Google */}
+                        {isGoogleLinked ? (
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                              <div>
+                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Google Connected</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">You can sign in with your Google account.</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleUnlinkGoogle}
+                              disabled={isUnlinkingGoogle}
+                              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50 shrink-0"
+                            >
+                              {isUnlinkingGoogle && (
+                                <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                              )}
+                              {isUnlinkingGoogle ? 'Unlinking...' : 'Unlink'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleConnectGoogle}
+                            disabled={isLinkingGoogle || googleLinkSuccess}
+                            className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                              googleLinkSuccess
+                                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50'
+                            }`}
+                          >
+                            {isLinkingGoogle ? (
+                              <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                              </svg>
+                            ) : googleLinkSuccess ? (
+                              <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                            )}
+                            {isLinkingGoogle ? 'Connecting...' : googleLinkSuccess ? 'Google linked successfully!' : 'Link with Google'}
+                          </button>
+                        )}
+
+                        {/* Facebook */}
+                        {isFacebookLinked ? (
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#1877F2">
+                                <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                              </svg>
+                              <div>
+                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Facebook Connected</p>
+                                <p className="text-xs text-slate-500 dark:text-gray-400">You can sign in with your Facebook account.</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleUnlinkFacebook}
+                              disabled={isUnlinkingFacebook}
+                              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50 shrink-0"
+                            >
+                              {isUnlinkingFacebook && (
+                                <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                              )}
+                              {isUnlinkingFacebook ? 'Unlinking...' : 'Unlink'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleConnectFacebook}
+                            disabled={isLinkingFacebook || facebookLinkSuccess}
+                            className={`flex items-center justify-center gap-2 w-full rounded-xl border px-4 py-3 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                              facebookLinkSuccess
+                                ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50'
+                            }`}
+                          >
+                            {isLinkingFacebook ? (
+                              <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                              </svg>
+                            ) : facebookLinkSuccess ? (
+                              <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#1877F2">
+                                <path d="M24 12.073C24 5.404 18.627 0 12 0S0 5.404 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
+                              </svg>
+                            )}
+                            {isLinkingFacebook ? 'Connecting...' : facebookLinkSuccess ? 'Facebook linked successfully!' : 'Link with Facebook'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Danger zone */}
                   <div className="rounded-2xl border border-red-100 dark:border-red-900/30 bg-white dark:bg-gray-800 p-5 md:p-6">

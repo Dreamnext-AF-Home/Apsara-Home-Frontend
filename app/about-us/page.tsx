@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import LegalPageShell from '@/components/legal/LegalPageShell';
 
+// Modern, responsive layout for the About page
 const stats = [
   { value: '12+ years', label: 'Designing homes with purpose' },
   { value: '100k+', label: 'Happy customers nationwide' },
@@ -20,8 +21,8 @@ const values = [
   },
   {
     title: 'CARE',
-    subtitle: 'People-first service',
-    text: 'From choosing the right piece to post-delivery support, we’re here to help you feel at home.',
+    subtitle: 'People‑first service',
+    text: 'From choosing the right piece to post‑delivery support, we’re here to help you feel at home.',
   },
 ];
 
@@ -29,89 +30,90 @@ export default function AboutUsPage() {
   return (
     <LegalPageShell
       title="About Us"
-      subtitle="Crafted Living. Design-forward spaces, built for everyday joy."
+      subtitle="Crafted living – modern design, timeless quality."
     >
-      <p>
-        We create furniture and home essentials that balance form, comfort, and lasting quality. Thoughtful details,
-        honest materials, and a service mindset you can feel.
-      </p>
-
-      <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
+      {/* Hero section with background image */}
+      <section className="relative w-full mb-12 overflow-hidden rounded-xl shadow-lg animate-fadeIn">
         <Image
           src="/Images/abs.png"
           alt="AF Home crafted living showcase"
-          width={1200}
-          height={700}
-          className="w-full h-auto object-cover"
+          width={1600}
+          height={900}
+          className="w-full h-[60vh] object-cover transition-transform duration-500 hover:scale-105"
           priority
         />
-      </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/20 to-transparent flex items-center justify-center">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white drop-shadow-lg text-center max-w-2xl px-4">
+            Designing Spaces for Everyday Joy
+          </h1>
+        </div>
+      </section>
 
-      <div>
-        <h2 id="about" className="text-2xl font-semibold mb-3 text-gray-900 dark:text-white">
-          About AF Home
-        </h2>
-        <p>
-          Welcome to AF Home - Your Ultimate Destination for Quality Furniture and Home Products! At AF Home, we take
-          pride in bringing you the finest selection of home furniture made in the Philippines. Our mission is to
-          provide you with furniture that not only offers unmatched comfort but also adds a touch of style to your
-          living spaces.
+      {/* Intro paragraph */}
+      <section className="max-w-4xl mx-auto text-center mb-10 animate-fadeUp">
+        <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+          We create furniture and home essentials that balance form, comfort, and lasting quality. Thoughtful details,
+          honest materials, and a service mindset you can feel.
         </p>
-        <p>
-          We understand that your home is your sanctuary, a place where memories are made and cherished. That&apos;s
-          why we go the extra mile to curate a diverse range of furniture that caters to various tastes and
-          preferences. Whether you&apos;re seeking a cozy sofa for your living room, a sturdy dining table for family
-          gatherings, or a luxurious bed to rest and rejuvenate, we have it all.
-        </p>
-        <p>
-          Our commitment to quality is unwavering. Each piece of furniture we offer is crafted with precision and
-          attention to detail, using only the finest materials available. Our artisans pour their heart and soul into
-          creating furniture that not only stands the test of time but also becomes an integral part of your home&apos;s
-          story.
-        </p>
-        <p>
-          But that&apos;s not all! We also bring you a wide selection of home appliances to make your life easier and
-          more convenient. From kitchen essentials to smart home devices, we have everything you need to transform your
-          house into a haven of functionality.
-        </p>
-        <p>
-          Customer satisfaction is at the core of everything we do. Our knowledgeable and friendly team is always here
-          to assist you in finding the perfect furniture and home products that align with your vision. We believe that
-          creating a beautiful home should be an enjoyable and stress-free experience, and we&apos;re dedicated to
-          making that a reality for you.
-        </p>
-        <p>
-          Join the AF Home family today and let us help you turn your house into a place you&apos;ll never want to
-          leave. Explore our collection, experience comfort and style like never before, and discover the joy of a
-          truly remarkable home.
-        </p>
-      </div>
+      </section>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      {/* About text – split into two‑column responsive grid */}
+      <section className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-12">
+        <div className="space-y-4 text-gray-800 dark:text-gray-200">
+          <h2 className="text-3xl font-semibold text-gray-900 dark:text-white">About AF Home</h2>
+          <p>
+            Welcome to AF Home – your ultimate destination for quality furniture made in the Philippines. Our mission
+            is to bring unmatched comfort and style to every living space.
+          </p>
+          <p>
+            Your home is a sanctuary. We curate a diverse range of pieces—from cozy sofas to sturdy dining tables—to
+            match every taste and lifestyle.
+          </p>
+          <p>
+            Each item is crafted with precision using premium materials, ensuring durability and a timeless look that
+            becomes part of your story.
+          </p>
+        </div>
+        <div className="space-y-4 text-gray-800 dark:text-gray-200">
+          <p>
+            Beyond furniture, we offer a curated selection of home appliances to simplify daily life. Our friendly team
+            is always ready to help you find the perfect fit for your vision.
+          </p>
+          <p>
+            Join the AF Home family and transform your house into a place you’ll love coming home to.
+          </p>
+        </div>
+      </section>
+
+      {/* Statistics – responsive cards */}
+      <section className="grid sm:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
         {stats.map((item) => (
           <div
             key={item.value}
-            className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 bg-gray-50/70 dark:bg-gray-900/60"
+            className="p-6 text-center rounded-xl bg-gradient-to-b from-primary-100 to-primary-200 dark:from-primary-800 dark:to-primary-900 border border-primary-200 dark:border-primary-700 transition-shadow hover:shadow-lg hover:-translate-y-1 transition-transform"
           >
-            <p className="text-2xl font-semibold text-gray-900 dark:text-white">{item.value}</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{item.value}</p>
             <p className="text-sm text-gray-600 dark:text-gray-300">{item.label}</p>
           </div>
         ))}
-      </div>
+      </section>
 
-      <div>
-        <h2 className="text-2xl font-semibold mb-3 text-gray-900 dark:text-white">What We Stand For</h2>
-        <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Our Values</h3>
-        <div className="space-y-4">
+      {/* Values – card grid with subtle hover effect */}
+      <section className="max-w-5xl mx-auto">
+        <h2 className="text-3xl font-semibold text-center mb-8 text-gray-900 dark:text-white">Our Values</h2>
+        <div className="grid md:grid-cols-3 gap-6">
           {values.map((item) => (
-            <div key={item.title} className="rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-              <p className="font-semibold tracking-wide text-gray-900 dark:text-white">{item.title}</p>
-              <p className="font-medium text-gray-800 dark:text-gray-200">{item.subtitle}</p>
-              <p className="text-gray-600 dark:text-gray-300">{item.text}</p>
+            <div
+              key={item.title}
+              className="p-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors hover:scale-105 transform transition-transform duration-300 animate-fadeIn"
+            >
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+              <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">{item.subtitle}</h4>
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{item.text}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </LegalPageShell>
   );
 }

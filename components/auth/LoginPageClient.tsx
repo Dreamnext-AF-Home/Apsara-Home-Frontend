@@ -10,6 +10,7 @@ import ForcedPasswordChangeForm from "@/components/auth/ForcedPasswordChangeForm
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Header from "@/components/landing-page/Header";
+import Footer from "@/components/landing-page/Footer";
 
 type Mode = 'login' | 'signup' | 'force-password-change'
 const LOGIN_REDIRECT_GUARD_KEY = 'afhome-skip-login-redirect'
@@ -78,7 +79,7 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
         <Header cartCount={0} />
       </div>
 
-      <div className={`relative z-10 flex justify-center w-full px-4 ${mode === 'signup' ? 'items-start pt-28 pb-10 sm:pt-32' : 'flex-1 items-center'}`}>
+      <div className={`relative z-10 flex justify-center w-full px-4 ${mode === 'signup' ? 'items-start pt-28 pb-10 sm:pt-32' : 'min-h-screen items-center'}`}>
         <motion.div
           initial={{ opacity: 0, y: 32, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -108,6 +109,10 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
             </AnimatePresence>
           </div>
         </motion.div>
+      </div>
+
+      <div className="relative z-10">
+        <Footer />
       </div>
     </div>
   )
