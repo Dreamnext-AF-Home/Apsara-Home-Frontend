@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
 import TopBar from '@/components/layout/TopBar'
 import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/landing-page/Footer'
 
 type LocalAssemblyGuide = {
   id: string
@@ -142,7 +143,7 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search guides..."
-                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-10 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-orange-500 dark:focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/50"
+                className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-10 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-sky-400 dark:focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/50"
               />
               {search && (
                 <button
@@ -160,7 +161,7 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
             <select
               value={sortOrder}
               onChange={(e) => handleSortChange(e.target.value as 'a-z' | 'z-a')}
-              className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white outline-none transition focus:border-orange-500 dark:focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/50"
+              className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm font-medium text-gray-900 dark:text-white outline-none transition focus:border-sky-400 dark:focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/50"
             >
               <option value="a-z">A to Z</option>
               <option value="z-a">Z to A</option>
@@ -204,10 +205,10 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.25 }}
-                  className="group flex h-full flex-col rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden hover:border-orange-500 dark:hover:border-orange-400 transition-colors"
+                  className="group flex h-full flex-col rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden hover:border-sky-500 dark:hover:border-sky-400 transition-colors"
                 >
                   <div className="flex flex-col p-5">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-orange-200 dark:border-orange-900/30 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-sky-200 dark:border-sky-900/30 dark:bg-sky-900/30 text-sky-500 dark:text-sky-400">
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <path d="M14 2v6h6" />
@@ -224,7 +225,7 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
                       {item.key || 'Assembly Guide'}
                     </p>
 
-                    <div className="mt-4 flex items-center gap-2 text-sm font-medium text-orange-600 dark:text-orange-400">
+                    <div className="mt-4 flex items-center gap-2 text-sm font-medium text-sky-600 dark:text-sky-400">
                       <span>{item.button_text || 'Open PDF'}</span>
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition group-hover:translate-x-1">
                         <path d="M5 12h14" />
@@ -278,7 +279,7 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
                     type="button"
                     onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage >= totalPages}
-                    className="rounded-lg bg-orange-500 dark:bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-600 dark:hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-lg bg-sky-500 dark:bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-600 dark:hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Next
                   </button>
@@ -289,6 +290,7 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
         )}
       </motion.section>
     </main>
+    <Footer />
     </>
   )
 }
