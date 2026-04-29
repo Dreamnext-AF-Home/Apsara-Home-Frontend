@@ -2024,8 +2024,6 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                   </div>
                 ) : (
                 <div ref={formContentRef} className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
-                <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Product Images</p>
 
                   {/* â"€â"€ Section: Product Image â"€â"€ */}
                   <SectionLabel>Product Image</SectionLabel>
@@ -2149,7 +2147,6 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       {imageError}
                     </p>
                   )}
-                </div>
 
                   {serverError && (
                     <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3.5">
