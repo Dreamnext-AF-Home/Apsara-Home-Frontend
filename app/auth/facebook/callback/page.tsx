@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 export default function FacebookAuthCallback() {
-  const searchParams = useSearchParams();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processing authentication...');
 
@@ -15,29 +13,31 @@ export default function FacebookAuthCallback() {
     const error = params.get('error');
     const errorDescription = params.get('error_description');
 
+    const broadcast = new BroadcastChannel('facebook_auth');
+
+    const sendAndClose = (payload: Record<string, unknown>) => {
+      broadcast.postMessage(payload);
+      // fallback for browsers that support window.opener
+      if (window.opener) {
+        try {
+          window.opener.postMessage({ ...payload, type: 'FACEBOOK_AUTH_CALLBACK' }, window.location.origin);
+        } catch {}
+      }
+      broadcast.close();
+      setTimeout(() => window.close(), 1500);
+    };
+
     if (error) {
       setStatus('error');
       setMessage(errorDescription || 'Authentication failed');
-      if (window.opener) {
-        window.opener.postMessage(
-          { type: 'FACEBOOK_AUTH_CALLBACK', error: errorDescription || 'Authentication failed' },
-          window.location.origin
-        );
-        setTimeout(() => window.close(), 2000);
-      }
+      sendAndClose({ type: 'FACEBOOK_AUTH_CALLBACK', error: errorDescription || 'Authentication failed' });
       return;
     }
 
     if (!accessToken) {
       setStatus('error');
       setMessage('No access token received');
-      if (window.opener) {
-        window.opener.postMessage(
-          { type: 'FACEBOOK_AUTH_CALLBACK', error: 'No access token received' },
-          window.location.origin
-        );
-        setTimeout(() => window.close(), 2000);
-      }
+      sendAndClose({ type: 'FACEBOOK_AUTH_CALLBACK', error: 'No access token received' });
       return;
     }
 
@@ -54,35 +54,22 @@ export default function FacebookAuthCallback() {
           throw new Error('Facebook did not return an email. Make sure your Facebook account has a verified email.');
         }
 
-        if (window.opener) {
-          window.opener.postMessage(
-            {
-              type: 'FACEBOOK_AUTH_CALLBACK',
-              access_token: accessToken,
-              provider_id: id,
-              email,
-              name: name || email.split('@')[0],
-            },
-            window.location.origin
-          );
-        }
-
         setStatus('success');
-        setMessage('Authentication successful! You can close this window.');
-        setTimeout(() => window.close(), 1500);
+        setMessage('Authentication successful! Closing window...');
+        sendAndClose({
+          type: 'FACEBOOK_AUTH_CALLBACK',
+          access_token: accessToken,
+          provider_id: id,
+          email,
+          name: name || email.split('@')[0],
+        });
       })
       .catch((err) => {
         setStatus('error');
         setMessage(err.message || 'Failed to fetch user information');
-        if (window.opener) {
-          window.opener.postMessage(
-            { type: 'FACEBOOK_AUTH_CALLBACK', error: err.message || 'Failed to fetch user information' },
-            window.location.origin
-          );
-        }
-        setTimeout(() => window.close(), 2000);
+        sendAndClose({ type: 'FACEBOOK_AUTH_CALLBACK', error: err.message || 'Failed to fetch user information' });
       });
-  }, [searchParams]);
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-gray-900">
