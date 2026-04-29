@@ -97,6 +97,8 @@ export default function ExpensesPageMain() {
   const [perPage, setPerPage] = useState(10)
   const [isExporting, setIsExporting] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [invoicePreviewUrl, setInvoicePreviewUrl] = useState<string | null>(null)
+  const [forceIframePreview, setForceIframePreview] = useState(false)
   const [editing, setEditing] = useState<Expense | null>(null)
   const [invoiceFileInputKey, setInvoiceFileInputKey] = useState(0)
   const [form, setForm] = useState<FormState>(emptyForm())
@@ -326,6 +328,33 @@ export default function ExpensesPageMain() {
     }
   }
 
+  const closeInvoicePreview = () => {
+    setInvoicePreviewUrl(null)
+    setForceIframePreview(false)
+  }
+
+  const resolveInvoiceUrl = (rawUrl: string): string => {
+    const value = String(rawUrl || '').trim()
+    if (!value) return ''
+    if (/^https?:\/\//i.test(value)) return value
+
+    const apiBase = String(process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim().replace(/\/+$/, '')
+    if (!apiBase) return value
+
+    if (value.startsWith('/')) {
+      return `${apiBase}${value}`
+    }
+
+    return `${apiBase}/${value.replace(/^\/+/, '')}`
+  }
+
+  const getInvoicePreviewType = (url: string): 'image' | 'pdf' | 'other' => {
+    const clean = url.split('?')[0].toLowerCase()
+    if (/\.(png|jpe?g|gif|webp|bmp|svg)$/.test(clean)) return 'image'
+    if (clean.endsWith('.pdf')) return 'pdf'
+    return 'other'
+  }
+
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-emerald-50 p-6 shadow-sm">
@@ -490,14 +519,16 @@ export default function ExpensesPageMain() {
                     <td className="px-4 py-3 text-slate-600">{formatDateShort(row.transaction_date)}</td>
                     <td className="px-4 py-3">
                       {row.invoice_url ? (
-                        <a
-                          href={row.invoice_url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForceIframePreview(false)
+                            setInvoicePreviewUrl(resolveInvoiceUrl(row.invoice_url))
+                          }}
                           className="text-xs font-semibold text-emerald-700 hover:underline"
                         >
                           View Invoice
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-xs text-slate-400">No invoice</span>
                       )}
@@ -765,6 +796,59 @@ export default function ExpensesPageMain() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {invoicePreviewUrl ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Invoice Preview</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Preview the uploaded invoice without leaving this page.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={invoicePreviewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Open in new tab
+                </a>
+                <button
+                  type="button"
+                  onClick={closeInvoicePreview}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[75vh] overflow-auto bg-slate-50 p-4">
+              {getInvoicePreviewType(invoicePreviewUrl) === 'image' && !forceIframePreview ? (
+                <img
+                  src={invoicePreviewUrl}
+                  alt="Invoice"
+                  onError={() => setForceIframePreview(true)}
+                  className="mx-auto max-h-[70vh] w-auto max-w-full rounded-lg border border-slate-200 bg-white"
+                />
+              ) : getInvoicePreviewType(invoicePreviewUrl) === 'pdf' ? (
+                <iframe
+                  src={invoicePreviewUrl}
+                  title="Invoice PDF Preview"
+                  className="h-[70vh] w-full rounded-lg border border-slate-200 bg-white"
+                />
+              ) : (
+                <iframe
+                  src={invoicePreviewUrl}
+                  title="Invoice Preview"
+                  className="h-[70vh] w-full rounded-lg border border-slate-200 bg-white"
+                />
+              )}
+            </div>
           </div>
         </div>
       ) : null}
