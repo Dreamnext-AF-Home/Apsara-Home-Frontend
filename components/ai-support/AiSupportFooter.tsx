@@ -23,6 +23,13 @@ export function AiSupportFooter({
   disabled,
 }: Props) {
   const [previews, setPreviews] = useState<Array<{ url: string; name: string; dataUrl: string }>>([]);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
+  }, [value]);
 
   useEffect(() => {
     return () => {
@@ -58,20 +65,21 @@ export function AiSupportFooter({
   };
 
   return (
-    <div className="relative flex-shrink-0 border-t border-slate-100 bg-white px-3 py-2.5 flex items-center gap-2">
-      <input
-        type="text"
+    <div className="relative flex-shrink-0 border-t border-slate-100 bg-white px-3 py-2.5 flex items-end gap-2">
+      <textarea
+        ref={textareaRef}
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={e => {
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
           }
         }}
         placeholder="Type your question..."
         autoComplete="off"
-        className="flex-1 bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 rounded-xl px-3.5 py-2.5 text-[13.5px] text-slate-800 placeholder:text-slate-400 outline-none transition-all duration-150"
+        rows={1}
+        className="flex-1 resize-none overflow-y-auto max-h-[140px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 rounded-xl px-3.5 py-2.5 text-[13.5px] text-slate-800 placeholder:text-slate-400 outline-none transition-all duration-150"
       />
       <button
         type="button"
