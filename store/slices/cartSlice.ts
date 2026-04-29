@@ -12,6 +12,7 @@ export interface CartItem {
   quantity: number;
   prodpv?: number | null;
   brand?: string | null;
+  manualCheckoutEnabled?: boolean;
   selectedColor?: string | null;
   selectedStyle?: string | null;
   selectedSize?: string | null;

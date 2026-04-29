@@ -51,6 +51,7 @@ export interface CustomerCheckoutLineItem {
   selectedSize?: string | null;
   selectedType?: string | null;
   selectedSku?: string | null;
+  manualCheckoutEnabled?: boolean;
 }
 
 export interface CustomerCheckoutData {

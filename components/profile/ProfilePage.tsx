@@ -604,6 +604,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const completeInformationRef = useRef<HTMLDivElement | null>(null);
   const phAddress = usePhAddress();
   const profileData = data ?? initialProfile;
+  const effectiveRank = profileData?.rank ?? accountSnapshot?.loyalty?.rank ?? 0;
+  const loyaltyTier: MemberTier = rankToTier(effectiveRank);
+  const celebrateLevelUp = searchParams.get('celebrate') === 'level-up';
+  const celebrateRank = Number(searchParams.get('rank') ?? effectiveRank ?? 0);
+  const celebrateTier: MemberTier = rankToTier(Number.isFinite(celebrateRank) ? celebrateRank : effectiveRank);
 
   const setPasskeyError = useCallback((text: string) => {
     setProfileMsg({ type: 'error', text });
@@ -627,6 +632,17 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     work_location: (profileData?.work_location as ProfileFormState['work_location']) ?? 'local',
     country: profileData?.country ?? 'Philippines',
   }), [profileData, session]);
+
+  useEffect(() => {
+    if (!celebrateLevelUp) return;
+
+    const rankParam = searchParams.get('rank');
+    const nextParams = new URLSearchParams();
+    if (rankParam) {
+      nextParams.set('rank', rankParam);
+    }
+    router.replace(`/profile/level-up${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }, [celebrateLevelUp, router, searchParams]);
 
   useEffect(() => {
     if (!profileData && !session) return;
@@ -1597,8 +1613,6 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
-  const loyaltyTier: MemberTier = rankToTier(accountSnapshot?.loyalty?.rank ?? 0);
-
   const accountStats = [
     { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push('/orders') },
     { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
@@ -1705,6 +1719,13 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
     router.replace(`/profile?${nextParams.toString()}${options?.focus ? '#verification-form' : ''}`, { scroll: false });
   };
+
+  const dismissLevelUpCelebration = useCallback(() => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('celebrate');
+    nextParams.delete('rank');
+    router.replace(`/profile${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }, [router, searchParams]);
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -2030,6 +2051,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 security: 'Security',
                 preferences: 'Prefs',
                 wallet: 'Wallet',
+                pv: 'Voucher',
                 encashment: 'Encash',
                 'interior-requests': 'Requests',
                 activity: 'Activity',
@@ -2073,6 +2095,48 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
             ))}
           </nav>
         </div>
+
+        {celebrateLevelUp && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mb-6 overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br ${TIER_COVER[celebrateTier].gradient} text-white shadow-xl`}
+          >
+            <div className="relative p-5 md:p-6">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.14),transparent_30%)]" />
+              <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="rounded-2xl border border-white/35 bg-white/15 p-2.5 backdrop-blur-sm">
+                    <img src={TIER_BADGE_IMAGE[celebrateTier]} alt={celebrateTier} className="h-16 w-16 object-contain drop-shadow-lg" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/80">New Level</p>
+                    <h3 className="mt-1 text-2xl font-bold">{celebrateTier}</h3>
+                    <p className="mt-2 max-w-2xl text-sm text-white/90">
+                      Congratulations! Your account has been upgraded and your new badge is now active.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange('profile')}
+                    className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-100"
+                  >
+                    View My Badge
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissLevelUpCelebration}
+                    className="rounded-2xl border border-white/35 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           {/* Sidebar */}
@@ -2166,8 +2230,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   {accountSnapshot?.loyalty?.join_date && (
                     <span>Joined {new Date(accountSnapshot.loyalty.join_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   )}
-                  {accountSnapshot?.loyalty?.referral_count > 0 && (
-                    <span>{accountSnapshot.loyalty.referral_count} referrals</span>
+                  {(accountSnapshot?.loyalty?.referral_count ?? 0) > 0 && (
+                    <span>{accountSnapshot?.loyalty?.referral_count ?? 0} referrals</span>
                   )}
                 </div>
 

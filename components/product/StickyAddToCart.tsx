@@ -127,6 +127,7 @@ const StickyAddToCart = ({ product, selectedVariant, forceRealPrice = false }: S
       image: displayImage,
       prodpv: displayPv,
       brand: product.brand ?? null,
+      manualCheckoutEnabled: product.manualCheckoutEnabled,
       selectedColor: selectedVariant?.color ?? null,
       selectedStyle: selectedVariant?.style ?? null,
       selectedSize: selectedVariant?.size ?? null,
