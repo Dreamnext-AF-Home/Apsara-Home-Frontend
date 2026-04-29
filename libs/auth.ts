@@ -34,13 +34,16 @@ export const authOptions: NextAuthOptions = {
                 passkey_assertion: { label: 'Passkey Assertion', type: 'text' },
                 cf_turnstile_response: { label: 'Turnstile Response', type: 'text' },
                 google_access_token: { label: 'Google Access Token', type: 'text' },
+                facebook_access_token: { label: 'Facebook Access Token', type: 'text' },
+                facebook_provider_id: { label: 'Facebook Provider ID', type: 'text' },
             },
             async authorize(credentials, req) {
                 const hasEmail = Boolean(credentials?.email)
                 const hasPassword = Boolean(credentials?.password)
                 const hasPasskeyFlow = Boolean(credentials?.passkey_challenge_token && credentials?.passkey_assertion)
                 const hasGoogleToken = Boolean(credentials?.google_access_token)
-                if (!hasGoogleToken && (!hasEmail || (!hasPassword && !hasPasskeyFlow))) {
+                const hasFacebookToken = Boolean(credentials?.facebook_access_token)
+                if (!hasGoogleToken && !hasFacebookToken && (!hasEmail || (!hasPassword && !hasPasskeyFlow))) {
                     return null
                 }
                 const safeCredentials = credentials!
@@ -53,6 +56,7 @@ export const authOptions: NextAuthOptions = {
                     const isResendMfaApproval = safeCredentials.resend_mfa_approval === '1'
                     const isPasskey = !isResendOtp && !isResendMfaApproval && hasPasskeyFlow
                     const isGoogleOAuth = !isResendOtp && !isResendMfaApproval && !hasPasskeyFlow && hasGoogleToken
+                    const isFacebookOAuth = !isResendOtp && !isResendMfaApproval && !hasPasskeyFlow && !hasGoogleToken && hasFacebookToken
                     const url = isResendOtp
                         ? `${apiBaseUrl}/api/auth/login/2fa/resend`
                         : isResendMfaApproval
@@ -61,6 +65,8 @@ export const authOptions: NextAuthOptions = {
                           ? `${process.env.LARAVEL_API_URL}/api/auth/passkeys/login/verify`
                         : isGoogleOAuth
                           ? `${process.env.LARAVEL_API_URL}/api/auth/callback/google`
+                        : isFacebookOAuth
+                          ? `${process.env.LARAVEL_API_URL}/api/auth/callback/facebook`
                         : `${process.env.LARAVEL_API_URL}/api/auth/login`
 
                     const incomingHeaders = req?.headers ?? {}
@@ -108,7 +114,12 @@ export const authOptions: NextAuthOptions = {
                                   }
                                 : isGoogleOAuth
                                   ? {
-                                      id_token: credentials.google_access_token,
+                                      id_token: safeCredentials.google_access_token,
+                                  }
+                                : isFacebookOAuth
+                                  ? {
+                                      access_token: safeCredentials.facebook_access_token,
+                                      provider_id: safeCredentials.facebook_provider_id,
                                   }
                                 : {
                                     email: safeCredentials.email,
@@ -153,6 +164,25 @@ export const authOptions: NextAuthOptions = {
                             throw new Error(
                                 data?.message ||
                                 'Google sign-in failed. Make sure your Google account is linked to your AF Home account.'
+                            )
+                        }
+                        if (isFacebookOAuth) {
+                            const fbErrorCode = String(data?.error ?? '')
+                            const fbErrorMsg = String(data?.message ?? '').toLowerCase()
+                            const isNotLinked =
+                                fbErrorCode === 'social_account_not_found' ||
+                                fbErrorCode === 'account_not_linked' ||
+                                fbErrorMsg.includes('no facebook account') ||
+                                fbErrorMsg.includes('not linked') ||
+                                fbErrorMsg.includes('link your facebook') ||
+                                fbErrorMsg.includes('not connected') ||
+                                (res.status === 401 && fbErrorMsg.includes('facebook'))
+                            if (isNotLinked) {
+                                throw new Error('FACEBOOK_NOT_LINKED')
+                            }
+                            throw new Error(
+                                data?.message ||
+                                'Facebook sign-in failed. Make sure your Facebook account is linked to your AF Home account.'
                             )
                         }
                         const message =
