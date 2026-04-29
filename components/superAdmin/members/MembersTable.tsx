@@ -10,7 +10,7 @@ import TierBadge from "@/components/ui/TierBadge"
 import { useEffect, useRef, useState } from "react"
 import AdminPagination from '@/components/superAdmin/AdminPagination'
 import { MemberStatus, MemberTier } from "@/types/members/types"
-import { useDeleteMemberMutation, useGenerateMemberTemporaryPasswordMutation, useUpdateMemberMutation } from "@/store/api/membersApi"
+import { useAssignSponsorMutation, useDeleteMemberMutation, useGenerateMemberTemporaryPasswordMutation, useLazyGetMembersQuery, useUpdateMemberMutation } from "@/store/api/membersApi"
 import { createPortal } from "react-dom"
 import DataTableShell from '@/components/superAdmin/DataTableShell'
 
@@ -182,7 +182,16 @@ function EditMemberModal({
   onClose: () => void
 }) {
   const [updateMember, { isLoading }] = useUpdateMemberMutation()
+  const [assignSponsor, { isLoading: isAssigningSponsor }] = useAssignSponsorMutation()
+  const [checkSponsor, { isFetching: isCheckingSponsor }] = useLazyGetMembersQuery()
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [sponsorMessage, setSponsorMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [sponsorValidation, setSponsorValidation] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [sponsorValidationStatus, setSponsorValidationStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle')
+  const [sponsorUsername, setSponsorUsername] = useState(member.referredByUsername ?? '')
+  const sponsorValidationRequestId = useRef(0)
+  const sponsorValidationTimeoutRef = useRef<number | null>(null)
+  const validSponsorUsernameRef = useRef(member.referredByUsername?.trim().toLowerCase() ?? '')
   const [form, setForm] = useState<EditMemberForm>({
     id: member.id,
     name: member.name,
@@ -216,6 +225,107 @@ function EditMemberModal({
     }
   }
 
+  const validateSponsorUsername = async (username: string, showEmptyError = true) => {
+    const nextSponsorUsername = username.trim()
+    const requestId = ++sponsorValidationRequestId.current
+    setSponsorValidation(null)
+    setSponsorValidationStatus('idle')
+    validSponsorUsernameRef.current = ''
+
+    if (!nextSponsorUsername) {
+      if (showEmptyError) {
+        setSponsorValidation({ type: 'error', text: 'Enter the sponsor username before assigning.' })
+        setSponsorValidationStatus('invalid')
+      }
+      return false
+    }
+
+    if (nextSponsorUsername.toLowerCase() === form.username.trim().toLowerCase()) {
+      setSponsorValidation({ type: 'error', text: 'A member cannot be their own sponsor.' })
+      setSponsorValidationStatus('invalid')
+      return false
+    }
+
+    setSponsorValidationStatus('checking')
+    const response = await checkSponsor({ page: 1, perPage: 10, search: nextSponsorUsername }).unwrap()
+    const matchedSponsor = response.members.find((candidate) =>
+      candidate.username?.trim().toLowerCase() === nextSponsorUsername.toLowerCase()
+    )
+
+    if (requestId !== sponsorValidationRequestId.current) {
+      return false
+    }
+
+    if (!matchedSponsor) {
+      setSponsorValidation({ type: 'error', text: `No sponsor found with username "${nextSponsorUsername}".` })
+      setSponsorValidationStatus('invalid')
+      return false
+    }
+
+    setSponsorValidation({ type: 'success', text: `Sponsor found: ${matchedSponsor.name} (@${matchedSponsor.username})` })
+    setSponsorValidationStatus('valid')
+    validSponsorUsernameRef.current = nextSponsorUsername.toLowerCase()
+    return true
+  }
+
+  const handleAssignSponsor = async () => {
+    const nextSponsorUsername = sponsorUsername.trim()
+    setSponsorMessage(null)
+
+    if (!nextSponsorUsername) {
+      setSponsorValidation({ type: 'error', text: 'Enter the sponsor username before assigning.' })
+      return
+    }
+
+    if (isCheckingSponsor) {
+      setSponsorValidationStatus('checking')
+      return
+    }
+
+    if (validSponsorUsernameRef.current !== nextSponsorUsername.toLowerCase()) {
+      setSponsorValidation({ type: 'error', text: 'Enter an existing sponsor username before assigning.' })
+      return
+    }
+
+    try {
+      const response = await assignSponsor({ id: member.id, sponsorUsername: nextSponsorUsername }).unwrap()
+      setSponsorMessage({ type: 'success', text: response.message || 'Sponsor assigned successfully.' })
+    } catch (error: unknown) {
+      setSponsorMessage({ type: 'error', text: getApiErrorMessage(error, 'Failed to assign sponsor.') })
+    }
+  }
+
+  const handleSponsorUsernameChange = (value: string) => {
+    setSponsorUsername(value)
+    setSponsorValidation(null)
+    setSponsorMessage(null)
+    setSponsorValidationStatus('idle')
+    validSponsorUsernameRef.current = ''
+    sponsorValidationRequestId.current += 1
+
+    if (sponsorValidationTimeoutRef.current) {
+      window.clearTimeout(sponsorValidationTimeoutRef.current)
+    }
+
+    if (!value.trim()) return
+
+    setSponsorValidationStatus('checking')
+    sponsorValidationTimeoutRef.current = window.setTimeout(() => {
+      validateSponsorUsername(value, false).catch((error: unknown) => {
+        setSponsorValidation({ type: 'error', text: getApiErrorMessage(error, 'Failed to check sponsor username.') })
+        setSponsorValidationStatus('invalid')
+      })
+    }, 450)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (sponsorValidationTimeoutRef.current) {
+        window.clearTimeout(sponsorValidationTimeoutRef.current)
+      }
+    }
+  }, [])
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -229,7 +339,7 @@ function EditMemberModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.2 }}
-        className="mx-auto mt-8 w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        className="mx-auto mt-8 flex w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-slate-100 dark:border-slate-800 bg-[linear-gradient(135deg,#f8fafc,#ffffff)] px-6 py-5 dark:border-slate-800 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.98),rgba(30,41,59,0.98))]">
@@ -245,7 +355,8 @@ function EditMemberModal({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-5 px-6 py-5">
           {message && (
             <div className={`rounded-2xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
               {message.text}
@@ -293,6 +404,59 @@ function EditMemberModal({
             </label>
           </div>
 
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-600 dark:text-teal-400">Sponsor / Upline</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Assign or update the member sponsor by entering a valid sponsor username.
+                </p>
+              </div>
+              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                {member.referredByUsername
+                  ? `Current: @${member.referredByUsername}`
+                  : 'No sponsor assigned'}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Sponsor Username</span>
+                <input
+                  value={sponsorUsername}
+                  onChange={(e) => handleSponsorUsernameChange(e.target.value)}
+                  placeholder="Enter sponsor username"
+                  className="h-11 w-full rounded-[18px] border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none transition-all duration-200 focus:border-sky-400 focus:bg-white focus:ring-0 dark:border-white/18 dark:bg-white/12 dark:text-white dark:placeholder-white/55 dark:focus:border-sky-400/60 dark:focus:bg-white/18"
+                />
+                {sponsorValidationStatus === 'checking' && (
+                  <p className="mt-2 flex items-center gap-2 text-xs font-medium text-sky-600 dark:text-sky-300">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+                    Checking sponsor username...
+                  </p>
+                )}
+                {sponsorValidationStatus !== 'checking' && sponsorValidation && (
+                  <p className={`mt-2 text-xs font-medium ${sponsorValidation.type === 'success' ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300'}`}>
+                    {sponsorValidation.text}
+                  </p>
+                )}
+              </label>
+              <Button
+                type="button"
+                onPress={handleAssignSponsor}
+                isDisabled={isAssigningSponsor}
+                className="self-end rounded-xl bg-slate-900 px-5 text-white transition hover:bg-slate-800 disabled:bg-slate-400 dark:bg-teal-500 dark:text-slate-950 dark:hover:bg-teal-400"
+              >
+                {isAssigningSponsor ? 'Assigning...' : 'Assign Sponsor'}
+              </Button>
+            </div>
+
+            {sponsorMessage && (
+              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${sponsorMessage.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300'}`}>
+                {sponsorMessage.text}
+              </div>
+            )}
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block md:col-span-2">
               <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Address Line</span>
@@ -320,7 +484,8 @@ function EditMemberModal({
             </label>
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+          </div>
+          <div className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
             <Button type="button" onPress={onClose} variant="secondary" className="rounded-xl">Cancel</Button>
             <Button type="submit" isDisabled={isLoading} className="rounded-xl bg-teal-600 text-white transition hover:bg-teal-700 disabled:bg-teal-300">
               {isLoading ? 'Saving...' : 'Save Changes'}
@@ -406,7 +571,7 @@ function MemberDetailsModal({
           </Button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
         <div className="mb-5 flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
           <MemberAvatar
             member={member}

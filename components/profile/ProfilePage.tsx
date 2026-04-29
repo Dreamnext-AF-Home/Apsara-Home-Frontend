@@ -2336,17 +2336,23 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         <p className="text-[11px] text-slate-400 dark:text-gray-500 text-right">{bio.length}/200</p>
                       </div>
 
-                      {profileData?.referrer_id ? (
-                        <div className="md:col-span-2 space-y-1.5">
-                          <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Invited By</label>
-                          <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 px-3.5 py-2.5 text-sm text-slate-600 dark:text-gray-300 cursor-not-allowed">
-                            {profileData.referrer_name || profileData.referrer_username || '—'}
-                            {profileData.referrer_name && profileData.referrer_username && (
-                              <span className="text-slate-400 dark:text-gray-500 ml-1.5">(@{profileData.referrer_username})</span>
-                            )}
-                          </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Invited By</label>
+                        <div className="w-full rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 px-3.5 py-2.5 text-sm text-slate-600 dark:text-gray-300 cursor-not-allowed">
+                          {profileData?.referrer_id ? (
+                            <>
+                              {profileData.referrer_name || profileData.referrer_username || '—'}
+                              {profileData.referrer_name && profileData.referrer_username && (
+                                <span className="text-slate-400 dark:text-gray-500 ml-1.5">(@{profileData.referrer_username})</span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-slate-500 dark:text-gray-400">
+                              Your previous sponsor is no longer available. Please contact support if this needs to be updated.
+                            </span>
+                          )}
                         </div>
-                      ) : null}
+                      </div>
                     </div>
 
                     <div ref={completeInformationRef} className="mt-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-gray-700/20 p-4 md:p-5">
