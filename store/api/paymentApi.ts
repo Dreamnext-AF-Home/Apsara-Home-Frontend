@@ -166,12 +166,28 @@ export const paymentApi = baseApi.injectEndpoints({
         },
       }),
     }),
-    confirmOrder: builder.mutation<{ message: string }, { id: number; rating: number; review: string }>({
-      query: ({ id, rating, review }) => ({
+    confirmOrder: builder.mutation<{ message: string }, { id: number; rating: number; review: string; reviewImages?: File[]; reviewVideos?: File[] }>({
+      query: ({ id, rating, review, reviewImages, reviewVideos }) => {
+        const formData = new FormData()
+        formData.append('rating', String(rating))
+        formData.append('review', review)
+        if (Array.isArray(reviewImages)) {
+          for (const file of reviewImages) {
+            formData.append('review_images[]', file)
+          }
+        }
+        if (Array.isArray(reviewVideos)) {
+          for (const file of reviewVideos) {
+            formData.append('review_videos[]', file)
+          }
+        }
+
+        return ({
         url: `/api/orders/${id}/confirm`,
         method: 'POST',
-        body: { rating, review },
-      }),
+        body: formData,
+      })
+      },
       invalidatesTags: ['Orders'],
     }),
   }),

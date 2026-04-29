@@ -16,10 +16,11 @@ import { useMeQuery } from "@/store/api/userApi";
 import { useGetPublicGeneralSettingsQuery } from "@/store/api/adminSettingsApi";
 import type { ProductReviewSummary } from "@/store/api/productsApi";
 import { useGetProductBrandQuery } from "@/store/api/productsApi";
+import { useHeartbeatProductViewerMutation } from "@/store/api/productsApi";
 import { useGetWishlistQuery, useAddWishlistMutation, useRemoveWishlistMutation, type WishlistItem } from "@/store/api/wishlistApi";
 import OutlineButton from "@/components/ui/buttons/OutlineButton";
 import PrimaryButton from "@/components/ui/buttons/PrimaryButton";
-import { Package, Truck, CheckCircle } from "lucide-react";
+import { Package, Truck, CheckCircle, Eye } from "lucide-react";
 import { usePathname, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { resolveCheckoutSource } from '@/libs/checkoutSource';
@@ -277,6 +278,8 @@ const ProductInfo = ({
     const [buyOptionsOpen, setBuyOptionsOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [guestWishlistItems, setGuestWishlistItems] = useState<GuestWishlistItem[]>(() => readGuestWishlistItems());
+    const [liveViewers, setLiveViewers] = useState(0);
+    const [heartbeatProductViewer] = useHeartbeatProductViewerMutation();
     const optionLabels = useMemo(() => extractVariantOptionLabels(product.specifications), [product.specifications]);
 
     // Check if product is in wishlist and update wishlisted state
@@ -300,6 +303,38 @@ const ProductInfo = ({
             window.removeEventListener('storage', syncGuestWishlist);
         };
     }, [allowGuestWishlist, useAccountWishlist]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !product.id) return;
+
+        const storageKey = `afhome_product_viewer_id:${product.id}`;
+        const existingViewerId = window.sessionStorage.getItem(storageKey) || '';
+        const localViewerId = existingViewerId || (window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+        if (!existingViewerId) {
+            window.sessionStorage.setItem(storageKey, localViewerId);
+        }
+        let cancelled = false;
+        const sendHeartbeat = async () => {
+            try {
+                const response = await heartbeatProductViewer({ productId: product.id, viewerId: localViewerId }).unwrap();
+                if (!cancelled) {
+                    setLiveViewers(response.active_viewers);
+                }
+            } catch {
+                // Keep last known value if heartbeat fails.
+            }
+        };
+
+        void sendHeartbeat();
+        const intervalId = window.setInterval(() => {
+            void sendHeartbeat();
+        }, 15000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [heartbeatProductViewer, product.id]);
 
     // Handle wishlist add/remove
     const handleWishlistToggle = async () => {
@@ -841,6 +876,10 @@ const ProductInfo = ({
                             {categoryLabel}
                         </span>
                     )}
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                        <Eye size={12} />
+                        {liveViewers > 0 ? liveViewers : '--'} viewing now
+                    </span>
                 </div>
             </div>
             {/* Product Badges */}

@@ -467,6 +467,8 @@ export const {
     useMeQuery,
     useAccountSnapshotQuery,
     useCustomerAddressesQuery,
+    useCreateCustomerAddressMutation,
+    useSetDefaultCustomerAddressMutation,
     useUpdateProfileMutation,
     useChangePasswordMutation,
     useSendUsernameChangeOtpMutation,

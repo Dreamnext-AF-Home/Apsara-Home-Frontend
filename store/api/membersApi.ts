@@ -149,6 +149,11 @@ export interface UpdateMemberPayload {
   zipCode?: string
 }
 
+export interface AssignSponsorPayload {
+  id: number
+  sponsorUsername: string
+}
+
 export type MemberKycStatus = 'pending_review' | 'on_hold' | 'approved' | 'rejected'
 
 export interface MemberKycItem {
@@ -296,6 +301,14 @@ export const membersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Members'],
     }),
+    assignSponsor: builder.mutation<{ message: string }, AssignSponsorPayload>({
+      query: ({ id, sponsorUsername }) => ({
+        url: `/api/admin/members/${id}/assign-sponsor`,
+        method: 'PATCH',
+        body: { sponsor_username: sponsorUsername.trim() },
+      }),
+      invalidatesTags: ['Members'],
+    }),
     deleteMember: builder.mutation<{ message: string }, number>({
       query: (id) => ({
         url: `/api/admin/members/${id}`,
@@ -338,6 +351,7 @@ export const {
   useGetTopEarnersQuery,
   useGetMembersKycQuery,
   useUpdateMemberMutation,
+  useAssignSponsorMutation,
   useDeleteMemberMutation,
   useGenerateMemberTemporaryPasswordMutation,
   useApproveMemberKycMutation,

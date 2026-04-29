@@ -22,7 +22,7 @@ import { ListBox } from '@heroui/react/list-box'
 import { ListBoxItem } from '@heroui/react/list-box-item'
 import { Select } from '@heroui/react/select'
 
-/* â”€â”€â”€ types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€â"€ types â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -101,7 +101,7 @@ interface AddProductDraft {
   roomTouched: boolean
 }
 
-/* â”€â”€â”€ constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€â"€ constants â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 
 const defaultForm: FormState = {
   pd_name: '',
@@ -198,7 +198,7 @@ const WARRANTY_OPTIONS = [
 
 const ADD_PRODUCT_DRAFT_KEY = 'afhome:add-product-draft'
 
-/* ─── ZQ import types + helpers ─────────────────────────────────────────────── */
+/* --- ZQ import types + helpers ----------------------------------------------- */
 
 interface ZqImportListItem {
   id: string
@@ -235,7 +235,7 @@ const extractZqImportProducts = (payload: Record<string, unknown> | undefined) =
   return { products, hasMore: Boolean(data.hasMore), nextCursor: data.nextCursor == null ? null : String(data.nextCursor) }
 }
 
-/* â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€â"€ helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 
 const generateSkuFromName = (name: string) => {
   const letters = name.toUpperCase().replace(/[^A-Z]/g, '')
@@ -631,26 +631,26 @@ function PricingSummaryPanel({
 
   return (
     <div className="rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
-      {/* â”€â”€ Header â”€â”€ */}
+      {/* â"€â"€ Header â"€â"€ */}
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500">
         <div className="flex items-center gap-2">
           <svg className="w-3.5 h-3.5 text-white/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
           <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white">{title}</span>
-          <span className="text-[10px] md:text-xs text-blue-200">â€” live computation</span>
+          <span className="text-[10px] md:text-xs text-blue-200">- live computation</span>
         </div>
         <div className="text-right shrink-0">
           <p className="text-[9px] md:text-[11px] font-semibold uppercase tracking-wide text-blue-200">Member Price</p>
           <p className="text-sm md:text-base font-bold text-white leading-none mt-0.5">
-            {summary.effectiveMemberPrice > 0 ? `â‚± ${mp}` : <span className="text-blue-300 text-xs italic">â€”</span>}
+            {summary.effectiveMemberPrice > 0 ? `â‚± ${mp}` : <span className="text-blue-300 text-xs italic">-</span>}
           </p>
         </div>
       </div>
 
       <div className="bg-gradient-to-br from-slate-50 to-blue-50/60 divide-y divide-slate-100 dark:divide-slate-800/70">
 
-        {/* â”€â”€ Section 1: PV Computation (hero) â”€â”€ */}
+        {/* â"€â"€ Section 1: PV Computation (hero) â"€â"€ */}
         <div className="px-4 py-3">
           <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">PV Computation</p>
           <div className="rounded-xl bg-white border border-teal-100 px-3 py-3">
@@ -675,7 +675,7 @@ function PricingSummaryPanel({
           </div>
         </div>
 
-        {/* â”€â”€ Section 2: Price breakdown â”€â”€ */}
+        {/* â"€â"€ Section 2: Price breakdown â"€â"€ */}
         <div className="px-4 py-3">
           <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Low-End Price Breakdown</p>
           <div className="rounded-xl bg-white border border-slate-100 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/70 dark:divide-slate-800/70">
@@ -697,7 +697,7 @@ function PricingSummaryPanel({
           </div>
         </div>
 
-        {/* â”€â”€ Section 3: Bonus distribution â”€â”€ */}
+        {/* â"€â"€ Section 3: Bonus distribution â"€â"€ */}
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400">Reference Bonus Distribution</p>
@@ -762,12 +762,13 @@ const hasAddDraftContent = (draft: AddProductDraft) => {
   return hasFormContent || draft.variants.length > 0 || (draft.globalColors?.length ?? 0) > 0 || (draft.globalPrimaryValues?.length ?? 0) > 0 || (draft.globalSizeValues?.length ?? 0) > 0 || draft.uploadedUrls.length > 0 || draft.roomTouched
 }
 
-/* â”€â”€â”€ small components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€â"€ small components â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 pt-1">
-      <span className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+    <div className="flex items-center gap-2.5 pt-2">
+      <div className="h-4 w-0.5 shrink-0 rounded-full bg-teal-400" />
+      <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
         {children}
       </span>
       <div className="h-px flex-1 bg-gradient-to-r from-slate-200 via-slate-100 to-transparent" />
@@ -782,7 +783,7 @@ function Field({
 }) {
   return (
     <div className="space-y-2" data-error-field={error ? 'true' : undefined}>
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
@@ -836,20 +837,20 @@ function ModalSelectField({
     >
       <Select.Trigger
         className={[
-          'flex min-h-[50px] w-full items-center justify-between rounded-2xl border bg-slate-50/85 px-4 text-left text-sm text-slate-700 shadow-sm transition-all duration-200',
+          'flex min-h-[50px] w-full items-center justify-between rounded-2xl border bg-slate-50/85 px-4 text-left text-sm text-slate-700 shadow-sm transition-all duration-200 dark:bg-slate-950/70 dark:text-slate-100',
           hasError
-            ? 'border-red-300 bg-red-50/60 focus:border-red-400'
-            : 'border-slate-200 hover:border-slate-300 focus:border-teal-400 focus:bg-white',
+            ? 'border-red-300 bg-red-50/60 focus:border-red-400 dark:border-red-900/60 dark:bg-red-950/30'
+            : 'border-slate-200 hover:border-slate-300 focus:border-teal-400 focus:bg-white dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-teal-400 dark:focus:bg-slate-950',
           isDisabled ? 'cursor-not-allowed opacity-60' : '',
         ].join(' ')}
       >
         <span className="truncate">{selectedLabel}</span>
         <Select.Indicator className="h-4 w-4 text-slate-400" />
       </Select.Trigger>
-      <Select.Popover className="min-w-[var(--trigger-width)]">
+      <Select.Popover className="min-w-[var(--trigger-width)] rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         {searchable ? (
           <div className="border-b border-slate-100 dark:border-slate-800 p-2">
-            <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all duration-200 focus-within:border-teal-300 focus-within:bg-white">
+            <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all duration-200 focus-within:border-teal-300 focus-within:bg-white dark:border-slate-700 dark:bg-slate-950 dark:focus-within:border-teal-400">
               <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.6-5.15a6.75 6.75 0 11-13.5 0 6.75 6.75 0 0113.5 0z" />
               </svg>
@@ -862,7 +863,7 @@ function ModalSelectField({
                 onMouseDown={(event) => event.stopPropagation()}
                 autoFocus
                 placeholder={searchPlaceholder}
-                className="flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                className="flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100"
               />
               {search ? (
                 <button
@@ -881,7 +882,7 @@ function ModalSelectField({
             </div>
           </div>
         ) : null}
-        <ListBox className="p-1">
+        <ListBox className="p-1 text-slate-700 dark:text-slate-100">
           {visibleOptions.length > 0 ? (
             visibleOptions.map((option, index) => (
               <ListBoxItem id={option.value || `option-${index}`} key={`option-${index}-${option.value || 'empty'}`}>
@@ -899,7 +900,7 @@ function ModalSelectField({
   )
 }
 
-const sectionCardCls = 'overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_22px_60px_-36px_rgba(15,23,42,0.35)]'
+const sectionCardCls = 'overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_22px_60px_-36px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/30'
 const sectionCardBodyCls = 'px-4 py-4 sm:px-5 sm:py-5'
 const EMPTY_SELECT_KEYS = {
   category: '__empty_category__',
@@ -908,14 +909,14 @@ const EMPTY_SELECT_KEYS = {
 } as const
 
 const inputCls = (hasError = false) => [
-  'w-full rounded-2xl border bg-slate-50/85 px-4 py-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm',
+  'w-full rounded-2xl border bg-slate-50/85 px-4 py-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500',
   'focus:outline-none focus:ring-2 transition-all duration-200',
   hasError
-    ? 'border-red-300 bg-red-50/60 focus:border-red-400 focus:ring-red-500/20'
-    : 'border-slate-200 focus:border-teal-400 focus:bg-white focus:ring-teal-500/20 hover:border-slate-300',
+    ? 'border-red-300 bg-red-50/60 focus:border-red-400 focus:ring-red-500/20 dark:border-red-900/60 dark:bg-red-950/30'
+    : 'border-slate-200 focus:border-teal-400 focus:bg-white focus:ring-teal-500/20 hover:border-slate-300 dark:border-slate-700 dark:focus:border-teal-400 dark:focus:bg-slate-950 dark:hover:border-slate-600',
 ].join(' ')
 
-const variantInputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-400/20'
+const variantInputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-400/20 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:bg-slate-950'
 
 const scrollToFirstErrorField = (container: HTMLElement | null) => {
   if (!container) return
@@ -934,7 +935,7 @@ const scrollToFirstErrorField = (container: HTMLElement | null) => {
   })
 }
 
-/* â”€â”€â”€ main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€â"€ main component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 
 export default function AddProductModal({ isOpen, onClose, onSaved }: AddProductModalProps) {
   const [entryMode, setEntryMode] = useState<'manual' | 'csv' | 'api'>('manual')
@@ -1183,7 +1184,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   }, [globalColors, globalPrimaryValues, globalSizeValues, hasVariants])
   const visibleImagePreviews = imageFiles.length > 0 ? imagePreviews : uploadedUrls
 
-  /* â”€â”€ image handlers â”€â”€ */
+  /* â"€â"€ image handlers â"€â"€ */
   const applySelectedImages = (files: File[]) => {
     if (!files.length) return
     setImageError('')
@@ -1192,7 +1193,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       if (!IMAGE_MIME_TYPES.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF files are allowed.'); return }
       if (file.size > MAX_IMAGE_BYTES) { setImageError('File too large. Maximum size is 5MB.'); return }
     }
-    const next = [...imageFiles, ...files].slice(0, 10)
+    const next = [...imageFiles, ...files].slice(0, 15)
     setImageFiles(next)
     setImagePreviews(next.map(f => URL.createObjectURL(f)))
   }
@@ -1267,7 +1268,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     setActiveImageAdjustIndex(null)
   }
 
-  /* â”€â”€ variant handlers â”€â”€ */
+  /* â"€â"€ variant handlers â"€â"€ */
   const addVariant    = () => setVariants(prev => [...prev, { ...emptyVariant(), pv_colors: globalColors.map((color) => ({ ...color })) }])
   const removeVariant = (index: number) => {
     setVariants(prev => prev.filter((_, i) => i !== index))
@@ -1450,7 +1451,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     void uploadVariantImages(index, Array.from(e.dataTransfer.files ?? []))
   }
 
-  /* â”€â”€ validation â”€â”€ */
+  /* â"€â"€ validation â"€â"€ */
   const validate = (): Errors => {
     const e: Errors = {}
     if (!form.pd_name.trim())                                              e.pd_name      = 'Product name is required'
@@ -1531,7 +1532,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       }))
     })
 
-  /* â”€â”€ submit â”€â”€ */
+  /* â"€â"€ submit â"€â"€ */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setServerError('')
@@ -1704,7 +1705,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     }
   }
 
-  /* â”€â”€â”€ render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* â"€â"€â"€ render â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1724,10 +1725,10 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
-              className="flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-2xl sm:h-[94vh] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-100"
+              className="flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-2xl dark:bg-slate-950 sm:h-[94vh] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-100 sm:dark:border-slate-800"
             >
-              {/* â”€â”€ Header â”€â”€ */}
-              <div className="shrink-0 border-b border-slate-100 px-4 py-4 sm:px-6 sm:py-5">
+              {/* â"€â"€ Header â"€â"€ */}
+              <div className="shrink-0 border-b border-slate-100 px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-start gap-3 sm:items-center">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500 shadow-md shadow-teal-500/30 sm:h-10 sm:w-10">
@@ -1736,12 +1737,12 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold leading-none text-slate-800 sm:text-base">Add New Product</h2>
-                    <p className="mt-1 text-xs text-slate-400">Choose manual entry, bulk CSV import, or API import.</p>
+                    <h2 className="text-sm font-bold leading-none text-slate-800 dark:text-slate-100 sm:text-base">Add New Product</h2>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Choose manual entry, bulk CSV import, or API import.</p>
                   </div>
                 </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <div className="flex max-w-full flex-wrap rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm">
+                  <div className="flex max-w-full flex-wrap rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     {[
                       { value: 'manual', label: 'Manual' },
                       { value: 'csv', label: 'CSV Import' },
@@ -1754,8 +1755,8 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         variant="tertiary"
                         className={`rounded-xl px-3 py-2 text-[11px] font-semibold transition sm:px-4 sm:text-xs ${
                           entryMode === option.value
-                            ? 'bg-slate-900 text-white shadow-sm'
-                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                            ? 'bg-teal-600 text-white shadow-sm shadow-teal-500/25 dark:bg-teal-400 dark:text-slate-950 dark:shadow-teal-950/40'
+                            : 'text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                         }`}
                       >
                         {option.label}
@@ -1766,7 +1767,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     type="button"
                     onClick={handleClose}
                     disabled={isBusy}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
@@ -1776,7 +1777,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                 </div>
               </div>
 
-              {/* â”€â”€ Scrollable form body â”€â”€ */}
+              {/* â"€â"€ Scrollable form body â"€â"€ */}
               <form onSubmit={entryMode === 'manual' ? handleSubmit : (event) => event.preventDefault()} className="flex flex-col flex-1 min-h-0">
                 {entryMode === 'csv' ? (
                   <BulkProductImportPanel
@@ -1786,7 +1787,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     }}
                   />
                 ) : entryMode === 'api' ? (
-                  /* ── ZQ API Import Panel ── */
+                  /* -- ZQ API Import Panel -- */
                   <div className="flex flex-col flex-1 min-h-0">
                     {/* Endpoint banner */}
                     <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-6 py-3">
@@ -2022,28 +2023,9 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </div>
                   </div>
                 ) : (
-                <div ref={formContentRef} className="flex-1 space-y-6 overflow-y-auto bg-white px-6 py-6">
+                <div ref={formContentRef} className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
 
-                  {/* Server error */}
-                  {serverError && (
-                    <div className="flex items-start gap-2.5 p-3.5 bg-red-50 rounded-xl border border-red-100">
-                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                      <p className="text-xs text-red-600">{serverError}</p>
-                    </div>
-                  )}
-
-                  {draftRestored && (
-                    <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 rounded-xl border border-amber-100">
-                      <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                      <p className="text-xs text-amber-700">Local draft restored. Unsaved fields and uploaded image links are back in this form.</p>
-                    </div>
-                  )}
-
-                  {/* â”€â”€ Section: Product Image â”€â”€ */}
+                  {/* â"€â"€ Section: Product Image â"€â"€ */}
                   <SectionLabel>Product Image</SectionLabel>
                   <input
                     ref={fileInputRef}
@@ -2061,21 +2043,35 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       htmlFor="product-image-input"
                       onDragOver={preventFileDropNavigation}
                       onDrop={handleMainImageDrop}
-                      className="group flex h-40 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-[24px] border-2 border-dashed border-slate-200 bg-slate-50/90 transition-all hover:border-teal-400 hover:bg-teal-50/40"
+                      className="group flex h-48 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-teal-400 hover:bg-teal-50/30 dark:border-slate-700 dark:bg-slate-950/70 dark:hover:border-teal-500 dark:hover:bg-teal-950/20"
                     >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm transition-colors group-hover:bg-teal-100">
-                        <svg className="w-5 h-5 text-slate-400 group-hover:text-teal-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100 transition-all group-hover:bg-teal-50 group-hover:ring-teal-200 dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:bg-teal-950/40 dark:group-hover:ring-teal-800">
+                        <svg className="w-6 h-6 text-slate-400 group-hover:text-teal-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                         </svg>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-slate-600 group-hover:text-teal-600 transition-colors">Click or drag to upload image</p>
-                        <p className="text-xs text-slate-400 mt-0.5">JPEG, PNG, WEBP, GIF Â· max 5MB each (up to 10)</p>
+                        <p className="text-sm font-semibold text-slate-700 transition-colors group-hover:text-teal-700 dark:text-slate-200 dark:group-hover:text-teal-300">Drop images here or click to browse</p>
+                        <p className="mt-1 text-xs text-slate-400">JPEG · PNG · WEBP · GIF &nbsp;·&nbsp; max 5 MB each &nbsp;·&nbsp; up to 15 images</p>
                       </div>
                     </label>
                   ) : (
-                    <div>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:grid-cols-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Images</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{imagePreviews.length} / 15</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearAllImages}
+                          disabled={isUploading}
+                          className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors disabled:opacity-60"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
                         {visibleImagePreviews.map((preview, index) => (
                           <motion.div
                             key={`preview-${index}-${preview || 'empty'}`}
@@ -2083,7 +2079,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                             onPointerEnter={() => handleImagePointerEnter(index)}
                             onPointerUp={stopImagePointerDrag}
                             onPointerCancel={stopImagePointerDrag}
-                            className="relative h-24 cursor-grab rounded-xl overflow-hidden bg-slate-100 border border-slate-200 group active:cursor-grabbing"
+                            className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 active:cursor-grabbing"
                             layout
                             whileTap={{ scale: 0.97 }}
                             transition={{ type: 'spring', stiffness: 340, damping: 28 }}
@@ -2095,12 +2091,19 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                               className="object-cover pointer-events-none"
                               unoptimized
                             />
-                            <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
+                            <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] font-bold text-white">
+                              {index + 1}
+                            </span>
+                            {index === 0 && (
+                              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-teal-500 px-1.5 py-0.5 text-[9px] font-bold text-white">Main</span>
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                               {imageFiles.length > 0 && (
                                 <button
                                   type="button"
                                   onClick={() => setActiveImageAdjustIndex(index)}
-                                  className="h-6 rounded-full bg-white/90 px-2 text-[10px] font-bold text-slate-700 shadow-sm"
+                                  className="h-7 rounded-full bg-white/90 px-2.5 text-[10px] font-bold text-slate-700 shadow hover:bg-white"
                                 >
                                   Adjust
                                 </button>
@@ -2108,44 +2111,36 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                               <button
                                 type="button"
                                 onClick={() => handleRemoveImage(index)}
-                                className="h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                                className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white shadow hover:bg-red-600"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
                                 </svg>
                               </button>
                             </div>
-                            {index === 0 && (
-                              <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-teal-500 text-white px-1.5 py-0.5 rounded-md">Main</span>
-                            )}
                           </motion.div>
                         ))}
-                        {imagePreviews.length < 10 && (
-                          <label htmlFor="product-image-input" onDragOver={preventFileDropNavigation} onDrop={handleMainImageDrop} className="flex h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-[20px] border-2 border-dashed border-slate-200 bg-slate-50/90 transition-all hover:border-teal-400 hover:bg-teal-50/30">
-                            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {imagePreviews.length < 15 && (
+                          <label
+                            htmlFor="product-image-input"
+                            onDragOver={preventFileDropNavigation}
+                            onDrop={handleMainImageDrop}
+                            className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-teal-400 hover:bg-teal-50/30 dark:border-slate-700 dark:bg-slate-950/70 dark:hover:border-teal-500 dark:hover:bg-teal-950/20"
+                          >
+                            <svg className="w-5 h-5 text-slate-300 group-hover:text-teal-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
                             </svg>
-                            <span className="text-[10px] text-slate-400 font-medium">Add More</span>
+                            <span className="text-[10px] font-medium text-slate-400 group-hover:text-teal-500 transition-colors">Add</span>
                           </label>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <p className="text-xs text-slate-400 flex-1">{imagePreviews.length} image{imagePreviews.length !== 1 ? 's' : ''} selected Â· drag to reorder Â· first image is the main</p>
-                        <button
-                          type="button"
-                          onClick={handleClearAllImages}
-                          disabled={isUploading}
-                          className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors disabled:opacity-60"
-                        >
-                          Clear all
-                        </button>
-                      </div>
+                      <p className="text-[11px] text-slate-400">Drag to reorder · first image is the main</p>
                     </div>
                   )}
                     </Card.Content>
                   </Card>
                   {imageError && (
-                    <p className="text-red-500 text-xs flex items-center gap-1">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
                       <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                       </svg>
@@ -2153,7 +2148,22 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </p>
                   )}
 
-                  {/* â”€â”€ Section: Product Information â”€â”€ */}
+                  {serverError && (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 p-3.5">
+                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <p className="text-xs text-red-600">{serverError}</p>
+                    </div>
+                  )}
+                  {draftRestored && (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 p-3.5">
+                      <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <p className="text-xs text-amber-700">Local draft restored. Unsaved fields and uploaded image links are back in this form.</p>
+                    </div>
+                  )}
                   <SectionLabel>Product Information</SectionLabel>
                   <Card variant="default" className={sectionCardCls}>
                     <Card.Content className={`${sectionCardBodyCls} space-y-5`}>
@@ -2313,7 +2323,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         disabled={isLoading}
                         onGenerate={(html) => set('pd_description', html)}
                       />
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/70">
                         <div className="min-w-0">
                           <p className="text-[11px] font-semibold text-slate-600">Description CSV Copy</p>
                           <p className="text-[10px] text-slate-400">Copies a CSV-safe value with your current formatted description.</p>
@@ -2321,7 +2331,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         <Button
                           type="button"
                           variant="tertiary"
-                          className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                          className="h-8 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                           onPress={async () => {
                             const csvValue = toCsvSafeCell(form.pd_description.trim())
                             await navigator.clipboard.writeText(csvValue)
@@ -2339,7 +2349,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </div>
                   </Field>
 
-                  {/* â”€â”€ Section: Product Details â”€â”€ */}
+                  {/* â"€â"€ Section: Product Details â"€â"€ */}
                   <SectionLabel>Product Details</SectionLabel>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Material">
@@ -2368,7 +2378,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       }`}
                     >
                       <span className={`text-sm font-semibold ${form.pd_assembly_required ? 'text-teal-700' : 'text-slate-500'}`}>
-                        {form.pd_assembly_required ? 'Yes â€” Assembly Required' : 'No Assembly Required'}
+                        {form.pd_assembly_required ? 'Yes â€" Assembly Required' : 'No Assembly Required'}
                       </span>
                       <div className={`relative h-5 w-9 rounded-full transition-colors ${form.pd_assembly_required ? 'bg-teal-500' : 'bg-slate-200'}`}>
                         <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.pd_assembly_required ? 'left-4' : 'left-0.5'}`}/>
@@ -2376,7 +2386,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </button>
                   </Field>
 
-                  {/* â”€â”€ Section: Pricing â”€â”€ */}
+                  {/* â"€â"€ Section: Pricing â"€â"€ */}
                   <SectionLabel>Pricing</SectionLabel>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
                     <Field label="PV Pricing Tier">
@@ -2426,7 +2436,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                   </div>
                   <PricingSummaryPanel summary={mainPricingSummary} memberFallbackToSrp={!form.pd_price_member.trim()} />
 
-                  {/* â”€â”€ Section: Stock & Shipping â”€â”€ */}
+                  {/* â"€â"€ Section: Stock & Shipping â"€â"€ */}
                   <SectionLabel>Stock & Shipping</SectionLabel>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Quantity" error={errors.pd_qty}>
@@ -2453,7 +2463,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </Field>
                   </div>
 
-                  {/* â”€â”€ Section: Settings â”€â”€ */}
+                  {/* â"€â"€ Section: Settings â"€â"€ */}
                   <SectionLabel>Settings</SectionLabel>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {/* Status */}
@@ -2542,7 +2552,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </Field>
                   </div>
 
-                  {/* â”€â”€ Section: Product Badges â”€â”€ */}
+                  {/* â"€â"€ Section: Product Badges â"€â"€ */}
                   <SectionLabel>Product Badges</SectionLabel>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {FLAG_CARDS.map(flag => {
@@ -2554,7 +2564,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                           onClick={() => set(flag.key, !isActive)}
                           className={[
                             'relative flex flex-col gap-2 p-3 rounded-xl border-2 text-left transition-all',
-                            isActive ? flag.activeCard : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
+                            isActive ? flag.activeCard : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800',
                           ].join(' ')}
                         >
                           <div className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isActive ? flag.activeIcon : 'bg-slate-100 text-slate-400'}`}>
@@ -2576,7 +2586,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     })}
                   </div>
 
-                  {/* â”€â”€ Section: Variants â”€â”€ */}
+                  {/* â"€â"€ Section: Variants â"€â"€ */}
                   {hasVariants && (
                     <>
                       <SectionLabel>Variants</SectionLabel>
@@ -2584,17 +2594,17 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         <div className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-cyan-50 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-sm font-bold text-slate-800">Global Colors</p>
-                              <p className="text-xs text-slate-500 mt-1">
-                                Add shared colors once, then every variant will inherit them automatically.
+                              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Global Colors</p>
+                              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">
+                                Use this section to define common variant choices for this product upload. These options are not limited to size and color; they can also include finishes, dimensions, materials, styles, thickness, or any custom values that apply to this product variant set.
                               </p>
                             </div>
-                            <div className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-teal-700 border border-teal-100">
+                            <div className="rounded-full border border-teal-100 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/30 dark:text-teal-300">
                               {globalColors.length} color{globalColors.length === 1 ? '' : 's'}
                             </div>
                           </div>
 
-                            <div className="mt-4 flex gap-2 items-center rounded-xl bg-white/80 border border-teal-100 p-2.5">
+                            <div className="mt-4 flex items-center gap-2 rounded-xl border border-teal-100 bg-white/80 p-2.5 dark:border-teal-900/50 dark:bg-slate-950/70">
                             <label className="shrink-0 cursor-pointer relative group">
                               <div
                                 className="h-10 w-10 rounded-xl border-2 border-white ring-1 ring-slate-200 group-hover:ring-teal-400 transition-all shadow-sm"
@@ -2627,7 +2637,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                 }}
                                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalColor())}
                                 placeholder="Global color / finish (e.g. Walnut Oak, Matte Black)"
-                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                               />
                               <p className="text-[11px] text-slate-400">New variants will automatically start with these colors.</p>
                             </div>
@@ -2643,9 +2653,9 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                           {globalColors.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
                               {globalColors.map((color, colorIndex) => (
-                                <span key={`global-color-${colorIndex}-${getVariantColorKey(color)}`} className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-white pl-1 pr-2.5 py-1 shadow-sm">
+                                <span key={`global-color-${colorIndex}-${getVariantColorKey(color)}`} className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-white py-1 pl-1 pr-2.5 shadow-sm dark:border-teal-900/50 dark:bg-slate-900">
                                   <span className="h-5 w-5 rounded-full shrink-0 border border-slate-200" style={{ backgroundColor: color.hex }} />
-                                  <span className="text-xs font-medium text-slate-700">{color.name !== color.hex ? color.name : color.hex}</span>
+                                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{color.name !== color.hex ? color.name : color.hex}</span>
                                   <button
                                     type="button"
                                     onClick={() => removeGlobalColor(colorIndex)}
@@ -2660,7 +2670,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                             </div>
                           )}
 
-                          <div className="mt-4 rounded-xl border border-teal-100 bg-white/80 p-3 space-y-4">
+                          <div className="mt-4 space-y-4 rounded-xl border border-teal-100 bg-white/80 p-3 dark:border-teal-900/50 dark:bg-slate-950/70">
                             <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
                               <div className="space-y-1">
                                 <label className="text-xs font-semibold text-slate-600 block">Variant Header</label>
@@ -2668,24 +2678,24 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                   value={form.pd_primary_option_label}
                                   onChange={(e) => set('pd_primary_option_label', e.target.value)}
                                   placeholder="e.g. Thickness"
-                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400"
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                 />
                                 <p className="text-[11px] text-slate-400">Set the display title shown on the product page for these variant values.</p>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-600 block">Add Variant Values</label>
+                                <label className="text-xs font-semibold text-slate-600 block">Add Custom Variant Values</label>
                                 <div className="flex gap-2">
                                   <input
                                     value={newGlobalPrimaryValue}
                                     onChange={(e) => setNewGlobalPrimaryValue(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalPrimaryValue())}
                                     placeholder="e.g. 1 inch, 2 inches"
-                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400"
+                                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                   />
                                   <button
                                     type="button"
                                     onClick={addGlobalPrimaryValue}
-                                    className="shrink-0 px-4 py-2.5 bg-white hover:bg-teal-50 text-teal-700 rounded-xl text-sm font-semibold transition-colors border border-teal-200"
+                                    className="shrink-0 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-50 dark:border-teal-900/60 dark:bg-slate-900 dark:text-teal-300 dark:hover:bg-teal-950/30"
                                   >
                                     + Add
                                   </button>
@@ -2697,7 +2707,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                               <div className="flex flex-wrap gap-2">
                                 {globalPrimaryValues.map((value, valueIndex) => (
                                   <span key={`global-primary-${valueIndex}-${value || 'empty'}`} className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-teal-50/70 pl-3 pr-2 py-1.5 shadow-sm">
-                                    <span className="text-xs font-medium text-slate-700">{value}</span>
+                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{value}</span>
                                     <button
                                       type="button"
                                       onClick={() => removeGlobalPrimaryValue(valueIndex)}
@@ -2720,12 +2730,12 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                   onChange={(e) => setNewGlobalSizeValue(e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalSizeValue())}
                                   placeholder="e.g. 36 x 75, 48 x 75"
-                                  className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400"
+                                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                 />
                                 <button
                                   type="button"
                                   onClick={addGlobalSizeValue}
-                                  className="shrink-0 px-4 py-2.5 bg-white hover:bg-teal-50 text-teal-700 rounded-xl text-sm font-semibold transition-colors border border-teal-200"
+                                  className="shrink-0 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-50 dark:border-teal-900/60 dark:bg-slate-900 dark:text-teal-300 dark:hover:bg-teal-950/30"
                                 >
                                   + Add
                                 </button>
@@ -2736,8 +2746,8 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                             {globalSizeValues.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {globalSizeValues.map((value, valueIndex) => (
-                                  <span key={`global-size-${valueIndex}-${value || 'empty'}`} className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-white pl-3 pr-2 py-1.5 shadow-sm">
-                                    <span className="text-xs font-medium text-slate-700">{value}</span>
+                                  <span key={`global-size-${valueIndex}-${value || 'empty'}`} className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-white py-1.5 pl-3 pr-2 shadow-sm dark:border-teal-900/50 dark:bg-slate-900">
+                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{value}</span>
                                     <button
                                       type="button"
                                       onClick={() => removeGlobalSizeValue(valueIndex)}
@@ -2755,7 +2765,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         </div>
 
                         {variants.length === 0 ? (
-                          <div className="flex flex-col items-center gap-2 py-8 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
+                          <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-center dark:border-slate-700 dark:bg-slate-950/70">
                             <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
                               <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
@@ -2769,14 +2779,14 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                             const autoSku = buildVariantSku(form.pd_parent_sku || generateSkuFromName(form.pd_name), index)
                             const variantStyles = getAllVariantStyles(variant)
                             return (
-                              <div key={`variant-${index}`} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                              <div key={`variant-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                                 {/* Variant header */}
-                                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-lg bg-teal-100 flex items-center justify-center">
                                       <span className="text-[10px] font-bold text-teal-700">{index + 1}</span>
                                     </div>
-                                    <p className="text-xs font-bold text-slate-700">
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-100">
                                       {variant.pv_name.trim() || `Variant #${index + 1}`}
                                       {variantStyles.length > 1 && <span className="text-slate-400 font-normal ml-1">(+{variantStyles.length - 1} more styles)</span>}
                                       {variant.pv_style && <span className="text-slate-400 font-normal ml-1">Â· {variant.pv_style}</span>}
@@ -2812,7 +2822,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
 
                                 <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
 
-                                  {/* â”€â”€ Identity â”€â”€ */}
+                                  {/* â"€â"€ Identity â"€â"€ */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identity</p>
                                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -2883,7 +2893,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* â”€â”€ Colors â”€â”€ */}
+                                  {/* â"€â"€ Colors â"€â"€ */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Colors / Extra Option Values</p>
                                     {variant.pv_colors.length > 0 && (
@@ -2953,7 +2963,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* â”€â”€ Pricing â”€â”€ */}
+                                  {/* â"€â"€ Pricing â"€â"€ */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pricing</p>
                                     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -3021,7 +3031,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     />
                                   </div>
 
-                                  {/* â”€â”€ Inventory & Status â”€â”€ */}
+                                  {/* â"€â"€ Inventory & Status â"€â"€ */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inventory & Status</p>
                                     <div className="grid grid-cols-2 gap-3">
@@ -3053,7 +3063,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* â”€â”€ Images â”€â”€ */}
+                                  {/* â"€â"€ Images â"€â"€ */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <div className="flex items-center justify-between">
                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Images</p>
@@ -3103,7 +3113,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                           type="button"
                           onPress={addVariant}
                           variant="outline"
-                          className="h-12 w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white text-xs font-semibold text-slate-600 transition-all hover:border-teal-400 hover:bg-teal-50/40 hover:text-teal-700"
+                          className="h-12 w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white text-xs font-semibold text-slate-600 transition-all hover:border-teal-400 hover:bg-teal-50/40 hover:text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-teal-500 dark:hover:bg-teal-950/20 dark:hover:text-teal-300"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
@@ -3116,24 +3126,24 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                 </div>
                 )}
 
-                {/* â”€â”€ Sticky footer â”€â”€ */}
-                {entryMode === 'manual' && <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-6 py-4">
-                  <p className="text-xs text-slate-400 flex-1">
-                    Fields marked <span className="text-red-400 font-semibold">*</span> are required
+                {/* Sticky footer */}
+                {entryMode === 'manual' && <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
+                  <p className="flex-1 text-xs text-slate-400">
+                    Fields marked <span className="font-semibold text-red-400">*</span> are required
                   </p>
                   <Button
                     type="button"
                     onPress={handleClose}
                     isDisabled={isBusy}
                     variant="outline"
-                    className="h-11 rounded-xl border-slate-200 bg-slate-100 hover:bg-slate-200 px-5 text-sm font-semibold text-slate-700"
+                    className="h-10 rounded-xl border border-slate-200 bg-slate-100 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     isDisabled={isBusy}
-                    className="h-11 rounded-xl bg-teal-600 hover:bg-teal-700 px-6 text-sm font-bold text-white shadow-sm shadow-teal-500/30"
+                    className="h-10 rounded-xl bg-teal-600 px-6 text-sm font-bold text-white shadow-sm shadow-teal-500/30 hover:bg-teal-700"
                   >
                     {isBusy ? (
                       <>

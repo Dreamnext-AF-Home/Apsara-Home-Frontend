@@ -94,6 +94,7 @@ export interface AdminMeResponse {
   id: number
   name: string
   email: string
+  username?: string
   role: string
   user_level_id: number
   supplier_id?: number | null

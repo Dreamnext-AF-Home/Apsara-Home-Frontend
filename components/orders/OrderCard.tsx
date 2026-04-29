@@ -92,6 +92,10 @@ const OrderCard = ({ order }: OrderCardProps) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
+  const [reviewImages, setReviewImages] = useState<File[]>([]);
+  const [reviewVideos, setReviewVideos] = useState<File[]>([]);
+  const [isImageDragActive, setIsImageDragActive] = useState(false);
+  const [isVideoDragActive, setIsVideoDragActive] = useState(false);
   const [confirmOrder, { isLoading: isConfirming }] = useConfirmOrderMutation();
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
   const previewItems = order.items.slice(0, 3);
@@ -100,6 +104,16 @@ const OrderCard = ({ order }: OrderCardProps) => {
   const hasShipmentInfo = Boolean(order.courier || order.tracking_no || order.shipment_status);
   const isShipmentCancelled = order.shipment_status === 'cancelled';
   const canConfirm = order.status === 'out_for_delivery';
+
+  const mergeUniqueFiles = (existing: File[], incoming: File[]) => {
+    const merged = [...existing];
+    for (const file of incoming) {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      const exists = merged.some((item) => `${item.name}-${item.size}-${item.lastModified}` === key);
+      if (!exists) merged.push(file);
+    }
+    return merged;
+  };
 
   const getSelectedOptions = (item: OrderItem) => {
     return [
@@ -532,6 +546,107 @@ const OrderCard = ({ order }: OrderCardProps) => {
               />
             </div>
 
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-600 dark:text-gray-400">Image (optional)</p>
+                <label
+                  className={`mt-2 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed px-3 py-4 text-center text-xs transition ${
+                    isImageDragActive
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
+                      : 'border-slate-300 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsImageDragActive(true);
+                  }}
+                  onDragLeave={() => setIsImageDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsImageDragActive(false);
+                    const dropped = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'));
+                    if (dropped.length > 0) {
+                      setReviewImages((current) => mergeUniqueFiles(current, dropped));
+                    }
+                  }}
+                >
+                  Drag & drop images here, or click to select
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(e) => setReviewImages((current) => mergeUniqueFiles(current, Array.from(e.target.files ?? [])))}
+                    className="hidden"
+                  />
+                </label>
+                {reviewImages.length > 0 ? <p className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">{reviewImages.length} image(s) selected</p> : null}
+                {reviewImages.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    {reviewImages.map((file, index) => (
+                      <div key={`${file.name}-${file.size}-${file.lastModified}-${index}`} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] dark:border-slate-600 dark:bg-slate-800">
+                        <span className="truncate pr-2 text-slate-600 dark:text-slate-300">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setReviewImages((current) => current.filter((_, i) => i !== index))}
+                          className="shrink-0 rounded-md border border-rose-200 px-2 py-0.5 font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-600 dark:text-gray-400">Video (optional)</p>
+                <label
+                  className={`mt-2 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed px-3 py-4 text-center text-xs transition ${
+                    isVideoDragActive
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
+                      : 'border-slate-300 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsVideoDragActive(true);
+                  }}
+                  onDragLeave={() => setIsVideoDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsVideoDragActive(false);
+                    const dropped = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('video/'));
+                    if (dropped.length > 0) {
+                      setReviewVideos((current) => mergeUniqueFiles(current, dropped));
+                    }
+                  }}
+                >
+                  Drag & drop videos here, or click to select
+                  <input
+                    type="file"
+                    multiple
+                    accept="video/mp4,video/quicktime,video/webm"
+                    onChange={(e) => setReviewVideos((current) => mergeUniqueFiles(current, Array.from(e.target.files ?? [])))}
+                    className="hidden"
+                  />
+                </label>
+                {reviewVideos.length > 0 ? <p className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">{reviewVideos.length} video(s) selected</p> : null}
+                {reviewVideos.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    {reviewVideos.map((file, index) => (
+                      <div key={`${file.name}-${file.size}-${file.lastModified}-${index}`} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] dark:border-slate-600 dark:bg-slate-800">
+                        <span className="truncate pr-2 text-slate-600 dark:text-slate-300">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setReviewVideos((current) => current.filter((_, i) => i !== index))}
+                          className="shrink-0 rounded-md border border-rose-200 px-2 py-0.5 font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
                 type="button"
@@ -545,10 +660,18 @@ const OrderCard = ({ order }: OrderCardProps) => {
                 disabled={rating < 1 || review.trim().length === 0 || isConfirming}
                 onClick={async () => {
                   try {
-                    await confirmOrder({ id: order.id, rating, review: review.trim() }).unwrap();
+                    await confirmOrder({
+                      id: order.id,
+                      rating,
+                      review: review.trim(),
+                      reviewImages,
+                      reviewVideos,
+                    }).unwrap();
                     setConfirmOpen(false);
                     setRating(0);
                     setReview('');
+                    setReviewImages([]);
+                    setReviewVideos([]);
                   } catch {
                     return;
                   }

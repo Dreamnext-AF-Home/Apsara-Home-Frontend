@@ -255,7 +255,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isRefreshingAdminIdentity = Boolean(sessionAccessToken) && !resolvedAdminMe && (isAdminMeLoading || isAdminMeFetching)
   const displayName = String(resolvedAdminMe?.name ?? session?.user?.name ?? '').trim() || (isRefreshingAdminIdentity ? 'Refreshing admin...' : 'Admin')
   const displayEmail = String(resolvedAdminMe?.email ?? session?.user?.email ?? '').trim()
-  const displayEmailText = displayEmail || (isRefreshingAdminIdentity ? 'Reloading profile details...' : 'No email on file')
+  const displayUsername = String(resolvedAdminMe?.username ?? '').trim()
+  const displayEmailText = displayEmail || (isRefreshingAdminIdentity ? 'Reloading profile details...' : (displayUsername ? `@${displayUsername}` : 'No email on file'))
   const effectiveRole = String(resolvedAdminMe?.role ?? sessionRole).toLowerCase()
   const effectiveUserLevelId = Number(resolvedAdminMe?.user_level_id ?? sessionUserLevelId)
   const isSuperAdmin = effectiveRole === 'super_admin' || effectiveUserLevelId === 1

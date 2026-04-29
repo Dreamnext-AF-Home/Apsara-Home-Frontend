@@ -89,6 +89,10 @@ export interface ProductReview {
   id: number
   rating: number
   review: string
+  review_image?: string | null
+  review_video?: string | null
+  review_images?: string[]
+  review_videos?: string[]
   customer_name: string
   customer_avatar?: string | null
   created_at?: string | null
@@ -456,6 +460,14 @@ export interface ImportZqToLocalResponse {
 
 export interface PublicProductResponse {
   product: Product
+}
+
+export interface ProductViewerHeartbeatResponse {
+  product_id: number
+  viewer_id: string
+  active_viewers: number
+  ttl_seconds: number
+  updated_at: string
 }
 
 export interface CreateProductPayload {
@@ -844,6 +856,15 @@ export const productsApi = baseApi.injectEndpoints({
       },
       providesTags: ['Products'],
     }),
+    heartbeatProductViewer: builder.mutation<ProductViewerHeartbeatResponse, { productId: number; viewerId?: string }>({
+      query: ({ productId, viewerId }) => ({
+        url: `/api/products/${productId}/viewers/heartbeat`,
+        method: 'POST',
+        body: cleanParams({
+          viewer_id: viewerId,
+        }),
+      }),
+    }),
     getProducts: builder.query<ProductsResponse, ProductsQueryParams | void>({
       query: (params) => ({
         url: '/api/admin/products',
@@ -1046,6 +1067,7 @@ export const {
   useLazyGetPublicProductQuery,
   useGetProductReviewsQuery,
   useGetProductBrandQuery,
+  useHeartbeatProductViewerMutation,
   useGetProductsQuery,
   useLazyGetProductsQuery,
   useGetProductActivityLogsQuery,
