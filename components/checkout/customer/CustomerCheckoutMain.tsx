@@ -1,7 +1,7 @@
 'use client';
 
 import LoadingScreen from "@/components/ui/LoadingScreen";
-import Footer from "@/components/layout/Footer";
+import Footer from "@/components/landing-page/Footer";
 import ProductPageWrapper from "@/components/product/ProductPageWrapper";
 import { GuestForm, FormErrors, CustomerCheckoutData, PaymentMethod, PaymentMode } from "@/types/CustomerCheckout/types";
 import Link from "next/link";
