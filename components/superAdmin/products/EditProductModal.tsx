@@ -1001,7 +1001,7 @@ function Field({
 }) {
   return (
     <div className="space-y-2" data-error-field={error ? 'true' : undefined}>
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
@@ -1017,7 +1017,7 @@ function Field({
   )
 }
 
-const sectionCardCls = 'overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_22px_60px_-36px_rgba(15,23,42,0.35)]'
+const sectionCardCls = 'overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_22px_60px_-36px_rgba(15,23,42,0.35)] dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/30'
 const sectionCardBodyCls = 'px-4 py-4 sm:px-5 sm:py-5'
 
 function ModalSelectField({
@@ -1058,20 +1058,20 @@ function ModalSelectField({
     >
       <Select.Trigger
         className={[
-          'flex min-h-[50px] w-full items-center justify-between rounded-2xl border bg-slate-50/85 px-4 text-left text-sm text-slate-700 shadow-sm transition-all duration-200',
+          'flex min-h-[50px] w-full items-center justify-between rounded-2xl border bg-slate-50/85 px-4 text-left text-sm text-slate-700 shadow-sm transition-all duration-200 dark:bg-slate-950/70 dark:text-slate-100',
           hasError
-            ? 'border-red-300 bg-red-50/60 focus:border-red-400'
-            : 'border-slate-200 hover:border-slate-300 focus:border-teal-400 focus:bg-white',
+            ? 'border-red-300 bg-red-50/60 focus:border-red-400 dark:border-red-900/60 dark:bg-red-950/30'
+            : 'border-slate-200 hover:border-slate-300 focus:border-teal-400 focus:bg-white dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-blue-400 dark:focus:bg-slate-950',
           isDisabled ? 'cursor-not-allowed opacity-60' : '',
         ].join(' ')}
       >
         <span className="truncate">{selectedLabel}</span>
         <Select.Indicator className="h-4 w-4 text-slate-400" />
       </Select.Trigger>
-      <Select.Popover className="min-w-[var(--trigger-width)]">
+      <Select.Popover className="min-w-[var(--trigger-width)] rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         {searchable ? (
           <div className="border-b border-slate-100 dark:border-slate-800 p-2">
-            <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all duration-200 focus-within:border-teal-300 focus-within:bg-white">
+            <div className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all duration-200 focus-within:border-teal-300 focus-within:bg-white dark:border-slate-700 dark:bg-slate-950 dark:focus-within:border-blue-400">
               <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.6-5.15a6.75 6.75 0 11-13.5 0 6.75 6.75 0 0113.5 0z" />
               </svg>
@@ -1084,7 +1084,7 @@ function ModalSelectField({
                   onMouseDown={(event) => event.stopPropagation()}
                   autoFocus
                   placeholder={searchPlaceholder}
-                  className="flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                  className="flex-1 border-none bg-transparent p-0 text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100"
               />
               {search ? (
                 <button
@@ -1103,7 +1103,7 @@ function ModalSelectField({
             </div>
           </div>
         ) : null}
-        <ListBox className="p-1">
+        <ListBox className="p-1 text-slate-700 dark:text-slate-100">
           {visibleOptions.length > 0 ? (
             visibleOptions.map((option) => (
               <ListBoxItem id={option.value} key={`${option.value}-${option.label}`}>
@@ -1122,14 +1122,14 @@ function ModalSelectField({
 }
 
 const inputCls = (hasError = false) => [
-  'w-full rounded-2xl border bg-slate-50/85 px-4 py-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm',
+  'w-full rounded-2xl border bg-slate-50/85 px-4 py-3 text-sm text-slate-700 placeholder-slate-400 shadow-sm dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500',
   'focus:outline-none focus:ring-2 transition-all duration-200',
   hasError
-    ? 'border-red-300 bg-red-50/60 focus:border-red-400 focus:ring-red-500/20'
-    : 'border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-blue-500/20 hover:border-slate-300',
+    ? 'border-red-300 bg-red-50/60 focus:border-red-400 focus:ring-red-500/20 dark:border-red-900/60 dark:bg-red-950/30'
+    : 'border-slate-200 focus:border-blue-400 focus:bg-white focus:ring-blue-500/20 hover:border-slate-300 dark:border-slate-700 dark:focus:border-blue-400 dark:focus:bg-slate-950 dark:hover:border-slate-600',
 ].join(' ')
 
-const variantInputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/20'
+const variantInputCls = 'w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 shadow-sm transition-all duration-200 hover:border-slate-300 focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/20 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-slate-600 dark:focus:bg-slate-950'
 
 const scrollToFirstErrorField = (container: HTMLElement | null) => {
   if (!container) return
@@ -2008,10 +2008,10 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
-              className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_100px_-36px_rgba(15,23,42,0.55)]"
+              className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_100px_-36px_rgba(15,23,42,0.55)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-black/40"
             >
               {/* ── Header ── */}
-              <div className="shrink-0 border-b border-slate-200/80 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="shrink-0 border-b border-slate-200/80 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-4 py-4 dark:border-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-blue-950/30 sm:px-6 sm:py-5">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg shadow-blue-500/30">
@@ -2020,9 +2020,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-600">Catalog Workspace</p>
-                    <h2 className="mt-1 text-lg font-bold leading-none text-slate-900">Edit Product</h2>
-                    <p className="mt-1 max-w-xl truncate text-xs text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">Catalog Workspace</p>
+                    <h2 className="mt-1 text-lg font-bold leading-none text-slate-900 dark:text-slate-100">Edit Product</h2>
+                    <p className="mt-1 max-w-xl truncate text-xs text-slate-500 dark:text-slate-400">
                       ID #{product?.id} · {product?.name}
                     </p>
                   </div>
@@ -2031,7 +2031,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                   type="button"
                   onClick={handleClose}
                   disabled={isBusy}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl text-slate-400 transition-colors hover:bg-white hover:text-slate-700 disabled:opacity-40"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl text-slate-400 transition-colors hover:bg-white hover:text-slate-700 disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
@@ -2176,7 +2176,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                             htmlFor="edit-product-image-input"
                             onDragOver={preventFileDropNavigation}
                             onDrop={handleMainImageDrop}
-                            className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50/30"
+                            className="group flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50/30 dark:border-slate-700 dark:bg-slate-950/70 dark:hover:border-blue-500 dark:hover:bg-blue-950/20"
                           >
                             <svg className="w-5 h-5 text-slate-300 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
@@ -2196,15 +2196,15 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                       htmlFor="edit-product-image-input"
                       onDragOver={preventFileDropNavigation}
                       onDrop={handleMainImageDrop}
-                      className="group flex h-48 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50/30"
+                      className="group flex h-48 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50/30 dark:border-slate-700 dark:bg-slate-950/70 dark:hover:border-blue-500 dark:hover:bg-blue-950/20"
                     >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100 transition-all group-hover:bg-blue-50 group-hover:ring-blue-200">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-slate-100 transition-all group-hover:bg-blue-50 group-hover:ring-blue-200 dark:bg-slate-900 dark:ring-slate-800 dark:group-hover:bg-blue-950/40 dark:group-hover:ring-blue-800">
                         <svg className="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                         </svg>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">Drop images here or click to browse</p>
+                        <p className="text-sm font-semibold text-slate-700 transition-colors group-hover:text-blue-700 dark:text-slate-200 dark:group-hover:text-blue-300">Drop images here or click to browse</p>
                         <p className="mt-1 text-xs text-slate-400">JPEG · PNG · WEBP · GIF &nbsp;·&nbsp; max 5 MB each &nbsp;·&nbsp; up to 15 images</p>
                       </div>
                     </label>
@@ -2235,14 +2235,14 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="rounded-[22px] border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Supplier</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-700">{product.supplierName?.trim() || 'No supplier assigned'}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{product.supplierName?.trim() || 'No supplier assigned'}</p>
                       {product.supplierId ? (
                         <p className="mt-1 text-[11px] text-slate-400">Supplier #{product.supplierId}</p>
                       ) : null}
                     </div>
                     <div className="rounded-[22px] border border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Uploaded By</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-700">{product.uploaderName?.trim() || 'Unknown user'}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{product.uploaderName?.trim() || 'Unknown user'}</p>
                       {product.uploaderRole ? (
                         <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-400">{product.uploaderRole.replace(/_/g, ' ')}</p>
                       ) : product.uploaderEmail ? (
@@ -2592,7 +2592,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                           onClick={() => set(flag.key, !isActive)}
                           className={[
                             'relative flex flex-col gap-2 p-3 rounded-xl border-2 text-left transition-all',
-                            isActive ? flag.activeCard : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
+                            isActive ? flag.activeCard : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800',
                           ].join(' ')}
                         >
                           <div className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${isActive ? flag.activeIcon : 'bg-slate-100 text-slate-400'}`}>
@@ -2622,17 +2622,17 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-cyan-50 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-sm font-bold text-slate-800">Global Colors</p>
+                              <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Global Colors</p>
                               <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">
                                 Use this section to define common variant choices for this product upload. These options are not limited to size and color; they can also include finishes, dimensions, materials, styles, thickness, or any custom values that apply to this product variant set.
                               </p>
                             </div>
-                            <div className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-blue-700 border border-blue-100">
+                            <div className="rounded-full border border-blue-100 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
                               {globalColors.length} color{globalColors.length === 1 ? '' : 's'}
                             </div>
                           </div>
 
-                          <div className="mt-4 flex gap-2 items-center rounded-xl bg-white/80 border border-blue-100 p-2.5">
+                          <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-100 bg-white/80 p-2.5 dark:border-blue-900/50 dark:bg-slate-950/70">
                             <label className="shrink-0 cursor-pointer relative group">
                               <div
                                 className="h-10 w-10 rounded-xl border-2 border-white ring-1 ring-slate-200 group-hover:ring-blue-400 transition-all shadow-sm"
@@ -2665,7 +2665,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                 }}
                                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalColor())}
                                 placeholder="Global color / finish (e.g. Walnut Oak, Matte Black)"
-                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                               />
                               <p className="text-[11px] text-slate-400">Use this when the same colors apply across the whole product.</p>
                             </div>
@@ -2681,9 +2681,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                           {globalColors.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
                               {globalColors.map((color, colorIndex) => (
-                                <span key={`${getVariantColorKey(color)}-${colorIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white pl-1 pr-2.5 py-1 shadow-sm">
+                                <span key={`${getVariantColorKey(color)}-${colorIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white py-1 pl-1 pr-2.5 shadow-sm dark:border-blue-900/50 dark:bg-slate-900">
                                   <span className="h-5 w-5 rounded-full shrink-0 border border-slate-200" style={{ backgroundColor: color.hex }} />
-                                  <span className="text-xs font-medium text-slate-700">{color.name !== color.hex ? color.name : color.hex}</span>
+                                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{color.name !== color.hex ? color.name : color.hex}</span>
                                   <button
                                     type="button"
                                     onClick={() => removeGlobalColor(colorIndex)}
@@ -2698,7 +2698,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                             </div>
                           )}
 
-                          <div className="mt-4 rounded-xl border border-blue-100 bg-white/80 p-3 space-y-4">
+                          <div className="mt-4 space-y-4 rounded-xl border border-blue-100 bg-white/80 p-3 dark:border-blue-900/50 dark:bg-slate-950/70">
                             <div className="grid gap-3 md:grid-cols-[1.2fr_1fr]">
                               <div className="space-y-1">
                                 <label className="text-xs font-semibold text-slate-600 block">Variant Header</label>
@@ -2706,7 +2706,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                   value={form.pd_primary_option_label}
                                   onChange={(e) => set('pd_primary_option_label', e.target.value)}
                                   placeholder="e.g. Thickness"
-                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                 />
                                 <p className="text-[11px] text-slate-400">Set the display title shown on the product page for these variant values.</p>
                               </div>
@@ -2718,12 +2718,12 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                     onChange={(e) => setNewGlobalPrimaryValue(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalPrimaryValue())}
                                     placeholder="e.g. 1 inch, 2 inches"
-                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                   />
                                   <button
                                     type="button"
                                     onClick={addGlobalPrimaryValue}
-                                    className="shrink-0 px-4 py-2.5 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold transition-colors border border-blue-200"
+                                    className="shrink-0 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-blue-950/30"
                                   >
                                     + Add
                                   </button>
@@ -2735,7 +2735,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                               <div className="flex flex-wrap gap-2">
                                 {globalPrimaryValues.map((value, valueIndex) => (
                                   <span key={`${value}-${valueIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50/70 pl-3 pr-2 py-1.5 shadow-sm">
-                                    <span className="text-xs font-medium text-slate-700">{value}</span>
+                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{value}</span>
                                     <button
                                       type="button"
                                       onClick={() => removeGlobalPrimaryValue(valueIndex)}
@@ -2758,12 +2758,12 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                   onChange={(e) => setNewGlobalSizeValue(e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGlobalSizeValue())}
                                   placeholder="e.g. 36 x 75, 48 x 75"
-                                  className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400"
+                                  className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                 />
                                 <button
                                   type="button"
                                   onClick={addGlobalSizeValue}
-                                  className="shrink-0 px-4 py-2.5 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold transition-colors border border-blue-200"
+                                  className="shrink-0 rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-900/60 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-blue-950/30"
                                 >
                                   + Add
                                 </button>
@@ -2774,8 +2774,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                             {globalSizeValues.length > 0 && (
                               <div className="flex flex-wrap gap-2">
                                 {globalSizeValues.map((value, valueIndex) => (
-                                  <span key={`${value}-${valueIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white pl-3 pr-2 py-1.5 shadow-sm">
-                                    <span className="text-xs font-medium text-slate-700">{value}</span>
+                                  <span key={`${value}-${valueIndex}`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white py-1.5 pl-3 pr-2 shadow-sm dark:border-blue-900/50 dark:bg-slate-900">
+                                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{value}</span>
                                     <button
                                       type="button"
                                       onClick={() => removeGlobalSizeValue(valueIndex)}
@@ -2793,7 +2793,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         </div>
 
                         {variants.length === 0 ? (
-                          <div className="flex flex-col items-center gap-2 py-8 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
+                          <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-center dark:border-slate-700 dark:bg-slate-950/70">
                             <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center">
                               <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
@@ -2807,14 +2807,14 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                             const autoSku = buildVariantSku(form.pd_parent_sku || generateSkuFromName(form.pd_name, product?.id), index)
                             const variantStyles = getAllVariantStyles(variant)
                             return (
-                              <div key={`variant-${variant.id ?? index}`} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                              <div key={`variant-${variant.id ?? index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                                 {/* Variant header */}
-                                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
                                   <div className="flex items-center gap-2">
                                     <div className="h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center">
                                       <span className="text-[10px] font-bold text-blue-700">{index + 1}</span>
                                     </div>
-                                    <p className="text-xs font-bold text-slate-700">
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-100">
                                       {variant.pv_name.trim() || `Variant #${index + 1}`}
                                       {variantStyles.length > 1 && <span className="text-slate-400 font-normal ml-1">(+{variantStyles.length - 1} more styles)</span>}
                                       {variant.pv_style && <span className="text-slate-400 font-normal ml-1">· {variant.pv_style}</span>}
@@ -3141,7 +3141,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                           type="button"
                           onPress={addVariant}
                           variant="outline"
-                          className="h-12 w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white text-xs font-semibold text-slate-600 transition-all hover:border-blue-400 hover:bg-blue-50/40 hover:text-blue-700"
+                          className="h-12 w-full rounded-2xl border-2 border-dashed border-slate-200 bg-white text-xs font-semibold text-slate-600 transition-all hover:border-blue-400 hover:bg-blue-50/40 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-blue-950/20 dark:hover:text-blue-300"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
@@ -3154,7 +3154,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                 </div>
 
                 {/* Sticky footer */}
-                <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-5 py-3.5 sm:px-6">
+                <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
                   <p className="flex-1 text-xs text-slate-400">
                     Fields marked <span className="font-semibold text-red-400">*</span> are required
                   </p>
@@ -3163,7 +3163,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                     onPress={handleClose}
                     isDisabled={isBusy}
                     variant="outline"
-                    className="h-10 rounded-xl border border-slate-200 bg-slate-100 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                    className="h-10 rounded-xl border border-slate-200 bg-slate-100 px-5 text-sm font-semibold text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                   >
                     Cancel
                   </Button>
