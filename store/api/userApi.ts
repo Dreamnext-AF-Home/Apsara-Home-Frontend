@@ -209,6 +209,13 @@ export interface LinkGooglePayload {
     name: string;
 }
 
+export interface LinkFacebookPayload {
+    provider_id: string;
+    token: string;
+    email: string;
+    name: string;
+}
+
 export const userApi = baseApi.injectEndpoints({
     overrideExisting: true,
     endpoints:  (builder) => ({
@@ -343,6 +350,23 @@ export const userApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['User'],
         }),
+
+        linkFacebookAccount: builder.mutation<{ message: string }, LinkFacebookPayload>({
+            query: (body) => ({
+                url: '/api/auth/link/facebook',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
+        unlinkFacebookAccount: builder.mutation<{ message: string }, void>({
+            query: () => ({
+                url: '/api/auth/unlink/facebook',
+                method: 'POST',
+            }),
+            invalidatesTags: ['User'],
+        }),
     })
 })
 
@@ -363,4 +387,6 @@ export const {
     useLinkedAccountsQuery,
     useLinkGoogleAccountMutation,
     useUnlinkGoogleAccountMutation,
+    useLinkFacebookAccountMutation,
+    useUnlinkFacebookAccountMutation,
 } = userApi
