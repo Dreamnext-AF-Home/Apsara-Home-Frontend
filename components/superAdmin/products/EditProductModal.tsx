@@ -2623,8 +2623,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-sm font-bold text-slate-800">Global Colors</p>
-                              <p className="text-xs text-slate-500 mt-1">
-                                Add shared colors once, then every existing and new variant will inherit them.
+                              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">
+                                Use this section to define common variant choices for this product upload. These options are not limited to size and color; they can also include finishes, dimensions, materials, styles, thickness, or any custom values that apply to this product variant set.
                               </p>
                             </div>
                             <div className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-blue-700 border border-blue-100">
@@ -2711,7 +2711,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                                 <p className="text-[11px] text-slate-400">Set the display title shown on the product page for these variant values.</p>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-600 block">Add Variant Values</label>
+                                <label className="text-xs font-semibold text-slate-600 block">Add Custom Variant Values</label>
                                 <div className="flex gap-2">
                                   <input
                                     value={newGlobalPrimaryValue}
