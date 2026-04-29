@@ -603,14 +603,15 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                 return
             }
 
-            const session = await getSession()
+            const sessionReady = await waitForAuthenticatedSession()
 
-            if (!session?.user?.accessToken) {
+            if (!sessionReady) {
                 router.push('/auth/google-not-connected')
                 return
             }
 
-            const passwordChangeRequired = Boolean(session.user?.passwordChangeRequired)
+            const session = await getSession()
+            const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired)
 
             if (updateSession) {
                 await updateSession()
@@ -623,15 +624,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             }
 
             showSuccessToast('Google sign-in successful. Welcome back!')
-            const sessionReady = await waitForAuthenticatedSession()
             const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
-            router.replace(targetPath)
-            router.refresh()
-            if (!sessionReady && typeof window !== 'undefined') {
-                window.setTimeout(() => {
-                    window.location.replace(targetPath)
-                }, 250)
-            }
+            window.location.replace(targetPath)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.'
             setError(message)
