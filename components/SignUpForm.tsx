@@ -258,7 +258,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
       }
       setTurnstileToken('')
     }
-  }, [turnstileSiteKey])
+  }, [turnstileSiteKey, isMounted])
 
   const resetTurnstile = () => {
     if (widgetIdRef.current && window.turnstile) {

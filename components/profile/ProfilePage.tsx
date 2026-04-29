@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, useChangePasswordMutation, useMeQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -486,6 +486,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const { data } = useMeQuery(undefined, {
     skip: !isCustomerSession,
   });
+  const { data: accountSnapshot } = useAccountSnapshotQuery(undefined, {
+    skip: !isCustomerSession,
+  });
   const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(data?.id, {
     skip: !isCustomerSession || !data?.id,
     refetchOnMountOrArgChange: true,
@@ -514,6 +517,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [unlinkGoogleAccount, { isLoading: isUnlinkingGoogle }] = useUnlinkGoogleAccountMutation();
   const [linkFacebookAccount, { isLoading: isLinkingFacebook }] = useLinkFacebookAccountMutation();
   const [unlinkFacebookAccount, { isLoading: isUnlinkingFacebook }] = useUnlinkFacebookAccountMutation();
+  const [setupTotp] = useSetupTotpMutation();
+  const [enableTotp] = useEnableTotpMutation();
+  const [disableTotp] = useDisableTotpMutation();
 
   const isGoogleLinked = useMemo(() => {
     return linkedAccountsData?.accounts?.some((account: LinkedAccount) => account.provider === 'google') ?? false;
@@ -555,6 +561,14 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(false);
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
   const [removingPasskeyId, setRemovingPasskeyId] = useState<number | null>(null);
+
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpStep, setTotpStep] = useState<'idle' | 'confirm-disable'>('idle');
+  const [totpSetupData, setTotpSetupData] = useState<SetupTotpResponse | null>(null);
+  const [totpModalOpen, setTotpModalOpen] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpLoading, setTotpLoading] = useState(false);
+  const [totpError, setTotpError] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<PreferencesState>({
     marketingEmails: true,
@@ -625,7 +639,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   useEffect(() => {
     if (!profileData) return;
     setPrefs((prev) => ({ ...prev, twoFactorEnabled: Boolean(profileData.two_factor_enabled) }));
-  }, [profileData?.two_factor_enabled, profileData]);
+    setTotpEnabled(Boolean(profileData.totp_enabled));
+  }, [profileData?.two_factor_enabled, profileData?.totp_enabled, profileData]);
 
   useEffect(() => {
     if (!isAddressModalOpen) return;
@@ -921,6 +936,65 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       });
     } finally {
       setIsUpdatingTwoFactor(false);
+    }
+  };
+
+  const handleInitiateTotpSetup = async () => {
+    setTotpError(null);
+    setTotpLoading(true);
+    try {
+      const data = await setupTotp().unwrap();
+      setTotpSetupData(data);
+      setTotpCode('');
+      setTotpModalOpen(true);
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setTotpError(apiError?.data?.message || 'Failed to initiate authenticator setup.');
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
+  const handleVerifyTotp = async () => {
+    if (totpCode.length !== 6) {
+      setTotpError('Please enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    setTotpError(null);
+    setTotpLoading(true);
+    try {
+      await enableTotp({ code: totpCode }).unwrap();
+      setTotpEnabled(true);
+      setTotpModalOpen(false);
+      setTotpSetupData(null);
+      setTotpCode('');
+      showSuccessToast('Authenticator app enabled successfully.');
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setTotpError(apiError?.data?.message || 'Invalid code. Please try again.');
+    } finally {
+      setTotpLoading(false);
+    }
+  };
+
+  const handleDisableTotp = async () => {
+    if (totpCode.length !== 6) {
+      setTotpError('Please enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    setTotpError(null);
+    setTotpLoading(true);
+    try {
+      await disableTotp({ code: totpCode }).unwrap();
+      setTotpEnabled(false);
+      setTotpStep('idle');
+      setTotpCode('');
+      showSuccessToast('Authenticator app removed successfully.');
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string } };
+      setTotpError(apiError?.data?.message || 'Invalid code. Please try again.');
+    } finally {
+      setTotpLoading(false);
     }
   };
 
@@ -1523,12 +1597,12 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
-  const loyaltyTier: MemberTier = rankToTier(profileData?.rank ?? 0);
+  const loyaltyTier: MemberTier = rankToTier(accountSnapshot?.loyalty?.rank ?? 0);
 
   const accountStats = [
-    { label: 'Orders', value: '14', Icon: Icon.Package, onClick: () => router.push('/orders') },
-    { label: 'Wishlist', value: '27', Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
-    { label: 'Reviews', value: '9', Icon: Icon.Activity, onClick: () => {} },
+    { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push('/orders') },
+    { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
+    { label: 'Reviews', value: String(accountSnapshot?.reviews?.total ?? 0), Icon: Icon.Activity, onClick: () => {} },
     { label: 'Loyalty', value: loyaltyTier, Icon: Icon.Shield, onClick: () => {} },
   ];
 
@@ -2086,6 +2160,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     @{form.username}
                   </span>
                 )}
+
+                {/* Account stats from snapshot */}
+                <div className="mt-3 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-gray-400">
+                  {accountSnapshot?.loyalty?.join_date && (
+                    <span>Joined {new Date(accountSnapshot.loyalty.join_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  )}
+                  {accountSnapshot?.loyalty?.referral_count > 0 && (
+                    <span>{accountSnapshot.loyalty.referral_count} referrals</span>
+                  )}
+                </div>
 
                 {isUploadingAvatar && (
                   <p className="mt-2 text-xs text-sky-500 font-medium animate-pulse">Uploading photo...</p>
@@ -2721,6 +2805,299 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       <Toggle checked={prefs.twoFactorEnabled} onChange={handleToggleTwoFactor} disabled={isUpdatingTwoFactor} />
                     </div>
                   </div>
+
+                  {/* Authenticator App (TOTP) */}
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Authenticator App (TOTP)</h3>
+                        {/* Info icon inline next to label */}
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            aria-label="Learn about TOTP"
+                            className="h-5 w-5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-700 flex items-center justify-center text-slate-400 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:border-sky-300 dark:hover:border-sky-700 transition-colors"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="h-2.5 w-2.5">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="16" x2="12" y2="12" />
+                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                          </button>
+                          {/* Tooltip panel */}
+                          <div className="pointer-events-none absolute left-0 top-7 z-50 w-72 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 shadow-xl shadow-slate-200/60 dark:shadow-black/40 px-4 py-4 space-y-3">
+                              <p className="text-xs font-semibold text-sky-700 dark:text-sky-400">What is a TOTP / Authenticator App?</p>
+                              <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed">
+                                A <span className="font-medium text-slate-700 dark:text-gray-300">Time-based One-Time Password (TOTP)</span> is a 6-digit code your app generates every 30 seconds. Because it changes constantly, it cannot be reused or stolen.
+                              </p>
+                              <div>
+                                <p className="text-xs font-semibold text-sky-700 dark:text-sky-400 mb-1.5">Why is it better than SMS?</p>
+                                <ul className="text-xs text-slate-600 dark:text-gray-400 space-y-1.5 leading-relaxed">
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">Works offline</span> — no signal needed.</span></li>
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">SIM-swap proof</span> — can&apos;t be hijacked via your phone number.</span></li>
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">No interception</span> — codes never travel over the network.</span></li>
+                                  <li className="flex gap-2"><span className="text-emerald-500 shrink-0">✓</span><span><span className="font-medium text-slate-700 dark:text-gray-300">Expires in 30 s</span> — useless moments after it&apos;s seen.</span></li>
+                                </ul>
+                              </div>
+                              <p className="text-[11px] text-slate-400 dark:text-gray-500">Apps: Google Authenticator · Authy · Microsoft Authenticator · 1Password</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                        Use Google Authenticator, Authy, or any TOTP-compatible app to generate sign-in codes.
+                      </p>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {totpError && (
+                        <motion.div
+                          key="totp-error"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="mb-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800"
+                        >
+                          <Icon.Warning className="h-4 w-4 shrink-0" />
+                          {totpError}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {totpStep === 'idle' && !totpEnabled && (
+                      <button
+                        type="button"
+                        onClick={handleInitiateTotpSetup}
+                        disabled={totpLoading}
+                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-sky-200"
+                      >
+                        {totpLoading ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Setting up...
+                          </>
+                        ) : 'Set Up Authenticator App'}
+                      </button>
+                    )}
+
+
+                    {totpStep === 'idle' && totpEnabled && (
+                      <div className="flex items-center justify-between gap-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <Icon.Shield className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Authenticator App Active</p>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">Your account is protected with TOTP codes.</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setTotpStep('confirm-disable'); setTotpCode(''); setTotpError(null); }}
+                          className="flex-shrink-0 text-xs font-semibold text-slate-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+
+                    {totpStep === 'confirm-disable' && (
+                      <motion.div
+                        key="totp-disable"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Enter 6-digit code to confirm</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={totpCode}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                              setTotpCode(v);
+                              setTotpError(null);
+                            }}
+                            placeholder="Enter 6-digit code"
+                            maxLength={6}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800/50 focus:border-red-300 dark:focus:border-red-600 transition-colors font-mono tracking-widest"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleDisableTotp}
+                            disabled={totpLoading || totpCode.length !== 6}
+                            className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {totpLoading ? (
+                              <>
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Removing...
+                              </>
+                            ) : 'Confirm Remove'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setTotpStep('idle'); setTotpCode(''); setTotpError(null); }}
+                            disabled={totpLoading}
+                            className="text-sm font-medium text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* TOTP Setup Modal — fixed to top of viewport */}
+                  <AnimatePresence>
+                    {totpModalOpen && totpSetupData && (
+                      <>
+                        <motion.div
+                          key="totp-modal-backdrop"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm"
+                          onClick={() => { if (!totpLoading) { setTotpModalOpen(false); setTotpSetupData(null); setTotpCode(''); setTotpError(null); } }}
+                        />
+                        <motion.div
+                          key="totp-modal-panel"
+                          initial={{ opacity: 0, y: -32 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -32 }}
+                          transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                          className="fixed inset-x-0 top-0 z-[301] mx-auto w-full max-w-lg overflow-y-auto max-h-[92vh] bg-white dark:bg-gray-800 rounded-b-2xl shadow-2xl shadow-slate-900/20"
+                        >
+                          {/* Modal header */}
+                          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-5 py-4">
+                            <div>
+                              <h3 className="text-base font-bold text-slate-900 dark:text-white">Set Up Authenticator App</h3>
+                              <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Follow the steps below to link your app.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => { if (!totpLoading) { setTotpModalOpen(false); setTotpSetupData(null); setTotpCode(''); setTotpError(null); } }}
+                              disabled={totpLoading}
+                              className="h-8 w-8 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-40"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* Modal body */}
+                          <div className="px-5 py-5 space-y-6">
+                            {/* Error */}
+                            <AnimatePresence>
+                              {totpError && (
+                                <motion.div
+                                  key="totp-modal-error"
+                                  initial={{ opacity: 0, y: -6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -6 }}
+                                  className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800"
+                                >
+                                  <Icon.Warning className="h-4 w-4 shrink-0" />
+                                  {totpError}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            {/* Step 1 */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Step 1 — Install an authenticator app</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400">Download any of these free apps:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { name: 'Google Authenticator', android: 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2', ios: 'https://apps.apple.com/app/google-authenticator/id388497605' },
+                                  { name: 'Authy', android: 'https://play.google.com/store/apps/details?id=com.authy.authy', ios: 'https://apps.apple.com/app/authy/id494168017' },
+                                  { name: 'Microsoft Authenticator', android: 'https://play.google.com/store/apps/details?id=com.azure.authenticator', ios: 'https://apps.apple.com/app/microsoft-authenticator/id983156458' },
+                                ].map((app) => (
+                                  <div key={app.name} className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-900 px-3 py-1.5">
+                                    <span className="text-xs font-medium text-slate-700 dark:text-gray-300">{app.name}</span>
+                                    <a href={app.android} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline">Android</a>
+                                    <span className="text-slate-300 dark:text-slate-600 text-[10px]">·</span>
+                                    <a href={app.ios} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:underline">iOS</a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Step 2 */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Step 2 — Scan the QR code</p>
+                              <p className="text-xs text-slate-500 dark:text-gray-400">Open your authenticator app and scan the QR code to link your account.</p>
+                              <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white p-4 w-fit">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={totpSetupData.qr_code_url} alt="TOTP QR Code" className="h-40 w-40 object-contain" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Or enter this key manually</label>
+                                <div className="flex items-center gap-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-900 px-3.5 py-2.5">
+                                  <code className="flex-1 text-sm font-mono text-slate-800 dark:text-gray-200 tracking-widest break-all select-all">{totpSetupData.secret}</code>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Step 3 */}
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Step 3 — Enter the 6-digit code</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={totpCode}
+                                onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 6); setTotpCode(v); setTotpError(null); }}
+                                placeholder="Enter 6-digit code"
+                                maxLength={6}
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600 transition-colors font-mono tracking-widest"
+                              />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-3 pb-1">
+                              <button
+                                type="button"
+                                onClick={handleVerifyTotp}
+                                disabled={totpLoading || totpCode.length !== 6}
+                                className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-sky-200"
+                              >
+                                {totpLoading ? (
+                                  <>
+                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Verifying...
+                                  </>
+                                ) : 'Verify & Enable'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { if (!totpLoading) { setTotpModalOpen(false); setTotpSetupData(null); setTotpCode(''); setTotpError(null); } }}
+                                disabled={totpLoading}
+                                className="text-sm font-medium text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
 
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
                     <div className="mb-4">

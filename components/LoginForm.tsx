@@ -107,76 +107,6 @@ const parsePasskeyError = (error: unknown): string => {
     return 'Passkey sign-in failed.'
 }
 
-// Facebook OAuth popup handler for login
-type FacebookAuthResult = {
-    success: true;
-    access_token: string;
-    provider_id: string;
-    email: string;
-    name: string;
-} | {
-    success: false;
-    error: string;
-};
-
-const openFacebookAuthPopup = (): Promise<FacebookAuthResult> => {
-    return new Promise((resolve) => {
-        const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
-        if (!appId) {
-            resolve({ success: false, error: 'Facebook App ID not configured' });
-            return;
-        }
-
-        const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/auth/facebook/callback` : '';
-        const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
-            `client_id=${appId}` +
-            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-            `&response_type=token` +
-            `&scope=email,public_profile`;
-
-        const width = 500;
-        const height = 600;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
-
-        const popup = window.open(
-            authUrl,
-            'facebookAuth',
-            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
-        );
-
-        if (!popup) {
-            resolve({ success: false, error: 'Popup blocked. Please allow popups for this site.' });
-            return;
-        }
-
-        const broadcast = new BroadcastChannel('facebook_auth');
-
-        const cleanup = () => {
-            broadcast.close();
-            clearInterval(checkClosed);
-        };
-
-        broadcast.onmessage = (event) => {
-            const { error, access_token, provider_id, email, name } = event.data ?? {};
-            cleanup();
-            if (error) {
-                resolve({ success: false, error });
-            } else if (access_token && provider_id && email) {
-                resolve({ success: true, access_token, provider_id, email, name: name || email.split('@')[0] });
-            } else {
-                resolve({ success: false, error: 'Failed to get Facebook credentials' });
-            }
-        };
-
-        const checkClosed = setInterval(() => {
-            if (popup.closed) {
-                cleanup();
-                resolve({ success: false, error: 'Authentication cancelled' });
-            }
-        }, 500);
-    });
-};
 
 // Google OAuth popup handler for login
 type GoogleAuthResult = {
@@ -322,7 +252,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     const [mfaChallengeToken, setMfaChallengeToken] = useState('');
     const [isMounted, setIsMounted] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-    const [isFacebookLoading, setIsFacebookLoading] = useState(false);
+    const [showTotpField, setShowTotpField] = useState(false);
+    const [totpLoginCode, setTotpLoginCode] = useState('');
     const [form, setForm] = useState({
         email: '',
         password: '',
@@ -423,6 +354,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             password: form.password,
             mfa_challenge_token: mfaChallengeToken || undefined,
             cf_turnstile_response: turnstileToken || undefined,
+            totp_code: totpLoginCode.trim() || undefined,
             redirect: false,
             callbackUrl: callbackPath,
         })
@@ -671,14 +603,15 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                 return
             }
 
-            const session = await getSession()
+            const sessionReady = await waitForAuthenticatedSession()
 
-            if (!session?.user?.accessToken) {
+            if (!sessionReady) {
                 router.push('/auth/google-not-connected')
                 return
             }
 
-            const passwordChangeRequired = Boolean(session.user?.passwordChangeRequired)
+            const session = await getSession()
+            const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired)
 
             if (updateSession) {
                 await updateSession()
@@ -691,15 +624,8 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             }
 
             showSuccessToast('Google sign-in successful. Welcome back!')
-            const sessionReady = await waitForAuthenticatedSession()
             const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
-            router.replace(targetPath)
-            router.refresh()
-            if (!sessionReady && typeof window !== 'undefined') {
-                window.setTimeout(() => {
-                    window.location.replace(targetPath)
-                }, 250)
-            }
+            window.location.replace(targetPath)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.'
             setError(message)
@@ -709,85 +635,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
         }
     }
 
-    const handleFacebookSignIn = async () => {
-        setError('')
-        setIsFacebookLoading(true)
 
-        try {
-            const result = await openFacebookAuthPopup()
-
-            if (!result.success) {
-                setError(result.error)
-                showErrorToast(result.error)
-                return
-            }
-
-            clearAccessTokenCache()
-            const existingSession = await getSession()
-            if (existingSession) {
-                await signOut({ redirect: false })
-            }
-
-            const signInResult = await signIn('credentials', {
-                facebook_access_token: result.access_token,
-                facebook_provider_id: result.provider_id,
-                email: result.email,
-                password: 'facebook_oauth',
-                redirect: false,
-                callbackUrl: callbackPath,
-            })
-
-            if (!signInResult?.ok) {
-                const rawError = String(signInResult?.error ?? '').trim()
-
-                if (rawError === 'FACEBOOK_NOT_LINKED') {
-                    router.push('/auth/facebook-not-connected')
-                    return
-                }
-
-                const message = rawError || 'Facebook sign-in failed. Please try again.'
-                setError(message)
-                showErrorToast(message)
-                return
-            }
-
-            const session = await getSession()
-
-            if (!session?.user?.accessToken) {
-                router.push('/auth/facebook-not-connected')
-                return
-            }
-
-            const passwordChangeRequired = Boolean(session.user?.passwordChangeRequired)
-
-            if (updateSession) {
-                await updateSession()
-            }
-
-            if (passwordChangeRequired) {
-                showInfoToast('Create a new password first before continuing to the shop.')
-                onRequirePasswordChange()
-                return
-            }
-
-            showSuccessToast('Facebook sign-in successful. Welcome back!')
-            const sessionReady = await waitForAuthenticatedSession()
-            const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
-            router.replace(targetPath)
-            router.refresh()
-            if (!sessionReady && typeof window !== 'undefined') {
-                window.setTimeout(() => {
-                    window.location.replace(targetPath)
-                }, 250)
-            }
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Facebook sign-in failed. Please try again.'
-            setError(message)
-            showErrorToast(message)
-        } finally {
-            setIsFacebookLoading(false)
-        }
-    }
 
     useEffect(() => {
         if (!mfaChallengeToken || !apiBaseUrl) return
@@ -863,35 +711,69 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                         Your account has been banned. Please contact support for assistance.
                     </div>
                 )}
-                <FloatingInput
-                    id="login-email"
-                    type="text"
-                    label="Username or Email"
-                    value={form.email}
-                    onChange={set('email')}
-                    autoComplete="username email"
-                />
+                {!showTotpField && (
+                    <>
+                        <FloatingInput
+                            id="login-email"
+                            type="text"
+                            label="Username or Email"
+                            value={form.email}
+                            onChange={set('email')}
+                            autoComplete="username email"
+                        />
 
-                <div>
-                    <FloatingInput
-                        id="login-password"
-                        type={showPass ? 'text' : 'password'}
-                        label="Password"
-                        value={form.password}
-                        onChange={set('password')}
-                        autoComplete="current-password"
-                        endContent={(
+                        <div>
+                            <FloatingInput
+                                id="login-password"
+                                type={showPass ? 'text' : 'password'}
+                                label="Password"
+                                value={form.password}
+                                onChange={set('password')}
+                                autoComplete="current-password"
+                                endContent={(
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPass(p => !p)}
+                                        className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+                                    >
+                                        <EyeIcon open={showPass} />
+                                    </button>
+                                )}
+                            />
+                            <p className="mt-1.5 text-[11px] text-gray-400 dark:text-white/55">Passwords are case-sensitive.</p>
+                        </div>
+                    </>
+                )}
+
+                {showTotpField && (
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between mb-1">
+                            <label htmlFor="login-totp" className="block text-xs font-semibold text-gray-600 dark:text-white/80">
+                                Authenticator Code
+                            </label>
                             <button
                                 type="button"
-                                onClick={() => setShowPass(p => !p)}
-                                className="text-gray-400 dark:text-white/60 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+                                onClick={() => { setShowTotpField(false); setTotpLoginCode(''); resetTurnstile(); }}
+                                className="text-[11px] font-medium text-gray-400 dark:text-white/50 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
                             >
-                                <EyeIcon open={showPass} />
+                                ← Back to sign in
                             </button>
-                        )}
-                    />
-                    <p className="mt-1.5 text-[11px] text-gray-400 dark:text-white/55">Passwords are case-sensitive.</p>
-                </div>
+                        </div>
+                        <input
+                            id="login-totp"
+                            type="text"
+                            inputMode="numeric"
+                            value={totpLoginCode}
+                            onChange={(e) => setTotpLoginCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="6-digit code"
+                            maxLength={6}
+                            autoComplete="one-time-code"
+                            autoFocus
+                            className="h-11 w-full rounded-[18px] border border-gray-300 dark:border-white/18 bg-white dark:bg-white/12 px-4 text-sm text-gray-900 dark:text-white outline-none transition-all duration-200 focus:border-sky-400 dark:focus:border-sky-400/60 focus:bg-white dark:focus:bg-white/18 font-mono tracking-widest text-center"
+                        />
+                        <p className="text-[11px] text-gray-400 dark:text-white/55">Enter the 6-digit code from your authenticator app.</p>
+                    </div>
+                )}
 
                 {mfaChallengeToken ? (
                     <div className="">
@@ -949,23 +831,25 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                     </div>
                 ) : null}
 
-                <div className="flex items-center justify-between text-xs">
-                    <label className="flex items-center gap-2 text-gray-500 dark:text-white/70 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={form.rememberMe}
-                            onChange={(e) => setForm((prev) => ({ ...prev, rememberMe: e.target.checked }))}
-                            className="h-4 w-4 rounded border-white/30 bg-white/10 accent-sky-500"
-                        />
-                        <span className="text-xs">Remember me</span>
-                    </label>
-                    <Link
-                        href="/forgot-password"
-                        className="text-sky-500 hover:text-sky-400 font-semibold transition-colors"
-                    >
-                        Forgot Password
-                    </Link>
-                </div>
+                {!showTotpField && (
+                    <div className="flex items-center justify-between text-xs">
+                        <label className="flex items-center gap-2 text-gray-500 dark:text-white/70 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={form.rememberMe}
+                                onChange={(e) => setForm((prev) => ({ ...prev, rememberMe: e.target.checked }))}
+                                className="h-4 w-4 rounded border-white/30 bg-white/10 accent-sky-500"
+                            />
+                            <span className="text-xs">Remember me</span>
+                        </label>
+                        <Link
+                            href="/forgot-password"
+                            className="text-sky-500 hover:text-sky-400 font-semibold transition-colors"
+                        >
+                            Forgot Password
+                        </Link>
+                    </div>
+                )}
 
                 {isMounted && turnstileSiteKey && !mfaChallengeToken && (
                     <div className="flex justify-center">
@@ -975,7 +859,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
 
                 <button
                     type="submit"
-                    disabled={isLoading || isPasskeyLoading || isGoogleLoading || isFacebookLoading || (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
+                    disabled={isLoading || isPasskeyLoading || isGoogleLoading || (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
                     className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] bg-sky-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-600 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (
@@ -987,7 +871,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                             <span>Signing in...</span>
                         </>
                     ) : (
-                        <span>{mfaChallengeToken ? 'Continue Sign in' : 'Sign in'}</span>
+                        <span>{mfaChallengeToken ? 'Continue Sign in' : showTotpField ? 'Verify & Sign in' : 'Sign in'}</span>
                     )}
                 </button>
 
@@ -1012,7 +896,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                             }
                             handleGoogleSignIn()
                         }}
-                        disabled={isLoading || isPasskeyLoading || isGoogleLoading || isFacebookLoading}
+                        disabled={isLoading || isPasskeyLoading || isGoogleLoading}
                         className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                     >
                         {isGoogleLoading ? (
@@ -1031,31 +915,23 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                         <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Google</span>
                     </button>
 
-                    {/* Facebook */}
-                    <button
+                    {/* Authenticator App (TOTP) — temporarily disabled */}
+                    {/* <button
                         type="button"
                         onClick={() => {
-                            if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
-                                setError('Please complete the verification checkbox to sign in with Facebook.')
-                                return
-                            }
-                            handleFacebookSignIn()
+                            setShowTotpField((v) => !v)
+                            setTotpLoginCode('')
                         }}
-                        disabled={isLoading || isPasskeyLoading || isGoogleLoading || isFacebookLoading}
-                        className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                        disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                        className={`flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border transition-colors disabled:opacity-60 ${showTotpField ? 'border-sky-400 bg-sky-50 dark:bg-sky-900/20 dark:border-sky-700' : 'border-slate-200 bg-white hover:bg-slate-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700'}`}
                     >
-                        {isFacebookLoading ? (
-                            <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        ) : (
-                            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
-                                <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
-                            </svg>
-                        )}
-                        <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Facebook</span>
-                    </button>
+                        <svg className={`h-5 w-5 ${showTotpField ? 'text-sky-500' : 'text-slate-500 dark:text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="5" y="2" width="14" height="20" rx="2" />
+                            <path d="M12 18h.01" />
+                            <path d="M9 7h6M9 11h4" />
+                        </svg>
+                        <span className={`text-xs font-medium ${showTotpField ? 'text-sky-600 dark:text-sky-400' : 'text-slate-600 dark:text-gray-300'}`}>Authenticator</span>
+                    </button> */}
 
                     {/* Passkey */}
                     {isMounted && (
@@ -1068,7 +944,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                                 }
                                 handlePasskeySignIn()
                             }}
-                            disabled={isLoading || isPasskeyLoading || isGoogleLoading || isFacebookLoading}
+                            disabled={isLoading || isPasskeyLoading || isGoogleLoading}
                             className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                         >
                             {isPasskeyLoading ? (
