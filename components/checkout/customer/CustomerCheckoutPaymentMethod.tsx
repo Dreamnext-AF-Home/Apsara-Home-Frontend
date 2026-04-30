@@ -49,7 +49,7 @@ export default function CustomerCheckoutPaymentMethod({
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700  p-6">
       <h2 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2.5">
-        <div className="h-6 w-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center shrink-0">3</div>
+        <div className="h-6 w-6 rounded-full bg-sky-500 text-white text-xs font-bold flex items-center justify-center shrink-0">3</div>
         Payment Method
       </h2>
 
@@ -96,7 +96,7 @@ export default function CustomerCheckoutPaymentMethod({
               key={method.id}
               onClick={() => onSelect(method.id)}
               className={`text-left rounded-2xl border-2 p-4 transition-all flex items-center gap-3 ${
-                selected ? 'border-orange-400 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/20 ' : 'border-slate-200 dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-700 bg-white dark:bg-slate-900'
+                selected ? 'border-sky-400 dark:border-sky-600 bg-sky-50 dark:bg-sky-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-sky-200 dark:hover:border-sky-700 bg-white dark:bg-slate-900'
               }`}
             >
               <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0  p-1.5 overflow-hidden">
@@ -122,7 +122,7 @@ export default function CustomerCheckoutPaymentMethod({
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{method.note}</p>
               </div>
               <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                selected ? 'border-orange-500 dark:border-orange-400 bg-orange-500 dark:bg-orange-500' : 'border-slate-300 dark:border-slate-600'
+                selected ? 'border-sky-500 dark:border-sky-400 bg-sky-500 dark:bg-sky-500' : 'border-slate-300 dark:border-slate-600'
               }`}>
                 {selected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-full bg-white" />}
               </div>
