@@ -489,8 +489,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const { data: accountSnapshot } = useAccountSnapshotQuery(undefined, {
     skip: !isCustomerSession,
   });
-  const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(data?.id, {
-    skip: !isCustomerSession || !data?.id,
+  const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(undefined, {
+    skip: !isCustomerSession,
     refetchOnMountOrArgChange: true,
     refetchOnFocus: true,
     refetchOnReconnect: true,
@@ -606,6 +606,34 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const profileData = data ?? initialProfile;
   const effectiveRank = profileData?.rank ?? accountSnapshot?.loyalty?.rank ?? 0;
   const loyaltyTier: MemberTier = rankToTier(effectiveRank);
+  const referralSummary = useMemo(() => {
+    const directCount = Math.max(
+      referralTree?.summary?.direct_count ?? 0,
+      accountSnapshot?.loyalty?.referral_count ?? 0,
+    );
+    const secondLevelCount = referralTree?.summary?.second_level_count ?? 0;
+    const totalNetwork = Math.max(referralTree?.summary?.total_network ?? 0, directCount);
+    const totalPv = (referralTree?.summary as { total_pv?: number } | undefined)?.total_pv ?? 0;
+
+    return {
+      directCount,
+      secondLevelCount,
+      totalNetwork,
+      totalPv,
+    };
+  }, [
+    accountSnapshot?.loyalty?.referral_count,
+    referralTree?.summary,
+  ]);
+  const referralChildren = useMemo(() => {
+    const treeChildren = referralTree?.children ?? [];
+    if (treeChildren.length > 0) return treeChildren;
+
+    return accountSnapshot?.loyalty?.direct_referrals ?? [];
+  }, [
+    accountSnapshot?.loyalty?.direct_referrals,
+    referralTree?.children,
+  ]);
   const celebrateLevelUp = searchParams.get('celebrate') === 'level-up';
   const celebrateRank = Number(searchParams.get('rank') ?? effectiveRank ?? 0);
   const celebrateTier: MemberTier = rankToTier(Number.isFinite(celebrateRank) ? celebrateRank : effectiveRank);
@@ -748,14 +776,14 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   }, [referralMsg]);
 
   useEffect(() => {
-    const directChildren = referralTree?.children ?? [];
+    const directChildren = referralChildren;
     if (!directChildren.length) return;
     const next: Record<number, boolean> = {};
     directChildren.forEach((node) => {
       next[node.id] = true;
     });
     setExpandedTreeNodes(next);
-  }, [referralTree?.children]);
+  }, [referralChildren]);
 
   const hasChanges = useMemo(
     () =>
@@ -1187,7 +1215,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const hasTreeFilters = treeSearchQuery.trim() !== '' || treeStatusFilter !== 'all';
 
   const filteredReferralChildren = useMemo(() => {
-    const sourceNodes = referralTree?.children ?? [];
+    const sourceNodes = referralChildren;
     const normalizedSearch = treeSearchQuery.trim().toLowerCase();
 
     const matchesNode = (node: ReferralTreeNode) => {
@@ -1214,7 +1242,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     };
 
     return filterNodes(sourceNodes);
-  }, [referralTree?.children, treeSearchQuery, treeStatusFilter]);
+  }, [referralChildren, treeSearchQuery, treeStatusFilter]);
 
   const handleExpandAllTreeNodes = () => {
     const allIds = collectTreeNodeIds(filteredReferralChildren);
@@ -2331,22 +2359,22 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         <p className="text-xs font-bold text-slate-700 dark:text-gray-300">Affiliate Network</p>
                         {!isReferralTreeLoading && (
                           <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700 px-2 py-0.5 rounded-full">
-                            {referralTree?.summary?.total_network ?? 0} members
+                            {referralSummary.totalNetwork} members
                           </span>
                         )}
                       </div>
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         <div className="rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-gray-900 px-2 py-2.5 text-center">
                           <p className="text-[10px] text-slate-500 dark:text-gray-400 font-medium mb-0.5">Direct</p>
-                          <p className="text-base font-bold text-slate-800 dark:text-gray-200">{referralTree?.summary?.direct_count ?? 0}</p>
+                          <p className="text-base font-bold text-slate-800 dark:text-gray-200">{referralSummary.directCount}</p>
                         </div>
                         <div className="rounded-xl border border-sky-200 dark:border-sky-800 dark:bg-sky-900/30 px-2 py-2.5 text-center">
                           <p className="text-[10px] text-sky-500 dark:text-sky-400 font-medium mb-0.5">Level 2</p>
-                          <p className="text-base font-bold text-sky-700 dark:text-sky-300">{referralTree?.summary?.second_level_count ?? 0}</p>
+                          <p className="text-base font-bold text-sky-700 dark:text-sky-300">{referralSummary.secondLevelCount}</p>
                         </div>
                         <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 dark:bg-emerald-900/30 px-2 py-2.5 text-center">
                           <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-medium mb-0.5">Total</p>
-                          <p className="text-base font-bold text-emerald-700 dark:text-emerald-300">{referralTree?.summary?.total_network ?? 0}</p>
+                          <p className="text-base font-bold text-emerald-700 dark:text-emerald-300">{referralSummary.totalNetwork}</p>
                         </div>
                       </div>
                       <button
@@ -3545,10 +3573,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     {/* Stats row */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
                       {[
-                        { label: 'Direct Referrals', value: referralTree?.summary?.direct_count ?? 0, border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-600 dark:text-sky-400', dbg: 'dark:bg-sky-900/30', val: 'text-sky-800 dark:text-sky-300' },
-                        { label: 'Level 2', value: referralTree?.summary?.second_level_count ?? 0, border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-600 dark:text-sky-400', dbg: 'dark:bg-sky-900/30', val: 'text-sky-800 dark:text-sky-300' },
-                        { label: 'Total Network', value: referralTree?.summary?.total_network ?? 0, border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-600 dark:text-emerald-400', dbg: 'dark:bg-emerald-900/30', val: 'text-emerald-800 dark:text-emerald-300' },
-                        { label: 'Total PV Earned', value: (referralTree?.summary as { total_pv?: number } | undefined)?.total_pv ?? 0, border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-600 dark:text-sky-400', dbg: 'dark:bg-sky-900/30', val: 'text-sky-800 dark:text-sky-300' },
+                        { label: 'Direct Referrals', value: referralSummary.directCount, border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-600 dark:text-sky-400', dbg: 'dark:bg-sky-900/30', val: 'text-sky-800 dark:text-sky-300' },
+                        { label: 'Level 2', value: referralSummary.secondLevelCount, border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-600 dark:text-sky-400', dbg: 'dark:bg-sky-900/30', val: 'text-sky-800 dark:text-sky-300' },
+                        { label: 'Total Network', value: referralSummary.totalNetwork, border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-600 dark:text-emerald-400', dbg: 'dark:bg-emerald-900/30', val: 'text-emerald-800 dark:text-emerald-300' },
+                        { label: 'Total PV Earned', value: referralSummary.totalPv, border: 'border-sky-200 dark:border-sky-800', text: 'text-sky-600 dark:text-sky-400', dbg: 'dark:bg-sky-900/30', val: 'text-sky-800 dark:text-sky-300' },
                       ].map((stat) => (
                         <div key={stat.label} className={`rounded-xl border ${stat.border} ${stat.dbg} px-4 py-3`}>
                           <p className={`text-[11px] font-medium ${stat.text} mb-1`}>{stat.label}</p>
@@ -3696,10 +3724,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                     <Icon.Network className="h-6 w-6 text-slate-400 dark:text-gray-500" />
                                   </div>
                                   <p className="text-sm font-semibold text-slate-700 dark:text-gray-300">
-                                    {(referralTree?.children?.length ?? 0) > 0 ? 'No matches found' : 'No referrals yet'}
+                                    {referralChildren.length > 0 ? 'No matches found' : 'No referrals yet'}
                                   </p>
                                   <p className="text-xs text-slate-400 dark:text-gray-500 mt-1">
-                                    {(referralTree?.children?.length ?? 0) > 0 ? 'Try a different search or filter' : 'Share your referral link to start building your network'}
+                                    {referralChildren.length > 0 ? 'Try a different search or filter' : 'Share your referral link to start building your network'}
                                   </p>
                                 </div>
                               )}
