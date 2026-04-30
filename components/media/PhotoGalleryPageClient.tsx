@@ -10,16 +10,7 @@ import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
 import { Skeleton } from '@heroui/react/skeleton'
 
 type PhotoGalleryPageClientProps = {
-  initialCategories?: any[]
-}
-
-type GalleryItem = {
-  id: number | string
-  title: string
-  subtitle: string
-  image_url: string
-  category?: string
-  is_active?: boolean
+  initialCategories?: unknown[]
 }
 
 const SAMPLE_GALLERY_ITEMS = [
@@ -126,19 +117,28 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const { data, isLoading } = useGetPublicWebPageItemsQuery('photo-gallery')
 
-  const apiItems = data?.items?.filter((item) => item.is_active) ?? []
-  const galleryItems = apiItems.length > 0 ? apiItems : SAMPLE_GALLERY_ITEMS
+  const galleryItems = data?.items?.filter((item) => item.is_active) ?? []
 
   // Extract unique categories
   const categories = useMemo(() => {
-    const cats = new Set(galleryItems.map((item) => ('category' in item && item.category ? item.category : 'Other')))
+    const cats = new Set(
+      galleryItems.map((item) => {
+        const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category : ''
+        if (payloadCategory.trim() !== '') return payloadCategory
+        return 'category' in item && item.category ? item.category : 'Other'
+      }),
+    )
     return ['All', ...Array.from(cats)].sort()
   }, [galleryItems])
 
   // Filter items by category
   const filteredItems = useMemo(() => {
     if (selectedCategory === 'All') return galleryItems
-    return galleryItems.filter((item) => ('category' in item ? item.category === selectedCategory : false))
+    return galleryItems.filter((item) => {
+      const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category : ''
+      const category = payloadCategory.trim() !== '' ? payloadCategory : ('category' in item ? item.category : '')
+      return category === selectedCategory
+    })
   }, [galleryItems, selectedCategory])
 
   const selectedImage = galleryItems.find(item => item.id === selectedImageId)
@@ -276,7 +276,9 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                       <div className="p-4">
                         <div className="mb-2">
                           <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
-                            {'category' in item && item.category ? item.category : 'Gallery'}
+                            {typeof item.payload?.category === 'string' && item.payload.category.trim() !== ''
+                              ? item.payload.category
+                              : ('category' in item && item.category ? item.category : 'Gallery')}
                           </span>
                         </div>
                         <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
@@ -339,13 +341,15 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                 {selectedImage.subtitle && (
                   <p className="mt-2 text-gray-300 text-lg">{selectedImage.subtitle}</p>
                 )}
-                {'category' in selectedImage && selectedImage.category && (
+                {(typeof selectedImage.payload?.category === 'string' && selectedImage.payload.category.trim() !== '') || ('category' in selectedImage && selectedImage.category) ? (
                   <div className="mt-3">
                     <span className="inline-block px-3 py-1 rounded-lg bg-sky-600 text-sm font-medium">
-                      {selectedImage.category as string}
+                      {typeof selectedImage.payload?.category === 'string' && selectedImage.payload.category.trim() !== ''
+                        ? selectedImage.payload.category
+                        : (selectedImage.category as string)}
                     </span>
                   </div>
-                )}
+                ) : null}
                 <p className="mt-3 text-gray-400 text-sm">
                   Image {selectedIndex + 1} of {filteredItems.length}
                 </p>

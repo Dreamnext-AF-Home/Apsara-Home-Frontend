@@ -30,6 +30,7 @@ const REMEMBER_USER_EMAIL_KEY = 'afhome_user_login'
 const BLOCKED_KEYWORDS = ['banned', 'blocked', 'contact support']
 const TWO_FACTOR_PREFIX = '2FA_REQUIRED|'
 const MFA_APPROVAL_PREFIX = 'MFA_APPROVAL_REQUIRED|'
+const LOCKOUT_PREFIX = 'LOCKOUT|'
 
 function parseTwoFactorError(rawMessage: string): { token: string; message: string } | null {
     if (!rawMessage.startsWith(TWO_FACTOR_PREFIX)) return null
@@ -48,6 +49,17 @@ function parseMfaApprovalError(rawMessage: string): { token: string; message: st
     return {
         token: token.trim(),
         message: (rest.join('|') || 'Approve this login from your email first.').trim(),
+    }
+}
+
+function parseLockoutError(rawMessage: string): { seconds: number; message: string } | null {
+    if (!rawMessage.startsWith(LOCKOUT_PREFIX)) return null
+    const payload = rawMessage.slice(LOCKOUT_PREFIX.length)
+    const [secondsRaw = '0', ...rest] = payload.split('|')
+    const seconds = Number.parseInt(secondsRaw, 10)
+    return {
+        seconds: Number.isFinite(seconds) && seconds > 0 ? seconds : 1,
+        message: (rest.join('|') || 'Too many login attempts. Please try again later.').trim(),
     }
 }
 
@@ -252,6 +264,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     const [mfaChallengeToken, setMfaChallengeToken] = useState('');
     const [isMounted, setIsMounted] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [lockoutSeconds, setLockoutSeconds] = useState(0);
     const [showTotpField, setShowTotpField] = useState(false);
     const [totpLoginCode, setTotpLoginCode] = useState('');
     const [form, setForm] = useState({
@@ -268,6 +281,14 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     const turnstileRef = useRef<HTMLDivElement>(null)
     const widgetIdRef = useRef<string>('')
     const [turnstileToken, setTurnstileToken] = useState('')
+
+    useEffect(() => {
+        if (lockoutSeconds <= 0) return
+        const timer = window.setInterval(() => {
+            setLockoutSeconds((prev) => (prev > 1 ? prev - 1 : 0))
+        }, 1000)
+        return () => window.clearInterval(timer)
+    }, [lockoutSeconds])
 
     // Prevent hydration mismatch for Turnstile widget
     useEffect(() => {
@@ -397,6 +418,13 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             }
         } else {
             const rawError = String(result?.error ?? '').trim()
+            const lockout = parseLockoutError(rawError)
+            if (lockout) {
+                setLockoutSeconds(lockout.seconds)
+                setError('')
+                resetTurnstile()
+                return
+            }
             const mfaApproval = parseMfaApprovalError(rawError)
             if (mfaApproval) {
                 setMfaChallengeToken(mfaApproval.token)
@@ -423,6 +451,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (lockoutSeconds > 0) return
         await attemptSignIn('manual')
     };
 
@@ -701,9 +730,9 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             <p className="text-gray-500 dark:text-white/70 text-sm mb-7">Sign in to your AF Home account</p>
 
             <form className="space-y-4" onSubmit={handleSignIn}>
-                {error && (
+                {(error || lockoutSeconds > 0) && (
                     <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
-                        {error}
+                        {lockoutSeconds > 0 ? `Too many login attempts. Try again in ${lockoutSeconds} seconds.` : error}
                     </div>
                 )}
                 {!error && blockedFromRedirect && (
@@ -859,7 +888,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
 
                 <button
                     type="submit"
-                    disabled={isLoading || isPasskeyLoading || isGoogleLoading || (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
+                    disabled={isLoading || isPasskeyLoading || isGoogleLoading || lockoutSeconds > 0 || (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken)}
                     className="w-full h-11 flex items-center justify-center gap-3 rounded-[14px] bg-sky-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-600 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (
@@ -871,7 +900,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                             <span>Signing in...</span>
                         </>
                     ) : (
-                        <span>{mfaChallengeToken ? 'Continue Sign in' : showTotpField ? 'Verify & Sign in' : 'Sign in'}</span>
+                        <span>{lockoutSeconds > 0 ? `Try again in ${lockoutSeconds}s` : mfaChallengeToken ? 'Continue Sign in' : showTotpField ? 'Verify & Sign in' : 'Sign in'}</span>
                     )}
                 </button>
 
@@ -938,13 +967,17 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
                         <button
                             type="button"
                             onClick={() => {
+                                if (lockoutSeconds > 0) {
+                                    setError(`Too many login attempts. Try again in ${lockoutSeconds} seconds.`)
+                                    return
+                                }
                                 if (isMounted && !!turnstileSiteKey && !turnstileToken && !mfaChallengeToken) {
                                     setError('Please complete the verification checkbox to sign in with Passkey.')
                                     return
                                 }
                                 handlePasskeySignIn()
                             }}
-                            disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                            disabled={isLoading || isPasskeyLoading || isGoogleLoading || lockoutSeconds > 0}
                             className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
                         >
                             {isPasskeyLoading ? (

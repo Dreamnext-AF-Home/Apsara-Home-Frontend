@@ -1,5 +1,5 @@
 import { buildPageMetadata } from '@/app/seo'
-import UnderMaintenancePage from '@/components/superAdmin/UnderMaintenancePage'
+import AdminProjectPageMain from '@/components/superAdmin/project/AdminProjectPageMain'
 
 export const metadata = buildPageMetadata({
   title: 'Admin Project',
@@ -9,10 +9,5 @@ export const metadata = buildPageMetadata({
 })
 
 export default function AdminProjectPage() {
-  return (
-    <UnderMaintenancePage
-      title="Project"
-      description="Project workspace tools are still being developed."
-    />
-  )
+  return <AdminProjectPageMain />
 }
