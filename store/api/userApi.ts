@@ -225,6 +225,7 @@ export interface AccountSnapshot {
         pv_balance: number;
         cash_balance: number;
         referral_count: number;
+        direct_referrals?: ReferralTreeNode[];
         join_date: string;
         last_login: string | null;
     };
