@@ -7,6 +7,7 @@ import Loading from '@/components/Loading';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import OutlineButton from '@/components/ui/buttons/OutlineButton';
+import PrimaryButton from '@/components/ui/buttons/PrimaryButton';
 import type { Product, ProductVariant } from '@/store/api/productsApi';
 
 type CheckoutSummaryProduct = CategoryProduct | Product;
@@ -112,15 +113,15 @@ export default function CustomerCheckoutOrderSummary({
         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Order Summary</p>
 
         {/* Product */}
-        <div className="flex gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800 mb-4">
+        <div className="flex gap-3 p-3 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-200 dark:border-sky-800 mb-4">
           <div className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
             <Image src={product.image} alt={product.name} fill className="object-cover" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug line-clamp-2">{product.name}</p>
-            <p className="text-orange-500 font-extrabold text-sm mt-1">PHP {displayUnitPrice.toLocaleString()}</p>
+            <p className="text-sky-500 font-extrabold text-sm mt-1">PHP {displayUnitPrice.toLocaleString()}</p>
             <div className="flex flex-wrap gap-1 mt-1.5">
-              <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full">Qty: {quantity}</span>
+              <span className="px-2 py-0.5 bg-sky-100 text-sky-600 text-[10px] font-bold rounded-full">Qty: {quantity}</span>
               {selectedColor && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedColor}</span>}
               {selectedStyle && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedStyle}</span>}
               {selectedSize && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedSize}</span>}
@@ -177,7 +178,7 @@ export default function CustomerCheckoutOrderSummary({
                         onClick={() => handleVariantSelect(variant)}
                         className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
                           isSelected
-                            ? 'border-orange-500 bg-orange-50'
+                            ? 'border-sky-500 bg-sky-50'
                             : 'border-slate-200 bg-white hover:border-slate-400'
                         }`}
                       >
@@ -189,7 +190,7 @@ export default function CustomerCheckoutOrderSummary({
                             )}
                           </div>
                           {isSelected && (
-                            <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-4 h-4 text-sky-500" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -216,7 +217,7 @@ export default function CustomerCheckoutOrderSummary({
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-800 dark:text-white line-clamp-2">{item.name}</p>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600">Qty: {item.quantity}</span>
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-600">Qty: {item.quantity}</span>
                       {item.selectedColor ? <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">{item.selectedColor}</span> : null}
                       {item.selectedStyle ? <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">{item.selectedStyle}</span> : null}
                       {item.selectedSize ? <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">{item.selectedSize}</span> : null}
@@ -276,7 +277,7 @@ export default function CustomerCheckoutOrderSummary({
 
         <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
           <span className="font-bold text-slate-800 dark:text-white">Total</span>
-          <span className="font-extrabold text-orange-500 text-xl">PHP {displayTotal.toLocaleString()}</span>
+          <span className="font-extrabold text-sky-500 text-xl">PHP {displayTotal.toLocaleString()}</span>
         </div>
 
         <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -290,10 +291,10 @@ export default function CustomerCheckoutOrderSummary({
       </div>
 
       {/* Place Order CTA */}
-      <button
+      <PrimaryButton
         onClick={onSubmit}
         disabled={isCheckoutDisabled}
-        className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white py-4 text-sm font-bold transition-all border border-orange-600"
+        className="w-full !text-sm"
       >
         {loading ? (
           <><Loading size={16} /><span>Processing...</span></>
@@ -307,7 +308,7 @@ export default function CustomerCheckoutOrderSummary({
             Place Order · PHP {displayTotal.toLocaleString()}
           </>
         )}
-      </button>
+      </PrimaryButton>
 
       {/* Security note */}
       <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
