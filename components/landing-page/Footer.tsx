@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useGetPublicGeneralSettingsQuery } from '@/store/api/adminSettingsApi';
 import {
   Facebook,
@@ -37,11 +38,11 @@ const footerLinks = {
     { name: 'Rewards and Commissions', href: '/rewards-and-commissions' },
   ],
   support: [
-    { name: 'Contact Us', href: '/#contact' },
+    { name: 'Contact Us', href: '/contact-us' },
     { name: 'Our Branches', href: '/branches' },
     { name: 'FAQs', href: '/faq' },
-    { name: 'Shipping Info', href: '#' },
-    { name: 'Returns', href: '#' },
+    { name: 'Shipping Info', href: '/shipping-info' },
+    { name: 'Returns', href: '/returns' },
   ],
 };
 
@@ -64,6 +65,7 @@ const paymentLogos = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
   const { data } = useGetPublicGeneralSettingsQuery();
   const settings = data?.settings;
 
@@ -182,7 +184,11 @@ export default function Footer() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-gray-600 dark:text-white/70 hover:text-sky-500 dark:hover:text-sky-400 transition-colors text-sm"
+                    className={`transition-colors text-sm ${
+                      pathname === link.href
+                        ? 'text-sky-500 dark:text-sky-400 font-semibold'
+                        : 'text-gray-600 dark:text-white/70 hover:text-sky-500 dark:hover:text-sky-400'
+                    }`}
                   >
                     {link.name}
                   </Link>
@@ -200,7 +206,11 @@ export default function Footer() {
                   {link.href.startsWith('/') ? (
                     <Link
                       href={link.href}
-                      className="text-gray-600 dark:text-white/70 hover:text-sky-500 dark:hover:text-sky-400 transition-colors text-sm"
+                      className={`transition-colors text-sm ${
+                        pathname === link.href
+                          ? 'text-sky-500 dark:text-sky-400 font-semibold'
+                          : 'text-gray-600 dark:text-white/70 hover:text-sky-500 dark:hover:text-sky-400'
+                      }`}
                     >
                       {link.name}
                     </Link>
@@ -282,24 +292,23 @@ export default function Footer() {
             © {new Date().getFullYear()} AFhome. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <Link
-              href="/privacy-policy"
-              className="text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white text-sm transition-colors"
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              href="/terms-and-conditions"
-              className="text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white text-sm transition-colors"
-            >
-              Terms and Conditions
-            </Link>
-            <Link
-              href="/cookie-policy"
-              className="text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white text-sm transition-colors"
-            >
-              Cookie Policy
-            </Link>
+            {[
+              { label: 'Privacy Policy', href: '/privacy-policy' },
+              { label: 'Terms and Conditions', href: '/terms-and-conditions' },
+              { label: 'Cookie Policy', href: '/cookie-policy' },
+            ].map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`text-sm transition-colors ${
+                  pathname === href
+                    ? 'text-sky-500 dark:text-sky-400 font-semibold'
+                    : 'text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
           </div>
         </motion.div>
       </div>
