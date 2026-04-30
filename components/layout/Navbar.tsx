@@ -127,6 +127,7 @@ type NavbarProps = {
   hideNavLinks?: boolean
   stickToTop?: boolean
   showGuestCartWishlist?: boolean
+  noBorder?: boolean
 }
 
 function NavbarInner({
@@ -138,6 +139,7 @@ function NavbarInner({
   hideNavLinks = false,
   stickToTop = false,
   showGuestCartWishlist = false,
+  noBorder = false,
 }: NavbarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -649,7 +651,7 @@ function NavbarInner({
       initial={{ y: -80 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className={`sticky ${stickToTop ? 'top-0' : 'top-8'} z-50 !bg-white dark:!bg-gray-900 dark:border-b dark:border-gray-800 transition-all duration-300 ${scrolled ? 'shadow-lg shadow-black/5 dark:shadow-black/20' : 'shadow-sm'}`}
+      className={`sticky ${stickToTop ? 'top-0' : 'top-8'} z-50 !bg-white dark:!bg-gray-900 ${noBorder ? 'border-0 dark:border-0' : 'dark:border-b dark:border-gray-800'} transition-all duration-300 ${scrolled ? 'shadow-lg shadow-black/5 dark:shadow-black/20' : 'shadow-sm'}`}
     >
       <AnimatePresence>
         {isLoggedIn && !isProfileComplete && meData && (
