@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
+import { getServerSession } from 'next-auth'
+import { adminAuthOptions } from '@/libs/adminAuth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
+
+const uploadRateWindowMs = 60_000
+const uploadRateLimit = 20
+const uploadHits = new Map<string, { count: number; startedAt: number }>()
 
 const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY
@@ -16,6 +22,25 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(adminAuthOptions)
+    const role = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase()
+    if (!session?.user || !['super_admin', 'admin', 'web_content'].includes(role)) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const now = Date.now()
+    const hit = uploadHits.get(ip)
+    if (!hit || now - hit.startedAt > uploadRateWindowMs) {
+      uploadHits.set(ip, { count: 1, startedAt: now })
+    } else {
+      if (hit.count >= uploadRateLimit) {
+        return NextResponse.json({ error: 'Too many upload requests. Please wait and try again.' }, { status: 429 })
+      }
+      hit.count += 1
+      uploadHits.set(ip, hit)
+    }
+
     if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
       return NextResponse.json(
         { error: 'Cloudinary is not configured on this deployment.' },
@@ -70,6 +95,7 @@ export async function POST(req: NextRequest) {
       profile: 'apsara/profile',
       'assembly-guides': 'apsara/assembly-guides',
       'web-content': 'apsara/web-content',
+      'project-gallery': 'apsara/project-gallery',
     }
     const folder = folderMap[folderType] ?? folderMap.products
 

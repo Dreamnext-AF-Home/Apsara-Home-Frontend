@@ -8,7 +8,7 @@ import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
 import { Skeleton } from '@heroui/react/skeleton'
 
 type VideoGalleryPageClientProps = {
-  initialCategories?: any[]
+  initialCategories?: unknown[]
 }
 
 const SAMPLE_VIDEO_ITEMS = [
@@ -60,14 +60,15 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null)
   const { data, isLoading } = useGetPublicWebPageItemsQuery('video-gallery')
 
-  const apiItems = data?.items?.filter((item) => item.is_active) ?? []
-  const galleryItems = apiItems.length > 0 ? apiItems : SAMPLE_VIDEO_ITEMS
+  const galleryItems = data?.items?.filter((item) => item.is_active) ?? []
 
   const getVideoId = (url: string): string | null => {
     if (!url) return null
     const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&/?\s]+)/)
     return youtubeMatch ? youtubeMatch[1] : null
   }
+
+  const isYoutubeUrl = (url: string) => /(?:youtube\.com\/watch\?v=|youtu\.be\/)/.test(url || '')
 
   return (
     <>
@@ -123,6 +124,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {galleryItems.map((item) => {
                   const videoId = item.link_url ? getVideoId(item.link_url) : null
+                  const isYoutube = item.link_url ? isYoutubeUrl(item.link_url) : false
                   const videoThumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null
 
                   return (
@@ -137,6 +139,14 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
                             src={videoThumbnail}
                             alt={item.title || 'Gallery video'}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                        ) : item.link_url && !isYoutube ? (
+                          <video
+                            src={item.link_url}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                            muted
+                            playsInline
+                            preload="metadata"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-gray-200 dark:bg-gray-600">
@@ -190,15 +200,24 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
               onClick={() => setSelectedVideo(null)}
             >
               <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
-                <iframe
-                  width="100%"
-                  height="500"
-                  src={`https://www.youtube.com/embed/${getVideoId(selectedVideo) || ''}`}
-                  title="Video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="rounded-lg"
-                />
+                {isYoutubeUrl(selectedVideo) ? (
+                  <iframe
+                    width="100%"
+                    height="500"
+                    src={`https://www.youtube.com/embed/${getVideoId(selectedVideo) || ''}`}
+                    title="Video player"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="rounded-lg"
+                  />
+                ) : (
+                  <video
+                    src={selectedVideo}
+                    controls
+                    autoPlay
+                    className="w-full max-h-[80vh] rounded-lg bg-black"
+                  />
+                )}
                 <button
                   onClick={() => setSelectedVideo(null)}
                   className="absolute -right-10 -top-10 text-white hover:text-gray-300 transition-colors"

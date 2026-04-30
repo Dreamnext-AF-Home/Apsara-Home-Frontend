@@ -11,7 +11,36 @@ const nextConfig: NextConfig = {
   // Using a separate build directory avoids touching a locked `.next` folder.
   distDir: process.env.NEXT_DIST_DIR || ".next_build",
   async headers() {
+    const cspDirectives = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "frame-ancestors 'self'",
+      "object-src 'none'",
+      "form-action 'self'",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob: https:",
+      "font-src 'self' data: https:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://upload-widget.cloudinary.com",
+      "style-src 'self' 'unsafe-inline'",
+      "connect-src 'self' https: ws: wss:",
+      "frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://player.vimeo.com",
+      "worker-src 'self' blob:",
+      "upgrade-insecure-requests",
+    ].join("; ");
+
     return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
+          { key: "Content-Security-Policy", value: cspDirectives.replace(/\s{2,}/g, " ").trim() },
+        ],
+      },
       {
         source: "/sw.js",
         headers: [
