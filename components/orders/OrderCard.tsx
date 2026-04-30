@@ -77,7 +77,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; badge: string; dot: st
     processing: { label: 'Processing', badge: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800', dot: 'bg-blue-500 dark:bg-blue-600', step: 2 },
     packed: { label: 'Packed', badge: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800', dot: 'bg-indigo-500 dark:bg-indigo-600', step: 3 },
     shipped: { label: 'Shipped', badge: 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800', dot: 'bg-violet-500 dark:bg-violet-600', step: 3 },
-    out_for_delivery: { label: 'Out for Delivery', badge: 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800', dot: 'bg-orange-500 dark:bg-orange-600', step: 4 },
+    out_for_delivery: { label: 'Out for Delivery', badge: 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800', dot: 'bg-sky-500 dark:bg-sky-600', step: 4 },
     delivered: { label: 'Delivered', badge: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800', dot: 'bg-emerald-500 dark:bg-emerald-600', step: 5 },
     cancelled: { label: 'Cancelled', badge: 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800', dot: 'bg-red-400 dark:bg-red-500', step: 0 },
     refunded: { label: 'Refunded', badge: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-700', dot: 'bg-gray-400 dark:bg-gray-600', step: 0 },
@@ -126,12 +126,12 @@ const OrderCard = ({ order }: OrderCardProps) => {
   return (
     <motion.div
       layout
-      className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 overflow-hidden hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200"
+      className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 overflow-hidden hover:border-sky-200 dark:hover:border-sky-700 transition-all duration-200"
     >
       {/* Card header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-slate-700">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400 flex items-center justify-center shrink-0">
+          <div className="h-9 w-9 rounded-xl bg-sky-50 dark:bg-sky-900/30 text-sky-500 dark:text-sky-400 flex items-center justify-center shrink-0">
             <Icon.Package className="h-4 w-4" />
           </div>
           <div>
@@ -202,7 +202,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                   {href ? (
                     <Link
                       href={href}
-                      className="font-semibold text-slate-800 dark:text-gray-100 hover:text-orange-500 dark:hover:text-orange-400 transition-colors"
+                      className="font-semibold text-slate-800 dark:text-gray-100 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
                     >
                       {firstItem?.name}
                     </Link>
@@ -229,7 +229,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2 mt-4">
           {order.status === 'delivered' && (
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-xl bg-orange-500 dark:bg-orange-600 hover:bg-orange-600 dark:hover:bg-orange-700 px-3.5 py-2 text-xs font-semibold text-white transition-colors">
+            <button type="button" className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500 dark:bg-sky-600 hover:bg-sky-600 dark:hover:bg-sky-700 px-3.5 py-2 text-xs font-semibold text-white transition-colors">
               <Icon.RefreshCw className="h-3.5 w-3.5" /> Reorder
             </button>
           )}
@@ -245,9 +245,9 @@ const OrderCard = ({ order }: OrderCardProps) => {
           <button
             type="button"
             onClick={() => setExpanded((p) => !p)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400 px-3.5 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-sky-200 dark:hover:border-sky-700 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400 px-3.5 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 transition-colors"
           >
-            View Details <Icon.ChevronRight className="h-3.5 w-3.5" />
+            {expanded ? 'Hide Details' : 'View Details'} <Icon.ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
           </button>
           {order.status === 'pending' && (
             <button type="button" className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-3.5 py-2 text-xs font-semibold text-red-500 dark:text-red-400 transition-colors">
@@ -290,19 +290,19 @@ const OrderCard = ({ order }: OrderCardProps) => {
                       return (
                         <div key={step} className="flex-1 flex flex-col items-center gap-1.5 relative">
                           {i < TRACK_STEPS.length - 1 && (
-                            <div className={`absolute top-3 left-1/2 w-full h-0.5 ${done ? 'bg-orange-400 dark:bg-orange-500' : 'bg-gray-200 dark:bg-gray-600'}`} />
+                            <div className={`absolute top-3 left-1/2 w-full h-0.5 ${done ? 'bg-sky-400 dark:bg-sky-500' : 'bg-gray-200 dark:bg-gray-600'}`} />
                           )}
                           <div className={`relative z-10 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
                             done
-                              ? 'bg-orange-500 dark:bg-orange-600 border-orange-500 dark:border-orange-600'
+                              ? 'bg-sky-500 dark:bg-sky-600 border-sky-500 dark:border-sky-600'
                               : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600'
-                          } ${active ? 'ring-2 ring-orange-200 dark:ring-orange-900/50 ring-offset-1' : ''}`}>
+                          } ${active ? 'ring-2 ring-sky-200 dark:ring-sky-900/50 ring-offset-1' : ''}`}>
                             {done
                               ? <Icon.Check className="h-3 w-3 text-white" />
                               : <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
                             }
                           </div>
-                          <p className={`text-center text-[10px] font-medium leading-tight ${done ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                          <p className={`text-center text-[10px] font-medium leading-tight ${done ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 dark:text-gray-500'}`}>
                             {step}
                           </p>
                         </div>
@@ -354,7 +354,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                             {href ? (
                               <Link
                                 href={href}
-                                className="hover:text-orange-500 dark:hover:text-orange-400 transition-colors"
+                                className="hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
                               >
                                 {item.name}
                               </Link>
@@ -368,7 +368,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                             {getSelectedOptions(item).map((option) => (
                               <span
                                 key={option}
-                                className="inline-flex items-center rounded-full border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 px-2.5 py-1 text-[11px] font-medium text-orange-700 dark:text-orange-400"
+                                className="inline-flex items-center rounded-full border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/30 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-400"
                               >
                                 {option}
                               </span>
@@ -399,7 +399,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                   </div>
                   <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-100 dark:border-slate-700">
                     <span>Total</span>
-                    <span className="text-orange-600 dark:text-orange-400">{formatPrice(order.total)}</span>
+                    <span className="text-sky-600 dark:text-sky-400">{formatPrice(order.total)}</span>
                   </div>
                 </div>
 
@@ -468,7 +468,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
           <div className="relative z-[71] w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600 dark:text-emerald-400">Confirm Delivery</p>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-400">Confirm Delivery</p>
                 <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">Rate your order</h3>
                 <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Please rate and review this product before confirming.</p>
               </div>
@@ -485,14 +485,14 @@ const OrderCard = ({ order }: OrderCardProps) => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="mt-5 rounded-3xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-amber-50 dark:from-amber-900/20 via-white dark:via-gray-800 to-white dark:to-gray-800 p-4"
+              className="mt-5 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-900 p-4"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-slate-600 dark:text-gray-400">Rating</p>
                   <p className="text-[11px] text-slate-400 dark:text-gray-500">Tap a star to rate</p>
                 </div>
-                <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <div className="text-[11px] font-semibold text-sky-600 dark:text-sky-400">
                   {rating > 0 ? `${rating}/5` : 'No rating'}
                 </div>
               </div>
@@ -509,20 +509,20 @@ const OrderCard = ({ order }: OrderCardProps) => {
                       whileTap={{ scale: 0.96 }}
                       className={`group relative flex h-11 w-11 items-center justify-center rounded-2xl border transition ${
                         active
-                          ? 'border-amber-300 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+                          ? 'border-sky-300 dark:border-sky-700 bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-700 text-slate-300 dark:text-gray-600'
                       }`}
                       aria-label={`Rate ${value} star`}
                     >
                       <span
                         className={`absolute inset-0 rounded-2xl opacity-0 transition ${
-                          active ? 'bg-amber-200/60 dark:bg-amber-500/30 blur-md opacity-70' : ''
+                          active ? 'bg-sky-200/60 dark:bg-sky-500/30 blur-md opacity-70' : ''
                         }`}
                       />
                       <svg
                         viewBox="0 0 24 24"
                         className={`relative h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
-                          active ? 'text-amber-500 dark:text-amber-400' : 'text-slate-300 dark:text-gray-600'
+                          active ? 'text-sky-500 dark:text-sky-400' : 'text-slate-300 dark:text-gray-600'
                         }`}
                         fill="currentColor"
                         aria-hidden
@@ -542,7 +542,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                 onChange={(e) => setReview(e.target.value)}
                 rows={4}
                 placeholder="Share your experience..."
-                className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-slate-700 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:border-emerald-300 dark:focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/50"
+                className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-slate-700 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:border-sky-300 dark:focus:border-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/50"
               />
             </div>
 
@@ -552,8 +552,8 @@ const OrderCard = ({ order }: OrderCardProps) => {
                 <label
                   className={`mt-2 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed px-3 py-4 text-center text-xs transition ${
                     isImageDragActive
-                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
-                      : 'border-slate-300 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
+                      ? 'border-sky-400 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-900/20 dark:text-sky-300'
+                      : 'border-slate-300 bg-white text-slate-600 hover:border-sky-300 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -587,7 +587,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                         <button
                           type="button"
                           onClick={() => setReviewImages((current) => current.filter((_, i) => i !== index))}
-                          className="shrink-0 rounded-md border border-rose-200 px-2 py-0.5 font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                          className="shrink-0 rounded-md border border-slate-200 px-2 py-0.5 font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           Remove
                         </button>
@@ -601,8 +601,8 @@ const OrderCard = ({ order }: OrderCardProps) => {
                 <label
                   className={`mt-2 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed px-3 py-4 text-center text-xs transition ${
                     isVideoDragActive
-                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
-                      : 'border-slate-300 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
+                      ? 'border-sky-400 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-900/20 dark:text-sky-300'
+                      : 'border-slate-300 bg-white text-slate-600 hover:border-sky-300 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -636,7 +636,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                         <button
                           type="button"
                           onClick={() => setReviewVideos((current) => current.filter((_, i) => i !== index))}
-                          className="shrink-0 rounded-md border border-rose-200 px-2 py-0.5 font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                          className="shrink-0 rounded-md border border-slate-200 px-2 py-0.5 font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           Remove
                         </button>
@@ -651,7 +651,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
               <button
                 type="button"
                 onClick={() => setConfirmOpen(false)}
-                className="rounded-full border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-gray-400 hover:border-emerald-200 dark:hover:border-emerald-700 hover:text-emerald-700 dark:hover:text-emerald-400"
+                className="rounded-full border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-gray-400 hover:border-sky-200 dark:hover:border-sky-700 hover:text-sky-700 dark:hover:text-sky-400"
               >
                 Cancel
               </button>
@@ -676,7 +676,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
                     return;
                   }
                 }}
-                className="rounded-full bg-emerald-500 dark:bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 dark:hover:bg-emerald-700 disabled:opacity-60"
+                className="rounded-full bg-sky-500 dark:bg-sky-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 dark:hover:bg-sky-700 disabled:opacity-60"
               >
                 {isConfirming ? 'Submitting...' : 'Order Completed'}
               </button>
