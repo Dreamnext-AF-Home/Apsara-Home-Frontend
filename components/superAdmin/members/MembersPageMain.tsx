@@ -225,25 +225,7 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
     const effectiveData = shouldSkipInitialMembersRefetch ? (initialData ?? null) : (data ?? stableData ?? initialData ?? null)
     const effectiveStats = statsData ?? stableStats ?? initialStats ?? null
     const members = useMemo(() => effectiveData?.members ?? [], [effectiveData])
-    const sortedMembers = useMemo(() => {
-        const list = [...members]
-        if (sort === 'earnings_low_high') {
-            return list.sort((a, b) => (a.earnings ?? 0) - (b.earnings ?? 0))
-        }
-        if (sort === 'earnings_high_low') {
-            return list.sort((a, b) => (b.earnings ?? 0) - (a.earnings ?? 0))
-        }
-        if (sort === 'referrals_high_low') {
-            return list.sort((a, b) => (b.referrals ?? 0) - (a.referrals ?? 0))
-        }
-        if (sort === 'newest_registered') {
-            return list.sort((a, b) => (Date.parse(b.joinedAt || '') || 0) - (Date.parse(a.joinedAt || '') || 0))
-        }
-        if (sort === 'oldest_registered') {
-            return list.sort((a, b) => (Date.parse(a.joinedAt || '') || 0) - (Date.parse(b.joinedAt || '') || 0))
-        }
-        return list
-    }, [members, sort])
+    const sortedMembers = useMemo(() => members, [members])
     const meta = effectiveData?.meta
 
     const loadStatPage = useCallback(async (stat: MembersStatCardKey, nextPage: number, append: boolean, searchValue?: string) => {
@@ -393,17 +375,6 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
                 exportRows.push(...(pageResponse.members ?? []))
             }
 
-            if (sort === 'earnings_low_high') {
-                exportRows.sort((a, b) => (a.earnings ?? 0) - (b.earnings ?? 0))
-            } else if (sort === 'earnings_high_low') {
-                exportRows.sort((a, b) => (b.earnings ?? 0) - (a.earnings ?? 0))
-            } else if (sort === 'referrals_high_low') {
-                exportRows.sort((a, b) => (b.referrals ?? 0) - (a.referrals ?? 0))
-            } else if (sort === 'newest_registered') {
-                exportRows.sort((a, b) => (Date.parse(b.joinedAt || '') || 0) - (Date.parse(a.joinedAt || '') || 0))
-            } else if (sort === 'oldest_registered') {
-                exportRows.sort((a, b) => (Date.parse(a.joinedAt || '') || 0) - (Date.parse(b.joinedAt || '') || 0))
-            }
 
             const headers = [
                 'Member ID',
