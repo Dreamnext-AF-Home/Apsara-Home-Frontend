@@ -107,7 +107,7 @@ const Field = ({ label, value, onChange, placeholder, required = false, error, f
             placeholder={placeholder}
             disabled={disabled}
             className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${error ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500'
-                : 'border-slate-200 dark:border-slate-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'
+                : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'
                 }`}
         />
         {error && <p className="text-red-500 dark:text-red-400 text-[11px] mt-1">{error}</p>}
@@ -136,14 +136,14 @@ function AddressCard({
             transition={{ duration: 0.25, delay: index * 0.06, ease: 'easeOut' }}
             whileHover={{ y: -1 }}
             className={`w-full rounded-2xl border px-4 py-4 text-left transition-all cursor-pointer ${active
-                ? 'border-orange-300 dark:border-orange-600 bg-linear-to-br from-orange-50 dark:from-orange-900/20 to-amber-50 dark:to-amber-900/10 shadow-md shadow-orange-100 dark:shadow-none'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-orange-200 dark:hover:border-orange-700 hover:'
+                ? 'border-sky-300 dark:border-sky-600 bg-sky-50 dark:bg-sky-900/20 shadow-md shadow-sky-100 dark:shadow-none'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-sky-200 dark:hover:border-sky-700 hover:'
                 }`}
             onClick={() => onSelect(address)}
         >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${active ? 'border-orange-500 dark:border-orange-400' : 'border-slate-300 dark:border-slate-600'}`}>
+                    <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${active ? 'border-sky-500 dark:border-sky-400' : 'border-slate-300 dark:border-slate-600'}`}>
                         <AnimatePresence>
                             {active && (
                                 <motion.div
@@ -151,7 +151,7 @@ function AddressCard({
                                     animate={{ scale: 1 }}
                                     exit={{ scale: 0 }}
                                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                    className="h-2.5 w-2.5 rounded-full bg-orange-500"
+                                    className="h-2.5 w-2.5 rounded-full bg-sky-500"
                                 />
                             )}
                         </AnimatePresence>
@@ -388,7 +388,7 @@ export default function CustomerCheckoutAddressForm({
         return (
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700  p-6">
                 <h2 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2.5">
-                    <div className="h-6 w-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
+                    <div className="h-6 w-6 rounded-full bg-sky-500 text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
                     Delivery Address
                 </h2>
                 <div className="space-y-3">
@@ -411,7 +411,7 @@ export default function CustomerCheckoutAddressForm({
                                 const option = e.target.options[e.target.selectedIndex];
                                 ph.setRegion(e.target.value, option.text);
                             }}
-                            className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all ${errors.region ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'}`}
+                            className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all ${errors.region ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'}`}
                         >
                             <option value="">- Select Region -</option>
                             {supportedRegions.map((region) => (
@@ -433,7 +433,7 @@ export default function CustomerCheckoutAddressForm({
                                     const option = e.target.options[e.target.selectedIndex];
                                     ph.setProvince(e.target.value, option.text);
                                 }}
-                                className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 ${errors.province ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'}`}
+                                className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 ${errors.province ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'}`}
                             >
                                 <option value="">{ph.loadingProvinces ? 'Loading provinces...' : '- Select Province -'}</option>
                                 {supportedProvinces.map((province) => (
@@ -456,7 +456,7 @@ export default function CustomerCheckoutAddressForm({
                                     const option = e.target.options[e.target.selectedIndex];
                                     ph.setCity(e.target.value, option.text);
                                 }}
-                                className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 ${errors.city ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'}`}
+                                className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 ${errors.city ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'}`}
                             >
                                 <option value="">{ph.loadingCities || ph.loadingProvinces ? 'Loading cities...' : '- Select City / Municipality -'}</option>
                                 {supportedCities.map((city) => (
@@ -474,7 +474,7 @@ export default function CustomerCheckoutAddressForm({
                                 value={ph.address.barangay}
                                 disabled={!ph.cityCode || ph.loadingBarangays}
                                 onChange={(e) => ph.setBarangay(e.target.value)}
-                                className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 ${errors.barangay ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'}`}
+                                className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 ${errors.barangay ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'}`}
                             >
                                 <option value="">{ph.loadingBarangays ? 'Loading barangays...' : '- Select Barangay -'}</option>
                                 {ph.barangays.map((barangay) => (
@@ -487,9 +487,9 @@ export default function CustomerCheckoutAddressForm({
 
                     <Field label="ZIP Code" value={form.zip} onChange={v => setField('zip', v)} placeholder="e.g. 1234" fieldKey="zip" />
 
-                    <div className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-orange-100 dark:border-orange-900/30 mt-1">
-                        <AlertCircle className="w-4 h-4 text-orange-500 dark:text-orange-400 mt-0.5 shrink-0" />
-                        <p className="text-xs text-orange-700 dark:text-orange-300 leading-relaxed">
+                    <div className="flex items-start gap-2.5 p-3 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-100 dark:border-sky-900/30 mt-1">
+                        <AlertCircle className="w-4 h-4 text-sky-500 dark:text-sky-400 mt-0.5 shrink-0" />
+                        <p className="text-xs text-sky-700 dark:text-sky-300 leading-relaxed">
                             {shouldRestrictToShippingRates
                                 ? 'Only admin-configured delivery locations are available for manual checkout.'
                                 : 'Delivery coverage is still being configured. You can still enter your address while shipping rates are being set up.'}
@@ -514,7 +514,7 @@ export default function CustomerCheckoutAddressForm({
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
-                                <div className="h-6 w-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
+                                <div className="h-6 w-6 rounded-full bg-sky-500 text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
                                 Shipping Address
                             </h2>
                             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 ml-8.5">Your default address is preselected.</p>
@@ -537,7 +537,7 @@ export default function CustomerCheckoutAddressForm({
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={openAddAddress}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 px-3.5 py-2 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-3.5 py-2 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
                             >
                                 <Plus className="w-3.5 h-3.5" />
                                 Add new
@@ -554,10 +554,10 @@ export default function CustomerCheckoutAddressForm({
                         <motion.div
                             initial={{ opacity: 0, scale: 0.97 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="rounded-2xl border border-dashed border-orange-200 bg-orange-50 px-4 py-8 text-center"
+                            className="rounded-2xl border border-dashed border-sky-200 bg-sky-50 px-4 py-8 text-center"
                         >
-                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-3">
-                                <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center mx-auto mb-3">
+                                <svg className="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
@@ -569,7 +569,7 @@ export default function CustomerCheckoutAddressForm({
                                 whileHover={{ scale: 1.03 }}
                                 whileTap={{ scale: 0.97 }}
                                 onClick={openAddAddress}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 transition-colors"
                             >
                                 Add shipping address
                             </motion.button>
@@ -586,21 +586,21 @@ export default function CustomerCheckoutAddressForm({
                                     className="relative rounded-2xl overflow-hidden"
                                 >
                                     {/* Solid background */}
-                                    <div className="absolute inset-0 bg-orange-50 dark:bg-orange-900/20 rounded-2xl" />
-                                    <div className="absolute inset-0 rounded-2xl border border-orange-200 dark:border-orange-800" />
+                                    <div className="absolute inset-0 bg-sky-50 dark:bg-sky-900/20 rounded-2xl" />
+                                    <div className="absolute inset-0 rounded-2xl border border-sky-200 dark:border-sky-800" />
 
                                     <div className="relative px-5 py-5">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex items-start gap-3 min-w-0">
                                                 {/* Pin icon */}
-                                                <div className="mt-0.5 h-9 w-9 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
-                                                    <MapPin className="w-4.5 h-4.5 text-orange-500 dark:text-orange-400" />
+                                                <div className="mt-0.5 h-9 w-9 rounded-xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+                                                    <MapPin className="w-4.5 h-4.5 text-sky-500 dark:text-sky-400" />
                                                 </div>
 
                                                 <div className="min-w-0">
                                                     {/* Badges */}
                                                     <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-500 dark:text-orange-400">Deliver to</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-500 dark:text-sky-400">Deliver to</span>
                                                         {selectedAddress.is_default && (
                                                             <motion.span
                                                                 initial={{ scale: 0.8, opacity: 0 }}
@@ -610,7 +610,7 @@ export default function CustomerCheckoutAddressForm({
                                                                 Default
                                                             </motion.span>
                                                         )}
-                                                        <span className="rounded-full border border-orange-100 dark:border-orange-900 bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                                        <span className="rounded-full border border-sky-100 dark:border-sky-900 bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                                             {selectedAddress.address_type || 'Address'}
                                                         </span>
                                                     </div>
@@ -625,7 +625,7 @@ export default function CustomerCheckoutAddressForm({
                                             </div>
 
                                             {/* Saved addresses count */}
-                                            <div className="rounded-xl border border-orange-100 dark:border-orange-900 bg-white dark:bg-slate-800 px-3 py-2 text-center shrink-0">
+                                            <div className="rounded-xl border border-sky-100 dark:border-sky-900 bg-white dark:bg-slate-800 px-3 py-2 text-center shrink-0">
                                                 <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 leading-tight">Saved</p>
                                                 <p className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{addresses.length}</p>
                                             </div>
@@ -673,7 +673,7 @@ export default function CustomerCheckoutAddressForm({
                             {/* Modal header */}
                             <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-200 dark:border-slate-700">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-500 dark:text-orange-400">Shipping Address</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-500 dark:text-sky-400">Shipping Address</p>
                                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
                                         {modalView === 'list' ? 'Choose an address' : 'Add new address'}
                                     </h3>
@@ -731,13 +731,13 @@ export default function CustomerCheckoutAddressForm({
                                             transition={{ duration: 0.2 }}
                                         >
                                             {addresses.length === 0 ? (
-                                                <div className="rounded-2xl border border-dashed border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 px-4 py-8 text-center">
+                                                <div className="rounded-2xl border border-dashed border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-4 py-8 text-center">
                                                     <p className="text-sm font-semibold text-slate-800 dark:text-white">No saved addresses yet</p>
                                                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Add one now so you can use it for this order.</p>
                                                     <button
                                                         type="button"
                                                         onClick={() => setModalView('add')}
-                                                        className="mt-4 inline-flex items-center justify-center rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+                                                        className="mt-4 inline-flex items-center justify-center rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 transition-colors"
                                                     >
                                                         Add address
                                                     </button>
@@ -785,7 +785,7 @@ export default function CustomerCheckoutAddressForm({
                                                         ph.setRegion(e.target.value, option.text);
                                                         setDraft(prev => ({ ...prev, region: option.text, province: '', city: '', barangay: '' }));
                                                     }}
-                                                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500"
+                                                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500"
                                                 >
                                                     <option value="">- Select Region -</option>
                                                     {supportedRegions.map(region => (
@@ -805,7 +805,7 @@ export default function CustomerCheckoutAddressForm({
                                                             ph.setProvince(e.target.value, option.text);
                                                             setDraft(prev => ({ ...prev, province: option.text, city: '', barangay: '' }));
                                                         }}
-                                                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500 disabled:opacity-60"
+                                                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500 disabled:opacity-60"
                                                     >
                                                         <option value="">{ph.loadingProvinces ? 'Loading provinces...' : '- Select Province -'}</option>
                                                         {supportedProvinces.map(province => (
@@ -826,7 +826,7 @@ export default function CustomerCheckoutAddressForm({
                                                             ph.setCity(e.target.value, option.text);
                                                             setDraft(prev => ({ ...prev, city: option.text, barangay: '' }));
                                                         }}
-                                                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500 disabled:opacity-60"
+                                                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500 disabled:opacity-60"
                                                     >
                                                         <option value="">{ph.loadingCities || ph.loadingProvinces ? 'Loading cities...' : '- Select City / Municipality -'}</option>
                                                         {supportedCities.map(city => (
@@ -843,7 +843,7 @@ export default function CustomerCheckoutAddressForm({
                                                             ph.setBarangay(e.target.value);
                                                             setDraft(prev => ({ ...prev, barangay: e.target.value }));
                                                         }}
-                                                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500 disabled:opacity-60"
+                                                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500 disabled:opacity-60"
                                                     >
                                                         <option value="">{ph.loadingBarangays ? 'Loading barangays...' : '- Select Barangay -'}</option>
                                                         {ph.barangays.map(barangay => (
@@ -865,7 +865,7 @@ export default function CustomerCheckoutAddressForm({
                                                     type="checkbox"
                                                     checked={draft.set_default}
                                                     onChange={(e) => updateDraft('set_default', e.target.checked)}
-                                                    className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-200"
+                                                    className="h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-200"
                                                 />
                                                 <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">Set as my default shipping address</span>
                                             </label>
@@ -905,7 +905,7 @@ export default function CustomerCheckoutAddressForm({
                                         whileTap={{ scale: 0.97 }}
                                         onClick={() => void handleCreateAddress()}
                                         disabled={creatingAddress}
-                                        className="px-5 py-2.5 rounded-xl bg-orange-500 text-sm text-white font-semibold hover:bg-orange-600 transition-colors disabled:opacity-60"
+                                        className="px-5 py-2.5 rounded-xl bg-sky-500 text-sm text-white font-semibold hover:bg-sky-600 transition-colors disabled:opacity-60"
                                     >
                                         {creatingAddress ? (
                                             <span className="flex items-center gap-2">

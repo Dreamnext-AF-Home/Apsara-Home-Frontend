@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@heroui/react/button'
 import { Card } from '@heroui/react/card'
@@ -381,6 +381,32 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null)
   const [payloadPreview, setPayloadPreview] = useState<{ checkoutId: string; payload: Record<string, unknown> | Array<unknown> | null } | null>(null)
   const [stableData, setStableData] = useState<AdminOrdersResponse | null>(initialData)
+  const tableScrollRef = useRef<HTMLDivElement>(null)
+  const tableDragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 })
+  const [isTableDragging, setIsTableDragging] = useState(false)
+
+  const onTableMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('button, input, a, select, [role="button"]')) return
+    const el = tableScrollRef.current
+    if (!el) return
+    tableDragState.current = { isDragging: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft }
+    setIsTableDragging(true)
+  }, [])
+
+  const onTableMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!tableDragState.current.isDragging) return
+    e.preventDefault()
+    const el = tableScrollRef.current
+    if (!el) return
+    const x = e.pageX - el.offsetLeft
+    el.scrollLeft = tableDragState.current.scrollLeft - (x - tableDragState.current.startX) * 1.2
+  }, [])
+
+  const stopTableDrag = useCallback(() => {
+    tableDragState.current.isDragging = false
+    setIsTableDragging(false)
+  }, [])
 
   const role       = (session?.user?.role ?? '').toLowerCase()
   const canApprove = role === 'super_admin' || role === 'admin' || role === 'merchant_admin'
@@ -937,7 +963,14 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
               </Chip>
             </div>
 
-            <div className="overflow-x-auto overflow-y-visible">
+            <div
+              ref={tableScrollRef}
+              className={`overflow-x-auto overflow-y-visible ${isTableDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+              onMouseDown={onTableMouseDown}
+              onMouseMove={onTableMouseMove}
+              onMouseUp={stopTableDrag}
+              onMouseLeave={stopTableDrag}
+            >
               <table aria-label="Admin orders table" className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40">

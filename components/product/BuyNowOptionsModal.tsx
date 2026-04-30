@@ -229,24 +229,20 @@ const BuyNowOptionsModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm"
-          />
-
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.97 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-3 sm:items-center sm:p-6"
-          >
-            <div
-              className="mx-auto max-h-[calc(100vh-1.5rem)] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 sm:max-h-[90vh]"
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={handleClose}
+          className="fixed inset-0 z-[100] overflow-y-auto bg-black/70 backdrop-blur-sm"
+        >
+          <div className="flex min-h-full items-start justify-center p-3 sm:items-center sm:p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="mx-auto w-full max-w-5xl rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between bg-sky-500 dark:bg-sky-600 px-5 py-4 sm:px-7">
@@ -641,9 +637,9 @@ const BuyNowOptionsModal = ({
                   </p>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        </>
+            </motion.div>
+          </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

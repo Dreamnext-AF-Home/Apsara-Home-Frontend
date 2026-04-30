@@ -98,9 +98,9 @@ export default function Header({ cartCount }: HeaderProps) {
             whileTap={{ scale: 0.98 }}
           >
             <img
-              src="/af_home_logo.png"
+              src="/Images/af_home_logo.png"
               alt="AFhome Logo"
-              className="h-10 md:h-12"
+              className="h-10 w-auto object-contain"
             />
           </motion.a>
 
@@ -119,7 +119,7 @@ export default function Header({ cartCount }: HeaderProps) {
                   className={`font-medium text-[15px] relative group transition-all duration-300
                     ${isActive
                       ? 'text-amber-500'
-                      : isScrolled
+                      : (isScrolled || !isHome)
                         ? 'text-black dark:text-white hover:text-amber-500'
                         : 'text-white hover:text-amber-400'
                     }`}
@@ -142,7 +142,7 @@ export default function Header({ cartCount }: HeaderProps) {
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className={`p-2 transition-colors ${isScrolled ? 'text-black dark:text-white' : 'text-white'}`}
+                className={`p-2 transition-colors ${(isScrolled || !isHome) ? 'text-black dark:text-white' : 'text-white'}`}
               >
                 <Link href={userHref} aria-label="User account">
                   <User size={20} />
@@ -158,7 +158,7 @@ export default function Header({ cartCount }: HeaderProps) {
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                className={`relative p-2 transition-colors ${isScrolled ? 'text-black dark:text-white' : 'text-white'}`}
+                className={`relative p-2 transition-colors ${(isScrolled || !isHome) ? 'text-black dark:text-white' : 'text-white'}`}
               >
                 <Link href="/shop" aria-label="Browse shop" className="block">
                   <ShoppingBag size={20} />
@@ -182,17 +182,17 @@ export default function Header({ cartCount }: HeaderProps) {
             </div>
 
             {/* Divider */}
-            <span className={`h-5 w-px ${isScrolled ? 'bg-gray-300 dark:bg-gray-600' : 'bg-white/30'}`} />
+            <span className={`h-5 w-px ${(isScrolled || !isHome) ? 'bg-gray-300 dark:bg-gray-600' : 'bg-white/30'}`} />
 
             {/* Dark mode toggle */}
-            <ThemeToggle isScrolled={isScrolled} />
+            <ThemeToggle isScrolled={isScrolled} isHome={isHome} />
 
             {/* Hamburger Menu - Visible only on mobile */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`md:hidden p-2 transition-colors ${isScrolled ? 'text-black dark:text-white' : 'text-white'}`}
+              className={`md:hidden p-2 transition-colors ${(isScrolled || !isHome) ? 'text-black dark:text-white' : 'text-white'}`}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </motion.button>

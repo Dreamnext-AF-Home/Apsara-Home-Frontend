@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Apsara-Home-Frontend** (8411 symbols, 11876 relationships, 147 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **apsara-home-frontend** (10049 symbols, 14142 relationships, 162 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **Apsara-Home-Frontend** (8411 symbols, 1
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/Apsara-Home-Frontend/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/Apsara-Home-Frontend/clusters` | All functional areas |
-| `gitnexus://repo/Apsara-Home-Frontend/processes` | All execution flows |
-| `gitnexus://repo/Apsara-Home-Frontend/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/apsara-home-frontend/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/apsara-home-frontend/clusters` | All functional areas |
+| `gitnexus://repo/apsara-home-frontend/processes` | All execution flows |
+| `gitnexus://repo/apsara-home-frontend/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 

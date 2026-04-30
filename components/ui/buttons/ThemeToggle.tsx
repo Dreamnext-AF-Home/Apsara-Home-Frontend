@@ -7,9 +7,10 @@ import { motion } from 'framer-motion';
 
 interface ThemeToggleProps {
   isScrolled?: boolean;
+  isHome?: boolean;
 }
 
-export default function ThemeToggle({ isScrolled = false }: ThemeToggleProps) {
+export default function ThemeToggle({ isScrolled = false, isHome = true }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -32,7 +33,7 @@ export default function ThemeToggle({ isScrolled = false }: ThemeToggleProps) {
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
         aria-label="Toggle dark mode"
         className={`cursor-pointer p-2 rounded-lg transition-colors ${
-          isScrolled
+          (isScrolled || !isHome)
             ? 'text-gray-500 dark:text-gray-300 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-white/10'
             : 'text-white/70 hover:text-amber-400 hover:bg-white/10'
         }`}
