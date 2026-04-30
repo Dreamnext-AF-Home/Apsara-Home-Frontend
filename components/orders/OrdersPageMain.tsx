@@ -4,6 +4,7 @@ import { TABS } from "@/types/Data";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Skeleton } from "@heroui/react/skeleton";
 import Icon from "./Icons";
 import OrderCard from "./OrderCard";
 import { useSession } from "next-auth/react";
@@ -11,6 +12,7 @@ import { useGetCheckoutHistoryQuery } from "@/store/api/paymentApi";
 import TopBar from "@/components/layout/TopBar";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/landing-page/Footer";
+import TrustBar from "@/components/layout/TrustBar";
 
 type TabKey = typeof TABS[number]['key'];
 
@@ -33,8 +35,50 @@ const getOrderTimestamp = (value?: string | null) => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
+function OrdersPageSkeleton() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 overflow-hidden"
+        >
+          <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-slate-700 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-9 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32 rounded" />
+                <Skeleton className="h-3 w-24 rounded" />
+              </div>
+            </div>
+            <Skeleton className="h-7 w-24 rounded-full" />
+          </div>
+
+          <div className="flex items-center gap-3 px-5 py-4">
+            <div className="flex -space-x-2">
+              {Array.from({ length: 3 }).map((_, itemIndex) => (
+                <Skeleton
+                  key={itemIndex}
+                  className="h-10 w-10 rounded-lg border-2 border-white dark:border-gray-700"
+                />
+              ))}
+            </div>
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/5 rounded" />
+              <Skeleton className="h-3 w-1/3 rounded" />
+            </div>
+            <div className="hidden sm:block">
+              <Skeleton className="h-4 w-16 rounded" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type OrdersPageMainProps = {
-  initialCategories?: any[];
+  initialCategories?: unknown[];
 };
 
 const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
@@ -45,8 +89,11 @@ const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
   const [search, setSearch] = useState('');
   const { data, isLoading, isError } = useGetCheckoutHistoryQuery(undefined, {
     skip: authStatus !== 'authenticated',
+    refetchOnMountOrArgChange: true,
   });
-  const orders = data?.orders ?? [];
+  const orders = useMemo(() => data?.orders ?? [], [data?.orders]);
+  const isAuthLoading = authStatus === 'loading';
+  const isFetchingOrders = isAuthLoading || (authStatus === 'authenticated' && isLoading);
 
   const filtered = useMemo(() => {
     let list = orders;
@@ -79,11 +126,12 @@ const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
     <>
       <TopBar />
       <Navbar initialCategories={initialCategories} />
+      <TrustBar />
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="relative overflow-hidden bg-white dark:bg-gradient-to-b dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen"
+        className="relative overflow-hidden bg-white dark:bg-gray-950 min-h-screen border-t border-gray-200 dark:border-slate-800"
       >
       <div className="container mx-auto px-4 py-8 md:py-10">
         {/* HEADER */}
@@ -149,7 +197,7 @@ const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
             )
           })}
         </div>
-        {authStatus !== 'authenticated' && (
+        {authStatus === 'unauthenticated' && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -171,14 +219,18 @@ const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
 
         {/* ORDER LIST */}
         <AnimatePresence mode="wait">
-          {isLoading ? (
+          {isFetchingOrders ? (
             <motion.div
               key="loading"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-8 text-center"
+              className="space-y-4"
             >
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading your order history...</p>
+              <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-5 py-4">
+                <Skeleton className="h-4 w-40 rounded" />
+                <Skeleton className="mt-3 h-3 w-64 max-w-full rounded" />
+              </div>
+              <OrdersPageSkeleton />
             </motion.div>
           ) : filtered.length > 0 ? (
             <motion.div
