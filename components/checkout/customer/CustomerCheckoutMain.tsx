@@ -143,7 +143,7 @@ const CustomerCheckoutMain = ({
     const [checkoutRefreshTrigger, setCheckoutRefreshTrigger] = useState(0);
     const normalizedPartner = (storefrontPartner ?? '').trim().toLowerCase();
     const isSynergyStorefront = normalizedPartner === 'synergy-shop';
-    const shouldShowReferralField = isSynergyStorefront || !isLoggedIn;
+    const shouldShowReferralField = true;
     const backToShopHref = isSynergyStorefront ? '/synergy-shop/product' : '/shop';
     const checkoutHeaderLabel = isSynergyStorefront ? 'Synergy Shop Secure Checkout' : 'AF Home Secure Checkout';
 
@@ -170,7 +170,7 @@ const CustomerCheckoutMain = ({
         return () => window.removeEventListener('checkout-variant-changed', handleVariantChange);
     }, []);
 
-    const [formOverrides, setFormOverrides] = useState<GuestForm>(defaultForm);
+    const [formOverrides, setFormOverrides] = useState<Partial<GuestForm>>({});
     const [errors, setErrors] = useState<FormErrors>({});
     const requiredFieldOrder = useMemo(
         () => (isLoggedIn ? REQUIRED_FIELD_ORDER.filter((key) => key !== 'referred_by') : REQUIRED_FIELD_ORDER),
