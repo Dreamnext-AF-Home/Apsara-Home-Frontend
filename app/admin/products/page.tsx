@@ -15,20 +15,25 @@ async function getInitialProducts(): Promise<ProductsResponse | null> {
 
   if (!accessToken) return null
 
-  const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
+  const apiUrl = (process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').trim().replace(/\/+$/, '')
   if (!apiUrl) return null
 
-  const res = await fetch(`${apiUrl}/api/admin/products?page=1&per_page=25`, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: 'no-store',
-  })
+  try {
+    const res = await fetch(`${apiUrl}/api/admin/products?page=1&per_page=50`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: 'no-store',
+    })
 
-  if (!res.ok) return null
-  return normalizeProductsResponse((await res.json()) as ProductsResponse)
+    if (!res.ok) return null
+    return normalizeProductsResponse((await res.json()) as ProductsResponse)
+  } catch (error) {
+    console.error('Failed to fetch initial admin products:', error)
+    return null
+  }
 }
 
 export default async function AdminProductsPage() {

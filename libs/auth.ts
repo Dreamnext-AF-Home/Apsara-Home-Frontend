@@ -62,12 +62,12 @@ export const authOptions: NextAuthOptions = {
                         : isResendMfaApproval
                           ? `${apiBaseUrl}/api/auth/login/mfa/resend`
                         : isPasskey
-                          ? `${process.env.LARAVEL_API_URL}/api/auth/passkeys/login/verify`
+                          ? `${apiBaseUrl}/api/auth/passkeys/login/verify`
                         : isGoogleOAuth
-                          ? `${process.env.LARAVEL_API_URL}/api/auth/callback/google`
+                          ? `${apiBaseUrl}/api/auth/callback/google`
                         : isFacebookOAuth
-                          ? `${process.env.LARAVEL_API_URL}/api/auth/callback/facebook`
-                        : `${process.env.LARAVEL_API_URL}/api/auth/login`
+                          ? `${apiBaseUrl}/api/auth/callback/facebook`
+                        : `${apiBaseUrl}/api/auth/login`
 
                     const incomingHeaders = req?.headers ?? {}
                     const forwardedFor = String(

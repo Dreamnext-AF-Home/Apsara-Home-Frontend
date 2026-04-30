@@ -714,8 +714,8 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   const [productOverrides, setProductOverrides] = useState<Record<number, Product>>({})
   const [createdProducts, setCreatedProducts] = useState<Product[]>([])
   const [useInitialData,  setUseInitialData]  = useState(Boolean(initialData))
-  const [userPerPage, setUserPerPage] = useState<number | 'all'>(25)
-  const defaultPerPage = 25
+  const [userPerPage, setUserPerPage] = useState<number | 'all'>(50)
+  const defaultPerPage = 50
   const searchPerPage = 500
   const perPage = debouncedSearch ? searchPerPage : (userPerPage === 'all' ? 10000 : userPerPage)
   const canShowZqSupplierSide = !isSupplierPortal || isZqSupplierAccount
