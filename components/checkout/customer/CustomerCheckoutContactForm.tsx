@@ -28,7 +28,7 @@ const Field = ({ label, value, onChange, placeholder, type = 'text', required = 
         <input
             type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
             className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 transition-all ${error ? 'border-red-300 dark:border-red-600 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500'
-                : 'border-slate-200 dark:border-slate-700 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'
+                : 'border-slate-200 dark:border-slate-700 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'
                 }`}
         />
         {error && <p className="text-red-500 dark:text-red-400 text-[11px] mt-1">{error}</p>}
@@ -47,7 +47,7 @@ const CustomerCheckoutContactForm = ({
     return (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
             <h2 className="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2.5">
-                <div className="h-6 w-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center shrink-0">1</div>
+                <div className="h-6 w-6 rounded-full bg-sky-500 text-white text-xs font-bold flex items-center justify-center shrink-0">1</div>
                 Contact information
             </h2>
             <div className="space-y-3">
@@ -82,7 +82,7 @@ const CustomerCheckoutContactForm = ({
                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 cursor-not-allowed focus:ring-emerald-100 dark:focus:ring-emerald-900 focus:border-emerald-300 dark:focus:border-emerald-600'
                                         : errors.referred_by
                                             ? 'bg-white dark:bg-slate-900 border-red-300 dark:border-red-600 text-slate-700 dark:text-slate-200 focus:ring-red-200 dark:focus:ring-red-900 focus:border-red-400 dark:focus:border-red-500'
-                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500'
+                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500'
                                 }`}
                                 required
                             />
@@ -113,7 +113,7 @@ const CustomerCheckoutContactForm = ({
                             onChange={e => setField('voucher_coupon', e.target.value.toUpperCase())}
                             placeholder="Enter voucher code"
                             maxLength={30}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-900 focus:border-orange-400 dark:focus:border-orange-500 transition-all tracking-widest font-mono uppercase"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-900 focus:border-sky-400 dark:focus:border-sky-500 transition-all tracking-widest font-mono uppercase"
                         />
                     </div>
                     {voucherStatus?.loading ? (
