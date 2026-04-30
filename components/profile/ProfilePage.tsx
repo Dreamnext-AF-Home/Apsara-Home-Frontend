@@ -35,6 +35,14 @@ const rankToTier = (rank: number): MemberTier => {
   if (rank === 2) return 'Home Builder';
   return 'Home Starter';
 };
+
+type TierReq = { pv: number; referrals: number; activeMembers?: number; activeBuilders?: number; activeLeaders?: number };
+const NEXT_TIER_REQUIREMENTS: Record<number, TierReq> = {
+  1: { pv: 300,  referrals: 2  },
+  2: { pv: 1000, referrals: 5,  activeMembers: 2 },
+  3: { pv: 3000, referrals: 10, activeBuilders: 5 },
+  4: { pv: 8000, referrals: 20, activeLeaders: 10 },
+};
 import Icon from './Icons';
 import getPasswordStrength from './GetPasswordStrength';
 import fadeUp from './FadeUp';
@@ -44,6 +52,7 @@ import getActivityIcon from './GetActivityIcon';
 import EncashmentTab from './EncashmentTab';
 import WalletTab from './WalletTab';
 import InteriorRequestsTab from './InteriorRequestsTab';
+import LevelsTab from './LevelsTab';
 import { usePhAddress } from '@/hooks/usePhAddress';
 import { containsBlockedWord } from '@/libs/badWords';
 import { getProfileCompletion } from '@/libs/profileCompletion';
@@ -295,7 +304,7 @@ type PreferencesState = {
   currency: 'PHP' | 'USD';
 };
 
-type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'pv' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'referrals';
+type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'pv' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'referrals' | 'levels';
 
 type AlertMsg = { type: 'success' | 'error'; text: string };
 type TreeStatusFilter = 'all' | 'verified' | 'pending_review' | 'not_verified' | 'blocked';
@@ -734,7 +743,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
-    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'referrals'];
+    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'referrals', 'levels'];
 
     if (requestedTab && allowedTabs.includes(requestedTab as Tab)) {
       setActiveTab(requestedTab as Tab);
@@ -1725,6 +1734,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     { key: 'activity', label: 'Activity', Icon: Icon.Activity },
     { key: 'change-username', label: 'Change Username', Icon: Icon.Edit },
     { key: 'referrals', label: 'Referrals', Icon: Icon.Network },
+    { key: 'levels', label: 'My Level', Icon: Icon.Trophy },
   ];
 
   const initials = (form.name || session?.user?.name || 'A')
@@ -2085,6 +2095,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 activity: 'Activity',
                 'change-username': 'Username',
                 referrals: 'Referrals',
+                levels: 'My Level',
               };
               return TABS.map(({ key, Icon: TabIcon }) => (
                 <button
@@ -2298,6 +2309,115 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       : 'Almost there - just a few fields left.'}
                   </p>
                 </div>
+
+                {/* Level Progress Teaser */}
+                {(() => {
+                  const nextRank  = Math.min(5, effectiveRank + 1);
+                  const nextTier  = rankToTier(nextRank);
+                  const reqs      = NEXT_TIER_REQUIREMENTS[effectiveRank];
+                  const nextCover = TIER_COVER[nextTier];
+                  const pvNow     = accountSnapshot?.loyalty?.personal_pv ?? 0;
+                  const refsNow   = accountSnapshot?.loyalty?.referral_count ?? 0;
+                  const amNow     = accountSnapshot?.loyalty?.active_members_count ?? 0;
+                  const abNow     = accountSnapshot?.loyalty?.active_builders_count ?? 0;
+                  const alNow     = accountSnapshot?.loyalty?.active_leaders_count ?? 0;
+
+                  const rows = reqs && effectiveRank < 5 ? [
+                    { current: pvNow,   target: reqs.pv        },
+                    { current: refsNow, target: reqs.referrals },
+                    ...(reqs.activeMembers  ? [{ current: amNow, target: reqs.activeMembers  }] : []),
+                    ...(reqs.activeBuilders ? [{ current: abNow, target: reqs.activeBuilders }] : []),
+                    ...(reqs.activeLeaders  ? [{ current: alNow, target: reqs.activeLeaders  }] : []),
+                  ] : [];
+
+                  const overallPct = rows.length > 0
+                    ? Math.round(rows.reduce((acc, r) => acc + Math.min(100, r.target > 0 ? (r.current / r.target) * 100 : 100), 0) / rows.length)
+                    : 100;
+
+                  const activeCover = effectiveRank >= 5 ? TIER_COVER['Lifestyle Elite'] : nextCover;
+
+                  return (
+                    <div className="mt-4 w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
+                      {/* Mini header */}
+                      <div className={`bg-gradient-to-r ${activeCover.gradient} px-3.5 py-2 flex items-center gap-2`}>
+                        <svg className="h-3 w-3 text-white/90" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                          <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+                        </svg>
+                        <span className="text-[11px] font-bold text-white tracking-wide uppercase">Level Progress</span>
+                        {effectiveRank >= 5 && (
+                          <span className="ml-auto text-[10px] font-black bg-white/25 text-white rounded-full px-2 py-0.5 border border-white/30">MAX</span>
+                        )}
+                      </div>
+
+                      <div className="p-3.5 bg-white dark:bg-gray-800">
+                        {/* Badge comparison */}
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`rounded-xl bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} p-1.5 opacity-70`}>
+                              <img src={TIER_BADGE_IMAGE[loyaltyTier]} alt={loyaltyTier} className="h-10 w-10 object-contain" />
+                            </div>
+                            <p className="text-[9px] text-slate-500 dark:text-gray-400 font-semibold">Rank {effectiveRank}</p>
+                          </div>
+
+                          {effectiveRank < 5 && (
+                            <>
+                              <div
+                                className={`h-7 w-7 rounded-full bg-gradient-to-br ${nextCover.gradient} flex items-center justify-center shrink-0 shadow-md`}
+                                style={{ boxShadow: `0 3px 10px ${nextCover.glow}` }}
+                              >
+                                <svg className="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                                </svg>
+                              </div>
+                              <div className="flex flex-col items-center gap-1">
+                                <div
+                                  className={`rounded-xl bg-gradient-to-br ${nextCover.gradient} p-1.5`}
+                                  style={{ boxShadow: `0 4px 12px ${nextCover.glow}` }}
+                                >
+                                  <img src={TIER_BADGE_IMAGE[nextTier]} alt={nextTier} className="h-10 w-10 object-contain drop-shadow" />
+                                </div>
+                                <p className="text-[9px] text-slate-500 dark:text-gray-400 font-semibold">Rank {nextRank}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Overall progress bar */}
+                        {effectiveRank < 5 && (
+                          <>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400">Overall Progress</span>
+                              <span className={`text-[11px] font-bold ${overallPct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-gray-300'}`}>{overallPct}%</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden mb-3">
+                              <motion.div
+                                className={`h-full rounded-full ${overallPct >= 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : `bg-gradient-to-r ${nextCover.gradient}`}`}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${overallPct}%` }}
+                                transition={{ duration: 0.85, ease: 'easeOut' }}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {/* View details button */}
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('levels')}
+                          className={`w-full rounded-xl bg-gradient-to-r ${activeCover.gradient} px-3 py-2 text-xs font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5`}
+                          style={{ boxShadow: `0 3px 12px ${activeCover.glow}` }}
+                        >
+                          View My Level Details
+                          <svg className="h-3.5 w-3.5 text-white/80" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Referral section */}
@@ -4032,6 +4152,14 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     </form>
                   </div>
                 </motion.div>
+              )}
+
+              {activeTab === 'levels' && (
+                <LevelsTab
+                  effectiveRank={effectiveRank}
+                  loyaltyTier={loyaltyTier}
+                  snapshot={accountSnapshot}
+                />
               )}
             </AnimatePresence>
             </div>

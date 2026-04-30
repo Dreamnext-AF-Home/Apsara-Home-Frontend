@@ -9,5 +9,6 @@ export const metadata = buildPageMetadata({
 })
 
 export default function PartnerLoginPage() {
-  return <AdminLoginForm />
+  const turnstileSiteKey = process.env.ADMIN_LOGIN_CLOUDFLARE_SITE_KEY ?? ''
+  return <AdminLoginForm turnstileSiteKey={turnstileSiteKey} />
 }

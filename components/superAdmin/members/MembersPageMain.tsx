@@ -182,7 +182,8 @@ const MembersPageMain = ({ initialData = null, initialStats = null }: MembersPag
         status === 'all' &&
         tier === 'all' &&
         registration === 'all' &&
-        profilePhoto === 'all'
+        profilePhoto === 'all' &&
+        sort === 'default'
 
     const shouldSkipInitialMembersRefetch = Boolean(initialData && isUsingDefaultView)
     const shouldSkipInitialStatsRefetch = Boolean(initialStats && statsPeriod === '7d')

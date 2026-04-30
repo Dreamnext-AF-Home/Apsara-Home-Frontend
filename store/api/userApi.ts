@@ -224,6 +224,10 @@ export interface AccountSnapshot {
         total_earnings: number;
         pv_balance: number;
         cash_balance: number;
+        personal_pv: number;
+        active_members_count: number;
+        active_builders_count: number;
+        active_leaders_count: number;
         referral_count: number;
         direct_referrals?: ReferralTreeNode[];
         join_date: string;
@@ -308,7 +312,7 @@ export const userApi = baseApi.injectEndpoints({
         changePassword: builder.mutation<{ message: string; user: MeResponse }, ChangePasswordPayload>({
             query: (body) => ({
                 url: '/api/auth/change-password',
-                method: 'PATCH',
+                method: 'POST',
                 body,
             }),
             invalidatesTags: ['User'],
