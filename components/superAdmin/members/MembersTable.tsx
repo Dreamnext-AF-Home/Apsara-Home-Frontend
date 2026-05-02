@@ -509,6 +509,8 @@ function MemberDetailsModal({
   const [generateTemporaryPassword, { isLoading }] = useGenerateMemberTemporaryPasswordMutation()
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
+  const [photoOpen, setPhotoOpen] = useState(false)
+  const [zoom, setZoom] = useState(1)
   const registeredAt = resolveMemberRegisteredAt(member)
   const registeredDate = formatMemberRegisteredDate(registeredAt)
   const registeredTime = formatMemberRegisteredTime(registeredAt)
@@ -573,11 +575,31 @@ function MemberDetailsModal({
 
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
         <div className="mb-5 flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-          <MemberAvatar
-            member={member}
-            className="h-16 w-16 rounded-full shrink-0 ring-2 ring-white shadow"
-            initialsClassName="text-white font-bold text-lg"
-          />
+          {member.avatar ? (
+            <button
+              type="button"
+              onClick={() => setPhotoOpen(true)}
+              className="group relative shrink-0 cursor-zoom-in"
+              aria-label="View photo"
+            >
+              <MemberAvatar
+                member={member}
+                className="h-16 w-16 rounded-full ring-2 ring-white shadow"
+                initialsClassName="text-white font-bold text-lg"
+              />
+              <div className="absolute inset-0 rounded-full bg-black/0 transition-colors group-hover:bg-black/30 flex items-center justify-center">
+                <svg className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0zm0 0l2 2" />
+                </svg>
+              </div>
+            </button>
+          ) : (
+            <MemberAvatar
+              member={member}
+              className="h-16 w-16 rounded-full shrink-0 ring-2 ring-white shadow"
+              initialsClassName="text-white font-bold text-lg"
+            />
+          )}
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{member.email}</p>
             {member.username && (
@@ -687,6 +709,82 @@ function MemberDetailsModal({
         </div>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {photoOpen && member.avatar && (
+          <motion.div
+            key="photo-lightbox"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md"
+            onClick={() => { setPhotoOpen(false); setZoom(1); }}
+          >
+            <motion.div
+              initial={{ scale: 0.82, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.82, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+              className="relative flex flex-col items-center gap-3"
+              onClick={(e) => e.stopPropagation()}
+              onWheel={(e) => {
+                setZoom((prev) => Math.min(4, Math.max(1, prev - e.deltaY * 0.003)));
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={member.avatar}
+                alt={member.name}
+                draggable={false}
+                onClick={() => setZoom((prev) => (prev >= 2.5 ? 1 : prev + 0.5))}
+                style={{ transform: `scale(${zoom})`, transition: 'transform 0.22s cubic-bezier(0.32,0.72,0,1)' }}
+                className="max-h-[72vh] max-w-[80vw] rounded-2xl object-contain shadow-2xl cursor-zoom-in select-none"
+              />
+
+              <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => setZoom((prev) => Math.max(1, prev - 0.5))}
+                  className="text-white/70 hover:text-white transition-colors text-lg font-bold leading-none"
+                  aria-label="Zoom out"
+                >−</button>
+                <span className="min-w-[3rem] text-center text-sm font-semibold text-white">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoom((prev) => Math.min(4, prev + 0.5))}
+                  className="text-white/70 hover:text-white transition-colors text-lg font-bold leading-none"
+                  aria-label="Zoom in"
+                >+</button>
+                {zoom > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setZoom(1)}
+                    className="ml-1 text-xs text-white/50 hover:text-white/90 transition-colors"
+                  >Reset</button>
+                )}
+              </div>
+            </motion.div>
+
+            <button
+              type="button"
+              onClick={() => { setPhotoOpen(false); setZoom(1); }}
+              className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/70 backdrop-blur-sm transition-all hover:bg-white/20 hover:text-white"
+              aria-label="Close"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <p className="absolute bottom-5 left-1/2 -translate-x-1/2 text-xs text-white/40 select-none">
+              Scroll or click to zoom · Click outside to close
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
