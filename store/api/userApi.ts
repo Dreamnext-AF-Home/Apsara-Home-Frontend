@@ -124,8 +124,10 @@ export interface ReferralTreeNode {
     name: string;
     username: string;
     email: string;
+    avatar_url?: string;
     joined_at: string;
     total_earnings: number;
+    total_pv?: number;
     verification_status: 'verified' | 'pending_review' | 'on_hold' | 'not_verified' | 'blocked';
     children_count?: number;
     children?: ReferralTreeNode[];
@@ -285,6 +287,12 @@ export interface DisableTotpPayload {
     code: string;
 }
 
+export interface UploadAvatarResponse {
+    message: string;
+    avatar_url: string;
+    user: MeResponse;
+}
+
 export const userApi = baseApi.injectEndpoints({
     overrideExisting: true,
     endpoints:  (builder) => ({
@@ -310,7 +318,16 @@ export const userApi = baseApi.injectEndpoints({
                 method: 'PUT',
                 body,
             }),
-            invalidatesTags: ['User'],
+            invalidatesTags: ['User', 'AccountSnapshot'],
+        }),
+
+        uploadAvatar: builder.mutation<UploadAvatarResponse, FormData>({
+            query: (body) => ({
+                url: '/api/me/avatar',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User', 'AccountSnapshot'],
         }),
 
         changePassword: builder.mutation<{ message: string; user: MeResponse }, ChangePasswordPayload>({
@@ -479,6 +496,7 @@ export const {
     useCreateCustomerAddressMutation,
     useSetDefaultCustomerAddressMutation,
     useUpdateProfileMutation,
+    useUploadAvatarMutation,
     useChangePasswordMutation,
     useSendUsernameChangeOtpMutation,
     useSubmitUsernameChangeRequestMutation,

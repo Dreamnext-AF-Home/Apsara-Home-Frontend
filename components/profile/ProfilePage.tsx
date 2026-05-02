@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -492,13 +492,13 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim();
   const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential && !!navigator.credentials;
   const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '');
-  const { data } = useMeQuery(undefined, {
+  const { data, refetch: refetchMe } = useMeQuery(undefined, {
     skip: !isCustomerSession,
   });
-  const { data: accountSnapshot } = useAccountSnapshotQuery(undefined, {
+  const { data: accountSnapshot, refetch: refetchAccountSnapshot } = useAccountSnapshotQuery(undefined, {
     skip: !isCustomerSession,
   });
-  const { data: referralTree, isLoading: isReferralTreeLoading } = useReferralTreeQuery(undefined, {
+  const { data: referralTree, isLoading: isReferralTreeLoading, refetch: refetchReferralTree } = useReferralTreeQuery(undefined, {
     skip: !isCustomerSession,
     refetchOnMountOrArgChange: true,
     refetchOnFocus: true,
@@ -515,6 +515,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     skip: !isCustomerSession,
   });
   const [updateProfile, { isLoading: isSaving }] = useUpdateProfileMutation();
+  const [uploadAvatar] = useUploadAvatarMutation();
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [sendUsernameChangeOtp, { isLoading: isSendingUsernameOtp }] = useSendUsernameChangeOtpMutation();
   const [submitUsernameChangeRequest, { isLoading: isSubmittingUsernameChange }] = useSubmitUsernameChangeRequestMutation();
@@ -605,7 +606,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [activityPage, setActivityPage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
+  const [avatarZoom, setAvatarZoom] = useState(1);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [revokingTokenId, setRevokingTokenId] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState<AddressFormState>({ address: '', zipCode: '' });
@@ -616,16 +619,40 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const completeInformationRef = useRef<HTMLDivElement | null>(null);
   const phAddress = usePhAddress();
   const profileData = data ?? initialProfile;
+  const effectiveAvatarUrl = avatarPreviewUrl || profileData?.avatar_url || '';
   const effectiveRank = profileData?.rank ?? accountSnapshot?.loyalty?.rank ?? 0;
   const loyaltyTier: MemberTier = rankToTier(effectiveRank);
   const referralSummary = useMemo(() => {
+    const countNodes = (nodes: ReferralTreeNode[]): number =>
+      nodes.reduce((acc, node) => acc + 1 + countNodes(node.children ?? []), 0);
+
+    const countSecondLevel = (nodes: ReferralTreeNode[]): number =>
+      nodes.reduce((acc, node) => acc + (node.children?.length ?? 0), 0);
+
+    const snapshotDirectReferrals = accountSnapshot?.loyalty?.direct_referrals ?? [];
+    const referralTreeChildren = referralTree?.children ?? [];
+    const referralTreeCount = countNodes(referralTreeChildren);
+    const snapshotTreeCount = countNodes(snapshotDirectReferrals);
+
     const directCount = Math.max(
       referralTree?.summary?.direct_count ?? 0,
       accountSnapshot?.loyalty?.referral_count ?? 0,
+      snapshotDirectReferrals.length,
     );
-    const secondLevelCount = referralTree?.summary?.second_level_count ?? 0;
-    const totalNetwork = Math.max(referralTree?.summary?.total_network ?? 0, directCount);
-    const totalPv = (referralTree?.summary as { total_pv?: number } | undefined)?.total_pv ?? 0;
+    const secondLevelCount = Math.max(
+      referralTree?.summary?.second_level_count ?? 0,
+      countSecondLevel(referralTreeChildren),
+      countSecondLevel(snapshotDirectReferrals),
+    );
+    const totalNetwork = Math.max(
+      referralTree?.summary?.total_network ?? 0,
+      directCount + secondLevelCount,
+      referralTreeCount,
+      snapshotTreeCount,
+    );
+    const networkPv = (referralTree?.summary as { total_pv?: number } | undefined)?.total_pv ?? 0;
+    const personalPv = accountSnapshot?.loyalty?.personal_pv ?? 0;
+    const totalPv = personalPv + networkPv;
 
     return {
       directCount,
@@ -634,8 +661,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       totalPv,
     };
   }, [
+    accountSnapshot?.loyalty?.direct_referrals,
+    accountSnapshot?.loyalty?.personal_pv,
     accountSnapshot?.loyalty?.referral_count,
     referralTree?.summary,
+    referralTree?.children,
   ]);
   const referralChildren = useMemo(() => {
     const treeChildren = referralTree?.children ?? [];
@@ -774,11 +804,19 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   useEffect(() => {
     if (!isAvatarPreviewOpen) return;
     const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsAvatarPreviewOpen(false);
+      if (event.key === 'Escape') { setIsAvatarPreviewOpen(false); setAvatarZoom(1); }
     };
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, [isAvatarPreviewOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
 
   useEffect(() => {
     if (!referralMsg) return;
@@ -1273,6 +1311,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const renderReferralNode = (node: ReferralTreeNode, level = 0): React.ReactNode => {
     const children = node.children ?? [];
     const hasChildren = children.length > 0;
+    const nodePv = node.total_pv ?? node.total_earnings ?? 0;
     const isExpanded = hasTreeFilters ? true : (expandedTreeNodes[node.id] ?? level < 1);
     const levelClass = level === 0 ? 'border-indigo-200 dark:border-indigo-800 bg-white dark:bg-gray-800' : 'border-purple-100 dark:border-purple-800 bg-slate-50/60 dark:bg-gray-800/60';
     const nameClass = level === 0 ? 'text-slate-800 dark:text-gray-200' : 'text-slate-700 dark:text-gray-300';
@@ -1309,7 +1348,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
           <div className="mt-2 flex items-center gap-2 text-[10px]">
             <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 font-semibold text-indigo-700">
-              PV {Number(node.total_earnings ?? 0).toLocaleString()}
+              PV {Number(nodePv).toLocaleString()}
             </span>
             <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-600">
               {node.children_count ?? children.length} downline
@@ -1339,9 +1378,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const renderReferralNodeFull = (node: ReferralTreeNode, level = 0): React.ReactNode => {
     const children = node.children ?? [];
     const hasChildren = children.length > 0;
+    const nodePv = node.total_pv ?? node.total_earnings ?? 0;
     const isExpanded = hasTreeFilters ? true : (expandedTreeNodes[node.id] ?? level < 1);
     const vc = verificationColor(node.verification_status);
     const nodeInitials = getNodeInitials(node.name || 'AF');
+    const avatarUrl = node.avatar_url?.trim();
     const avatarGradients = [
       'from-violet-500 to-purple-600',
       'from-blue-500 to-indigo-600',
@@ -1358,17 +1399,31 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       : 'Unverified';
 
     return (
-      <div key={`full-${node.id}-${level}`} className="relative">
+      <motion.div
+        key={`full-${node.id}-${level}`}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="relative"
+      >
         {level > 0 && (
-          <span className="pointer-events-none absolute -left-4 top-7 h-px w-4 bg-purple-200" />
+          <span className="pointer-events-none absolute -left-4 top-7 h-px w-4 bg-purple-200 dark:bg-purple-900/50" />
         )}
         <div className={`group rounded-2xl border transition-all duration-200 hover:shadow-md ${level === 0 ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 shadow-sm' : 'border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-gray-800/70'}`}>
           <div className="flex items-center gap-3 p-3.5">
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className={`h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-sm text-white bg-gradient-to-br ${avatarGradient} shadow-sm`}>
-                {nodeInitials}
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={node.name ? `${node.name} profile photo` : 'Referral profile photo'}
+                  className="h-11 w-11 rounded-2xl object-cover shadow-sm"
+                />
+              ) : (
+                <div className={`h-11 w-11 rounded-2xl flex items-center justify-center font-bold text-sm text-white bg-gradient-to-br ${avatarGradient} shadow-sm`}>
+                  {nodeInitials}
+                </div>
+              )}
               <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${vc.dot}`} />
             </div>
 
@@ -1399,7 +1454,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       className="h-7 w-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-slate-400 dark:text-gray-500 hover:text-purple-500 dark:hover:text-purple-400 flex items-center justify-center transition-colors"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
-                      <Icon.ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      <Icon.ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                     </button>
                   )}
                 </div>
@@ -1407,7 +1462,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-sky-50 border border-sky-100 text-[11px] font-bold text-sky-700">
-                  PV {Number(node.total_earnings ?? 0).toLocaleString()}
+                  PV {Number(nodePv).toLocaleString()}
                 </span>
                 {(node.children_count ?? children.length) > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-100 text-[11px] font-semibold text-purple-600">
@@ -1425,12 +1480,23 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
           </div>
         </div>
 
-        {hasChildren && isExpanded && (
-          <div className="relative mt-1.5 ml-6 space-y-1.5 border-l-2 border-purple-100 pl-4 pt-1">
-            {children.map((child) => renderReferralNodeFull(child, level + 1))}
-          </div>
-        )}
-      </div>
+        <AnimatePresence initial={false}>
+          {hasChildren && isExpanded && (
+            <motion.div
+              key={`children-${node.id}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div className="relative mt-1.5 ml-6 space-y-1.5 border-l-2 border-purple-100 dark:border-purple-900/40 pl-4 pt-1">
+                {children.map((child) => renderReferralNodeFull(child, level + 1))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     );
   };
 
@@ -1504,40 +1570,44 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     if (!file) return;
 
     setProfileMsg(null);
+    const localPreviewUrl = URL.createObjectURL(file);
+    setAvatarPreviewUrl((current) => {
+      if (current?.startsWith('blob:')) {
+        URL.revokeObjectURL(current);
+      }
+      return localPreviewUrl;
+    });
     setIsUploadingAvatar(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('folder', 'profile');
+      const uploadResult = await uploadAvatar(formData).unwrap();
 
-      const uploadResponse = await fetch('/api/admin/upload', {
-        method: 'POST',
-        body: formData,
+      setAvatarPreviewUrl((current) => {
+        if (current?.startsWith('blob:')) {
+          URL.revokeObjectURL(current);
+        }
+        return uploadResult.avatar_url || null;
       });
-      const uploadResult = (await uploadResponse.json()) as { url?: string; error?: string };
-      if (!uploadResponse.ok || !uploadResult?.url) {
-        throw new Error(uploadResult?.error || 'Failed to upload profile photo.');
-      }
-
-      await updateProfile({
-        name: form.name.trim() || profileData?.name || session?.user?.name || 'AF Home User',
-        phone: form.phone.trim() || undefined,
-        middle_name: form.middle_name.trim() || undefined,
-        birth_date: form.birth_date.trim() || undefined,
-        gender: form.gender || undefined,
-        occupation: form.occupation.trim() || undefined,
-        work_location: form.work_location || undefined,
-        country: form.country.trim() || undefined,
-        avatar_url: uploadResult.url,
-      }).unwrap();
-
+      await Promise.allSettled([
+        refetchMe(),
+        refetchAccountSnapshot(),
+        refetchReferralTree(),
+      ]);
       profileDraftDirtyRef.current = false;
-      setProfileMsg({ type: 'success', text: 'Profile photo updated successfully. Your profile information was saved too.' });
+      setProfileMsg({ type: 'success', text: uploadResult.message || 'Profile photo updated successfully.' });
     } catch (err: unknown) {
-      const error = err as { message?: string; data?: { message?: string } };
+      setAvatarPreviewUrl((current) => {
+        if (current?.startsWith('blob:')) {
+          URL.revokeObjectURL(current);
+        }
+        return null;
+      });
+      const error = err as { message?: string; data?: { message?: string; errors?: Record<string, string[]> } };
+      const firstValidation = error?.data?.errors ? Object.values(error.data.errors)[0]?.[0] : undefined;
       setProfileMsg({
         type: 'error',
-        text: error?.data?.message || error?.message || 'Failed to upload profile photo.',
+        text: firstValidation || error?.data?.message || error?.message || 'Failed to upload profile photo.',
       });
     } finally {
       setIsUploadingAvatar(false);
@@ -2253,12 +2323,24 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   )}
 
                   {/* Avatar image or initials */}
-                  {profileData?.avatar_url ? (
-                    <img
-                      src={profileData.avatar_url}
-                      alt={form.name || 'Profile photo'}
-                      className="h-24 w-24 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-xl"
-                    />
+                  {effectiveAvatarUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsAvatarPreviewOpen(true)}
+                      className="group relative cursor-zoom-in"
+                      aria-label="View profile photo"
+                    >
+                      <img
+                        src={effectiveAvatarUrl}
+                        alt={form.name || 'Profile photo'}
+                        className="h-24 w-24 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-xl"
+                      />
+                      <div className="absolute inset-0 rounded-full bg-black/0 transition-colors group-hover:bg-black/30 flex items-center justify-center">
+                        <svg className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0zm0 0l2 2" />
+                        </svg>
+                      </div>
+                    </button>
                   ) : (
                     <div className="h-24 w-24 rounded-full bg-gradient-to-br from-sky-400 to-sky-500 text-white text-2xl font-bold flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-xl">
                       {initials}
@@ -2311,7 +2393,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 {isUploadingAvatar && (
                   <p className="mt-2 text-xs text-sky-500 font-medium animate-pulse">Uploading photo...</p>
                 )}
-                {profileData?.avatar_url && !isUploadingAvatar && (
+                {effectiveAvatarUrl && !isUploadingAvatar && (
                   <button
                     type="button"
                     onClick={() => setIsAvatarPreviewOpen(true)}
@@ -3789,45 +3871,65 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       </div>
                     ) : (
                       <>
-                        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                        {/* Search + expand toggle */}
+                        <div className="flex items-center gap-2 mb-3">
                           <div className="relative flex-1">
-                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                             <input
                               type="text"
                               value={treeSearchQuery}
                               onChange={(e) => { setTreeSearchQuery(e.target.value); setReferralPage(1); }}
                               placeholder="Search name, username, email..."
-                              className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2c5f4f]/20 dark:focus:ring-[#2c5f4f]/30 focus:border-[#2c5f4f]/40 dark:focus:border-[#2c5f4f]/60 dark:bg-gray-900 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-500"
+                              className="w-full pl-9 pr-9 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/60 dark:bg-gray-900 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-500 transition-colors"
                             />
+                            {treeSearchQuery && (
+                              <button type="button" onClick={() => { setTreeSearchQuery(''); setReferralPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors">
+                                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            )}
                           </div>
-                          <select
-                            value={treeStatusFilter}
-                            onChange={(e) => { setTreeStatusFilter(e.target.value as TreeStatusFilter); setReferralPage(1); }}
-                            className="rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-gray-900 px-3 py-2.5 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2c5f4f]/20 dark:focus:ring-[#2c5f4f]/30 focus:border-[#2c5f4f]/40 dark:focus:border-[#2c5f4f]/60"
+                          <button
+                            type="button"
+                            title={Object.keys(expandedTreeNodes).length > 0 ? 'Collapse all' : 'Expand all'}
+                            onClick={Object.keys(expandedTreeNodes).length > 0 ? handleCollapseAllTreeNodes : handleExpandAllTreeNodes}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                           >
-                            <option value="all">All Status</option>
-                            <option value="verified">Verified</option>
-                            <option value="pending_review">Pending Review</option>
-                            <option value="not_verified">Not Verified</option>
-                            <option value="blocked">Blocked</option>
-                          </select>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={handleExpandAllTreeNodes}
-                              className="flex-1 sm:flex-none rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:border-sky-300 hover:text-sky-600 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              Expand All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCollapseAllTreeNodes}
-                              className="flex-1 sm:flex-none rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:border-sky-300 hover:text-sky-600 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              Collapse
-                            </button>
-                          </div>
+                            {Object.keys(expandedTreeNodes).length > 0 ? (
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                              </svg>
+                            )}
+                          </button>
                         </div>
+
+                        {/* Status pill filters */}
+                        {(() => {
+                          const statusPills: { key: TreeStatusFilter; label: string; active: string; inactive: string }[] = [
+                            { key: 'all', label: 'All', active: 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500' },
+                            { key: 'verified', label: 'Verified', active: 'bg-emerald-500 text-white border-emerald-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400' },
+                            { key: 'pending_review', label: 'Pending', active: 'bg-sky-500 text-white border-sky-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-sky-400 hover:text-sky-600 dark:hover:text-sky-400' },
+                            { key: 'not_verified', label: 'Not Verified', active: 'bg-amber-500 text-white border-amber-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-400' },
+                            { key: 'blocked', label: 'Blocked', active: 'bg-rose-500 text-white border-rose-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-rose-400 hover:text-rose-600 dark:hover:text-rose-400' },
+                          ];
+                          return (
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 mb-3 scrollbar-hide">
+                              {statusPills.map((pill) => (
+                                <button
+                                  key={pill.key}
+                                  type="button"
+                                  onClick={() => { setTreeStatusFilter(pill.key); setReferralPage(1); }}
+                                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${treeStatusFilter === pill.key ? pill.active : pill.inactive}`}
+                                >
+                                  {pill.label}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
 
                         {(() => {
                           const totalPages = Math.ceil(filteredReferralChildren.length / REFERRAL_PAGE_SIZE);
@@ -3852,9 +3954,18 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
                               {pageItems.length > 0 ? (
                                 <>
-                                  <div className="space-y-2">
-                                    {pageItems.map((node) => renderReferralNodeFull(node))}
-                                  </div>
+                                  <AnimatePresence mode="wait">
+                                    <motion.div
+                                      key={treeStatusFilter + treeSearchQuery + referralPage}
+                                      initial={{ opacity: 0, y: 6 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -6 }}
+                                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                                      className="space-y-2"
+                                    >
+                                      {pageItems.map((node) => renderReferralNodeFull(node))}
+                                    </motion.div>
+                                  </AnimatePresence>
 
                                   {totalPages > 1 && (
                                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
@@ -4374,40 +4485,76 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         )}
 
 
-        {isAvatarPreviewOpen && profileData?.avatar_url && (
+        {isAvatarPreviewOpen && effectiveAvatarUrl && (
           <motion.div
+            key="avatar-lightbox"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm p-4"
-            onClick={() => setIsAvatarPreviewOpen(false)}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-md"
+            onClick={() => { setIsAvatarPreviewOpen(false); setAvatarZoom(1); }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ duration: 0.18 }}
-              className="mx-auto mt-12 max-w-xl rounded-2xl bg-white p-4 shadow-2xl"
+              initial={{ scale: 0.82, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.82, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+              className="relative flex flex-col items-center gap-3"
               onClick={(e) => e.stopPropagation()}
+              onWheel={(e) => {
+                setAvatarZoom((prev) => Math.min(4, Math.max(1, prev - e.deltaY * 0.003)));
+              }}
             >
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-bold text-slate-900">Profile Photo Preview</p>
+              <img
+                src={effectiveAvatarUrl}
+                alt={form.name || 'Profile photo'}
+                draggable={false}
+                onClick={() => setAvatarZoom((prev) => (prev >= 2.5 ? 1 : prev + 0.5))}
+                style={{ transform: `scale(${avatarZoom})`, transition: 'transform 0.22s cubic-bezier(0.32,0.72,0,1)' }}
+                className="max-h-[72vh] max-w-[80vw] rounded-2xl object-contain shadow-2xl cursor-zoom-in select-none"
+              />
+
+              <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-2 backdrop-blur-sm">
                 <button
                   type="button"
-                  onClick={() => setIsAvatarPreviewOpen(false)}
-                  className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
-                <img
-                  src={profileData.avatar_url}
-                  alt={form.name || 'Profile photo preview'}
-                  className="h-full w-full object-cover"
-                />
+                  onClick={() => setAvatarZoom((prev) => Math.max(1, prev - 0.5))}
+                  className="text-white/70 hover:text-white transition-colors text-lg font-bold leading-none"
+                  aria-label="Zoom out"
+                >−</button>
+                <span className="min-w-[3rem] text-center text-sm font-semibold text-white">
+                  {Math.round(avatarZoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAvatarZoom((prev) => Math.min(4, prev + 0.5))}
+                  className="text-white/70 hover:text-white transition-colors text-lg font-bold leading-none"
+                  aria-label="Zoom in"
+                >+</button>
+                {avatarZoom > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarZoom(1)}
+                    className="ml-1 text-xs text-white/50 hover:text-white/90 transition-colors"
+                  >Reset</button>
+                )}
               </div>
             </motion.div>
+
+            <button
+              type="button"
+              onClick={() => { setIsAvatarPreviewOpen(false); setAvatarZoom(1); }}
+              className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/70 backdrop-blur-sm transition-all hover:bg-white/20 hover:text-white"
+              aria-label="Close"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <p className="absolute bottom-5 left-1/2 -translate-x-1/2 text-xs text-white/40 select-none">
+              Scroll or click to zoom · Click outside to close
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

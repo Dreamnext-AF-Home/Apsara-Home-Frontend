@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
   const apiBase = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? "").replace(/\/+$/, "");
   const fontVars = {
-    "--font-poppins": '"Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
+    "--font-poppins": '"Plus Jakarta Sans", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
   } as React.CSSProperties;
 
   return (

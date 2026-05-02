@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 import { getServerSession } from 'next-auth'
 import { adminAuthOptions } from '@/libs/adminAuth'
+import { authOptions } from '@/libs/auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -22,9 +23,26 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(adminAuthOptions)
+    const adminSession = await getServerSession(adminAuthOptions)
+    const customerSession = adminSession ? null : await getServerSession(authOptions)
+    const session = adminSession ?? customerSession
     const role = String((session?.user as { role?: string } | undefined)?.role ?? '').toLowerCase()
-    if (!session?.user || !['super_admin', 'admin', 'web_content'].includes(role)) {
+
+    if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
+      return NextResponse.json(
+        { error: 'Cloudinary is not configured on this deployment.' },
+        { status: 500 }
+      )
+    }
+
+    const formData = await req.formData()
+    const file = formData.get('file') as File | null
+    const folderType = String(formData.get('folder') ?? 'products').toLowerCase()
+    const assetType = String(formData.get('asset_type') ?? 'image').toLowerCase()
+
+    const isAdminUpload = ['super_admin', 'admin', 'web_content'].includes(role)
+    const isCustomerProfileUpload = role === 'customer' && folderType === 'profile'
+    if (!session?.user || (!isAdminUpload && !isCustomerProfileUpload)) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
     }
 
@@ -40,18 +58,6 @@ export async function POST(req: NextRequest) {
       hit.count += 1
       uploadHits.set(ip, hit)
     }
-
-    if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
-      return NextResponse.json(
-        { error: 'Cloudinary is not configured on this deployment.' },
-        { status: 500 }
-      )
-    }
-
-    const formData = await req.formData()
-    const file = formData.get('file') as File | null
-    const folderType = String(formData.get('folder') ?? 'products').toLowerCase()
-    const assetType = String(formData.get('asset_type') ?? 'image').toLowerCase()
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
