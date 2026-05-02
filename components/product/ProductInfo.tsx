@@ -306,8 +306,9 @@ const ProductInfo = ({
 
     useEffect(() => {
         if (typeof window === 'undefined' || !product.id) return;
+        const productId = product.id;
 
-        const storageKey = `afhome_product_viewer_id:${product.id}`;
+        const storageKey = `afhome_product_viewer_id:${productId}`;
         const existingViewerId = window.sessionStorage.getItem(storageKey) || '';
         const localViewerId = existingViewerId || (window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`);
         if (!existingViewerId) {
@@ -316,7 +317,7 @@ const ProductInfo = ({
         let cancelled = false;
         const sendHeartbeat = async () => {
             try {
-                const response = await heartbeatProductViewer({ productId: product.id, viewerId: localViewerId }).unwrap();
+                const response = await heartbeatProductViewer({ productId, viewerId: localViewerId }).unwrap();
                 if (!cancelled) {
                     setLiveViewers(response.active_viewers);
                 }

@@ -7,10 +7,11 @@ import TopBar from '@/components/layout/TopBar'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/landing-page/Footer'
 import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
+import type { Category } from '@/store/api/categoriesApi'
 import { Skeleton } from '@heroui/react/skeleton'
 
 type PhotoGalleryPageClientProps = {
-  initialCategories?: unknown[]
+  initialCategories?: Category[]
 }
 
 const SAMPLE_GALLERY_ITEMS = [
@@ -123,9 +124,8 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
   const categories = useMemo(() => {
     const cats = new Set(
       galleryItems.map((item) => {
-        const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category : ''
-        if (payloadCategory.trim() !== '') return payloadCategory
-        return 'category' in item && item.category ? item.category : 'Other'
+        const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category.trim() : ''
+        return payloadCategory !== '' ? payloadCategory : 'Other'
       }),
     )
     return ['All', ...Array.from(cats)].sort()
@@ -135,8 +135,8 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
   const filteredItems = useMemo(() => {
     if (selectedCategory === 'All') return galleryItems
     return galleryItems.filter((item) => {
-      const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category : ''
-      const category = payloadCategory.trim() !== '' ? payloadCategory : ('category' in item ? item.category : '')
+      const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category.trim() : ''
+      const category = payloadCategory !== '' ? payloadCategory : 'Other'
       return category === selectedCategory
     })
   }, [galleryItems, selectedCategory])
@@ -278,7 +278,7 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                           <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
                             {typeof item.payload?.category === 'string' && item.payload.category.trim() !== ''
                               ? item.payload.category
-                              : ('category' in item && item.category ? item.category : 'Gallery')}
+                              : 'Gallery'}
                           </span>
                         </div>
                         <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
@@ -341,12 +341,10 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                 {selectedImage.subtitle && (
                   <p className="mt-2 text-gray-300 text-lg">{selectedImage.subtitle}</p>
                 )}
-                {(typeof selectedImage.payload?.category === 'string' && selectedImage.payload.category.trim() !== '') || ('category' in selectedImage && selectedImage.category) ? (
+                {typeof selectedImage.payload?.category === 'string' && selectedImage.payload.category.trim() !== '' ? (
                   <div className="mt-3">
                     <span className="inline-block px-3 py-1 rounded-lg bg-sky-600 text-sm font-medium">
-                      {typeof selectedImage.payload?.category === 'string' && selectedImage.payload.category.trim() !== ''
-                        ? selectedImage.payload.category
-                        : (selectedImage.category as string)}
+                      {selectedImage.payload.category}
                     </span>
                   </div>
                 ) : null}

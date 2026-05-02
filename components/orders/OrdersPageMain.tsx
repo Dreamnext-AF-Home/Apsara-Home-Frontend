@@ -13,6 +13,7 @@ import TopBar from "@/components/layout/TopBar";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/landing-page/Footer";
 import TrustBar from "@/components/layout/TrustBar";
+import type { Category } from '@/store/api/categoriesApi';
 
 type TabKey = typeof TABS[number]['key'];
 
@@ -78,7 +79,7 @@ function OrdersPageSkeleton() {
 }
 
 type OrdersPageMainProps = {
-  initialCategories?: unknown[];
+  initialCategories?: Category[];
 };
 
 const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
