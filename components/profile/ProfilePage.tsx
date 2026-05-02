@@ -1756,6 +1756,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  useEffect(() => {
+    if (isMobile && mobilePanelOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobile, mobilePanelOpen]);
+
   const tabMotionProps = {
     initial: { opacity: 0, x: slideDir.current * 48 },
     animate: { opacity: 1, x: 0 },
@@ -2622,7 +2631,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto overscroll-contain">
             <div className="space-y-5 overflow-x-hidden">
             <AnimatePresence mode="wait">
               {/* --- Profile tab --- */}
