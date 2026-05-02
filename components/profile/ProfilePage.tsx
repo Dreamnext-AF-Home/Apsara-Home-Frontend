@@ -1399,9 +1399,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       : 'Unverified';
 
     return (
-      <div key={`full-${node.id}-${level}`} className="relative">
+      <motion.div
+        key={`full-${node.id}-${level}`}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="relative"
+      >
         {level > 0 && (
-          <span className="pointer-events-none absolute -left-4 top-7 h-px w-4 bg-purple-200" />
+          <span className="pointer-events-none absolute -left-4 top-7 h-px w-4 bg-purple-200 dark:bg-purple-900/50" />
         )}
         <div className={`group rounded-2xl border transition-all duration-200 hover:shadow-md ${level === 0 ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 shadow-sm' : 'border-slate-100 dark:border-slate-700 bg-slate-50/70 dark:bg-gray-800/70'}`}>
           <div className="flex items-center gap-3 p-3.5">
@@ -1448,7 +1454,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       className="h-7 w-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-slate-400 dark:text-gray-500 hover:text-purple-500 dark:hover:text-purple-400 flex items-center justify-center transition-colors"
                       aria-label={isExpanded ? 'Collapse' : 'Expand'}
                     >
-                      <Icon.ChevronRight className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      <Icon.ChevronRight className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                     </button>
                   )}
                 </div>
@@ -1474,12 +1480,23 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
           </div>
         </div>
 
-        {hasChildren && isExpanded && (
-          <div className="relative mt-1.5 ml-6 space-y-1.5 border-l-2 border-purple-100 pl-4 pt-1">
-            {children.map((child) => renderReferralNodeFull(child, level + 1))}
-          </div>
-        )}
-      </div>
+        <AnimatePresence initial={false}>
+          {hasChildren && isExpanded && (
+            <motion.div
+              key={`children-${node.id}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div className="relative mt-1.5 ml-6 space-y-1.5 border-l-2 border-purple-100 dark:border-purple-900/40 pl-4 pt-1">
+                {children.map((child) => renderReferralNodeFull(child, level + 1))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     );
   };
 
@@ -3854,45 +3871,65 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       </div>
                     ) : (
                       <>
-                        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                        {/* Search + expand toggle */}
+                        <div className="flex items-center gap-2 mb-3">
                           <div className="relative flex-1">
-                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                             <input
                               type="text"
                               value={treeSearchQuery}
                               onChange={(e) => { setTreeSearchQuery(e.target.value); setReferralPage(1); }}
                               placeholder="Search name, username, email..."
-                              className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2c5f4f]/20 dark:focus:ring-[#2c5f4f]/30 focus:border-[#2c5f4f]/40 dark:focus:border-[#2c5f4f]/60 dark:bg-gray-900 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-500"
+                              className="w-full pl-9 pr-9 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/60 dark:bg-gray-900 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-500 transition-colors"
                             />
+                            {treeSearchQuery && (
+                              <button type="button" onClick={() => { setTreeSearchQuery(''); setReferralPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition-colors">
+                                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                              </button>
+                            )}
                           </div>
-                          <select
-                            value={treeStatusFilter}
-                            onChange={(e) => { setTreeStatusFilter(e.target.value as TreeStatusFilter); setReferralPage(1); }}
-                            className="rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-gray-900 px-3 py-2.5 text-sm text-slate-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2c5f4f]/20 dark:focus:ring-[#2c5f4f]/30 focus:border-[#2c5f4f]/40 dark:focus:border-[#2c5f4f]/60"
+                          <button
+                            type="button"
+                            title={Object.keys(expandedTreeNodes).length > 0 ? 'Collapse all' : 'Expand all'}
+                            onClick={Object.keys(expandedTreeNodes).length > 0 ? handleCollapseAllTreeNodes : handleExpandAllTreeNodes}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                           >
-                            <option value="all">All Status</option>
-                            <option value="verified">Verified</option>
-                            <option value="pending_review">Pending Review</option>
-                            <option value="not_verified">Not Verified</option>
-                            <option value="blocked">Blocked</option>
-                          </select>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={handleExpandAllTreeNodes}
-                              className="flex-1 sm:flex-none rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:border-sky-300 hover:text-sky-600 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              Expand All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleCollapseAllTreeNodes}
-                              className="flex-1 sm:flex-none rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:border-sky-300 hover:text-sky-600 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              Collapse
-                            </button>
-                          </div>
+                            {Object.keys(expandedTreeNodes).length > 0 ? (
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                              </svg>
+                            )}
+                          </button>
                         </div>
+
+                        {/* Status pill filters */}
+                        {(() => {
+                          const statusPills: { key: TreeStatusFilter; label: string; active: string; inactive: string }[] = [
+                            { key: 'all', label: 'All', active: 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500' },
+                            { key: 'verified', label: 'Verified', active: 'bg-emerald-500 text-white border-emerald-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400' },
+                            { key: 'pending_review', label: 'Pending', active: 'bg-sky-500 text-white border-sky-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-sky-400 hover:text-sky-600 dark:hover:text-sky-400' },
+                            { key: 'not_verified', label: 'Not Verified', active: 'bg-amber-500 text-white border-amber-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-400' },
+                            { key: 'blocked', label: 'Blocked', active: 'bg-rose-500 text-white border-rose-500', inactive: 'bg-white dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-200 dark:border-slate-700 hover:border-rose-400 hover:text-rose-600 dark:hover:text-rose-400' },
+                          ];
+                          return (
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 mb-3 scrollbar-hide">
+                              {statusPills.map((pill) => (
+                                <button
+                                  key={pill.key}
+                                  type="button"
+                                  onClick={() => { setTreeStatusFilter(pill.key); setReferralPage(1); }}
+                                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${treeStatusFilter === pill.key ? pill.active : pill.inactive}`}
+                                >
+                                  {pill.label}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
 
                         {(() => {
                           const totalPages = Math.ceil(filteredReferralChildren.length / REFERRAL_PAGE_SIZE);
@@ -3917,9 +3954,18 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
                               {pageItems.length > 0 ? (
                                 <>
-                                  <div className="space-y-2">
-                                    {pageItems.map((node) => renderReferralNodeFull(node))}
-                                  </div>
+                                  <AnimatePresence mode="wait">
+                                    <motion.div
+                                      key={treeStatusFilter + treeSearchQuery + referralPage}
+                                      initial={{ opacity: 0, y: 6 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -6 }}
+                                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                                      className="space-y-2"
+                                    >
+                                      {pageItems.map((node) => renderReferralNodeFull(node))}
+                                    </motion.div>
+                                  </AnimatePresence>
 
                                   {totalPages > 1 && (
                                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
