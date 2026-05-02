@@ -28,6 +28,7 @@ export interface MeResponse {
     region_code?: string;
     zip_code?: string;
     avatar_url?: string;
+    avatar_original_url?: string;
     rank?: number;
     account_status?: number;
     lock_status?: number;
@@ -110,6 +111,7 @@ export interface UpdateProfilePayload {
     region_code?: string;
     zip_code?: string;
     avatar_url?: string;
+    avatar_original_url?: string;
     two_factor_enabled?: boolean;
 }
 
@@ -290,6 +292,7 @@ export interface DisableTotpPayload {
 export interface UploadAvatarResponse {
     message: string;
     avatar_url: string;
+    avatar_original_url?: string;
     user: MeResponse;
 }
 
