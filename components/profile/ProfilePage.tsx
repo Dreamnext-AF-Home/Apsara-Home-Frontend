@@ -52,6 +52,7 @@ import getActivityIcon from './GetActivityIcon';
 import EncashmentTab from './EncashmentTab';
 import WalletTab from './WalletTab';
 import InteriorRequestsTab from './InteriorRequestsTab';
+import AvatarCropModal from './AvatarCropModal';
 import LevelsTab from './LevelsTab';
 import { usePhAddress } from '@/hooks/usePhAddress';
 import { containsBlockedWord } from '@/libs/badWords';
@@ -607,8 +608,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [sessionPage, setSessionPage] = useState(1);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarOriginalPreviewUrl, setAvatarOriginalPreviewUrl] = useState<string | null>(null);
   const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
   const [avatarZoom, setAvatarZoom] = useState(1);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [revokingTokenId, setRevokingTokenId] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState<AddressFormState>({ address: '', zipCode: '' });
@@ -620,6 +623,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const phAddress = usePhAddress();
   const profileData = data ?? initialProfile;
   const effectiveAvatarUrl = avatarPreviewUrl || profileData?.avatar_url || '';
+  const effectiveAvatarViewUrl = avatarOriginalPreviewUrl || profileData?.avatar_original_url || effectiveAvatarUrl;
   const effectiveRank = profileData?.rank ?? accountSnapshot?.loyalty?.rank ?? 0;
   const loyaltyTier: MemberTier = rankToTier(effectiveRank);
   const referralSummary = useMemo(() => {
@@ -815,8 +819,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       if (avatarPreviewUrl?.startsWith('blob:')) {
         URL.revokeObjectURL(avatarPreviewUrl);
       }
+      if (avatarOriginalPreviewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarOriginalPreviewUrl);
+      }
     };
-  }, [avatarPreviewUrl]);
+  }, [avatarPreviewUrl, avatarOriginalPreviewUrl]);
 
   useEffect(() => {
     if (!referralMsg) return;
@@ -1565,54 +1572,71 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     }
   };
 
-  const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarOriginalPreviewUrl((current) => {
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
+      return objectUrl;
+    });
+    setCropSrc(objectUrl);
+    e.target.value = '';
+  };
 
+  const handleCropConfirm = async (blob: Blob) => {
+    setCropSrc(null);
     setProfileMsg(null);
-    const localPreviewUrl = URL.createObjectURL(file);
+    const localPreviewUrl = URL.createObjectURL(blob);
     setAvatarPreviewUrl((current) => {
-      if (current?.startsWith('blob:')) {
-        URL.revokeObjectURL(current);
-      }
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
       return localPreviewUrl;
     });
     setIsUploadingAvatar(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', blob, 'avatar.jpg');
+      if (avatarOriginalPreviewUrl?.startsWith('blob:')) {
+        const originalResponse = await fetch(avatarOriginalPreviewUrl);
+        const originalBlob = await originalResponse.blob();
+        formData.append('original_file', originalBlob, 'avatar-original.jpg');
+      }
       const uploadResult = await uploadAvatar(formData).unwrap();
-
       setAvatarPreviewUrl((current) => {
-        if (current?.startsWith('blob:')) {
-          URL.revokeObjectURL(current);
-        }
+        if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
         return uploadResult.avatar_url || null;
       });
-      await Promise.allSettled([
-        refetchMe(),
-        refetchAccountSnapshot(),
-        refetchReferralTree(),
-      ]);
+      setAvatarOriginalPreviewUrl((current) => {
+        if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
+        return uploadResult.avatar_original_url || uploadResult.avatar_url || null;
+      });
+      await Promise.allSettled([refetchMe(), refetchAccountSnapshot(), refetchReferralTree()]);
       profileDraftDirtyRef.current = false;
       setProfileMsg({ type: 'success', text: uploadResult.message || 'Profile photo updated successfully.' });
     } catch (err: unknown) {
       setAvatarPreviewUrl((current) => {
-        if (current?.startsWith('blob:')) {
-          URL.revokeObjectURL(current);
-        }
+        if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
+        return null;
+      });
+      setAvatarOriginalPreviewUrl((current) => {
+        if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
         return null;
       });
       const error = err as { message?: string; data?: { message?: string; errors?: Record<string, string[]> } };
       const firstValidation = error?.data?.errors ? Object.values(error.data.errors)[0]?.[0] : undefined;
-      setProfileMsg({
-        type: 'error',
-        text: firstValidation || error?.data?.message || error?.message || 'Failed to upload profile photo.',
-      });
+      setProfileMsg({ type: 'error', text: firstValidation || error?.data?.message || error?.message || 'Failed to upload profile photo.' });
     } finally {
       setIsUploadingAvatar(false);
-      e.target.value = '';
     }
+  };
+
+  const handleCropCancel = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    setAvatarOriginalPreviewUrl((current) => {
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
+      return null;
+    });
   };
 
   const handleChangePassword = async (e: FormEvent) => {
@@ -4485,7 +4509,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         )}
 
 
-        {isAvatarPreviewOpen && effectiveAvatarUrl && (
+        {cropSrc && (
+          <AvatarCropModal
+            src={cropSrc}
+            onConfirm={handleCropConfirm}
+            onCancel={handleCropCancel}
+          />
+        )}
+
+        {isAvatarPreviewOpen && effectiveAvatarViewUrl && (
           <motion.div
             key="avatar-lightbox"
             initial={{ opacity: 0 }}
@@ -4507,7 +4539,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               }}
             >
               <img
-                src={effectiveAvatarUrl}
+                src={effectiveAvatarViewUrl}
                 alt={form.name || 'Profile photo'}
                 draggable={false}
                 onClick={() => setAvatarZoom((prev) => (prev >= 2.5 ? 1 : prev + 0.5))}
