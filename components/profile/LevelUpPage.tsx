@@ -105,7 +105,7 @@ export default function LevelUpPage({
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4f1ea] text-slate-950 dark:bg-[#080b10] dark:text-white">
       <TopBar />
-      <Navbar categories={initialCategories} />
+      <Navbar initialCategories={initialCategories} />
 
       <section className="relative px-4 py-8 md:px-6 md:py-12">
         <div className="absolute left-1/2 top-20 h-72 w-72 -translate-x-1/2 rounded-full bg-amber-300/20 blur-3xl dark:bg-sky-500/10" />

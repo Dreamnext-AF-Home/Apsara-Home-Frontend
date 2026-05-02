@@ -542,6 +542,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [googleLinkSuccess, setGoogleLinkSuccess] = useState(false);
   const [facebookLinkSuccess, setFacebookLinkSuccess] = useState(false);
   const profileDraftDirtyRef = useRef(false);
+  const slideDir = useRef(1);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   const [form, setForm] = useState<ProfileFormState>({
     name: '',
@@ -1746,8 +1749,30 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const pwStrength = getPasswordStrength(security.newPassword);
   const activeTabLabel = TABS.find((item) => item.key === activeTab)?.label ?? 'Profile';
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1280);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const tabMotionProps = {
+    initial: { opacity: 0, x: slideDir.current * 48 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, transition: { duration: 0.1 } },
+    transition: { duration: 0.22, ease: 'easeOut' as const },
+  };
+
+  const handleMobileBack = () => {
+    setMobilePanelOpen(false);
+  };
+
   const handleTabChange = (tab: Tab, options?: { focus?: string }) => {
+    const currentIndex = TABS.findIndex((t) => t.key === activeTab);
+    const nextIndex = TABS.findIndex((t) => t.key === tab);
+    slideDir.current = nextIndex >= currentIndex ? 1 : -1;
     setActiveTab(tab);
+    if (isMobile) setMobilePanelOpen(true);
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set('tab', tab);
     if (options?.focus) {
@@ -2569,15 +2594,40 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
           </aside>
 
           {/* --- Main content --- */}
-          <div
+          <motion.div
             ref={mainContentRef}
-            className="xl:col-span-8 space-y-5"
+            className={
+              isMobile
+                ? 'fixed inset-0 z-[100] flex flex-col bg-white dark:bg-gray-900 overflow-hidden'
+                : 'xl:col-span-8 space-y-5'
+            }
+            initial={false}
+            animate={{ x: isMobile && !mobilePanelOpen ? '100%' : 0 }}
+            transition={{ type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
           >
-            <div className="space-y-5">
+            {/* Mobile header with back button */}
+            {isMobile && (
+              <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
+                <button
+                  type="button"
+                  onClick={handleMobileBack}
+                  className="flex items-center gap-1.5 rounded-lg p-1 text-sky-600 transition active:bg-sky-50 dark:text-sky-400"
+                  aria-label="Back"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12H5M12 5l-7 7 7 7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{activeTabLabel}</span>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto">
+            <div className="space-y-5 overflow-x-hidden">
             <AnimatePresence mode="wait">
               {/* --- Profile tab --- */}
               {activeTab === 'profile' && (
-                <motion.div key="profile" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
+                <motion.div key="profile" {...tabMotionProps} className="space-y-5">
 
                   <div className="rounded-2xl border border-sky-100 bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 p-5 md:p-6">
                     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -2906,7 +2956,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
               {/* --- Security tab --- */}
               {activeTab === 'security' && (
-                <motion.div key="security" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
+                <motion.div key="security" {...tabMotionProps} className="space-y-5">
 
                   <form onSubmit={handleChangePassword} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
                     <div className="mb-5">
@@ -3551,7 +3601,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
               {/* --- Preferences tab --- */}
               {activeTab === 'preferences' && (
-                <motion.div key="preferences" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
+                <motion.div key="preferences" {...tabMotionProps} className="space-y-5">
 
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
                     <div className="mb-5">
@@ -3622,10 +3672,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {activeTab === 'wallet' && (
                 <motion.div
                   key="wallet"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
+                  {...tabMotionProps}
                 >
                   <WalletTab isVerified={isVerified} />
                 </motion.div>
@@ -3634,10 +3681,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {activeTab === 'pv' && (
                 <motion.div
                   key="pv"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
+                  {...tabMotionProps}
                 >
                   <WalletTab isVerified={isVerified} initialWalletType="pv" />
                 </motion.div>
@@ -3646,10 +3690,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {activeTab === 'encashment' && (
                 <motion.div
                   key="encashment"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
+                  {...tabMotionProps}
                 >
                   <EncashmentTab />
                 </motion.div>
@@ -3658,10 +3699,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {activeTab === 'interior-requests' && (
                 <motion.div
                   key="interior-requests"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
+                  {...tabMotionProps}
                 >
                   <InteriorRequestsTab />
                 </motion.div>
@@ -3670,10 +3708,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {activeTab === 'referrals' && (
                 <motion.div
                   key="referrals"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
+                  {...tabMotionProps}
                   className="space-y-5"
                 >
                   {/* Header card */}
@@ -3861,7 +3896,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               )}
 
               {activeTab === 'activity' && (
-                <motion.div key="activity" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
+                <motion.div key="activity" {...tabMotionProps} className="space-y-5">
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
                     <div className="mb-5">
                       <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Activity</h3>
@@ -4009,7 +4044,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               )}
 
               {activeTab === 'change-username' && (
-                <motion.div key="change-username" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-5">
+                <motion.div key="change-username" {...tabMotionProps} className="space-y-5">
                   <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
                     <div className="mb-4">
                       <h3 className="text-base font-bold text-slate-900 dark:text-white">Change Username</h3>
@@ -4155,15 +4190,21 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               )}
 
               {activeTab === 'levels' && (
-                <LevelsTab
-                  effectiveRank={effectiveRank}
-                  loyaltyTier={loyaltyTier}
-                  snapshot={accountSnapshot}
-                />
+                <motion.div
+                  key="levels"
+                  {...tabMotionProps}
+                >
+                  <LevelsTab
+                    effectiveRank={effectiveRank}
+                    loyaltyTier={loyaltyTier}
+                    snapshot={accountSnapshot}
+                  />
+                </motion.div>
               )}
             </AnimatePresence>
             </div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 

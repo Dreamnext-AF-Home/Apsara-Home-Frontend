@@ -5,10 +5,11 @@ import TopBar from '@/components/layout/TopBar'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/landing-page/Footer'
 import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
+import type { Category } from '@/store/api/categoriesApi'
 import { Skeleton } from '@heroui/react/skeleton'
 
 type VideoGalleryPageClientProps = {
-  initialCategories?: unknown[]
+  initialCategories?: Category[]
 }
 
 const SAMPLE_VIDEO_ITEMS = [

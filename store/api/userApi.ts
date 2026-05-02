@@ -161,7 +161,11 @@ export interface MemberSessionItem {
     location?: string;
     created_at: string;
     last_used_at?: string;
+    last_active_at?: string;
     is_current: boolean;
+    device?: string;
+    platform?: string;
+    browser?: string;
 }
 
 export interface UsernameChangeRequest {

@@ -523,7 +523,7 @@ export default function ExpensesPageMain() {
                           type="button"
                           onClick={() => {
                             setForceIframePreview(false)
-                            setInvoicePreviewUrl(resolveInvoiceUrl(row.invoice_url))
+                            setInvoicePreviewUrl(resolveInvoiceUrl(row.invoice_url ?? ''))
                           }}
                           className="text-xs font-semibold text-emerald-700 hover:underline"
                         >
