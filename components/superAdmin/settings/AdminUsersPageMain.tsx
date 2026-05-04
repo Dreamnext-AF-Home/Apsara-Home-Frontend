@@ -22,6 +22,7 @@ import {
   AdminPermissionId,
   DEFAULT_ADMIN_PERMISSIONS,
   normalizeAdminPermissions,
+  WEB_CONTENT_SECTION_OPTIONS,
 } from '@/libs/adminPermissions'
 import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
 import { useGetAdminWebPageItemsQuery, type WebPageItem } from '@/store/api/webPagesApi'
@@ -34,7 +35,7 @@ type CreateForm = {
   email: string
   user_level_id: number
   supplier_id: number | null
-  admin_permissions: AdminPermissionId[]
+  admin_permissions: string[]  // AdminPermissionId[] for level 2, wc:* strings for level 4
   storefront_ids: number[]
 }
 
@@ -615,6 +616,112 @@ function AdminActivityModal({
   )
 }
 
+// ─── Web Content Section Picker (level 4 users) ──────────────────────────────
+
+function WebContentSectionPicker({
+  value,
+  onChange,
+  storefronts,
+  storefrontIds,
+  onStorefrontsChange,
+}: {
+  value: string[]
+  onChange: (v: string[]) => void
+  storefronts: Array<{ item: WebPageItem; config: NonNullable<ReturnType<typeof getPartnerStorefrontConfig>> }>
+  storefrontIds: number[]
+  onStorefrontsChange: (ids: number[]) => void
+}) {
+  const toggle = (id: string) =>
+    value.includes(id) ? onChange(value.filter(v => v !== id)) : onChange([...value, id])
+
+  const showStorefronts = value.includes('wc:partner-storefronts')
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-amber-100 bg-amber-50/60 p-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+          Web Content Sections
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Tick the sections this account can manage.
+          <span className="ml-1 font-medium text-amber-600">Leave all unchecked = full access to all sections.</span>
+        </p>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {WEB_CONTENT_SECTION_OPTIONS.map(opt => (
+          <label
+            key={opt.id}
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border bg-white px-3 py-2.5 text-xs transition ${
+              value.includes(opt.id)
+                ? 'border-amber-300 ring-1 ring-amber-200'
+                : 'border-amber-100 hover:border-amber-200'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={value.includes(opt.id)}
+              onChange={() => toggle(opt.id)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div>
+              <p className="font-semibold text-slate-700">{opt.label}</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">{opt.description}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+
+      {showStorefronts && (
+        <div className="rounded-xl border border-amber-100 bg-white p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-600">
+            Partner Storefronts Access
+          </p>
+          <p className="mb-3 text-[11px] text-slate-400">
+            Pick which specific storefronts this account can manage. Leave all unchecked = all storefronts.
+          </p>
+          {storefronts.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-amber-200 px-3 py-2 text-[11px] text-slate-400">
+              No partner storefronts found yet.
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {storefronts.map(({ item, config }) => (
+                <label key={item.id} className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={storefrontIds.includes(item.id)}
+                    onChange={() =>
+                      onStorefrontsChange(
+                        storefrontIds.includes(item.id)
+                          ? storefrontIds.filter(id => id !== item.id)
+                          : [...storefrontIds, item.id],
+                      )
+                    }
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-700">{config.displayName}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">/{config.slug}</p>
+                  </div>
+                  <a
+                    href={`/shop/${config.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-0.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 transition"
+                  >
+                    Open
+                  </a>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EditModal({
   target, form, busy, onChange, onSubmit, onClose, supplierOptions, roleOptions, storefronts,
 }: {
@@ -717,7 +824,7 @@ function EditModal({
                 Choose Admin Access Before Saving
               </p>
               <PermissionCheckboxGrid
-                value={form.admin_permissions}
+                value={normalizeAdminPermissions(form.admin_permissions)}
                 onChange={(admin_permissions) => onChange({ admin_permissions })}
               />
             </motion.div>
@@ -730,50 +837,13 @@ function EditModal({
             />
           )}
           {form.user_level_id === 4 && (
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                Partner Storefronts
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Select which storefronts this Web Content account can manage.
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {storefronts.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-amber-200 bg-white px-3 py-3 text-xs text-slate-500">
-                    No partner storefronts found yet.
-                  </div>
-                ) : (
-                  storefronts.map(({ item, config }) => (
-                    <label key={item.id} className="flex items-start gap-3 rounded-xl border border-amber-100 bg-white px-3 py-2.5 text-xs text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={form.storefront_ids.includes(item.id)}
-                        onChange={() =>
-                          onChange({
-                            storefront_ids: form.storefront_ids.includes(item.id)
-                              ? form.storefront_ids.filter((entry) => entry !== item.id)
-                              : [...form.storefront_ids, item.id],
-                          })
-                        }
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
-                      />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-slate-700">{config.displayName}</p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">Slug: {config.slug}</p>
-                      </div>
-                      <a
-                        href={`/shop/${config.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-0.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 transition"
-                      >
-                        Open
-                      </a>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
+            <WebContentSectionPicker
+              value={form.admin_permissions}
+              onChange={admin_permissions => onChange({ admin_permissions })}
+              storefronts={storefronts}
+              storefrontIds={form.storefront_ids}
+              onStorefrontsChange={storefront_ids => onChange({ storefront_ids })}
+            />
           )}
           <SectionLabel>Security</SectionLabel>
           <InputField
@@ -906,7 +976,7 @@ export default function AdminUsersPageMain() {
       const result = await createAdminUser({
         ...createForm,
         email: createForm.email.trim() || undefined,
-        admin_permissions: createForm.user_level_id === 2 ? createForm.admin_permissions : [],
+        admin_permissions: [2, 4].includes(createForm.user_level_id) ? createForm.admin_permissions : [],
         storefront_ids: createForm.user_level_id === 4 ? createForm.storefront_ids : [],
       }).unwrap()
       showSuccessToast(result.message)
@@ -941,7 +1011,9 @@ export default function AdminUsersPageMain() {
         ? (normalizeAdminPermissions(row.admin_permissions).length
           ? normalizeAdminPermissions(row.admin_permissions)
           : DEFAULT_ADMIN_PERMISSIONS)
-        : [],
+        : row.user_level_id === 4
+          ? (row.admin_permissions ?? []).filter(p => p.startsWith('wc:'))
+          : [],
       storefront_ids: row.storefront_ids ?? [],
     })
   }
@@ -955,7 +1027,7 @@ export default function AdminUsersPageMain() {
         id: editTarget.id, name: editForm.name, username: editForm.username,
         email: editForm.email, user_level_id: editForm.user_level_id,
         supplier_id: editForm.user_level_id === 8 ? editForm.supplier_id : null,
-        admin_permissions: editForm.user_level_id === 2 ? editForm.admin_permissions : [],
+        admin_permissions: [2, 4].includes(editForm.user_level_id) ? editForm.admin_permissions : [],
         storefront_ids: editForm.user_level_id === 4 ? editForm.storefront_ids : [],
         password: editForm.password.trim() || undefined,
       }).unwrap()
@@ -1120,7 +1192,7 @@ export default function AdminUsersPageMain() {
                 Choose Admin Access Before Saving
               </p>
               <PermissionCheckboxGrid
-                value={createForm.admin_permissions}
+                value={normalizeAdminPermissions(createForm.admin_permissions)}
                 onChange={(admin_permissions) => setCreateForm((prev) => ({ ...prev, admin_permissions }))}
               />
             </motion.div>
@@ -1133,49 +1205,13 @@ export default function AdminUsersPageMain() {
             />
           )}
           {createForm.user_level_id === 4 && (
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                Partner Storefronts
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Select which storefronts this Web Content account can manage.
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {storefronts.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-amber-200 bg-white px-3 py-3 text-xs text-slate-500">
-                    No partner storefronts found yet.
-                  </div>
-                ) : (
-                  storefronts.map(({ item, config }) => (
-                    <label key={item.id} className="flex items-start gap-3 rounded-xl border border-amber-100 bg-white px-3 py-2.5 text-xs text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={createForm.storefront_ids.includes(item.id)}
-                        onChange={() =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            storefront_ids: toggleStorefrontSelection(prev.storefront_ids, item.id),
-                          }))
-                        }
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
-                      />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-slate-700">{config.displayName}</p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">Slug: {config.slug}</p>
-                      </div>
-                      <a
-                        href={`/shop/${config.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-0.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100 transition"
-                      >
-                        Open
-                      </a>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
+            <WebContentSectionPicker
+              value={createForm.admin_permissions}
+              onChange={admin_permissions => setCreateForm(p => ({ ...p, admin_permissions }))}
+              storefronts={storefronts}
+              storefrontIds={createForm.storefront_ids}
+              onStorefrontsChange={storefront_ids => setCreateForm(p => ({ ...p, storefront_ids }))}
+            />
           )}
         </div>
 

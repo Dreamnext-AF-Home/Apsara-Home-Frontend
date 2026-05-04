@@ -1,6 +1,22 @@
 import { baseApi } from './baseApi'
 
-export type WebPageType = 'home' | 'banners' | 'announcements' | 'assembly-guides' | 'shop-builder' | 'partner-storefront' | 'photo-gallery' | 'video-gallery'
+export type WebPageType =
+  | 'home'
+  | 'banners'
+  | 'announcements'
+  | 'assembly-guides'
+  | 'shop-builder'
+  | 'partner-storefront'
+  | 'photo-gallery'
+  | 'video-gallery'
+  | 'dreambuild-hero'
+  | 'dreambuild-services'
+  | 'dreambuild-projects'
+  | 'dreambuild-blogs'
+  | 'dreambuild-testimonials'
+  | 'dreambuild-gallery'
+  | 'dreambuild-process'
+  | 'dreambuild-contact'
 
 export interface WebPageItem {
   id: number
