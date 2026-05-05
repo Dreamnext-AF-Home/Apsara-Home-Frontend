@@ -10,7 +10,7 @@ import { useWishlist } from '@/context/WishlistContext'
 import ItemCard from '@/components/item/ItemCard'
 import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting'
 
-const GUEST_WISHLIST_ITEMS_STORAGE_KEY = 'synergy_guest_wishlist_items'
+const GUEST_WISHLIST_ITEMS_STORAGE_KEY = 'partner_guest_wishlist_items'
 
 type GuestWishlistItem = {
   productId: number
@@ -31,7 +31,9 @@ const readGuestWishlistItems = (): GuestWishlistItem[] => {
   if (typeof window === 'undefined') return []
 
   try {
-    const raw = window.localStorage.getItem(GUEST_WISHLIST_ITEMS_STORAGE_KEY)
+    const raw =
+      window.localStorage.getItem(GUEST_WISHLIST_ITEMS_STORAGE_KEY)
+      ?? window.localStorage.getItem('synergy_guest_wishlist_items')
     const parsed = raw ? JSON.parse(raw) : []
     if (!Array.isArray(parsed)) return []
 
@@ -71,8 +73,8 @@ export default function WishlistDrawer() {
   const isLoggedIn = status === 'authenticated' && (role === 'customer' || role === '')
   const loginHref = `/login?callback=${encodeURIComponent(pathname || '/wishlist')}`
   const partnerSlug = extractPartnerSlugFromPath(pathname)
-  const isSynergyRoute = partnerSlug === 'synergy-shop'
-  const useGuestWishlistMode = isSynergyRoute
+  const isPartnerStorefrontRoute = Boolean(partnerSlug)
+  const useGuestWishlistMode = isPartnerStorefrontRoute
   const useApiWishlistMode = isLoggedIn && !useGuestWishlistMode
   const [guestWishlist, setGuestWishlist] = useState<GuestWishlistItem[]>([])
   
@@ -88,8 +90,12 @@ export default function WishlistDrawer() {
     }
 
     syncGuestWishlist()
+    window.addEventListener('partner:guest-wishlist-updated', syncGuestWishlist)
     window.addEventListener('synergy:guest-wishlist-updated', syncGuestWishlist)
-    return () => window.removeEventListener('synergy:guest-wishlist-updated', syncGuestWishlist)
+    return () => {
+      window.removeEventListener('partner:guest-wishlist-updated', syncGuestWishlist)
+      window.removeEventListener('synergy:guest-wishlist-updated', syncGuestWishlist)
+    }
   }, [isOpen, useGuestWishlistMode])
 
   const visibleWishlist = useMemo(
@@ -208,10 +214,10 @@ export default function WishlistDrawer() {
                             image: item.image,
                           }}
                           brandName={item.brand ?? ''}
-                          hideDiscountBadge={isSynergyRoute}
-                          forceRealPrice={isSynergyRoute}
-                          allowGuestAddToCart={isSynergyRoute}
-                          allowGuestWishlist={isSynergyRoute}
+                          hideDiscountBadge={isPartnerStorefrontRoute}
+                          forceRealPrice={isPartnerStorefrontRoute}
+                          allowGuestAddToCart={isPartnerStorefrontRoute}
+                          allowGuestWishlist={isPartnerStorefrontRoute}
                         />
                       </motion.div>
                     ))}

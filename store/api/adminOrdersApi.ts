@@ -46,8 +46,12 @@ export interface AdminOrder {
   zq_response?: Record<string, unknown> | null
   zq_synced_at?: string | null
   product_name: string
+  product_sku?: string | null
   product_image?: string | null
   quantity: number
+  selected_color?: string | null
+  selected_size?: string | null
+  selected_type?: string | null
   amount: number
   payment_method?: string | null
   customer_name?: string | null
@@ -102,6 +106,19 @@ export const adminOrdersApi = baseApi.injectEndpoints({
     getAdminOrders: builder.query<AdminOrdersResponse, AdminOrdersQuery | void>({
       query: (params) => ({
         url: '/api/admin/orders',
+        method: 'GET',
+        params: {
+          filter: params?.filter ?? 'all',
+          q: params?.search,
+          page: params?.page ?? 1,
+          per_page: params?.perPage ?? 20,
+        },
+      }),
+      providesTags: ['Orders'],
+    }),
+    getPartnerStorefrontOrders: builder.query<AdminOrdersResponse, AdminOrdersQuery | void>({
+      query: (params) => ({
+        url: '/api/admin/storefront-orders',
         method: 'GET',
         params: {
           filter: params?.filter ?? 'all',
@@ -245,6 +262,7 @@ export const adminOrdersApi = baseApi.injectEndpoints({
 
 export const {
   useGetAdminOrdersQuery,
+  useGetPartnerStorefrontOrdersQuery,
   useApproveAdminOrderMutation,
   useRejectAdminOrderMutation,
   useUpdateAdminOrderStatusMutation,

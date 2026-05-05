@@ -135,7 +135,16 @@ function NewsletterSkeleton() {
   )
 }
 
-const getFeaturedProducts = (featuredCollection: WebPageItem | undefined, products: Product[]) => {
+const getFeaturedProducts = (
+  featuredCollection: WebPageItem | undefined,
+  products: Product[],
+  featuredProductIds?: number[],
+) => {
+  if (Array.isArray(featuredProductIds)) {
+    const selectedSet = new Set(featuredProductIds)
+    return products.filter((item) => selectedSet.has(item.id)).slice(0, 4)
+  }
+
   const sourceCategoryId = Number.parseInt(getField(featuredCollection, 'source_category_id'), 10)
   return Number.isFinite(sourceCategoryId) && sourceCategoryId > 0
     ? products.filter((item) => item.catid === sourceCategoryId).slice(0, 4)
@@ -168,6 +177,7 @@ export type ShopBuilderSectionsProps = {
   data?: ShopBuilderSectionsData
   partnerSlug?: string
   allowedCategoryIds?: number[]
+  featuredProductIds?: number[]
 }
 
 export type ShopBuilderApiResponse = {
@@ -184,7 +194,7 @@ export function normalizeShopBuilderApiResponse(data: ShopBuilderApiResponse | n
   }
 }
 
-export default function ShopBuilderSections({ data = null, partnerSlug, allowedCategoryIds }: ShopBuilderSectionsProps) {
+export default function ShopBuilderSections({ data = null, partnerSlug, allowedCategoryIds, featuredProductIds }: ShopBuilderSectionsProps) {
   const { items, categories, products } = normalizeShopBuilderApiResponse(data)
 
   if (!data || items.length === 0) {
@@ -246,7 +256,7 @@ export default function ShopBuilderSections({ data = null, partnerSlug, allowedC
 
   const allCategoryCards = partnerSlug ? partnerCategoryCards : selectedCategoryCards
 
-  const featuredProducts = getFeaturedProducts(featuredCollection, products)
+  const featuredProducts = getFeaturedProducts(featuredCollection, products, featuredProductIds)
 
   return (
     <>
@@ -257,7 +267,6 @@ export default function ShopBuilderSections({ data = null, partnerSlug, allowedC
         <CategoryGridSection
           section={categoryGrid}
           categoryCards={allCategoryCards}
-          partnerSlug={partnerSlug}
         />
       ) : partnerSlug ? null : (
         <HeroSection />
@@ -415,11 +424,9 @@ function CampaignBannersSection({
 function CategoryGridSection({
   section,
   categoryCards,
-  partnerSlug,
 }: {
   section: WebPageItem
   categoryCards: Array<{ id: number; name: string; url: string; count: number; image: string }>
-  partnerSlug?: string
 }) {
   const cards = categoryCards
 

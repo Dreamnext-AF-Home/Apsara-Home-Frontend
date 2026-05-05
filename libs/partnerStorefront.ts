@@ -10,6 +10,7 @@ export type PartnerStorefrontConfig = {
   slug: string
   displayName: string
   logoUrl: string | null
+  tabLogoUrl: string | null
   logoVersion: string
   referralLink: string
   heroTitle: string
@@ -75,6 +76,7 @@ export const getPartnerStorefrontConfig = (item: WebPageItem | undefined): Partn
     slug,
     displayName: String(fields.display_name ?? item.title ?? slug).trim() || slug,
     logoUrl: String(fields.logo_url ?? item.image_url ?? '').trim() || null,
+    tabLogoUrl: String(fields.tab_logo_url ?? '').trim() || null,
     logoVersion: String(fields.logo_version ?? '').trim(),
     referralLink: String(fields.referral_link ?? '').trim(),
     heroTitle: String(fields.hero_title ?? item.subtitle ?? '').trim() || `Shop ${slug}`,

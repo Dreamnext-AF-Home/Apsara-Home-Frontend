@@ -28,6 +28,10 @@ export const buildStorefrontProductPath = (
   const partnerSlug = extractPartnerSlugFromPath(pathname)
 
   if (partnerSlug) {
+    const currentPath = String(pathname ?? '').trim().toLowerCase()
+    if (currentPath.startsWith('/shop/')) {
+      return `/shop/${partnerSlug}/product/${productSuffix}`
+    }
     return `/${partnerSlug}/product/${productSuffix}`
   }
 

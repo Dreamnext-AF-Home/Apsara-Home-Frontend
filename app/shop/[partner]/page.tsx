@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import PartnerStorefrontPage from '@/components/partner/PartnerStorefrontPage'
 import { filterPartnerCategories, filterPartnerProducts, getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
+import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
@@ -40,8 +41,6 @@ export async function generateMetadata({ params }: PageProps) {
   const description = `Browse the curated storefront for ${resolved.partner}.`
   const path = `/shop/${resolved.partner}`
   const canonicalUrl = `${SITE_URL}${path}`
-  const isSynergy = resolved.partner.toLowerCase() === 'synergy-shop'
-
   const metadata: Metadata = {
     title,
     description,
@@ -60,10 +59,13 @@ export async function generateMetadata({ params }: PageProps) {
     },
   }
 
-  if (isSynergy) {
+  const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
+  const iconUrl = partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl
+
+  if (iconUrl) {
     metadata.icons = {
-      icon: [{ url: '/Images/synergy.png', type: 'image/png' }],
-      apple: '/Images/synergy.png',
+      icon: [{ url: iconUrl, type: 'image/png' }],
+      apple: iconUrl,
     }
   }
 
@@ -131,7 +133,37 @@ async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?
     }
 
     const categories = filterPartnerCategories(categoriesJson.categories ?? [], partner)
-    const products = filterPartnerProducts(productsJson.products ?? [], partner)
+    const baseProducts = filterPartnerProducts(productsJson.products ?? [], partner)
+    const baseProductIds = new Set(baseProducts.map((product) => product.id))
+
+    // Ensure selected partner products always appear even if they are not in the first page batch.
+    const missingFeaturedIds = partner.featuredProductIds.filter((id) => !baseProductIds.has(id))
+    let missingFeaturedProducts: Product[] = []
+
+    if (missingFeaturedIds.length > 0) {
+      const featuredFetchResults = await Promise.all(
+        missingFeaturedIds.map(async (id) => {
+          try {
+            const response = await fetch(`${apiUrl}/api/products/${id}`, {
+              method: 'GET',
+              headers: { Accept: 'application/json' },
+              cache: 'no-store',
+            })
+            if (!response.ok) return null
+            const json = (await response.json()) as { product?: Product }
+            return json.product ?? null
+          } catch {
+            return null
+          }
+        }),
+      )
+
+      missingFeaturedProducts = featuredFetchResults
+        .filter((product): product is Product => Boolean(product))
+        .filter((product) => partner.allowedCategoryIds.includes(product.catid))
+    }
+
+    const products = [...baseProducts, ...missingFeaturedProducts]
     const selectedProducts = selectedCategoryId
       ? products.filter((product) => product.catid === selectedCategoryId)
       : products

@@ -2,6 +2,9 @@
 
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
+import type { WebPageItem } from '@/store/api/webPagesApi'
 
 const titleCase = (value: string) =>
   value
@@ -13,8 +16,43 @@ const titleCase = (value: string) =>
 export default function PartnerShopLoading() {
   const pathname = usePathname()
   const slug = pathname.replace(/^\/shop\//, '').split('/')[0]?.toLowerCase() || ''
-  const displayName = slug ? titleCase(slug) : 'Shop'
-  const logoSrc = slug === 'synergy-shop' ? '/Images/synergy.png' : '/Images/af_home_logo.png'
+  const [displayName, setDisplayName] = useState(slug ? titleCase(slug) : 'Shop')
+  const [logoSrc, setLogoSrc] = useState('/Images/af_home_logo.png')
+
+  const apiUrl = useMemo(
+    () => (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, ''),
+    [],
+  )
+
+  useEffect(() => {
+    let isCancelled = false
+    if (!slug || !apiUrl) return
+
+    const loadBranding = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/web-pages/partner-storefronts`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        })
+        if (!response.ok) return
+        const json = (await response.json()) as { items?: WebPageItem[] }
+        const match = (json.items ?? []).find((item) => getPartnerStorefrontConfig(item)?.slug === slug)
+        const config = getPartnerStorefrontConfig(match)
+        if (!config || isCancelled) return
+
+        setDisplayName(config.displayName || titleCase(slug))
+        setLogoSrc(config.tabLogoUrl || config.logoUrl || '/Images/af_home_logo.png')
+      } catch {
+        // Keep fallback branding.
+      }
+    }
+
+    void loadBranding()
+    return () => {
+      isCancelled = true
+    }
+  }, [apiUrl, slug])
 
   return (
     <div id="af-loading-screen" className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#faf8f5] overflow-hidden">

@@ -3,6 +3,7 @@ import { buildPageMetadata } from '@/app/seo';
 import CustomerCheckoutMain from '@/components/checkout/customer/CustomerCheckoutMain';
 import { getNavbarCategories } from '@/libs/serverStorefront';
 import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
+import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer';
 import { normalizeReferralCode } from '@/libs/referral';
 import type { WebPageItem } from '@/store/api/webPagesApi';
 
@@ -43,30 +44,26 @@ async function getStorefrontReferralCode(partnerSlug: string): Promise<string> {
 export async function generateMetadata({ params }: PageProps) {
   const { partner } = await params;
   const normalizedPartner = partner.trim().toLowerCase();
-
-  if (normalizedPartner !== 'synergy-shop') {
-    return buildPageMetadata({
-      title: 'Checkout Customer',
-      description: 'Browse the Checkout Customer page on AF Home.',
-      path: '/checkout/customer',
-      noIndex: true,
-    });
-  }
+  const storefront = await getPartnerStorefrontBySlug(normalizedPartner);
 
   const metadata = buildPageMetadata({
-    title: 'Checkout',
-    description: 'Complete your checkout for Synergy Shop orders.',
+    title: storefront?.displayName ? `Checkout | ${storefront.displayName}` : 'Checkout',
+    description: storefront?.displayName
+      ? `Complete your checkout for ${storefront.displayName} orders.`
+      : 'Complete your checkout.',
     path: `/${normalizedPartner}/checkout/customer`,
     noIndex: true,
-    siteName: 'Synergy Shop',
+    siteName: storefront?.displayName || 'AF Home',
   });
 
   return {
     ...metadata,
-    icons: {
-      icon: [{ url: '/Images/synergy.png', type: 'image/png' }],
-      apple: '/Images/synergy.png',
-    },
+    icons: storefront?.tabLogoUrl || storefront?.logoUrl
+      ? {
+        icon: [{ url: storefront.tabLogoUrl || storefront.logoUrl || '', type: 'image/png' }],
+        apple: storefront.tabLogoUrl || storefront.logoUrl || '',
+      }
+      : metadata.icons,
   };
 }
 
@@ -74,7 +71,8 @@ export default async function PartnerCustomerCheckoutPage({ params }: PageProps)
   const { partner } = await params;
   const normalizedPartner = partner.trim().toLowerCase();
 
-  if (normalizedPartner !== 'synergy-shop') {
+  const storefront = await getPartnerStorefrontBySlug(normalizedPartner);
+  if (!storefront) {
     notFound();
   }
 
@@ -88,6 +86,9 @@ export default async function PartnerCustomerCheckoutPage({ params }: PageProps)
       initialCategories={navbarCategories}
       storefrontPartner={normalizedPartner}
       storefrontReferralCode={storefrontReferralCode}
+      storefrontDisplayName={storefront.displayName}
+      storefrontLogoUrl={storefront.logoUrl || undefined}
+      storefrontTabLogoUrl={storefront.tabLogoUrl || undefined}
     />
   );
 }
