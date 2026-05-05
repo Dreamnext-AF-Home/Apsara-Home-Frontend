@@ -69,7 +69,6 @@ export default function ShopAiSupportGate() {
   if (shouldHide) {
     return null
   }
-  if (partnerSlug === 'synergy-shop') return null
   if (!partnerSlug) return <AiSupport />
   if (!partnerAiVisible) return null
   return <AiSupport />

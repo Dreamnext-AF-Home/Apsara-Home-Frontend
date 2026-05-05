@@ -13,11 +13,23 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 const LOCAL_PAYMENT_MODE_HOSTS = new Set(['localhost', '127.0.0.1']);
 
 function CheckoutSuccessPage() {
+  const readCookieValue = (name: string): string => {
+    if (typeof document === 'undefined') return '';
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+    return match?.[1] ? decodeURIComponent(match[1]) : '';
+  };
+
   const [verifyCheckoutSession] = useLazyVerifyCheckoutSessionQuery();
   const [loading, setLoading] = useState(true);
   const [checkoutSourceSlug] = useState(() => {
     if (typeof window === 'undefined') return '';
-    return (window.localStorage.getItem('last_checkout_source_slug') || '').trim().toLowerCase();
+    return (
+      window.localStorage.getItem('last_checkout_source_slug')
+      || window.sessionStorage.getItem('last_checkout_source_slug')
+      || readCookieValue('last_checkout_source_slug')
+      || ''
+    ).trim().toLowerCase();
   });
   const [trackOrderBaseHref] = useState(() => (checkoutSourceSlug ? `/${checkoutSourceSlug}/track-order` : '/track-order'));
   const [homeHref] = useState(() => (checkoutSourceSlug ? `/shop/${checkoutSourceSlug}` : '/'));
@@ -48,15 +60,30 @@ function CheckoutSuccessPage() {
     };
 
     const verify = async (isInitial = false) => {
-      const checkoutId = localStorage.getItem('last_checkout_id');
+      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const checkoutIdFromQuery =
+        (searchParams?.get('checkout_id') || '').trim()
+        || (searchParams?.get('checkoutId') || '').trim()
+        || (searchParams?.get('order') || '').trim()
+        || (searchParams?.get('reference') || '').trim();
+      const checkoutIdFromStorage =
+        localStorage.getItem('last_checkout_id')
+        || sessionStorage.getItem('last_checkout_id')
+        || readCookieValue('last_checkout_id')
+        || '';
+      const checkoutId = checkoutIdFromQuery || checkoutIdFromStorage;
       const canUseLocalPaymentMode =
         typeof window !== 'undefined' && LOCAL_PAYMENT_MODE_HOSTS.has(window.location.hostname);
       const paymentMode = canUseLocalPaymentMode
-        ? (localStorage.getItem('last_checkout_payment_mode') || undefined)
+        ? (localStorage.getItem('last_checkout_payment_mode') || sessionStorage.getItem('last_checkout_payment_mode') || undefined)
         : 'live';
+      if (checkoutIdFromQuery) {
+        localStorage.setItem('last_checkout_id', checkoutIdFromQuery);
+        sessionStorage.setItem('last_checkout_id', checkoutIdFromQuery);
+      }
       if (!checkoutId) {
         if (!isMounted) return;
-        setError('No checkout reference found in local storage.');
+        setError('No checkout reference found. Please use the checkout link with order reference, or track your order manually.');
         setLoading(false);
         stopPolling();
         return;

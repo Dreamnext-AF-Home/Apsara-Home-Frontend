@@ -96,6 +96,7 @@ interface Product {
   id: number
   name: string
   type?: number
+  manualCheckoutEnabled?: boolean
   image?: string | null
   price?: number | null
   priceMember?: number | null
@@ -151,9 +152,10 @@ export default function ItemCard({
   const [imageError, setImageError] = useState(false)
   const { data: session, status } = useSession()
   const role = String(session?.user?.role ?? '').toLowerCase()
-  const isLoggedIn = status === 'authenticated' && (role === 'customer' || role === '')
-  const useAccountCart = isLoggedIn && !allowGuestAddToCart
-  const useAccountWishlist = isLoggedIn && !allowGuestWishlist
+  const isLoggedIn = status === 'authenticated' && role === 'customer'
+  // Logged-in customers should always use account-backed cart/wishlist so data survives refresh/navigation.
+  const useAccountCart = isLoggedIn
+  const useAccountWishlist = isLoggedIn
   const [addToCartApi, { isLoading: isAddingToCart }] = useAddToCartMutation()
   const [loadProductDetails, { isFetching: isFetchingProductDetails }] = useLazyGetPublicProductQuery()
   const { setIsOpen, addToCart: addToLocalCart } = useCart()
@@ -231,6 +233,7 @@ export default function ItemCard({
           image: variant?.images?.[0] ?? product.image ?? '',
           prodpv: variantPrice.pv > 0 ? variantPrice.pv : null,
           brand: brandName || null,
+          manualCheckoutEnabled: Boolean(product.manualCheckoutEnabled),
           selectedColor: variant?.color ?? null,
           selectedStyle: variant?.style ?? null,
           selectedSize: variant?.size ?? null,
@@ -269,6 +272,36 @@ export default function ItemCard({
       // Refetch cart to sync with backend
       refetchCart()
     } catch (error: any) {
+      if (allowGuestAddToCart) {
+        const variantLabel = [variant?.name, variant?.style, variant?.size, variant?.color].filter(Boolean).join(' - ')
+        const variantPrice = getVariantDisplayPrice(variant)
+        addToLocalCart({
+          id: variant?.sku ? `${product.id}::${variant.sku}` : String(product.id),
+          productId: product.id,
+          variantId: variant?.id,
+          name: variantLabel ? `${product.name} (${variantLabel})` : product.name,
+          price: variantPrice.display,
+          originalPrice: variantPrice.strike > variantPrice.display ? variantPrice.strike : null,
+          image: variant?.images?.[0] ?? product.image ?? '',
+          prodpv: variantPrice.pv > 0 ? variantPrice.pv : null,
+          brand: brandName || null,
+          manualCheckoutEnabled: Boolean(product.manualCheckoutEnabled),
+          selectedColor: variant?.color ?? null,
+          selectedStyle: variant?.style ?? null,
+          selectedSize: variant?.size ?? null,
+          selectedType: variant?.name ?? null,
+          selectedSku: variant?.sku ?? null,
+        })
+        toast.success('Item added to cart successfully')
+        if (shouldWaitForPickerExit) {
+          setOpenCartAfterVariantPicker(true)
+          setVariantPickerOpen(false)
+        } else {
+          setIsOpen(true)
+        }
+        return
+      }
+
       const errorMessage = error?.data?.message || error?.message || 'Failed to add item to cart'
       toast.error(errorMessage)
     }

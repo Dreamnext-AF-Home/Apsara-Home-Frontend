@@ -1,7 +1,8 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import CategoryListProductMain from '@/components/category/CategoryListProductMain'
 import { buildPageMetadata } from '@/app/seo'
 import { filterPartnerCategories, getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
+import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
 import type { CategoryProduct } from '@/libs/CategoryData'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
@@ -102,14 +103,14 @@ const mapProductToDisplay = (product: Product, apiUrl?: string): CategoryProduct
 
 export async function generateMetadata({ params }: PageProps) {
   const resolved = await params
-  const normalizedPartner = resolved.partner.trim().toLowerCase()
   const plainTitle = `${resolved.partner} Products`
   const metadata = buildPageMetadata({
     title: `${resolved.partner} Products`,
     description: `Browse all products for ${resolved.partner}.`,
     path: `/shop/${resolved.partner}/product`,
   })
-  const partnerIcon = normalizedPartner === 'synergy-shop' ? '/Images/synergy.png' : undefined
+  const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
+  const partnerIcon = partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl
 
   return {
     ...metadata,
@@ -182,6 +183,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     if (allowedCategories.length === 0) {
       return {
+        partner,
         categories: allowedCategories,
         products: [] as CategoryProduct[],
       }
@@ -189,6 +191,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     if (selectedProductIds.length === 0) {
       return {
+        partner,
         categories: allowedCategories,
         products: [] as CategoryProduct[],
       }
@@ -218,11 +221,13 @@ async function getPartnerProductPageData(partnerSlug: string) {
     const selectedProducts = productEntries.filter((item): item is Product => Boolean(item))
 
     return {
+      partner,
       categories: allowedCategories,
       products: selectedProducts.map((product) => mapProductToDisplay(product, apiUrl)),
     }
   } catch {
     return {
+      partner: null,
       categories: [] as Category[],
       products: [] as CategoryProduct[],
     }
@@ -231,9 +236,6 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
 export default async function PartnerProductPage({ params }: PageProps) {
   const resolved = await params
-  if (resolved.partner.toLowerCase() === 'senergy-shop') {
-    redirect('/shop/synergy-shop/product')
-  }
   const payload = await getPartnerProductPageData(resolved.partner)
 
   if (!payload) {
@@ -246,6 +248,11 @@ export default async function PartnerProductPage({ params }: PageProps) {
       initialCategoryLabel="All Products"
       initialProducts={payload.products}
       initialCategories={payload.categories}
+      partnerBranding={{
+        logoSrc: payload.partner?.logoUrl || payload.partner?.tabLogoUrl || '/Images/af_home_logo.png',
+        displayName: payload.partner?.displayName || resolved.partner,
+        productHref: `/shop/${resolved.partner}/product`,
+      }}
     />
   )
 }

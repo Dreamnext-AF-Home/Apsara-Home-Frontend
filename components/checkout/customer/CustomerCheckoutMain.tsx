@@ -126,26 +126,35 @@ const CustomerCheckoutMain = ({
     initialCategories = [],
     storefrontPartner,
     storefrontReferralCode,
+    storefrontDisplayName,
+    storefrontLogoUrl,
+    storefrontTabLogoUrl,
 }: {
     initialCategories?: Category[];
     storefrontPartner?: string;
     storefrontReferralCode?: string;
+    storefrontDisplayName?: string;
+    storefrontLogoUrl?: string;
+    storefrontTabLogoUrl?: string;
 }) => {
     const router = useRouter();
     const { data: session, status } = useSession();
     const role = String(session?.user?.role ?? '').toLowerCase();
     const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '');
-    const isLoggedIn = isCustomerSession;
+    const normalizedPartner = (storefrontPartner ?? '').trim().toLowerCase();
+    const isPartnerStorefront = normalizedPartner.length > 0;
+    const isLoggedIn = isPartnerStorefront ? false : isCustomerSession;
     const { data: meData } = useMeQuery(undefined, { skip: !isCustomerSession });
     const { data: publicSettingsData } = useGetPublicGeneralSettingsQuery();
     const { data: shippingRatesData, isLoading: shippingRatesLoading, isFetching: shippingRatesFetching } = useGetPublicShippingRatesQuery();
     const [fetchProduct, { data: fullProductData }] = useLazyGetPublicProductQuery();
     const [checkoutRefreshTrigger, setCheckoutRefreshTrigger] = useState(0);
-    const normalizedPartner = (storefrontPartner ?? '').trim().toLowerCase();
-    const isSynergyStorefront = normalizedPartner === 'synergy-shop';
+    
+    const partnerName = storefrontDisplayName?.trim() || (normalizedPartner ? normalizedPartner.replace(/-/g, ' ') : 'AF Home');
+    const partnerLogo = storefrontLogoUrl || storefrontTabLogoUrl;
     const shouldShowReferralField = true;
-    const backToShopHref = isSynergyStorefront ? '/synergy-shop/product' : '/shop';
-    const checkoutHeaderLabel = isSynergyStorefront ? 'Synergy Shop Secure Checkout' : 'AF Home Secure Checkout';
+    const backToShopHref = isPartnerStorefront ? `/shop/${normalizedPartner}/product` : '/shop';
+    const checkoutHeaderLabel = isPartnerStorefront ? `${partnerName} Secure Checkout` : 'AF Home Secure Checkout';
 
     const checkoutData = useMemo(() => readCheckoutDraft(), [checkoutRefreshTrigger]);
     const storedReferral = useMemo(() => readStoredReferral(), []);
@@ -298,20 +307,33 @@ const CustomerCheckoutMain = ({
         if (!checkoutData) return 0;
         return Math.max(0, effectiveSubtotal - voucherDiscount) + resolvedShippingFee;
     }, [checkoutData, effectiveSubtotal, resolvedShippingFee, voucherDiscount]);
+    const effectiveSourceSlug = useMemo(() => {
+        const draftSlug = String(checkoutData?.sourceSlug ?? '').trim().toLowerCase();
+        if (draftSlug) return draftSlug;
+        return normalizedPartner || '';
+    }, [checkoutData?.sourceSlug, normalizedPartner]);
+    const effectiveSourceUrl = useMemo(() => {
+        const draftUrl = String(checkoutData?.sourceUrl ?? '').trim();
+        if (draftUrl) return draftUrl;
+        if (typeof window === 'undefined') return null;
+        if (!effectiveSourceSlug) return window.location.href;
+        return `${window.location.origin}/shop/${effectiveSourceSlug}/product`;
+    }, [checkoutData?.sourceUrl, effectiveSourceSlug]);
 
     useEffect(() => {
         if (checkoutData) return;
-        router.replace('/');
-    }, [checkoutData, router]);
+        router.replace(backToShopHref);
+    }, [backToShopHref, checkoutData, router]);
 
     useEffect(() => {
         if (!checkoutData?.product) return;
         if (!manualCheckoutModeEnabledByAdmin) return;
-        if (checkoutData.product.manualCheckoutEnabled === true) return;
+        if (checkoutData.product.manualCheckoutEnabled === true) {
+            return;
+        }
 
-        localStorage.removeItem('guest_checkout');
-        router.replace('/');
-    }, [checkoutData, manualCheckoutModeEnabledByAdmin, router]);
+        setNotice('Some items may not support manual checkout. Please review your cart items before placing the order.');
+    }, [checkoutData, manualCheckoutModeEnabledByAdmin]);
 
     useEffect(() => {
         if (!checkoutData) return;
@@ -421,9 +443,10 @@ const CustomerCheckoutMain = ({
                     : undefined,
                 voucher_code: voucherInfo?.code,
                 source_label: checkoutData.sourceLabel ?? null,
-                source_slug: checkoutData.sourceSlug ?? null,
+                source_slug: effectiveSourceSlug || null,
+                storefront_partner: effectiveSourceSlug || null,
                 source_host: checkoutData.sourceHost ?? null,
-                source_url: checkoutData.sourceUrl ?? null,
+                source_url: effectiveSourceUrl ?? null,
                 customer: {
                     name: form.name,
                     email: form.email,
@@ -455,12 +478,34 @@ const CustomerCheckoutMain = ({
 
             if (data.checkout_id) {
                 localStorage.setItem('last_checkout_id', data.checkout_id);
+                sessionStorage.setItem('last_checkout_id', data.checkout_id);
                 localStorage.setItem('last_checkout_payment_mode', canSwitchPaymentMode ? (data.payment_mode || effectivePaymentMode) : 'live');
+                sessionStorage.setItem('last_checkout_payment_mode', canSwitchPaymentMode ? (data.payment_mode || effectivePaymentMode) : 'live');
+                try {
+                    const secureFlag = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+                    document.cookie = `last_checkout_id=${encodeURIComponent(data.checkout_id)}; Path=/; Max-Age=86400; SameSite=Lax${secureFlag}`;
+                    if (typeof window !== 'undefined' && /(^|\\.)afhome\\.ph$/i.test(window.location.hostname)) {
+                        document.cookie = `last_checkout_id=${encodeURIComponent(data.checkout_id)}; Path=/; Domain=.afhome.ph; Max-Age=86400; SameSite=Lax${secureFlag}`;
+                    }
+                } catch {
+                    // Ignore cookie write failures.
+                }
             }
-            if (checkoutData.sourceSlug) {
-                localStorage.setItem('last_checkout_source_slug', checkoutData.sourceSlug);
+            if (effectiveSourceSlug) {
+                localStorage.setItem('last_checkout_source_slug', effectiveSourceSlug);
+                sessionStorage.setItem('last_checkout_source_slug', effectiveSourceSlug);
+                try {
+                    const secureFlag = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+                    document.cookie = `last_checkout_source_slug=${encodeURIComponent(effectiveSourceSlug)}; Path=/; Max-Age=86400; SameSite=Lax${secureFlag}`;
+                    if (typeof window !== 'undefined' && /(^|\\.)afhome\\.ph$/i.test(window.location.hostname)) {
+                        document.cookie = `last_checkout_source_slug=${encodeURIComponent(effectiveSourceSlug)}; Path=/; Domain=.afhome.ph; Max-Age=86400; SameSite=Lax${secureFlag}`;
+                    }
+                } catch {
+                    // Ignore cookie write failures.
+                }
             } else {
                 localStorage.removeItem('last_checkout_source_slug');
+                sessionStorage.removeItem('last_checkout_source_slug');
             }
             localStorage.removeItem('guest_checkout');
             window.location.href = data.checkout_url;
@@ -493,10 +538,10 @@ const CustomerCheckoutMain = ({
     if (!checkoutData) {
         return (
             <LoadingScreen
-                logoSrc={isSynergyStorefront ? '/Images/synergy.png' : '/Images/af_home_logo.png'}
-                logoAlt={isSynergyStorefront ? 'Synergy Shop Logo' : 'AF Home Logo'}
-                brandText={isSynergyStorefront ? 'SYNERGY SHOP' : 'AF HOME'}
-                tagline={isSynergyStorefront ? 'Partner Storefront' : 'Your Trusted Home Partner'}
+                logoSrc={partnerLogo || '/Images/af_home_logo.png'}
+                logoAlt={`${partnerName} Logo`}
+                brandText={partnerName.toUpperCase()}
+                tagline={isPartnerStorefront ? 'Partner Storefront' : 'Your Trusted Home Partner'}
             />
         );
     }
@@ -596,17 +641,17 @@ const CustomerCheckoutMain = ({
     return (
         <ProductPageWrapper
             initialCategories={initialCategories}
-            hideTopBar={isSynergyStorefront}
-            logoSrc={isSynergyStorefront ? '/Images/synergy.png' : '/Images/af_home_logo.png'}
-            logoAlt={isSynergyStorefront ? 'Synergy Shop' : 'AF Home'}
-            logoHref={isSynergyStorefront ? '/synergy-shop/product' : '/shop'}
-            hideSignIn={isSynergyStorefront}
-            hideNavLinks={isSynergyStorefront}
-            stickToTop={isSynergyStorefront}
-            showGuestCartWishlist={isSynergyStorefront}
+            hideTopBar={isPartnerStorefront}
+            logoSrc={partnerLogo || '/Images/af_home_logo.png'}
+            logoAlt={partnerName}
+            logoHref={backToShopHref}
+            hideSignIn={isPartnerStorefront}
+            hideNavLinks={isPartnerStorefront}
+            stickToTop={isPartnerStorefront}
+            showGuestCartWishlist={isPartnerStorefront}
         >
             {checkoutContent}
-            {isSynergyStorefront ? <PartnerOrderFooter partnerName="Synergy Shop" /> : <Footer />}
+            {isPartnerStorefront ? <PartnerOrderFooter partnerName={partnerName} /> : <Footer />}
         </ProductPageWrapper>
     );
 }

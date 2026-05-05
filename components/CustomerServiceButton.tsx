@@ -11,7 +11,7 @@ export default function CustomerServiceButton() {
   const pathname = usePathname()
   const partnerSlug = extractPartnerSlugFromPath(pathname)
 
-  if (pathname.startsWith('/ranking') || partnerSlug === 'synergy-shop') return null
+  if (pathname.startsWith('/ranking') || Boolean(partnerSlug)) return null
 
   return (
     <>

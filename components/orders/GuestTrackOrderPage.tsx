@@ -100,9 +100,7 @@ export default function GuestTrackOrderPage({ initialCategories = [], partnerShe
   const isPartnerShell = Boolean(partnerShell);
   const partnerLogoSrc = partnerShell?.logoUrl
     ? `${partnerShell.logoUrl}${partnerShell.logoUrl.includes('?') ? '&' : '?'}v=${partnerShell.logoVersion || '1'}`
-    : partnerShell?.partnerSlug === 'synergy-shop'
-      ? '/Images/synergy.png'
-      : '/Images/af_home_logo.png';
+    : '/Images/af_home_logo.png';
   const heroBadgeLabel = isPartnerShell ? 'Partner Storefront Order Tracking' : 'Guest Order Tracking';
   const heroTitle = isPartnerShell
     ? `Track your ${partnerShell?.displayName || 'partner storefront'} order without logging in.`
@@ -202,6 +200,16 @@ export default function GuestTrackOrderPage({ initialCategories = [], partnerShe
                   <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-gray-400">
                     If you just checked out, your order number may already be prefilled here.
                   </p>
+                  {isPartnerShell && partnerShell ? (
+                    <div className="mt-3">
+                      <Link
+                        href={`/shop/${partnerShell.partnerSlug}/product`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                      >
+                        Back to shop
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -454,7 +462,7 @@ export default function GuestTrackOrderPage({ initialCategories = [], partnerShe
         hideTopBar
         logoSrc={partnerLogoSrc}
         logoAlt={partnerShell.displayName}
-        logoHref={`/${partnerShell.partnerSlug}/product`}
+        logoHref={`/shop/${partnerShell.partnerSlug}/product`}
         hideSignIn
         hideNavLinks
         stickToTop

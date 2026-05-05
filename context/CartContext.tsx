@@ -1,9 +1,9 @@
 'use client'
 
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { useGetCartQuery, useRemoveCartItemMutation, useUpdateCartItemMutation } from '@/store/api/cartApi'
+import { useAddToCartMutation, useGetCartQuery, useRemoveCartItemMutation, useUpdateCartItemMutation } from '@/store/api/cartApi'
 import {
   addToCart as addToCartAction,
   removeFromCart as removeFromCartAction,
@@ -13,6 +13,8 @@ import {
   setCartSelection as setCartSelectionAction,
   setCartItems,
 } from '@/store/slices/cartSlice'
+
+const GUEST_CART_STORAGE_KEY = 'partner_guest_cart_items'
 
 export interface CartItem {
   id: string
@@ -62,13 +64,39 @@ export function useCart(): CartContextType {
   const dispatch = useAppDispatch()
   const { data: session, status } = useSession()
   const role = String(session?.user?.role ?? '').toLowerCase()
-  const isLoggedIn = status === 'authenticated' && (role === 'customer' || role === '')
+  const isLoggedIn = status === 'authenticated' && role === 'customer'
   const { items, isOpen, selectedIds } = useAppSelector((state) => state.cart)
+  const guestCartHydratedRef = useRef(false)
   const { data: cartData, isLoading: isCartLoading } = useGetCartQuery(undefined, {
     skip: !isLoggedIn,
   })
+  const [addToCartApi] = useAddToCartMutation()
   const [updateCartItemApi] = useUpdateCartItemMutation()
   const [removeCartItemApi] = useRemoveCartItemMutation()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (isLoggedIn || isCartLoading) return
+    if (guestCartHydratedRef.current) return
+    if (items.length > 0) {
+      guestCartHydratedRef.current = true
+      return
+    }
+
+    try {
+      const raw = window.localStorage.getItem(GUEST_CART_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as CartItem[]
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        dispatch(setCartItems(parsed))
+        dispatch(setCartSelectionAction({ ids: parsed.map((item) => item.id) }))
+      }
+    } catch {
+      // Ignore invalid local storage payload.
+    } finally {
+      guestCartHydratedRef.current = true
+    }
+  }, [dispatch, isCartLoading, isLoggedIn, items.length])
 
   // Sync cart items from backend when logged in
   useEffect(() => {
@@ -96,8 +124,33 @@ export function useCart(): CartContextType {
     }
   }, [isLoggedIn, cartData, dispatch])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (isLoggedIn) return
+    if (!guestCartHydratedRef.current) return
+
+    try {
+      window.localStorage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      // Ignore localStorage write failures.
+    }
+  }, [isLoggedIn, items])
+
   const addToCart = (item: Omit<CartItem, 'quantity'>) => {
     dispatch(addToCartAction(item))
+
+    if (isLoggedIn && typeof item.productId === 'number' && item.productId > 0) {
+      void addToCartApi({
+        product_id: item.productId,
+        variant_id: typeof item.variantId === 'number' && item.variantId > 0 ? item.variantId : undefined,
+        quantity: 1,
+        selected_color: item.selectedColor ?? undefined,
+        selected_size: item.selectedSize ?? undefined,
+        selected_type: item.selectedType ?? undefined,
+      }).unwrap().catch(() => {
+        // RTK Query invalidation + server cart sync will reconcile state.
+      })
+    }
   }
 
   const removeFromCart = (id: string) => {

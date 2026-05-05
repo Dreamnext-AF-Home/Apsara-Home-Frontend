@@ -21,6 +21,7 @@ type DraftState = {
   heroTitle: string
   heroSubtitle: string
   logoUrl: string
+  tabLogoUrl: string
   logoVersion: string
   referralLink: string
   themeColor: string
@@ -38,6 +39,7 @@ const emptyDraft: DraftState = {
   heroTitle: '',
   heroSubtitle: '',
   logoUrl: '',
+  tabLogoUrl: '',
   logoVersion: '',
   referralLink: '',
   themeColor: '#0f766e',
@@ -66,6 +68,7 @@ const toDraft = (item?: WebPageItem): DraftState => {
     heroTitle: config.heroTitle,
     heroSubtitle: config.heroSubtitle,
     logoUrl: config.logoUrl ?? '',
+    tabLogoUrl: config.tabLogoUrl ?? '',
     logoVersion: config.logoVersion ?? '',
     referralLink: config.referralLink ?? '',
     themeColor: config.themeColor,
@@ -124,6 +127,8 @@ export default function PartnerStorefrontStudio() {
   )
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const logoInputRef = useRef<HTMLInputElement | null>(null)
+  const [isUploadingTabLogo, setIsUploadingTabLogo] = useState(false)
+  const tabLogoInputRef = useRef<HTMLInputElement | null>(null)
   const { data: categoriesData } = useGetCategoriesQuery({ per_page: 200 })
   const [fetchProducts] = useLazyGetProductsQuery()
   const [fetchPublicProduct] = useLazyGetPublicProductQuery()
@@ -186,6 +191,9 @@ export default function PartnerStorefrontStudio() {
       if (logoInputRef.current) {
         logoInputRef.current.value = ''
       }
+      if (tabLogoInputRef.current) {
+        tabLogoInputRef.current.value = ''
+      }
       return
     }
 
@@ -195,6 +203,9 @@ export default function PartnerStorefrontStudio() {
     setLogoVersion(Number.isFinite(storedVersion) ? storedVersion : Date.now())
     if (logoInputRef.current) {
       logoInputRef.current.value = ''
+    }
+    if (tabLogoInputRef.current) {
+      tabLogoInputRef.current.value = ''
     }
   }
 
@@ -275,6 +286,7 @@ export default function PartnerStorefrontStudio() {
           hero_title: nextDraft.heroTitle.trim(),
           hero_subtitle: nextDraft.heroSubtitle.trim(),
           logo_url: nextDraft.logoUrl.trim(),
+          tab_logo_url: nextDraft.tabLogoUrl.trim(),
           logo_version: nextDraft.logoVersion.trim(),
           referral_link: nextDraft.referralLink.trim(),
           theme_color: nextDraft.themeColor.trim(),
@@ -422,6 +434,114 @@ export default function PartnerStorefrontStudio() {
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
       showErrorToast(apiErr?.data?.message || 'Failed to remove logo.')
+    }
+  }
+
+  const handleTabLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const payload = new FormData()
+    payload.append('file', file)
+    payload.append('folder', 'partner-storefronts')
+
+    setIsUploadingTabLogo(true)
+
+    try {
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: payload,
+      })
+
+      const result = (await response.json()) as { url?: string; error?: string }
+
+      if (!response.ok || !result.url) {
+        throw new Error(result.error || 'Failed to upload tab logo.')
+      }
+
+      const nextTabLogoUrl = result.url ?? ''
+      const nextVersion = Date.now()
+      const nextDraft = { ...draft, tabLogoUrl: nextTabLogoUrl, logoVersion: String(nextVersion) }
+      const targetId = typeof selectedId === 'number' ? selectedId : nextDraft.id
+
+      setDraft((current) => ({
+        ...current,
+        tabLogoUrl: nextTabLogoUrl || current.tabLogoUrl,
+        logoVersion: String(nextVersion),
+      }))
+      setLogoVersion(nextVersion)
+      showSuccessToast('Tab logo uploaded successfully.')
+
+      if (targetId) {
+        if (isPartnerScoped && !allowedStorefrontIds.includes(targetId)) {
+          showErrorToast('You do not have access to edit this storefront.')
+          return
+        }
+
+        const slug = toSlug(nextDraft.slug || nextDraft.displayName)
+        if (!slug) {
+          showErrorToast('Add a slug or display name first.')
+          return
+        }
+
+        const data = buildStorefrontPayload(nextDraft)
+
+        try {
+          await updateItem({ type: 'partner-storefront', id: targetId, data }).unwrap()
+          showSuccessToast('Tab logo saved to storefront.')
+          refetch()
+        } catch (error) {
+          const apiErr = error as { data?: { message?: string } }
+          showErrorToast(apiErr?.data?.message || 'Failed to save tab logo.')
+        }
+      } else {
+        showErrorToast('Tab logo uploaded. Click "Save Storefront" to apply it.')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to upload tab logo.'
+      showErrorToast(message)
+    } finally {
+      setIsUploadingTabLogo(false)
+      if (tabLogoInputRef.current) {
+        tabLogoInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveTabLogo = async () => {
+    if (typeof selectedId !== 'number') {
+      setDraft((current) => ({ ...current, tabLogoUrl: '', logoVersion: '' }))
+      showSuccessToast('Tab logo cleared. Click "Save Storefront" to apply it.')
+      return
+    }
+
+    if (isPartnerScoped && !allowedStorefrontIds.includes(selectedId)) {
+      showErrorToast('You do not have access to edit this storefront.')
+      return
+    }
+
+    const nextVersion = Date.now()
+    const slug = toSlug(draft.slug || draft.displayName)
+    if (!slug) {
+      showErrorToast('Add a slug or display name first.')
+      return
+    }
+
+    const data = buildStorefrontPayload({
+      ...draft,
+      tabLogoUrl: '',
+      logoVersion: String(nextVersion),
+    })
+
+    try {
+      await updateItem({ type: 'partner-storefront', id: selectedId, data }).unwrap()
+      setDraft((current) => ({ ...current, tabLogoUrl: '', logoVersion: String(nextVersion) }))
+      setLogoVersion(nextVersion)
+      showSuccessToast('Tab logo removed.')
+      refetch()
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to remove tab logo.')
     }
   }
 
@@ -670,7 +790,7 @@ export default function PartnerStorefrontStudio() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Partner Storefronts</p>
               <h1 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">Control Panel</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Create branded partner shop pages like `synergy-shop` and control their visible categories.</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Create branded partner shop pages like `testshop` and control their visible categories.</p>
             </div>
             {!isPartnerScoped ? (
               <button
@@ -733,7 +853,7 @@ export default function PartnerStorefrontStudio() {
                 value={draft.slug}
                 onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
                 onBlur={(event) => setDraft((current) => ({ ...current, slug: toSlug(event.target.value) }))}
-                placeholder="synergy-shop"
+                placeholder="testshop"
                 className={inputClass}
               />
             </Field>
@@ -820,7 +940,7 @@ export default function PartnerStorefrontStudio() {
                   <input
                     value={draft.referralLink}
                     onChange={(event) => setDraft((current) => ({ ...current, referralLink: event.target.value }))}
-                    placeholder="https://www.afhome.ph/signup?ref=yourcode"
+                    placeholder="https://www.afhome.ph/shop?ref=yourcode"
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-300 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500"
                   />
                   {draft.referralLink.trim() ? (
@@ -835,6 +955,54 @@ export default function PartnerStorefrontStudio() {
                   ) : null}
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved when you click <span className="font-semibold text-slate-700 dark:text-slate-200">Save Storefront</span>.</p>
+              </div>
+            </Field>
+            <Field label="Tab Logo Upload">
+              <div className="space-y-3">
+                <div className={`${softCardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Upload browser tab logo</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Used as favicon on your partner storefront page.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={tabLogoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/x-icon,image/vnd.microsoft.icon"
+                      onChange={handleTabLogoUpload}
+                      className="hidden"
+                    />
+                    {draft.tabLogoUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveTabLogo()}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => tabLogoInputRef.current?.click()}
+                      disabled={isUploadingTabLogo}
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                    >
+                      {isUploadingTabLogo ? 'Uploading...' : 'Upload Tab Logo'}
+                    </button>
+                  </div>
+                </div>
+                {draft.tabLogoUrl ? (
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div className="h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                      <img
+                        src={`${draft.tabLogoUrl}${draft.tabLogoUrl.includes('?') ? '&' : '?'}v=${logoVersion || draft.logoVersion || '1'}`}
+                        alt="Uploaded tab logo preview"
+                        className="h-full w-full object-contain p-1"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Tab logo uploaded.</p>
+                  </div>
+                ) : null}
               </div>
             </Field>
             <Field label="Hero Subtitle" className="md:col-span-2">

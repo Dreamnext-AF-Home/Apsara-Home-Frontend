@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -15,6 +15,15 @@ interface CompleteTheLookProps {
   currentCategoryLabel?: string;
   currentCategoryId?: number;
   currentProductId?: number;
+  presetItems?: Array<{
+    id?: number;
+    name: string;
+    price: number;
+    originalPrice?: number;
+    image: string;
+    brand?: string;
+    manualCheckoutEnabled?: boolean;
+  }>;
 }
 
 const CartIcon = () => (
@@ -70,17 +79,17 @@ type BundleItem = {
   manualCheckoutEnabled?: boolean;
 };
 
-const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLabel, currentProductId }: CompleteTheLookProps) => {
+const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLabel, currentProductId, presetItems }: CompleteTheLookProps) => {
   const { addToCart } = useCart();
   const pathname = usePathname();
   const partnerSlug = extractPartnerSlugFromPath(pathname);
-  const forceRealPrice = partnerSlug === 'synergy-shop';
+  const forceRealPrice = Boolean(partnerSlug);
   const { title, subtitle } = useMemo(
     () => resolveBundleCopy(currentCategoryLabel, currentCategory),
     [currentCategoryLabel, currentCategory],
   );
 
-  const canQuery = typeof currentCategoryId === 'number' && currentCategoryId > 0;
+  const canQuery = !presetItems && typeof currentCategoryId === 'number' && currentCategoryId > 0;
   const { data, isFetching, isError } = useGetPublicProductsQuery(
     canQuery
       ? {
@@ -94,6 +103,22 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
   );
 
   const bundleItems: BundleItem[] = useMemo(() => {
+    if (Array.isArray(presetItems) && presetItems.length > 0) {
+      return presetItems
+        .filter((item) => (currentProductId ? item.id !== currentProductId : true))
+        .slice(0, 6)
+        .map((item) => ({
+          id: Number(item.id ?? 0),
+          name: item.name,
+          price: Number(item.price ?? 0),
+          originalPrice: item.originalPrice,
+          image: item.image || FALLBACK_IMAGE,
+          brand: item.brand ?? null,
+          manualCheckoutEnabled: Boolean(item.manualCheckoutEnabled),
+        }))
+        .filter((item) => item.id > 0)
+    }
+
     const products = data?.products ?? [];
 
     return products
@@ -114,26 +139,20 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
           manualCheckoutEnabled: Boolean(product.manualCheckoutEnabled),
         };
       });
-  }, [data, currentProductId, forceRealPrice]);
+  }, [data, currentProductId, forceRealPrice, presetItems]);
 
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    if (bundleItems.length === 0) return;
-
-    setSelected((prev) => {
-      if (prev.size === 0) return new Set(bundleItems.map((item) => item.id));
-
-      const allowed = new Set(bundleItems.map((item) => item.id));
-      const next = new Set(Array.from(prev).filter((id) => allowed.has(id)));
-
-      return next.size > 0 ? next : new Set(bundleItems.map((item) => item.id));
-    });
-  }, [bundleItems]);
+  const [selected, setSelected] = useState<Set<number> | null>(null);
+  const selectedSet = useMemo(() => {
+    const defaultSelection = new Set(bundleItems.map((item) => item.id));
+    if (selected === null) return defaultSelection;
+    const next = new Set(Array.from(selected).filter((id) => defaultSelection.has(id)));
+    return next.size > 0 ? next : defaultSelection;
+  }, [bundleItems, selected]);
 
   const toggleItem = (id: number) => {
     setSelected((prev) => {
-      const next = new Set(prev);
+      const base = prev ?? selectedSet;
+      const next = new Set(base);
       if (next.has(id)) {
         next.delete(id);
       } else {
@@ -143,7 +162,7 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
     });
   };
 
-  const selectedItems = useMemo(() => bundleItems.filter((item) => selected.has(item.id)), [bundleItems, selected]);
+  const selectedItems = useMemo(() => bundleItems.filter((item) => selectedSet.has(item.id)), [bundleItems, selectedSet]);
   const total = useMemo(() => selectedItems.reduce((sum, item) => sum + item.price, 0), [selectedItems]);
 
   const handleAddAll = () => {
@@ -182,7 +201,7 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
       <div className="border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden">
         <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {bundleItems.map((item, index) => {
-            const isSelected = selected.has(item.id);
+            const isSelected = selectedSet.has(item.id);
             const productPath = buildStorefrontProductPath(item.name, item.id, pathname);
 
             return (
@@ -235,19 +254,19 @@ const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLa
         <div className="bg-gray-50 dark:bg-gray-800 px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              {selected.size} item{selected.size !== 1 ? 's' : ''} selected
+              {selectedSet.size} item{selectedSet.size !== 1 ? 's' : ''} selected
             </p>
             <p className="text-lg font-bold text-slate-900 dark:text-gray-100">
               Total: <span className="text-sky-500 dark:text-sky-400">{formatMoney(total)}</span>
             </p>
           </div>
-          <PrimaryButton
+            <PrimaryButton
             onClick={handleAddAll}
-            disabled={selected.size === 0}
+            disabled={selectedSet.size === 0}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm"
           >
             <CartIcon />
-            Add {selected.size > 0 ? `${selected.size} Items` : 'Items'} to Cart
+            Add {selectedSet.size > 0 ? `${selectedSet.size} Items` : 'Items'} to Cart
           </PrimaryButton>
         </div>
       </div>

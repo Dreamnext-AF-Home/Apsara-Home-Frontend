@@ -12,6 +12,7 @@ interface PartnerSidebarProps {
 
 const links = [
   { href: '/partner', label: 'Storefronts' },
+  { href: '/partner/webpages/partner-orders', label: 'Orders' },
   { href: '/partner/webpages/partner-users', label: 'Partner Users' },
 ]
 

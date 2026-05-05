@@ -12,9 +12,10 @@ const ChevronRight = () => (
 interface RelatedProductProps {
     products: CategoryProduct[];
     category: string;
+    viewAllHref?: string;
 }
 
-const RelatedProducts = ({ products, category }: RelatedProductProps) => {
+const RelatedProducts = ({ products, category, viewAllHref }: RelatedProductProps) => {
     if (products.length === 0) return null;
 
     return (
@@ -27,7 +28,7 @@ const RelatedProducts = ({ products, category }: RelatedProductProps) => {
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-gray-100">You Might Also Like</h2>
                 <Link
-                    href={`/category/${category}`}
+                    href={viewAllHref || `/category/${category}`}
                     className="text-sm text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300 font-semibold transition-colors flex items-center gap-1"
                 >
                     View all <ChevronRight />

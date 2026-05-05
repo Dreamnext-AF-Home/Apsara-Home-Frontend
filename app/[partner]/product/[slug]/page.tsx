@@ -11,6 +11,9 @@ import CompleteTheLook from '@/components/product/CompleteTheLook';
 import { buildPageMetadata } from '@/app/seo';
 import { getNavbarCategories } from '@/libs/serverStorefront';
 import { buildCanonicalProductSlug, getProductPageData } from '@/libs/productPageData';
+import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer';
+import type { CategoryProduct } from '@/libs/CategoryData';
+import type { Product } from '@/store/api/productsApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,24 +44,45 @@ const toTitle = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ') || value
 
+const mapProductToCategoryProduct = (product: Product, apiUrl?: string): CategoryProduct => {
+  const resolveImageUrl = (rawImage: string | null | undefined) => {
+    if (!rawImage) return '/Images/HeroSection/chairs_stools.jpg'
+    if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) return rawImage
+    if (rawImage.startsWith('/')) return rawImage
+    if (!apiUrl) return `/${rawImage}`
+    return `${apiUrl.replace(/\/$/, '')}/${rawImage.replace(/^\/+/, '')}`
+  }
+
+  return {
+    id: product.id,
+    name: product.name,
+    createdAt: product.createdAt ?? null,
+    price: Number(product.priceSrp ?? 0),
+    priceDp: Number(product.priceDp ?? 0) || undefined,
+    priceMember: Number(product.priceMember ?? 0) || undefined,
+    priceSrp: Number(product.priceSrp ?? 0) || undefined,
+    prodpv: Number(product.prodpv ?? 0) || undefined,
+    originalPrice: Number(product.priceSrp ?? 0) || undefined,
+    image: resolveImageUrl(product.image),
+    images: Array.isArray(product.images) ? product.images : undefined,
+    badge: product.salespromo ? 'SALE' : product.bestseller ? 'BEST SELLER' : product.musthave ? 'MUST HAVE' : undefined,
+    brand: product.brand ?? undefined,
+    stock: Number(product.qty ?? 0),
+    manualCheckoutEnabled: Boolean(product.manualCheckoutEnabled),
+  }
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { partner, slug } = await params
   const normalizedPartner = partner.trim().toLowerCase()
-
-  if (normalizedPartner !== 'synergy-shop') {
-    return buildPageMetadata({
-      title: 'Product Details',
-      description: 'Browse product details on AF Home.',
-      path: `/${partner}/product/${slug}`,
-    })
-  }
+  const storefront = await getPartnerStorefrontBySlug(normalizedPartner)
 
   const data = await getProductPageData(slug)
   if (!data) {
     return buildPageMetadata({
-      title: `${toTitle(partner)} Product`,
-      description: `Browse ${toTitle(partner)} storefront products.`,
-      path: `/${partner}/product`,
+      title: `${storefront?.displayName ?? toTitle(partner)} Product`,
+      description: `Browse ${(storefront?.displayName ?? toTitle(partner))} storefront products.`,
+      path: `/shop/${partner}/product`,
     })
   }
 
@@ -69,42 +93,76 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const baseMeta = buildPageMetadata({
     title: data.product.name,
     description: safeDescription,
-    path: `/${normalizedPartner}/product/${canonicalSlug}`,
-    siteName: 'Synergy Shop',
+    path: `/shop/${normalizedPartner}/product/${canonicalSlug}`,
+    siteName: storefront?.displayName || toTitle(partner),
   })
 
   return {
     ...baseMeta,
-    icons: {
-      icon: [{ url: '/Images/synergy.png', type: 'image/png' }],
-      apple: '/Images/synergy.png',
-    },
+    icons: storefront?.tabLogoUrl || storefront?.logoUrl
+      ? {
+        icon: [{ url: storefront.tabLogoUrl || storefront.logoUrl || '', type: 'image/png' }],
+        apple: storefront.tabLogoUrl || storefront.logoUrl || '',
+      }
+      : baseMeta.icons,
   }
 }
 
 export default async function PartnerProductDetailPage({ params }: PageProps) {
   const { partner, slug } = await params
   const normalizedPartner = partner.trim().toLowerCase()
-  if (normalizedPartner !== 'synergy-shop') {
-    notFound()
-  }
+  const storefront = await getPartnerStorefrontBySlug(normalizedPartner)
+  if (!storefront) notFound()
 
   const dynamicData = await getProductPageData(slug)
   if (!dynamicData) return notFound()
   const navbarCategories = await getNavbarCategories()
+  const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
 
   const canonicalSlug = buildCanonicalProductSlug(dynamicData.product.name, dynamicData.product.id)
   if (slug !== canonicalSlug) {
-    redirect(`/${normalizedPartner}/product/${canonicalSlug}`)
+    redirect(`/shop/${normalizedPartner}/product/${canonicalSlug}`)
   }
+
+  const selectedProductIds = storefront.featuredProductIds.filter((id) => id !== dynamicData.product.id)
+  let storefrontSelectedProducts: CategoryProduct[] = []
+
+  if (apiUrl && selectedProductIds.length > 0) {
+    const productResponses = await Promise.all(
+      selectedProductIds.map(async (id) => {
+        try {
+          const response = await fetch(`${apiUrl}/api/products/${id}`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+          })
+          if (!response.ok) return null
+          const json = (await response.json()) as { product?: Product }
+          return json.product ?? null
+        } catch {
+          return null
+        }
+      }),
+    )
+
+    storefrontSelectedProducts = productResponses
+      .filter((product): product is Product => Boolean(product))
+      .map((product) => mapProductToCategoryProduct(product, apiUrl))
+  }
+
+  const selectedProductsById = new Map(storefrontSelectedProducts.map((product) => [product.id, product] as const))
+  const relatedProducts = dynamicData.relatedProducts.filter((product) => {
+    const productId = Number(product.id ?? 0)
+    return productId > 0 && selectedProductsById.has(productId)
+  })
 
   return (
     <ProductPageWrapper
       initialCategories={navbarCategories}
       hideTopBar
-      logoSrc="/Images/synergy.png"
-      logoAlt="Synergy Shop"
-      logoHref="/synergy-shop/product"
+      logoSrc={storefront.logoUrl || storefront.tabLogoUrl || '/Images/af_home_logo.png'}
+      logoAlt={storefront.displayName}
+      logoHref={`/shop/${normalizedPartner}/product`}
       hideSignIn
       hideNavLinks
       stickToTop
@@ -114,7 +172,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
         <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
           <div className="container mx-auto px-4 py-3">
             <nav className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
-              <Link href="/synergy-shop/product" className="hover:text-sky-500 dark:hover:text-sky-400 transition-colors font-medium">Home</Link>
+              <Link href={`/shop/${normalizedPartner}/product`} className="hover:text-sky-500 dark:hover:text-sky-400 transition-colors font-medium">Home</Link>
               <ChevronRight />
               <Link href={`/shop/${normalizedPartner}/category/${dynamicData.categorySlug}`} className="hover:text-sky-500 dark:hover:text-sky-400 transition-colors">
                 {dynamicData.categoryLabel}
@@ -140,7 +198,11 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
             />
           </div>
           <div className="border-t border-gray-200 dark:border-gray-700 pt-10 mt-10">
-            <RelatedProducts products={dynamicData.relatedProducts} category={dynamicData.categorySlug} />
+            <RelatedProducts
+              products={relatedProducts}
+              category={dynamicData.categorySlug}
+              viewAllHref={`/shop/${normalizedPartner}/product`}
+            />
           </div>
           <div className="border-t border-gray-200 dark:border-gray-700 pt-10 mt-10">
             <ProductQA />
@@ -151,11 +213,12 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
               currentCategoryId={dynamicData.categoryId}
               currentCategoryLabel={dynamicData.categoryLabel}
               currentProductId={dynamicData.product.id}
+              presetItems={storefrontSelectedProducts}
             />
           </div>
         </div>
       </main>
-      <PartnerOrderFooter partnerName="Synergy Shop" />
+      <PartnerOrderFooter partnerName={storefront.displayName} />
       <ScrollToTop />
     </ProductPageWrapper>
   );

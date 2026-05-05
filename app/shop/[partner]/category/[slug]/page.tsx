@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import CategoryListProductMain from '@/components/category/CategoryListProductMain'
 import { buildPageMetadata } from '@/app/seo'
 import { filterPartnerCategories, getPartnerStorefrontConfig, normalizeCategorySlug } from '@/libs/partnerStorefront'
+import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
@@ -90,7 +91,6 @@ const toCategoryTitle = (slug: string) =>
 
 export async function generateMetadata({ params }: PageProps) {
   const resolved = await params
-  const normalizedPartner = resolved.partner.trim().toLowerCase()
   const categoryTitle = toCategoryTitle(resolved.slug)
   const metadata = buildPageMetadata({
     title: `${resolved.slug} Category`,
@@ -98,19 +98,19 @@ export async function generateMetadata({ params }: PageProps) {
     path: `/shop/${resolved.partner}/category/${resolved.slug}`,
   })
 
-  if (normalizedPartner !== 'synergy-shop') {
-    return metadata
-  }
-
-  const plainTitle = `${categoryTitle} | synergy-shop`
+  const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
+  const plainTitle = `${categoryTitle} | ${partnerConfig?.displayName ?? resolved.partner}`
+  const iconUrl = partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl
 
   return {
     ...metadata,
     title: plainTitle,
-    icons: {
-      icon: [{ url: '/Images/synergy.png', type: 'image/png' }],
-      apple: '/Images/synergy.png',
-    },
+    icons: iconUrl
+      ? {
+        icon: [{ url: iconUrl, type: 'image/png' }],
+        apple: iconUrl,
+      }
+      : metadata.icons,
     openGraph: metadata.openGraph
       ? {
         ...metadata.openGraph,
@@ -164,6 +164,7 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
 
     if (selectedProductIdSet.size === 0) {
       return {
+        partner,
         category,
         categories: allowedCategories,
         products: [] as DisplayProduct[],
@@ -181,6 +182,7 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
     const productsJson = (await productsRes.json()) as ApiProductsResponse
 
     return {
+      partner,
       category,
       categories: allowedCategories,
       products: (productsJson.products ?? [])
@@ -206,6 +208,11 @@ export default async function PartnerCategoryPage({ params }: PageProps) {
       initialCategoryLabel={payload.category.name}
       initialProducts={payload.products}
       initialCategories={payload.categories}
+      partnerBranding={{
+        logoSrc: payload.partner.logoUrl || payload.partner.tabLogoUrl || '/Images/af_home_logo.png',
+        displayName: payload.partner.displayName,
+        productHref: `/shop/${resolved.partner}/product`,
+      }}
     />
   )
 }

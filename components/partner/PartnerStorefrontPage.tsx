@@ -11,7 +11,7 @@ type Props = {
 }
 
 export default function PartnerStorefrontPage({ partner, data }: Props) {
-  const titleColor = partner.slug === 'synergy-shop' ? '#0b77b7' : partner.themeColor
+  const titleColor = partner.themeColor
   const displayName = partner.displayName.trim()
   const pageTitle = displayName.toLowerCase().endsWith('shop') ? displayName : `${displayName} Shop`
   const allowedSet = new Set(partner.allowedCategoryIds ?? [])
@@ -35,10 +35,11 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
   const logoUrlWithVersion = partner.logoUrl
     ? `${partner.logoUrl}${partner.logoUrl.includes('?') ? '&' : '?'}v=${partner.logoVersion || '1'}`
     : ''
+  const tabLogoUrlWithVersion = partner.tabLogoUrl
+    ? `${partner.tabLogoUrl}${partner.tabLogoUrl.includes('?') ? '&' : '?'}v=${partner.logoVersion || '1'}`
+    : logoUrlWithVersion
 
   useEffect(() => {
-    if (!partner.logoUrl) return
-
     const setIcon = (rel: string, href: string) => {
       let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null
       if (!link) {
@@ -49,15 +50,15 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
       link.href = href
     }
 
-    if (logoUrlWithVersion) {
-      setIcon('icon', logoUrlWithVersion)
-      setIcon('apple-touch-icon', logoUrlWithVersion)
+    if (tabLogoUrlWithVersion) {
+      setIcon('icon', tabLogoUrlWithVersion)
+      setIcon('apple-touch-icon', tabLogoUrlWithVersion)
     }
 
     if (displayName) {
       document.title = pageTitle
     }
-  }, [displayName, pageTitle, partner.logoUrl, logoUrlWithVersion])
+  }, [displayName, pageTitle, tabLogoUrlWithVersion])
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -99,13 +100,13 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
                 className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
                 style={{ backgroundColor: partner.themeColor }}
               >
-                Browse Store
+                Login
               </Link>
               <Link
-                href="/shop/synergy-shop/product"
+                href={`/shop/${partner.slug}/product`}
                 className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700"
               >
-                Main Synergy Shop
+                {partner.displayName} Products
               </Link>
             </div>
           </div>
@@ -116,6 +117,7 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
         data={sanitizedData ?? data}
         partnerSlug={partner.slug}
         allowedCategoryIds={partner.allowedCategoryIds}
+        featuredProductIds={partner.featuredProductIds}
       />
 
       <footer className="border-t border-slate-200 bg-white">
