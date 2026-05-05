@@ -217,7 +217,7 @@ const AdminLoginForm = ({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }
             if (isPartnerLogin) {
                 router.replace('/partner/webpages/partner-storefronts')
             } else {
-                router.replace('/admin/dashboard')
+                router.replace('/admin')
             }
         } catch {
             setError('Unable to sign in. Please try again');

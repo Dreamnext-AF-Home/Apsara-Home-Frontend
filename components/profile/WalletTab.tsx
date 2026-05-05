@@ -156,7 +156,7 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
               ) : (
                 <div className="mt-5">
                   <PvWalletTab
-                    currentPv={Number(summary?.affiliate_retail_profit ?? summary?.current_pv ?? 0)}
+                    currentPv={Number(summary?.cashback_balance ?? summary?.affiliate_retail_profit ?? summary?.current_pv ?? 0)}
                     pendingPv={Number(summary?.pending_pv ?? 0)}
                     lifetimePv={Number(summary?.affiliate_performance_bonus ?? summary?.lifetime_pv ?? 0)}
                     personalPurchasePv={Number(summary?.global_purchase_bonus ?? summary?.personal_purchase_pv ?? 0)}
@@ -218,7 +218,7 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
                 <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
                   {[
                     { label: 'Cash Balance',         value: peso(summary?.cash_balance ?? 0),          sub: 'Available for encashment',       border: 'border-emerald-200 dark:border-emerald-800', dbg: 'dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', val: 'text-emerald-900 dark:text-emerald-300' },
-                    { label: 'PV Balance',            value: `${numberFmt(summary?.pv_balance ?? 0)} PV`, sub: 'Credits after order approval',  border: 'border-blue-200 dark:border-blue-800',    dbg: 'dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-400',    val: 'text-blue-900 dark:text-blue-300'    },
+                    { label: 'PV Balance',            value: `${numberFmt(summary?.pv_balance ?? 0)} PV`, sub: 'Credits after delivery',  border: 'border-blue-200 dark:border-blue-800',    dbg: 'dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-400',    val: 'text-blue-900 dark:text-blue-300'    },
                     { label: 'Locked Encashment',     value: peso(summary?.encashment_locked ?? 0),     sub: 'Pending & ready-for-release',    border: 'border-sky-200 dark:border-sky-800',   dbg: 'dark:bg-sky-900/30',   text: 'text-sky-700 dark:text-sky-400',   val: 'text-sky-900 dark:text-sky-300'   },
                     { label: 'Encashment Available',  value: peso(summary?.encashment_available ?? 0),  sub: 'Can be requested now',           border: 'border-sky-200 dark:border-sky-800',  dbg: 'dark:bg-sky-900/30',  text: 'text-sky-700 dark:text-sky-400',  val: 'text-sky-900 dark:text-sky-300'  },
                   ].map(({ label, value, sub, border, dbg, text, val }) => (

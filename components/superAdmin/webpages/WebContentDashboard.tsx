@@ -1,5 +1,7 @@
 'use client'
 
+import type { MouseEvent } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useGetAdminMeQuery } from '@/store/api/authApi'
@@ -89,6 +91,7 @@ const libraryCards: ContentCard[] = [
 ]
 
 export default function WebContentDashboard() {
+  const [openingHref, setOpeningHref] = useState<string | null>(null)
   const { data: session } = useSession()
   const accessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '')
   const userLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
@@ -102,11 +105,39 @@ export default function WebContentDashboard() {
     ? (adminMe?.admin_permissions ?? []).filter(p => p.startsWith('wc:'))
     : []
 
-  const canSee = (card: ContentCard) =>
-    !card.wcKey || canAccessWebContentSection(wcPermissions, card.wcKey)
+  const canSee = (card: ContentCard) => {
+    if (!isWebContentUser || wcPermissions.length === 0) return true
+    return card.wcKey ? canAccessWebContentSection(wcPermissions, card.wcKey) : false
+  }
 
   const visibleBuilderCards = builderCards.filter(canSee)
   const visibleLibraryCards = libraryCards.filter(canSee)
+  const handleCardClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return
+    }
+
+    setOpeningHref(href)
+  }
+  const renderArrow = (isOpening: boolean) => (
+    isOpening ? (
+      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+    ) : (
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
+      </svg>
+    )
+  )
 
   return (
     <div className="space-y-6 dark:bg-slate-950 dark:text-slate-100">
@@ -133,11 +164,17 @@ export default function WebContentDashboard() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Primary editing flows for visual sections and campaign-ready layouts.</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            {visibleBuilderCards.map((card) => (
+            {visibleBuilderCards.map((card) => {
+              const isOpening = openingHref === card.href
+              return (
               <Link
                 key={card.href}
                 href={card.href}
-                className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-cyan-800"
+                onClick={(event) => handleCardClick(event, card.href)}
+                aria-busy={isOpening}
+                className={`group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-cyan-800 ${
+                  isOpening ? 'border-cyan-300 bg-cyan-50/60 ring-2 ring-cyan-100 dark:border-cyan-700 dark:bg-cyan-950/20 dark:ring-cyan-900/40' : ''
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -147,14 +184,16 @@ export default function WebContentDashboard() {
                     <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">{card.title}</h3>
                   </div>
                   <span className="rounded-full bg-slate-100 p-2 text-slate-500 transition-colors group-hover:bg-cyan-50 group-hover:text-cyan-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-cyan-950/40 dark:group-hover:text-cyan-300">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
-                    </svg>
+                    {renderArrow(isOpening)}
                   </span>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{card.description}</p>
+                {isOpening && (
+                  <p className="mt-3 text-xs font-semibold text-cyan-700 dark:text-cyan-300">Opening...</p>
+                )}
               </Link>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}
@@ -166,19 +205,34 @@ export default function WebContentDashboard() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Secondary content areas that support customer comms and discoverability.</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
-            {visibleLibraryCards.map((card) => (
+            {visibleLibraryCards.map((card) => {
+              const isOpening = openingHref === card.href
+              return (
               <Link
                 key={card.href}
                 href={card.href}
-                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                onClick={(event) => handleCardClick(event, card.href)}
+                aria-busy={isOpening}
+                className={`rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 ${
+                  isOpening ? 'border-cyan-300 bg-cyan-50/60 ring-2 ring-cyan-100 dark:border-cyan-700 dark:bg-cyan-950/20 dark:ring-cyan-900/40' : ''
+                }`}
               >
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  {card.badge}
-                </span>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    {card.badge}
+                  </span>
+                  <span className="rounded-full bg-slate-100 p-2 text-slate-500 transition-colors dark:bg-slate-800 dark:text-slate-300">
+                    {renderArrow(isOpening)}
+                  </span>
+                </div>
                 <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">{card.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{card.description}</p>
+                {isOpening && (
+                  <p className="mt-3 text-xs font-semibold text-cyan-700 dark:text-cyan-300">Opening...</p>
+                )}
               </Link>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}

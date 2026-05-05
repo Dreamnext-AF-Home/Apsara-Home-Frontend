@@ -844,6 +844,16 @@ const EncashmentTab = () => {
           </div>
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl border border-slate-100 dark:border-slate-700 dark:bg-gray-900/30 px-3 py-2.5">
+              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">Withholding Tax</p>
+              <p className="mt-1 font-semibold text-slate-800 dark:text-gray-300">{((policy.withholding_tax_rate || 0) * 100).toFixed(0)}%</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 dark:border-slate-700 dark:bg-gray-900/30 px-3 py-2.5">
+              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">Processing Fee</p>
+              <p className="mt-1 font-semibold text-slate-800 dark:text-gray-300">{money.format(policy.processing_fee || 0)}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl border border-slate-100 dark:border-slate-700 dark:bg-gray-900/30 px-3 py-2.5">
               <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-gray-400">Available Balance</p>
               <p className="mt-1 font-semibold text-slate-800 dark:text-gray-300">{money.format(eligibility.available_amount || 0)}</p>
               <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Locked in active requests: {money.format(eligibility.locked_amount || 0)}</p>
@@ -1670,7 +1680,9 @@ const EncashmentTab = () => {
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-slate-700">
                   <th className="py-2 pr-4 font-semibold">Reference</th>
-                  <th className="py-2 pr-4 font-semibold">Amount</th>
+                  <th className="py-2 pr-4 font-semibold">Gross</th>
+                  <th className="py-2 pr-4 font-semibold">Deductions</th>
+                  <th className="py-2 pr-4 font-semibold">Net</th>
                   <th className="py-2 pr-4 font-semibold">Channel</th>
                   <th className="py-2 pr-4 font-semibold">Status</th>
                   <th className="py-2 pr-4 font-semibold">Invoice</th>
@@ -1683,6 +1695,13 @@ const EncashmentTab = () => {
                   <tr key={row.id} className="border-b border-gray-50 dark:border-slate-700 last:border-b-0">
                     <td className="py-2.5 pr-4 font-medium text-gray-800 dark:text-white">{row.reference_no}</td>
                     <td className="py-2.5 pr-4 text-gray-700 dark:text-gray-300">{money.format(row.amount)}</td>
+                    <td className="py-2.5 pr-4 text-gray-700 dark:text-gray-300">
+                      <div className="text-xs leading-5">
+                        <div>Tax: {money.format(row.withholding_tax || 0)}</div>
+                        <div>Fee: {money.format(row.processing_fee || 0)}</div>
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-4 font-semibold text-gray-800 dark:text-gray-200">{money.format(row.net_amount ?? row.amount)}</td>
                     <td className="py-2.5 pr-4 text-gray-700 dark:text-gray-300 uppercase">{row.channel}</td>
                     <td className="py-2.5 pr-4">
                       <span

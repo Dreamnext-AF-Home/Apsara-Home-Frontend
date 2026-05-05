@@ -622,12 +622,14 @@ function WebContentSectionPicker({
   value,
   onChange,
   storefronts,
+  isStorefrontsLoading,
   storefrontIds,
   onStorefrontsChange,
 }: {
   value: string[]
   onChange: (v: string[]) => void
   storefronts: Array<{ item: WebPageItem; config: NonNullable<ReturnType<typeof getPartnerStorefrontConfig>> }>
+  isStorefrontsLoading?: boolean
   storefrontIds: number[]
   onStorefrontsChange: (ids: number[]) => void
 }) {
@@ -680,7 +682,15 @@ function WebContentSectionPicker({
           <p className="mb-3 text-[11px] text-slate-400">
             Pick which specific storefronts this account can manage. Leave all unchecked = all storefronts.
           </p>
-          {storefronts.length === 0 ? (
+          {isStorefrontsLoading ? (
+            <div className="flex items-center gap-2 rounded-lg border border-dashed border-amber-200 px-3 py-2 text-[11px] font-medium text-amber-700">
+              <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Loading partner storefronts...
+            </div>
+          ) : storefronts.length === 0 ? (
             <p className="rounded-lg border border-dashed border-amber-200 px-3 py-2 text-[11px] text-slate-400">
               No partner storefronts found yet.
             </p>
@@ -723,7 +733,7 @@ function WebContentSectionPicker({
 }
 
 function EditModal({
-  target, form, busy, onChange, onSubmit, onClose, supplierOptions, roleOptions, storefronts,
+  target, form, busy, onChange, onSubmit, onClose, supplierOptions, roleOptions, storefronts, isStorefrontsLoading,
 }: {
   target: AdminUserItem; form: EditForm; busy: boolean
   onChange: (patch: Partial<EditForm>) => void
@@ -735,6 +745,7 @@ function EditModal({
     item: WebPageItem
     config: NonNullable<ReturnType<typeof getPartnerStorefrontConfig>>
   }>
+  isStorefrontsLoading: boolean
 }) {
   const permissionsRef = useRef<HTMLDivElement | null>(null)
   const [isPermissionsSpotlightActive, setIsPermissionsSpotlightActive] = useState(false)
@@ -841,6 +852,7 @@ function EditModal({
               value={form.admin_permissions}
               onChange={admin_permissions => onChange({ admin_permissions })}
               storefronts={storefronts}
+              isStorefrontsLoading={isStorefrontsLoading}
               storefrontIds={form.storefront_ids}
               onStorefrontsChange={storefront_ids => onChange({ storefront_ids })}
             />
@@ -892,7 +904,11 @@ export default function AdminUsersPageMain() {
   const canManageUsers = isSuperAdmin || isAdmin
   const [latestInvite, setLatestInvite] = useState<CreateAdminUserResponse | null>(null)
   const { data: suppliersData } = useGetSuppliersQuery(undefined, { skip: !isSuperAdmin })
-  const { data: storefrontData } = useGetAdminWebPageItemsQuery({
+  const {
+    data: storefrontData,
+    isLoading: isLoadingStorefronts,
+    isFetching: isFetchingStorefronts,
+  } = useGetAdminWebPageItemsQuery({
     type: 'partner-storefront',
     page: 1,
     perPage: 100,
@@ -955,6 +971,7 @@ export default function AdminUsersPageMain() {
         .sort((a, b) => a.config.displayName.localeCompare(b.config.displayName)),
     [storefrontData?.items],
   )
+  const isStorefrontsLoading = isLoadingStorefronts || (isFetchingStorefronts && storefronts.length === 0)
   const allowedRoleOptions = useMemo(() => {
     if (isSuperAdmin) return ROLE_OPTIONS
     if (isAdmin) return ROLE_OPTIONS.filter((roleOption) => [3, 4, 5, 6, 7].includes(roleOption.value))
@@ -1209,6 +1226,7 @@ export default function AdminUsersPageMain() {
               value={createForm.admin_permissions}
               onChange={admin_permissions => setCreateForm(p => ({ ...p, admin_permissions }))}
               storefronts={storefronts}
+              isStorefrontsLoading={isStorefrontsLoading}
               storefrontIds={createForm.storefront_ids}
               onStorefrontsChange={storefront_ids => setCreateForm(p => ({ ...p, storefront_ids }))}
             />
@@ -1539,6 +1557,7 @@ export default function AdminUsersPageMain() {
             supplierOptions={supplierOptions}
             roleOptions={allowedRoleOptions}
             storefronts={storefronts}
+            isStorefrontsLoading={isStorefrontsLoading}
           />
         )}
       </AnimatePresence>

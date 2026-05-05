@@ -125,8 +125,9 @@ function DetailModal({ item, onClose, onAction, canApprove, canRelease }: {
           {/* Amount + balance row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 dark:border-teal-900/30 dark:bg-teal-500/10">
-              <p className="text-[10px] text-teal-600 font-semibold uppercase tracking-wide">Request Amount</p>
+              <p className="text-[10px] text-teal-600 font-semibold uppercase tracking-wide">Gross Request</p>
               <p className="text-lg font-bold text-teal-700 mt-1">{formatMoney(item.amount)}</p>
+              <p className="text-xs text-teal-600 mt-1">Net payout: {formatMoney(item.net_amount ?? item.amount)}</p>
             </div>
             <div className={`rounded-xl border px-4 py-3 ${
               (item.can_release_by_balance ?? true)
@@ -155,6 +156,9 @@ function DetailModal({ item, onClose, onAction, canApprove, canRelease }: {
               { label: 'Cash Balance',   value: formatMoney(item.wallet_cash_balance ?? 0) },
               { label: 'Locked',         value: formatMoney(item.wallet_locked_amount ?? 0) },
               { label: 'Available',      value: formatMoney(item.wallet_available_amount ?? 0) },
+              { label: 'Withholding Tax', value: formatMoney(item.withholding_tax ?? 0) },
+              { label: 'Processing Fee',  value: formatMoney(item.processing_fee ?? 0) },
+              { label: 'Net Payout',      value: formatMoney(item.net_amount ?? item.amount) },
               { label: 'Requested',      value: formatDate(item.created_at) },
               { label: 'Approved',       value: formatDate(item.approved_at) },
               { label: 'Released',       value: formatDate(item.released_at) },
@@ -625,6 +629,10 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
                           {/* Amount */}
                           <td className="px-4 py-3.5">
                             <p className="text-sm font-bold text-slate-800">{formatMoney(row.amount)}</p>
+                            <p className="text-[11px] text-slate-400">Net: {formatMoney(row.net_amount ?? row.amount)}</p>
+                            <p className="text-[11px] text-slate-400">
+                              Tax/Fee: {formatMoney((row.withholding_tax ?? 0) + (row.processing_fee ?? 0))}
+                            </p>
                           </td>
 
                           {/* Wallet */}

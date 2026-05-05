@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { useGetProductsQuery } from '@/store/api/productsApi'
@@ -82,7 +83,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Top contact strip and trust bar',
     description: 'Controls the top contact info, social links, marquee messages, and trust highlights shown above the shop content.',
     status: 'live',
-    accent: 'from-slate-500/20 to-blue-400/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'contact_phone', label: 'Contact phone', value: '+63 912 345 6789' },
       { key: 'contact_email', label: 'Contact email', value: 'hello@afhome.ph' },
@@ -115,7 +116,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Service chips and campaign labels',
     description: 'Used for service advisories, trust signals, and quick promo chips above the shop content.',
     status: 'live',
-    accent: 'from-orange-500/20 to-amber-400/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'chip_group', label: 'Chip group', value: 'Nationwide Shipping, Authenticity Guaranteed, Customer Care' },
     ],
@@ -127,7 +128,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Hero video banner',
     description: 'A large autoplaying hero-style video banner with editable copy and destination link.',
     status: 'live',
-    accent: 'from-sky-500/20 to-cyan-400/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'video_eyebrow', label: 'Video eyebrow', value: 'Top Promos' },
       { key: 'video_title', label: 'Video title', value: 'Weekend Furniture Drop' },
@@ -148,7 +149,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Shop by category cards',
     description: 'This block can now pull real categories by ID. You can still override card images per slot.',
     status: 'live',
-    accent: 'from-violet-500/20 to-fuchsia-400/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'eyebrow', label: 'Eyebrow', value: 'Shop by Category' },
       { key: 'heading', label: 'Heading', value: 'Find Your Perfect Furniture' },
@@ -166,7 +167,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Lead image + category-driven top picks',
     description: 'Select one category and the section will automatically show its products as Top Picks. The Shop Collection button will also navigate to that same category.',
     status: 'live',
-    accent: 'from-emerald-500/20 to-lime-400/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'left_eyebrow', label: 'Lead eyebrow', value: 'Featured' },
       { key: 'left_heading', label: 'Lead heading', value: 'Minimal & Simple Design' },
@@ -184,7 +185,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Split callout banners',
     description: 'Two wide visual promos for category pushes. Image URLs and links are editable per side.',
     status: 'live',
-    accent: 'from-cyan-500/20 to-blue-400/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'left_eyebrow', label: 'Left eyebrow', value: 'Limited Offer' },
       { key: 'left_heading', label: 'Left heading', value: 'Build Your Home with Furniture' },
@@ -205,7 +206,7 @@ const defaultSections: BuilderSection[] = [
     title: 'Email capture section',
     description: 'Bottom-of-page conversion block for subscribers, launch updates, and campaign retention.',
     status: 'live',
-    accent: 'from-slate-500/20 to-slate-300/10',
+    accent: 'from-[#f5f0e6] to-white',
     fields: [
       { key: 'badge', label: 'Badge', value: 'Newsletter' },
       { key: 'heading', label: 'Heading', value: 'Stay in the Loop' },
@@ -674,7 +675,7 @@ export default function ShopBuilderStudio() {
     return (
       <div className="flex items-center justify-center rounded-3xl border border-slate-200 bg-white p-16 shadow-sm">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
           <p className="text-sm font-medium text-slate-500">Loading shop builder…</p>
         </div>
       </div>
@@ -690,33 +691,60 @@ export default function ShopBuilderStudio() {
   }
 
   return (
-    <div className="space-y-5 dark:bg-slate-950 dark:text-slate-100">
+    <div className="space-y-8">
+
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="flex flex-wrap items-end justify-between gap-6 border-b border-[#e8e5e1] pb-6"
+      >
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-400">Shop Builder Studio</p>
-          <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">Page Editor</h1>
-          <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">
+          <p className="inline-flex items-center gap-2 text-xs font-medium tracking-widest text-[#8a8a8a] uppercase">
+            <span className="h-px w-8 bg-[#8a8a8a]" />
+            Shop Builder Studio
+          </p>
+          <h1 className="mt-3 text-3xl font-medium tracking-tight text-[#1a1a1a]">Page Editor</h1>
+          <p className="mt-1.5 text-sm text-[#8a8a8a]">
             {savedCount} of {sections.length} sections saved · Edit sections and click Save to publish.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isDirty ? (
-            <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Unsaved changes
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              All saved
-            </span>
-          )}
-          <a
+          <AnimatePresence mode="wait">
+            {isDirty ? (
+              <motion.span
+                key="unsaved"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-700"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Unsaved changes
+              </motion.span>
+            ) : (
+              <motion.span
+                key="saved"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                All saved
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <motion.a
             href="/shop"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="inline-flex items-center gap-2 rounded-full border border-[#1a1a1a] bg-[#1a1a1a] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2a2a2a]"
           >
             View Live /shop
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -724,74 +752,102 @@ export default function ShopBuilderStudio() {
               <polyline points="15 3 21 3 21 9" />
               <line x1="10" y1="14" x2="21" y2="3" />
             </svg>
-          </a>
+          </motion.a>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── 3-column layout ── */}
-      <div className="grid gap-4 xl:grid-cols-[256px_minmax(0,1fr)_348px]">
+      <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_360px]">
 
         {/* ── LEFT: Section nav ── */}
-        <aside className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Sections</p>
-            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{sections.length} blocks total</p>
-          </div>
-          <nav className="space-y-1 p-3">
+        <motion.aside
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <p className="mb-4 inline-flex items-center gap-2 text-xs font-medium tracking-widest text-[#8a8a8a] uppercase">
+            <span className="h-px w-6 bg-[#8a8a8a]" />
+            Sections
+          </p>
+          <nav className="space-y-px">
             {sections.map((section, index) => {
               const active = section.id === selectedSection.id
               const dirty = Boolean(dirtySections[section.id])
               const sc = statusConfig[section.status]
 
               return (
-                <button
+                <motion.button
                   key={section.id}
                   type="button"
                   onClick={() => setSelectedSectionId(section.id)}
-                  className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
+                  whileHover={{ x: active ? 0 : 4 }}
+                  transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                  className={`group flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-left transition-colors ${
                     active
-                      ? 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-100'
-                      : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/80'
+                      ? 'bg-[#1a1a1a] text-white'
+                      : 'text-[#1a1a1a] hover:bg-[#f5f0e6]'
                   }`}
                 >
-                  <span className={`flex h-8 w-8 flex-none items-center justify-center rounded-xl transition ${
-                    active ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700'
+                  <span className={`flex-none text-xs font-medium tracking-widest transition-colors ${
+                    active ? 'text-[#c9a96e]' : 'text-[#8a8a8a] group-hover:text-[#c9a96e]'
                   }`}>
-                    <SectionIcon id={section.id} />
+                    {String(index + 1).padStart(2, '0')}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className={`text-sm font-semibold leading-none ${active ? 'text-cyan-900 dark:text-cyan-100' : 'text-slate-900 dark:text-slate-100'}`}>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-medium leading-none ${active ? 'text-white' : 'text-[#1a1a1a]'}`}>
                         {section.label}
                       </p>
                       {dirty ? <span className="h-1.5 w-1.5 flex-none rounded-full bg-amber-400" title="Unsaved" /> : null}
                     </div>
                     <div className="mt-1.5 flex items-center gap-1.5">
                       <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500">{sc.label}</p>
-                      <span className="text-[11px] text-slate-300">·</span>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500">Block {index + 1}</p>
+                      <p className={`text-[11px] ${active ? 'text-white/50' : 'text-[#8a8a8a]'}`}>{sc.label}</p>
                     </div>
                   </div>
-                </button>
+                  {active && (
+                    <motion.span
+                      layoutId="section-active-arrow"
+                      className="flex-none text-[#c9a96e]"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    >
+                      →
+                    </motion.span>
+                  )}
+                </motion.button>
               )
             })}
           </nav>
-        </aside>
+
+          {/* Divider + info */}
+          <div className="mt-6 border-t border-[#e8e5e1] pt-5">
+            <p className="text-[11px] leading-relaxed text-[#8a8a8a]">
+              Click a section to edit its content. Changes are local until you press Save.
+            </p>
+          </div>
+        </motion.aside>
 
         {/* ── CENTER: Preview canvas ── */}
-        <section className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4">
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+          className="overflow-hidden rounded-3xl border border-[#e8e5e1] bg-white shadow-sm"
+        >
+          <div className="flex items-center justify-between border-b border-[#e8e5e1] px-5 py-4">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Live Preview</p>
-              <p className="mt-0.5 text-sm font-semibold text-slate-800 dark:text-slate-100">/shop Visual Canvas</p>
+              <p className="inline-flex items-center gap-2 text-xs font-medium tracking-widest text-[#8a8a8a] uppercase">
+                <span className="h-px w-5 bg-[#8a8a8a]" />
+                Live Preview
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-[#1a1a1a]">/shop Visual Canvas</p>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">Click a section to edit it</p>
+            <p className="text-[11px] text-[#8a8a8a]">Click any block to edit</p>
           </div>
 
           <div className="p-4">
-            <div className="rounded-[28px] bg-slate-100 p-3 dark:bg-slate-950">
-              <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_20px_60px_rgba(15,23,42,0.10)] dark:bg-slate-900 dark:shadow-[0_20px_60px_rgba(2,6,23,0.45)]">
+            <div className="rounded-[24px] bg-[#f5f0e6]/30 p-3">
+              <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(26,26,26,0.08)]">
                 <PreviewShopHeader section={sections[0]} selectedId={selectedSection.id} onSelect={setSelectedSectionId} />
                 <PreviewAnnouncements section={sections[1]} selectedId={selectedSection.id} onSelect={setSelectedSectionId} />
                 <PreviewCampaignBanners section={sections[2]} selectedId={selectedSection.id} onSelect={setSelectedSectionId} />
@@ -802,259 +858,289 @@ export default function ShopBuilderStudio() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ── RIGHT: Editor panel ── */}
-        <aside className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          {/* Section header */}
-          <div className={`rounded-t-3xl bg-linear-to-br ${selectedSection.accent} p-5`}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-600">{selectedSection.eyebrow}</p>
-                <h2 className="mt-1.5 text-lg font-bold text-slate-900 dark:text-slate-100">{selectedSection.label}</h2>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">{selectedSection.description}</p>
+        <AnimatePresence mode="wait">
+          <motion.aside
+            key={selectedSectionId}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-col overflow-hidden rounded-3xl border border-[#e8e5e1] bg-white shadow-sm"
+          >
+            {/* Section header */}
+            <div className="border-b border-[#e8e5e1] bg-[#faf9f7] p-6">
+              <p className="inline-flex items-center gap-2 text-xs font-medium tracking-widest text-[#c9a96e] uppercase">
+                <span className="h-px w-5 bg-[#c9a96e]" />
+                {selectedSection.eyebrow}
+              </p>
+              <h2 className="mt-3 text-xl font-medium tracking-tight text-[#1a1a1a]">{selectedSection.label}</h2>
+              <p className="mt-2 text-xs leading-relaxed text-[#6b6b6b]">{selectedSection.description}</p>
+
+              {/* Status + badge row */}
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="flex gap-1.5">
+                  {(['live', 'draft', 'planned'] as BuilderSectionStatus[]).map((s) => (
+                    <motion.button
+                      key={s}
+                      type="button"
+                      onClick={() => updateStatus(selectedSection.id, s)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`rounded-full border px-3 py-1 text-[11px] font-medium capitalize transition ${
+                        selectedSection.status === s
+                          ? statusConfig[s].badge
+                          : 'border-[#e8e5e1] bg-white text-[#6b6b6b] hover:bg-[#f5f0e6]'
+                      }`}
+                    >
+                      {s}
+                    </motion.button>
+                  ))}
+                </div>
+                <span className={`flex-none rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusConfig[selectedSection.status].badge}`}>
+                  {statusConfig[selectedSection.status].label}
+                </span>
               </div>
-              <span className={`mt-0.5 flex-none rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusConfig[selectedSection.status].badge}`}>
-                {statusConfig[selectedSection.status].label}
-              </span>
             </div>
 
-            {/* Status switcher */}
-            <div className="mt-4 flex gap-1.5">
-              {(['live', 'draft', 'planned'] as BuilderSectionStatus[]).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => updateStatus(selectedSection.id, s)}
-                  className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold capitalize transition ${
-                    selectedSection.status === s
-                      ? statusConfig[s].badge
-                      : 'border-slate-200 bg-white/60 text-slate-500 hover:bg-white dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+            {/* Fields */}
+            <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
+              <p className="inline-flex items-center gap-2 text-xs font-medium tracking-widest text-[#8a8a8a] uppercase">
+                <span className="h-px w-5 bg-[#8a8a8a]" />
+                Fields
+              </p>
 
-          {/* Fields */}
-          <div className="flex flex-col gap-4 overflow-y-auto px-5 pb-2">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Fields</p>
-
-            {visibleSelectedFields.map((field) => (
-              <div key={field.key}>
-                <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  {field.label}
-                </label>
-                {field.key === 'marquee_messages' ? (
-                  <MarqueeMessagesEditor
-                    value={field.value}
-                    onChange={(value) => updateField(selectedSection.id, field.key, value)}
-                  />
-                ) : selectedSection.id === 'shop-header' && field.key === 'tiktok_url' ? (
-                  <>
-                    <input
-                      value={field.value}
-                      onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
-                      className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
-                    />
-                    <TrustItemsEditor
-                      section={selectedSection}
-                      onChange={(fieldKey, value) => updateField(selectedSection.id, fieldKey, value)}
-                    />
-                  </>
-                ) : field.kind === 'textarea' ? (
-                  <textarea
-                    value={field.value}
-                    onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
-                    rows={3}
-                    className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
-                  />
-                ) : field.kind === 'video' || field.key.includes('image') ? (
-                  <div className="mt-1.5 space-y-2">
-                    <input
-                      value={field.value}
-                      onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
-                      placeholder={field.kind === 'video' ? 'Paste video URL or upload below' : 'Paste URL or upload below'}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
-                    />
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-3.5 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-white dark:border-cyan-900/40 dark:bg-cyan-950/30 dark:text-cyan-300 dark:hover:bg-cyan-950/40">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="16 16 12 12 8 16" />
-                        <line x1="12" y1="12" x2="12" y2="21" />
-                        <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3" />
-                      </svg>
-                      <input
-                        type="file"
-                        accept={field.kind === 'video' ? 'video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv' : 'image/jpeg,image/png,image/webp,image/gif'}
-                        className="hidden"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0] ?? null
-                          void uploadImageForField(selectedSection.id, field.key, file)
-                          event.currentTarget.value = ''
-                        }}
-                      />
-                      {uploadingFieldKey === field.key ? 'Uploading...' : field.kind === 'video' ? 'Upload Video' : 'Upload Image'}
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }}
+                className="flex flex-col gap-5"
+              >
+                {visibleSelectedFields.map((field) => (
+                  <motion.div
+                    key={field.key}
+                    variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+                  >
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide text-[#8a8a8a] dark:text-slate-500">
+                      {field.label}
                     </label>
-                    <div className="relative h-28 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-                      {(() => {
-                        const fallbackPoster =
-                          field.kind === 'video' && selectedSection.id === 'campaign-banners'
-                            ? getFieldValue(selectedSection, 'video_poster') || fallbackImage
-                            : ''
-                        const hasPreview = Boolean(field.value || fallbackPoster)
-
-                        return hasPreview ? (
-                        field.kind === 'video' ? (
-                          field.value ? (
-                            <video
-                              src={field.value}
-                              poster={fallbackPoster || undefined}
-                              className={`h-full w-full object-cover transition ${isFieldUploading(field.key) ? 'opacity-35 blur-[1px]' : ''}`}
-                              muted
-                              loop
-                              autoPlay
-                              playsInline
-                            />
-                          ) : (
-                            <Image
-                              src={fallbackPoster}
-                              alt="Video poster preview"
-                              fill
-                              className={`object-cover transition ${isFieldUploading(field.key) ? 'opacity-35 blur-[1px]' : ''}`}
-                              unoptimized
-                            />
-                          )
-                        ) : (
-                          <Image
-                            src={field.value}
-                            alt={field.label}
-                            fill
-                            className={`object-cover transition ${isFieldUploading(field.key) ? 'opacity-35 blur-[1px]' : ''}`}
-                            unoptimized
+                    {field.key === 'marquee_messages' ? (
+                      <MarqueeMessagesEditor
+                        value={field.value}
+                        onChange={(value) => updateField(selectedSection.id, field.key, value)}
+                      />
+                    ) : selectedSection.id === 'shop-header' && field.key === 'tiktok_url' ? (
+                      <>
+                        <input
+                          value={field.value}
+                          onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
+                          className="mt-1.5 w-full rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                        />
+                        <TrustItemsEditor
+                          section={selectedSection}
+                          onChange={(fieldKey, value) => updateField(selectedSection.id, fieldKey, value)}
+                        />
+                      </>
+                    ) : field.kind === 'textarea' ? (
+                      <textarea
+                        value={field.value}
+                        onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
+                        rows={3}
+                        className="mt-1.5 w-full rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                      />
+                    ) : field.kind === 'video' || field.key.includes('image') ? (
+                      <div className="mt-1.5 space-y-2">
+                        <input
+                          value={field.value}
+                          onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
+                          placeholder={field.kind === 'video' ? 'Paste video URL or upload below' : 'Paste URL or upload below'}
+                          className="w-full rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                        />
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2 text-xs font-medium text-[#1a1a1a] transition hover:border-[#1a1a1a] hover:bg-white dark:border-cyan-900/40 dark:bg-cyan-950/30 dark:text-cyan-300 dark:hover:bg-cyan-950/40">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="16 16 12 12 8 16" />
+                            <line x1="12" y1="12" x2="12" y2="21" />
+                            <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3" />
+                          </svg>
+                          <input
+                            type="file"
+                            accept={field.kind === 'video' ? 'video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv' : 'image/jpeg,image/png,image/webp,image/gif'}
+                            className="hidden"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] ?? null
+                              void uploadImageForField(selectedSection.id, field.key, file)
+                              event.currentTarget.value = ''
+                            }}
                           />
-                        )
-                        ) : null
-                      })()}
-                      {isFieldUploading(field.key) ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/75 backdrop-blur-[1px] dark:bg-slate-900/75">
-                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent" />
-                          <p className="text-xs font-semibold text-cyan-700">{field.kind === 'video' ? 'Uploading video...' : 'Uploading image...'}</p>
+                          {uploadingFieldKey === field.key ? 'Uploading...' : field.kind === 'video' ? 'Upload Video' : 'Upload Image'}
+                        </label>
+                        <div className="relative h-28 overflow-hidden rounded-2xl border border-[#e8e5e1] bg-[#faf9f7]">
+                          {(() => {
+                            const fallbackPoster =
+                              field.kind === 'video' && selectedSection.id === 'campaign-banners'
+                                ? getFieldValue(selectedSection, 'video_poster') || fallbackImage
+                                : ''
+                            const hasPreview = Boolean(field.value || fallbackPoster)
+
+                            return hasPreview ? (
+                            field.kind === 'video' ? (
+                              field.value ? (
+                                <video
+                                  src={field.value}
+                                  poster={fallbackPoster || undefined}
+                                  className={`h-full w-full object-cover transition ${isFieldUploading(field.key) ? 'opacity-35 blur-[1px]' : ''}`}
+                                  muted
+                                  loop
+                                  autoPlay
+                                  playsInline
+                                />
+                              ) : (
+                                <Image
+                                  src={fallbackPoster}
+                                  alt="Video poster preview"
+                                  fill
+                                  className={`object-cover transition ${isFieldUploading(field.key) ? 'opacity-35 blur-[1px]' : ''}`}
+                                  unoptimized
+                                />
+                              )
+                            ) : (
+                              <Image
+                                src={field.value}
+                                alt={field.label}
+                                fill
+                                className={`object-cover transition ${isFieldUploading(field.key) ? 'opacity-35 blur-[1px]' : ''}`}
+                                unoptimized
+                              />
+                            )
+                            ) : null
+                          })()}
+                          {isFieldUploading(field.key) ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/75 backdrop-blur-[1px]">
+                              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
+                              <p className="text-xs font-semibold text-[#1a1a1a]">{field.kind === 'video' ? 'Uploading video...' : 'Uploading image...'}</p>
+                            </div>
+                          ) : null}
+                          {!field.value && !(field.kind === 'video' && selectedSection.id === 'campaign-banners' && getFieldValue(selectedSection, 'video_poster')) && !isFieldUploading(field.key) ? (
+                            <div className="absolute inset-0 animate-pulse bg-linear-to-r from-[#f5f0e6] via-white to-[#f5f0e6]" />
+                          ) : null}
                         </div>
-                      ) : null}
-                      {!field.value && !(field.kind === 'video' && selectedSection.id === 'campaign-banners' && getFieldValue(selectedSection, 'video_poster')) && !isFieldUploading(field.key) ? (
-                        <div className="absolute inset-0 animate-pulse bg-linear-to-r from-slate-100 via-slate-50 to-slate-100" />
-                      ) : null}
-                    </div>
-                  </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 space-y-2">
+                        <input
+                          value={field.value}
+                          onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
+                          className="w-full rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                        />
+                        {/^https?:\/\//i.test(field.value.trim()) ? (
+                          <a
+                            href={field.value.trim()}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[#e8e5e1] bg-white px-3 py-1.5 text-[11px] font-medium text-[#6b6b6b] transition hover:border-[#1a1a1a] hover:text-[#1a1a1a]"
+                          >
+                            Open Link
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                              <polyline points="15 3 21 3 21 9" />
+                              <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
+                          </a>
+                        ) : null}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {/* Category image overrides */}
+              {selectedSection.id === 'category-grid' ? (
+                <DynamicCategoryImageFields
+                  section={selectedSection}
+                  categoryCards={categoryEditorCards}
+                  onChange={updateField}
+                  onUpload={uploadImageForField}
+                  uploadingFieldKeys={uploadingFieldKeys}
+                />
+              ) : null}
+
+              {/* Category picker */}
+              {selectedSection.id === 'category-grid' ? (
+                <CategoryPickerPanel
+                  categories={categories}
+                  selectedIds={parseIdList(getFieldValue(selectedSection, 'category_ids'))}
+                  onToggle={toggleCategorySelection}
+                />
+              ) : null}
+
+              {selectedSection.id === 'featured-collection' ? (
+                <FeaturedCategoryPickerPanel
+                  categories={categories}
+                  selectedId={Number.parseInt(getFieldValue(selectedSection, 'source_category_id'), 10)}
+                  onSelect={(categoryId) => updateField(selectedSection.id, 'source_category_id', categoryId > 0 ? String(categoryId) : '')}
+                />
+              ) : null}
+
+              {selectedSection.id === 'campaign-banners' ? (
+                <CampaignBannerLinkPanel
+                  categories={categories}
+                  products={products}
+                  selectedType={getFieldValue(selectedSection, 'link_type') || 'category'}
+                  selectedCategoryId={Number.parseInt(getFieldValue(selectedSection, 'link_category_id'), 10)}
+                  selectedProductId={Number.parseInt(getFieldValue(selectedSection, 'link_product_id'), 10)}
+                  customLink={getFieldValue(selectedSection, 'video_link')}
+                  onTypeChange={(value) => updateField(selectedSection.id, 'link_type', value)}
+                  onCategorySelect={(categoryId) => updateField(selectedSection.id, 'link_category_id', categoryId > 0 ? String(categoryId) : '')}
+                  onProductSelect={(productId) => updateField(selectedSection.id, 'link_product_id', productId > 0 ? String(productId) : '')}
+                />
+              ) : null}
+            </div>
+
+            {/* Save button */}
+            <div className="mt-auto border-t border-[#e8e5e1] bg-[#faf9f7] p-5">
+              <motion.button
+                type="button"
+                onClick={() => void saveSection()}
+                disabled={isSaving}
+                whileHover={!isSaving ? { scale: 1.02 } : {}}
+                whileTap={!isSaving ? { scale: 0.98 } : {}}
+                transition={{ duration: 0.2 }}
+                className={`flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  isDirty ? 'bg-[#1a1a1a] hover:bg-[#2a2a2a]' : 'bg-[#8a8a8a]'
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Saving...
+                  </>
+                ) : isDirty ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    Save Section
+                  </>
                 ) : (
-                  <div className="mt-1.5 space-y-2">
-                    <input
-                      value={field.value}
-                      onChange={(event) => updateField(selectedSection.id, field.key, event.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
-                    />
-                    {/^https?:\/\//i.test(field.value.trim()) ? (
-                      <a
-                        href={field.value.trim()}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100"
-                      >
-                        Open Link
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-                          <polyline points="15 3 21 3 21 9" />
-                          <line x1="10" y1="14" x2="21" y2="3" />
-                        </svg>
-                      </a>
-                    ) : null}
-                  </div>
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Saved
+                  </>
                 )}
-              </div>
-            ))}
-
-            {/* Category image overrides */}
-            {selectedSection.id === 'category-grid' ? (
-              <DynamicCategoryImageFields
-                section={selectedSection}
-                categoryCards={categoryEditorCards}
-                onChange={updateField}
-                onUpload={uploadImageForField}
-                uploadingFieldKeys={uploadingFieldKeys}
-              />
-            ) : null}
-
-            {/* Category picker */}
-            {selectedSection.id === 'category-grid' ? (
-              <CategoryPickerPanel
-                categories={categories}
-                selectedIds={parseIdList(getFieldValue(selectedSection, 'category_ids'))}
-                onToggle={toggleCategorySelection}
-              />
-            ) : null}
-
-            {selectedSection.id === 'featured-collection' ? (
-              <FeaturedCategoryPickerPanel
-                categories={categories}
-                selectedId={Number.parseInt(getFieldValue(selectedSection, 'source_category_id'), 10)}
-                onSelect={(categoryId) => updateField(selectedSection.id, 'source_category_id', categoryId > 0 ? String(categoryId) : '')}
-              />
-            ) : null}
-            {selectedSection.id === 'campaign-banners' ? (
-              <CampaignBannerLinkPanel
-                categories={categories}
-                products={products}
-                selectedType={getFieldValue(selectedSection, 'link_type') || 'category'}
-                selectedCategoryId={Number.parseInt(getFieldValue(selectedSection, 'link_category_id'), 10)}
-                selectedProductId={Number.parseInt(getFieldValue(selectedSection, 'link_product_id'), 10)}
-                customLink={getFieldValue(selectedSection, 'video_link')}
-                onTypeChange={(value) => updateField(selectedSection.id, 'link_type', value)}
-                onCategorySelect={(categoryId) => updateField(selectedSection.id, 'link_category_id', categoryId > 0 ? String(categoryId) : '')}
-                onProductSelect={(productId) => updateField(selectedSection.id, 'link_product_id', productId > 0 ? String(productId) : '')}
-              />
-            ) : null}
-          </div>
-
-          {/* Save button */}
-          <div className="mt-auto border-t border-slate-100 p-5 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => void saveSection()}
-              disabled={isSaving}
-              className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                isDirty ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-400 hover:bg-slate-500'
-              }`}
-            >
-              {isSaving ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Saving...
-                </>
-              ) : isDirty ? (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                  </svg>
-                  Save Section
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Saved
-                </>
-              )}
-            </button>
-            <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
-              Changes publish to <span className="font-semibold text-slate-600 dark:text-slate-300">/shop</span> immediately after saving.
-            </p>
-          </div>
-        </aside>
+              </motion.button>
+              <p className="mt-3 text-center text-[11px] text-[#8a8a8a]">
+                Changes publish to <span className="font-medium text-[#1a1a1a]">/shop</span> immediately after saving.
+              </p>
+            </div>
+          </motion.aside>
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -1177,12 +1263,12 @@ function PreviewSection({
       type="button"
       onClick={() => onSelect(section.id)}
       className={`group relative block w-full text-left outline-none transition-all duration-200 ${
-        active ? 'ring-2 ring-inset ring-cyan-400' : 'ring-1 ring-inset ring-transparent hover:ring-slate-300'
+        active ? 'ring-2 ring-inset ring-[#c9a96e]' : 'ring-0 hover:ring-1 ring-inset hover:ring-[#e8e5e1]'
       }`}
     >
       {/* Section label pill */}
-      <span className={`absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm transition ${
-        active ? 'bg-cyan-600 text-white' : 'bg-slate-900/70 text-white/70 opacity-0 group-hover:opacity-100'
+      <span className={`absolute right-3 top-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest shadow-sm transition ${
+        active ? 'bg-[#1a1a1a] text-white opacity-100' : 'bg-[#1a1a1a]/70 text-white/80 opacity-0 group-hover:opacity-100'
       }`}>
         {label ?? section.label}
       </span>
@@ -1259,7 +1345,7 @@ function PreviewShopHeader(props: { section: BuilderSection; selectedId: Builder
             </div>
           ))}
           {trustItems.length === 0 ? (
-            <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
+            <div className="col-span-full rounded-xl border border-dashed border-[#e8e5e1] bg-white px-3 py-4 text-center text-xs text-[#8a8a8a] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
               No trust items set yet.
             </div>
           ) : null}
@@ -1530,10 +1616,10 @@ function PreviewNewsletter(props: { section: BuilderSection; selectedId: Builder
 
 function HelperPanel({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{title}</p>
-      <div className="mt-2 max-h-36 space-y-1 overflow-y-auto text-xs text-slate-500 dark:text-slate-400">
-        {items.length > 0 ? items.map((item) => <p key={item}>{item}</p>) : <p className="text-slate-400 dark:text-slate-500">No data yet.</p>}
+    <div className="rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3 dark:border-slate-700 dark:bg-slate-800">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a8a8a] dark:text-slate-500">{title}</p>
+      <div className="mt-2 max-h-36 space-y-1 overflow-y-auto text-xs text-[#6b6b6b] dark:text-slate-400">
+        {items.length > 0 ? items.map((item) => <p key={item}>{item}</p>) : <p className="text-[#8a8a8a] dark:text-slate-500">No data yet.</p>}
       </div>
     </div>
   )
@@ -1573,9 +1659,9 @@ function MarqueeMessagesEditor({
   }
 
   return (
-    <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+    <div className="mt-1.5 rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Manage rotating top banner messages.</p>
+        <p className="text-xs font-medium text-[#6b6b6b] dark:text-slate-400">Manage rotating top banner messages.</p>
       </div>
 
       <div className="mt-3 flex items-center gap-2">
@@ -1589,13 +1675,13 @@ function MarqueeMessagesEditor({
             }
           }}
           placeholder="Enter marquee message"
-          className="flex-1 rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          className="flex-1 rounded-2xl border border-[#e8e5e1] bg-white px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         />
         <button
           type="button"
           onClick={addItem}
           disabled={!draftMessage.trim()}
-          className="inline-flex h-11 flex-none items-center gap-1.5 rounded-2xl border border-cyan-200 bg-white px-4 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-950/30"
+          className="inline-flex h-11 flex-none items-center gap-1.5 rounded-full border border-[#e8e5e1] bg-white px-4 text-sm font-medium text-[#1a1a1a] transition hover:bg-[#f5f0e6] disabled:cursor-not-allowed disabled:opacity-45 dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-950/30"
         >
           <span className="text-base leading-none">+</span>
           Add
@@ -1604,16 +1690,16 @@ function MarqueeMessagesEditor({
 
       <div className="mt-3 space-y-2">
         {items.length > 0 ? items.map((item, index) => (
-          <div key={`${index}-${item}`} className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+          <div key={`${index}-${item}`} className="rounded-xl border border-[#e8e5e1] bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-start gap-2">
-              <div className="mt-2 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <div className="mt-2 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#f5f0e6] text-[11px] font-bold text-[#6b6b6b] dark:bg-slate-800 dark:text-slate-400">
                 {index + 1}
               </div>
               <input
                 value={item}
                 onChange={(event) => updateItem(index, event.target.value)}
                 placeholder="Enter marquee message"
-                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                className="flex-1 rounded-xl border border-[#e8e5e1] bg-[#faf9f7] px-3 py-2 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
               />
               <button
                 type="button"
@@ -1626,7 +1712,7 @@ function MarqueeMessagesEditor({
             </div>
           </div>
         )) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
+          <div className="rounded-xl border border-dashed border-[#e8e5e1] bg-white px-3 py-4 text-center text-xs text-[#8a8a8a] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
             No marquee messages yet. Click Add to create one.
           </div>
         )}
@@ -1656,13 +1742,13 @@ function TrustItemsEditor({
   }
 
   return (
-    <div className="mt-1.5 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+    <div className="mt-1.5 rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Manage trust highlights shown below the top bar.</p>
+        <p className="text-xs font-medium text-[#6b6b6b] dark:text-slate-400">Manage trust highlights shown below the top bar.</p>
         <button
           type="button"
           onClick={addItem}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-cyan-700 transition hover:bg-cyan-50 dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-950/30"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#e8e5e1] bg-white px-3 py-1.5 text-[11px] font-medium text-[#1a1a1a] transition hover:bg-[#f5f0e6] dark:border-cyan-900/40 dark:bg-slate-900 dark:text-cyan-300 dark:hover:bg-cyan-950/30"
         >
           <span className="text-sm leading-none">+</span>
           Add
@@ -1671,13 +1757,13 @@ function TrustItemsEditor({
 
       <div className="mt-3 space-y-2">
         {items.length > 0 ? items.map((item, index) => (
-          <div key={`trust-item-${item.index}`} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <div key={`trust-item-${item.index}`} className="rounded-xl border border-[#e8e5e1] bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-2 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f5f0e6] text-[11px] font-bold text-[#6b6b6b] dark:bg-slate-800 dark:text-slate-400">
                   {index + 1}
                 </div>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Trust item {index + 1}</p>
+                <p className="text-xs font-semibold text-[#6b6b6b] dark:text-slate-400">Trust item {index + 1}</p>
               </div>
               <button
                 type="button"
@@ -1693,18 +1779,18 @@ function TrustItemsEditor({
                 value={item.title}
                 onChange={(event) => onChange(`trust_item_${item.index}_title`, event.target.value)}
                 placeholder="Trust item title"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                className="w-full rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
               />
               <input
                 value={item.desc}
                 onChange={(event) => onChange(`trust_item_${item.index}_desc`, event.target.value)}
                 placeholder="Trust item description"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
+                className="w-full rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] px-3.5 py-2.5 text-sm text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800"
               />
             </div>
           </div>
         )) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
+          <div className="rounded-xl border border-dashed border-[#e8e5e1] bg-white px-3 py-4 text-center text-xs text-[#8a8a8a] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
             No trust items yet. Click Add to create one.
           </div>
         )}
@@ -1723,9 +1809,9 @@ function CategoryPickerPanel({
   onToggle: (categoryId: number) => void
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Category picker</p>
-      <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Toggle categories to include them in the shop carousel.</p>
+    <div className="rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3 dark:border-slate-700 dark:bg-slate-800">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a8a8a] dark:text-slate-500">Category picker</p>
+      <p className="mt-1 text-[11px] text-[#8a8a8a] dark:text-slate-500">Toggle categories to include them in the shop carousel.</p>
       <div className="mt-3 max-h-52 space-y-1.5 overflow-y-auto">
         {categories.map((category) => {
           const active = selectedIds.includes(category.id)
@@ -1736,18 +1822,18 @@ function CategoryPickerPanel({
               onClick={() => onToggle(category.id)}
               className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition ${
                 active
-                  ? 'border-cyan-300 bg-cyan-50 text-cyan-900 dark:border-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-100'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
+                  ? 'border-[#c9a96e] bg-[#f5f0e6] text-[#1a1a1a] dark:border-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-100'
+                  : 'border-[#e8e5e1] bg-white text-[#1a1a1a] hover:border-[#c9a96e] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
               }`}
             >
               <div>
                 <p className="text-xs font-semibold">{category.name}</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500">ID {category.id}</p>
+                <p className="text-[10px] text-[#8a8a8a] dark:text-slate-500">ID {category.id}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">{category.product_count ?? 0}</span>
+                <span className="text-[10px] text-[#8a8a8a] dark:text-slate-500">{category.product_count ?? 0}</span>
                 <span className={`h-4 w-4 rounded-full border-2 transition ${
-                  active ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'
+                  active ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-[#e8e5e1] bg-white dark:border-slate-600 dark:bg-slate-900'
                 }`} />
               </div>
             </button>
@@ -1768,16 +1854,16 @@ function FeaturedCategoryPickerPanel({
   onSelect: (categoryId: number) => void
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+    <div className="rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Auto product source</p>
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Assign one category to auto-fill the right-side product cards.</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a8a8a] dark:text-slate-500">Auto product source</p>
+          <p className="mt-1 text-[11px] text-[#8a8a8a] dark:text-slate-500">Assign one category to auto-fill the right-side product cards.</p>
         </div>
         <button
           type="button"
           onClick={() => onSelect(0)}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
+          className="rounded-full border border-[#e8e5e1] bg-white px-2.5 py-1 text-[10px] font-medium text-[#6b6b6b] transition hover:border-[#1a1a1a] hover:text-[#1a1a1a] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
         >
           Clear
         </button>
@@ -1792,8 +1878,8 @@ function FeaturedCategoryPickerPanel({
               onClick={() => onSelect(category.id)}
               className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition ${
                 active
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
+                  ? 'border-[#c9a96e] bg-[#f5f0e6] text-[#1a1a1a] dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-100'
+                  : 'border-[#e8e5e1] bg-white text-[#1a1a1a] hover:border-[#c9a96e] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
               }`}
             >
               <div>
@@ -1803,7 +1889,7 @@ function FeaturedCategoryPickerPanel({
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">{category.product_count ?? 0}</span>
                 <span className={`h-4 w-4 rounded-full border-2 transition ${
-                  active ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'
+                  active ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-[#e8e5e1] bg-white dark:border-slate-600 dark:bg-slate-900'
                 }`} />
               </div>
             </button>
@@ -1839,9 +1925,9 @@ function CampaignBannerLinkPanel({
   const selectedProduct = products.find((product) => product.id === selectedProductId)
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Hero link target</p>
-      <p className="mt-1 text-[11px] text-slate-400">Choose where the full video banner and Explore Now button should navigate.</p>
+    <div className="rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a8a8a]">Hero link target</p>
+      <p className="mt-1 text-[11px] text-[#8a8a8a]">Choose where the full video banner and Explore Now button should navigate.</p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {([
@@ -1853,10 +1939,10 @@ function CampaignBannerLinkPanel({
             key={option.key}
             type="button"
             onClick={() => onTypeChange(option.key)}
-            className={`rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${
+            className={`rounded-full border px-3 py-2 text-[11px] font-medium transition ${
               safeType === option.key
-                ? 'border-cyan-300 bg-cyan-50 text-cyan-900'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                ? 'border-[#c9a96e] bg-[#f5f0e6] text-[#1a1a1a]'
+                : 'border-[#e8e5e1] bg-white text-[#6b6b6b] hover:border-[#1a1a1a] hover:text-[#1a1a1a]'
             }`}
           >
             {option.label}
@@ -1875,15 +1961,15 @@ function CampaignBannerLinkPanel({
                 onClick={() => onCategorySelect(category.id)}
                 className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition ${
                   active
-                    ? 'border-cyan-300 bg-cyan-50 text-cyan-900'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    ? 'border-[#c9a96e] bg-[#f5f0e6] text-[#1a1a1a]'
+                    : 'border-[#e8e5e1] bg-white text-[#1a1a1a] hover:border-[#c9a96e]'
                 }`}
               >
                 <div>
                   <p className="text-xs font-semibold">{category.name}</p>
-                  <p className="text-[10px] text-slate-400">ID {category.id}</p>
+                  <p className="text-[10px] text-[#8a8a8a]">ID {category.id}</p>
                 </div>
-                <span className="text-[10px] text-slate-400">{category.product_count ?? 0}</span>
+                <span className="text-[10px] text-[#8a8a8a]">{category.product_count ?? 0}</span>
               </button>
             )
           })}
@@ -1901,12 +1987,12 @@ function CampaignBannerLinkPanel({
                 onClick={() => onProductSelect(product.id)}
                 className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                   active
-                    ? 'border-cyan-300 bg-cyan-50 text-cyan-900'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    ? 'border-[#c9a96e] bg-[#f5f0e6] text-[#1a1a1a]'
+                    : 'border-[#e8e5e1] bg-white text-[#1a1a1a] hover:border-[#c9a96e]'
                 }`}
               >
                 <p className="text-xs font-semibold">{product.name}</p>
-                <p className="mt-1 text-[10px] text-slate-400">ID {product.id} · Category {product.catid}</p>
+                <p className="mt-1 text-[10px] text-[#8a8a8a]">ID {product.id} · Category {product.catid}</p>
               </button>
             )
           })}
@@ -1914,17 +2000,17 @@ function CampaignBannerLinkPanel({
       ) : null}
 
       {safeType === 'custom' ? (
-        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white px-3 py-3 text-[11px] text-slate-500">
+        <div className="mt-3 rounded-xl border border-dashed border-[#e8e5e1] bg-white px-3 py-3 text-[11px] text-[#6b6b6b]">
           Use the Custom video link field above.
-          {customLink.trim() ? <span className="block mt-1 text-slate-400">Current: {customLink.trim()}</span> : null}
+          {customLink.trim() ? <span className="block mt-1 text-[#8a8a8a]">Current: {customLink.trim()}</span> : null}
         </div>
       ) : null}
 
       {safeType === 'category' && selectedCategoryId > 0 ? (
-        <p className="mt-3 text-[11px] text-slate-500">Current target: selected category ID {selectedCategoryId}</p>
+        <p className="mt-3 text-[11px] text-[#6b6b6b]">Current target: selected category ID {selectedCategoryId}</p>
       ) : null}
       {safeType === 'product' && selectedProduct ? (
-        <p className="mt-3 text-[11px] text-slate-500">Current target: {selectedProduct.name}</p>
+        <p className="mt-3 text-[11px] text-[#6b6b6b]">Current target: {selectedProduct.name}</p>
       ) : null}
     </div>
   )
@@ -1946,9 +2032,9 @@ function DynamicCategoryImageFields({
   if (categoryCards.length === 0) return null
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Category image overrides</p>
-      <p className="mt-1 text-[11px] text-slate-400">Upload custom images per category slot.</p>
+    <div className="rounded-2xl border border-[#e8e5e1] bg-[#faf9f7] p-3">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[#8a8a8a]">Category image overrides</p>
+      <p className="mt-1 text-[11px] text-[#8a8a8a]">Upload custom images per category slot.</p>
       <div className="mt-3 max-h-120 space-y-3 overflow-y-auto pr-0.5">
         {categoryCards.map((category) => {
           const fieldKey = `category_image_${category.id}`
@@ -1957,13 +2043,13 @@ function DynamicCategoryImageFields({
           const uploadingFieldKey = isUploading ? fieldKey : null
 
           return (
-            <div key={category.id} className="rounded-xl border border-slate-200 bg-white p-3">
+            <div key={category.id} className="rounded-xl border border-[#e8e5e1] bg-white p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-xs font-semibold text-slate-900">{category.name}</p>
-                  <p className="text-[10px] text-slate-400">ID {category.id} · {category.count} items</p>
+                  <p className="text-xs font-semibold text-[#1a1a1a]">{category.name}</p>
+                  <p className="text-[10px] text-[#8a8a8a]">ID {category.id} · {category.count} items</p>
                 </div>
-                <div className="relative h-10 w-16 flex-none overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                <div className="relative h-10 w-16 flex-none overflow-hidden rounded-lg border border-[#e8e5e1] bg-[#faf9f7]">
                   {fieldValue ? (
                     <Image
                       src={fieldValue}
@@ -1975,7 +2061,7 @@ function DynamicCategoryImageFields({
                   ) : null}
                   {isUploading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent" />
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
                     </div>
                   ) : null}
                   {!fieldValue && !isUploading ? (
@@ -1988,13 +2074,13 @@ function DynamicCategoryImageFields({
                 value={fieldValue}
                 onChange={(event) => onChange(section.id, fieldKey, event.target.value)}
                 placeholder="Image URL"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 outline-none transition focus:border-cyan-300 focus:bg-white focus:ring-2 focus:ring-cyan-100"
+                className="mt-2 w-full rounded-xl border border-[#e8e5e1] bg-[#faf9f7] px-3 py-2 text-xs text-[#1a1a1a] outline-none transition focus:border-[#c9a96e] focus:bg-white focus:ring-2 focus:ring-[#f5f0e6]"
               />
 
-              <label className={`mt-2 inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition ${
+              <label className={`mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition ${
                 isUploading
-                  ? 'cursor-wait border-cyan-200 bg-cyan-50 text-cyan-700'
-                  : 'cursor-pointer border-cyan-200 bg-white text-cyan-700 hover:bg-cyan-50'
+                  ? 'cursor-wait border-[#e8e5e1] bg-[#f5f0e6] text-[#6b6b6b]'
+                  : 'cursor-pointer border-[#e8e5e1] bg-white text-[#1a1a1a] hover:bg-[#f5f0e6]'
               }`}>
                 <input
                   type="file"

@@ -737,7 +737,8 @@ function ProjectsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFiel
   )
 }
 
-function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function BlogsCanvasOld({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
   const isStatic = items.length === 0
   const displayItems = isStatic ? (STATIC_DEFAULTS['dreambuild-blogs'] ?? []) : items
   return (
@@ -814,7 +815,7 @@ function TestimonialsCanvas({ items, selected, onSelect, onAddNew, isLoading, on
           return (
             <CanvasItem key={item.id} item={item} selected={selected} onSelect={onSelect} isStatic={isStatic}>
               <div className="rounded-3xl bg-white p-6 shadow-sm">
-                <p className="text-3xl leading-none text-stone-200">"</p>
+                <p className="text-3xl leading-none text-stone-200">&quot;</p>
                 <FieldZone {...fz('body', 'Quote')}>
                   <p className="mt-2 line-clamp-4 text-sm italic leading-relaxed text-stone-700">
                     {item.body ?? item.subtitle}
@@ -847,7 +848,8 @@ function TestimonialsCanvas({ items, selected, onSelect, onAddNew, isLoading, on
   )
 }
 
-function GalleryCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function GalleryCanvasOld({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
   const isStatic = items.length === 0
   const displayItems = isStatic ? (STATIC_DEFAULTS['dreambuild-gallery'] ?? []) : items
   const toneGrad: Record<string, string> = {
@@ -1008,6 +1010,203 @@ function ContactCanvas({ items, selected, onSelect, onAddNew, isLoading, onField
         >
           + Add CMS contact block (will replace static)
         </button>
+      )}
+    </div>
+  )
+}
+
+function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
+  const displayItems = items
+
+  return (
+    <div className="mx-auto max-w-5xl p-8">
+      {isLoading && <ProgressBar />}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-stone-300/60 pb-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-stone-500">Editorial Library</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">Blogs</h2>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-stone-500">
+            Manage CMS article records. The public landing page keeps its static fallback until CMS rows are added here.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-stone-800"
+        >
+          <span className="text-base leading-none">+</span>
+          Add Blog Post
+        </button>
+      </div>
+
+      {displayItems.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-stone-300 bg-white/60 p-10 text-center">
+          <p className="text-sm font-semibold text-stone-900">No CMS blog posts yet</p>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-stone-500">
+            DreamBuild will keep using the static blog content from the landing page. Add a CMS post when you want to replace a fallback slot.
+          </p>
+          <button
+            type="button"
+            onClick={onAddNew}
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-stone-800"
+          >
+            <span className="text-base leading-none">+</span>
+            Add First Blog Post
+          </button>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
+          <div className="grid grid-cols-[minmax(0,1.6fr)_130px_110px_100px_130px] gap-4 border-b border-stone-100 bg-stone-50 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">
+            <span>Article</span>
+            <span>Category</span>
+            <span>Date</span>
+            <span>Read</span>
+            <span className="text-right">Action</span>
+          </div>
+          {displayItems.map(item => {
+            const p = (item.payload ?? {}) as Record<string, string>
+            const isThisSelected = selected?.id === item.id
+            const fz = (fieldKey: string, label: string) => ({
+              fieldKey,
+              label,
+              onFocus: (key: string) => onFieldFocus?.(item, key),
+              isActive: isThisSelected && focusedField === fieldKey,
+            })
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onSelect(item)}
+                className={`grid w-full grid-cols-[minmax(0,1.6fr)_130px_110px_100px_130px] items-center gap-4 border-b border-stone-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-stone-50 ${
+                  isThisSelected ? 'bg-cyan-50/50' : ''
+                }`}
+              >
+                <div className="min-w-0">
+                  <FieldZone {...fz('title', 'Title')}>
+                    <p className="truncate text-sm font-semibold text-stone-950">{item.title || 'Untitled article'}</p>
+                  </FieldZone>
+                  <FieldZone {...fz('subtitle', 'Excerpt')}>
+                    <p className="mt-1 line-clamp-1 text-xs text-stone-500">{item.subtitle || item.body || 'No excerpt yet'}</p>
+                  </FieldZone>
+                </div>
+                <FieldZone {...fz('category', 'Category')}>
+                  <p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{p.category || 'Uncategorized'}</p>
+                </FieldZone>
+                <FieldZone {...fz('date', 'Date')}>
+                  <p className="text-xs text-stone-500">{p.date || 'No date'}</p>
+                </FieldZone>
+                <FieldZone {...fz('read_time', 'Read time')}>
+                  <p className="text-xs text-stone-500">{p.read_time || 'No time'}</p>
+                </FieldZone>
+                <div className="flex items-center justify-end gap-2">
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                    CMS
+                  </span>
+                  <span className="rounded-full bg-stone-950 px-3 py-1.5 text-[11px] font-bold text-white">Edit</span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GalleryCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
+  const displayItems = items
+  const toneGrad: Record<string, string> = {
+    dark: 'from-stone-600 to-stone-900',
+    light: 'from-stone-100 to-stone-200',
+    gold: 'from-amber-100 to-amber-300',
+    soft: 'from-rose-50 to-stone-100',
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl p-8">
+      {isLoading && <ProgressBar />}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-stone-300/60 pb-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-stone-500">Visual Archive</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">Gallery</h2>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-stone-500">
+            Add CMS gallery entries with tone and alt text. The landing page keeps its static gallery until items are added here.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onAddNew}
+          className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-stone-800"
+        >
+          <span className="text-base leading-none">+</span>
+          Add Gallery Item
+        </button>
+      </div>
+
+      {displayItems.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-stone-300 bg-white/60 p-10 text-center">
+          <p className="text-sm font-semibold text-stone-900">No CMS gallery items yet</p>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-stone-500">
+            DreamBuild will keep using the static gallery from the landing page. Add an item when you want to replace a fallback slot.
+          </p>
+          <button
+            type="button"
+            onClick={onAddNew}
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-stone-800"
+          >
+            <span className="text-base leading-none">+</span>
+            Add First Gallery Item
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        {displayItems.map(item => {
+          const p = (item.payload ?? {}) as Record<string, string>
+          const tone = p.tone || 'light'
+          const isThisSelected = selected?.id === item.id
+          const fz = (fieldKey: string, label: string) => ({
+            fieldKey,
+            label,
+            onFocus: (key: string) => onFieldFocus?.(item, key),
+            isActive: isThisSelected && focusedField === fieldKey,
+          })
+
+          return (
+            <CanvasItem key={item.id} item={item} selected={selected} onSelect={onSelect} isStatic={false}>
+              <div className="group overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <FieldZone {...fz('image_url', 'Image')}>
+                  <div className="relative aspect-square overflow-hidden">
+                    {item.image_url
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={item.image_url} alt={p.alt ?? ''} className="h-full w-full object-cover" />
+                      : (
+                        <div className={`flex h-full items-center justify-center bg-gradient-to-br ${toneGrad[tone] ?? toneGrad.light}`}>
+                          <div className="text-center">
+                            <p className="text-2xl font-light text-stone-400">+</p>
+                            <p className="mt-1 text-xs capitalize text-stone-400">{tone} image</p>
+                          </div>
+                        </div>
+                      )}
+                    <span className="absolute right-3 top-3 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                      CMS
+                    </span>
+                  </div>
+                </FieldZone>
+                <div className="px-4 py-3">
+                  <FieldZone {...fz('title', 'Title')}>
+                    <p className="truncate text-sm font-semibold text-stone-900">{item.title || 'Untitled image'}</p>
+                  </FieldZone>
+                  <FieldZone {...fz('tone', 'Tone')}>
+                    <p className="mt-1 text-[11px] capitalize text-stone-400">{tone} · order {item.sort_order}</p>
+                  </FieldZone>
+                  <p className="mt-3 text-[11px] font-bold text-stone-950">Edit</p>
+                </div>
+              </div>
+            </CanvasItem>
+          )
+        })}
+        </div>
       )}
     </div>
   )

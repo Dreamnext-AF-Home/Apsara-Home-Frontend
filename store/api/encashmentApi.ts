@@ -29,6 +29,9 @@ export interface EncashmentRequestItem {
   reference_no: string;
   invoice_no?: string | null;
   amount: number;
+  withholding_tax?: number;
+  processing_fee?: number;
+  net_amount?: number;
   channel: EncashmentChannel;
   account_name?: string | null;
   account_number?: string | null;
@@ -69,6 +72,8 @@ export interface EncashmentListResponse {
     min_points: number;
     cooldown_hours: number;
     require_active_account: boolean;
+    withholding_tax_rate?: number;
+    processing_fee?: number;
   };
   verification?: {
     status: 'verified' | 'pending_review' | 'blocked' | 'not_submitted';
@@ -161,6 +166,9 @@ export interface AdminEncashmentItem {
   affiliate_name?: string | null;
   affiliate_email?: string | null;
   amount: number;
+  withholding_tax?: number;
+  processing_fee?: number;
+  net_amount?: number;
   channel: EncashmentChannel;
   account_name?: string | null;
   account_number?: string | null;

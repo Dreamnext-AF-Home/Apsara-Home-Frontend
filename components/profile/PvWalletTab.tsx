@@ -66,10 +66,10 @@ const PvWalletTab = ({
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <PvStatCard 
-            label="Direct Referral Commission"
+            label="Cashback / e-GC"
             value={currentPv}
             accent="blue"
-            helper="Available direct referral earnings from delivered referred purchases"
+            helper="4% cashback from delivered personal purchase PV, issued as e-GC"
         />
         <PvStatCard 
             label="Yearly Purchases"
@@ -93,10 +93,10 @@ const PvWalletTab = ({
           helper="Earnings from worldwide purchases"
         />
         <PvStatCard
-          label="Group Purchase Bonus"
+          label="Unilevel Bonus"
           value={groupPv}
           accent="blue"
-          helper="Bonus from your group's purchases"
+          helper="6% per eligible compressed level from delivered group purchases"
         />
         <PvStatCard
           label="Monthly Purchase Points"
@@ -114,16 +114,16 @@ const PvWalletTab = ({
 
       <div className="grid gap-4 md:grid-cols-2">
         <PvStatCard
-          label="Pending Referral Earnings"
+          label="Pending Earnings"
           value={pendingReferralEarnings}
           accent="sky"
-          helper="Paid referred purchases waiting for delivery release"
+          helper="Bonus earnings waiting for delivery release"
         />
         <PvStatCard
           label="Pending PV"
           value={pendingPv}
           accent="blue"
-          helper="Paid purchases waiting for admin approval posting"
+          helper="Paid purchases waiting for delivery before PV posting"
         />
       </div>
 
@@ -206,7 +206,7 @@ const PvWalletTab = ({
                         No PV transactions yet
                     </p>
                     <p className="mt-2 text-sm text-slate-500 dark:text-gray-400">
-                        Approved referral purchases and future PV credits will appear here.
+                        Delivered purchases and future PV credits will appear here.
                     </p>
                 </div>
             ): (
