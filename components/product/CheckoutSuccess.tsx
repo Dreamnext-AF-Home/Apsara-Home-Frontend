@@ -3,12 +3,16 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLazyVerifyCheckoutSessionQuery } from '@/store/api/paymentApi';
+import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi';
 import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import TrustBar from '@/components/layout/TrustBar';
 import Footer from '@/components/landing-page/Footer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting';
+import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
 
 const LOCAL_PAYMENT_MODE_HOSTS = new Set(['localhost', '127.0.0.1']);
 
@@ -21,6 +25,7 @@ function CheckoutSuccessPage() {
   };
 
   const [verifyCheckoutSession] = useLazyVerifyCheckoutSessionQuery();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [checkoutSourceSlug] = useState(() => {
     if (typeof window === 'undefined') return '';
@@ -31,12 +36,40 @@ function CheckoutSuccessPage() {
       || ''
     ).trim().toLowerCase();
   });
-  const [trackOrderBaseHref] = useState(() => (checkoutSourceSlug ? `/${checkoutSourceSlug}/track-order` : '/track-order'));
-  const [homeHref] = useState(() => (checkoutSourceSlug ? `/shop/${checkoutSourceSlug}` : '/'));
+  const partnerSlugFromPath = extractPartnerSlugFromPath(pathname);
+  const effectiveCheckoutSourceSlug = (partnerSlugFromPath || checkoutSourceSlug || '').trim().toLowerCase();
+  const trackOrderBaseHref = effectiveCheckoutSourceSlug ? `/${effectiveCheckoutSourceSlug}/track-order` : '/track-order';
+  const homeHref = effectiveCheckoutSourceSlug ? `/shop/${effectiveCheckoutSourceSlug}` : '/';
+  const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
+    skip: !effectiveCheckoutSourceSlug,
+  });
+  const matchedStorefront = (partnerStorefrontData?.items ?? []).find(
+    (item) => getPartnerStorefrontConfig(item)?.slug === effectiveCheckoutSourceSlug,
+  );
+  const partnerStorefrontConfig = getPartnerStorefrontConfig(matchedStorefront);
+  const partnerLogoSrc = partnerStorefrontConfig?.logoUrl
+    ? `${partnerStorefrontConfig.logoUrl}${partnerStorefrontConfig.logoUrl.includes('?') ? '&' : '?'}v=${partnerStorefrontConfig.logoVersion || '1'}`
+    : '/Images/af_home_logo.png';
+  const partnerLogoAlt = partnerStorefrontConfig?.displayName || 'Partner Storefront';
   const [result, setResult] = useState<{
     checkout_id: string;
     status: string | null;
     payment_intent_id: string | null;
+    customer?: {
+      name?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      address?: string | null;
+    };
+    order_summary?: {
+      description?: string | null;
+      amount?: number | null;
+      shipping_fee?: number | null;
+      payment_method?: string | null;
+      product_name?: string | null;
+      product_sku?: string | null;
+      quantity?: number | null;
+    };
   } | null>(null);
   const [error, setError] = useState('');
 
@@ -133,7 +166,7 @@ function CheckoutSuccessPage() {
   const normalizedStatus = result?.status?.toLowerCase() ?? '';
   const isPaid = normalizedStatus === 'paid' || normalizedStatus === 'succeeded' || normalizedStatus === 'success';
   const isPending = !isPaid && (normalizedStatus === 'unpaid' || normalizedStatus === 'active' || normalizedStatus === 'pending');
-  const isPartnerStorefrontCheckout = checkoutSourceSlug !== '';
+  const isPartnerStorefrontCheckout = effectiveCheckoutSourceSlug !== '';
 
   // -- LOADING --------------------------------------------------
   if (loading) {
@@ -193,9 +226,19 @@ function CheckoutSuccessPage() {
 
   return (
     <>
-      <TopBar />
-      <Navbar initialCategories={[]} noBorder />
-      <TrustBar />
+      {!isPartnerStorefrontCheckout && <TopBar />}
+      <Navbar
+        initialCategories={[]}
+        noBorder
+        logoSrc={isPartnerStorefrontCheckout ? partnerLogoSrc : '/Images/af_home_logo.png'}
+        logoAlt={isPartnerStorefrontCheckout ? partnerLogoAlt : 'AF Home'}
+        logoHref={homeHref}
+        hideSignIn={isPartnerStorefrontCheckout}
+        hideNavLinks={isPartnerStorefrontCheckout}
+        stickToTop={isPartnerStorefrontCheckout}
+        showGuestCartWishlist={isPartnerStorefrontCheckout}
+      />
+      {!isPartnerStorefrontCheckout && <TrustBar />}
       <main className="min-h-screen bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-slate-800">
         <div className="container mx-auto px-4 py-10 md:py-14 flex items-center justify-center">
           <motion.div
@@ -262,6 +305,58 @@ function CheckoutSuccessPage() {
                 </span>
               </div>
             </div>
+
+            {(result?.customer?.name || result?.customer?.email || result?.customer?.phone) && (
+              <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-950 overflow-hidden divide-y divide-gray-100 dark:divide-slate-700">
+                <div className="px-4 py-2.5">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Customer</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Name</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[190px]">
+                    {result?.customer?.name ?? 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Email</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[190px]">
+                    {result?.customer?.email ?? 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Phone</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[190px]">
+                    {result?.customer?.phone ?? 'N/A'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {(result?.order_summary?.product_name || result?.order_summary?.description) && (
+              <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-950 overflow-hidden divide-y divide-gray-100 dark:divide-slate-700">
+                <div className="px-4 py-2.5">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Order Summary</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Item</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[190px]">
+                    {result?.order_summary?.product_name ?? result?.order_summary?.description ?? 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Qty</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                    {result?.order_summary?.quantity ?? 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Total</span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                    {typeof result?.order_summary?.amount === 'number' ? `PHP ${result.order_summary.amount.toLocaleString()}` : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* What's next - success only */}
             {isPaid && (

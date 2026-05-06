@@ -9,5 +9,5 @@ export const metadata = buildPageMetadata({
 })
 
 export default function PartnerUsersPortalPage() {
-  return <PartnerUsersPage />
+  return <PartnerUsersPage showStorefrontFilter={false} />
 }

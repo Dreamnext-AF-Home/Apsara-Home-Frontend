@@ -52,6 +52,21 @@ export interface VerifyCheckoutSessionResponse {
   status: string | null
   payment_intent_id: string | null
   payment_mode?: CheckoutPaymentMode | null
+  customer?: {
+    name?: string | null
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+  }
+  order_summary?: {
+    description?: string | null
+    amount?: number | null
+    shipping_fee?: number | null
+    payment_method?: string | null
+    product_name?: string | null
+    product_sku?: string | null
+    quantity?: number | null
+  }
   raw?: Record<string, unknown>
 }
 
