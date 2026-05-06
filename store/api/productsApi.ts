@@ -778,7 +778,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
     uploaderName: typeof input.uploaderName === 'string' ? input.uploaderName : null,
     uploaderEmail: typeof input.uploaderEmail === 'string' ? input.uploaderEmail : null,
     uploaderRole: typeof input.uploaderRole === 'string' ? input.uploaderRole : null,
-    image: primaryImage ?? images[0] ?? null,
+    image: images[0] ?? primaryImage ?? null,
     images,
     variants: uniqueVariants,
     createdAt: typeof input.createdAt === 'string' ? input.createdAt : (typeof (input as Record<string, unknown>).created_at === 'string' ? (input as Record<string, unknown>).created_at as string : null),
