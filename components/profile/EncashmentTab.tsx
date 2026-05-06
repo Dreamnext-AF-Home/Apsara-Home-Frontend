@@ -12,7 +12,7 @@ import {
   useCreateEncashmentRequestMutation,
   useDeleteEncashmentPayoutMethodMutation,
   useGetEncashmentRequestsQuery,
-  useSubmitEncashmentVerificationRequestMutation,
+  useSubmitEncashmentVerificationWithPayoutMutation,
 } from '@/store/api/encashmentApi';
 import { usePhAddress } from '@/hooks/usePhAddress';
 
@@ -160,12 +160,6 @@ type VerificationFieldKey =
 
 type VerificationErrors = Partial<Record<VerificationFieldKey, string>>;
 
-const getApiErrorText = (err: unknown, fallback: string) => {
-  const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } };
-  const firstValidation = apiErr?.data?.errors ? Object.values(apiErr.data.errors)[0]?.[0] : undefined;
-  return firstValidation || apiErr?.data?.message || fallback;
-};
-
 const EncashmentTab = () => {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -182,7 +176,7 @@ const EncashmentTab = () => {
   const [createRequest, { isLoading: isSubmitting }] = useCreateEncashmentRequestMutation();
   const [createPayoutMethod, { isLoading: isSavingPayoutMethod }] = useCreateEncashmentPayoutMethodMutation();
   const [deletePayoutMethod, { isLoading: isDeletingPayoutMethod }] = useDeleteEncashmentPayoutMethodMutation();
-  const [submitVerificationRequest, { isLoading: isSubmittingVerification }] = useSubmitEncashmentVerificationRequestMutation();
+  const [submitVerificationWithPayout, { isLoading: isSubmittingVerificationWithPayout }] = useSubmitEncashmentVerificationWithPayoutMutation();
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -276,7 +270,8 @@ const EncashmentTab = () => {
   );
   const canSubmitVerification = needsVerification && hasReachedVerificationThreshold;
   const isVerificationPending = verification?.status === 'pending_review';
-  const showMessageInVerificationCard = Boolean(message) && canSubmitVerification && !isVerificationPending;
+  const shouldUseCombinedVerificationFlow = canSubmitVerification && !isVerificationPending && !isEligibleByPolicy;
+  const showMessageInVerificationCard = Boolean(message) && canSubmitVerification && !isVerificationPending && isVerificationSpotlightActive;
   const focusVerification = searchParams.get('focus') === 'verification';
   const selectedVerificationRegion = phVerification.address.region || verificationForm.region.trim();
   const selectedVerificationProvince = (phVerification.noProvince
@@ -421,6 +416,55 @@ const EncashmentTab = () => {
       target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     window.setTimeout(() => setIsVerificationSpotlightActive(false), 1800);
+  };
+
+  const buildVerificationPayload = () => {
+    const nextErrors: VerificationErrors = {};
+
+    if (!verificationForm.fullName.trim()) nextErrors.fullName = 'Full name is required.';
+    if (!verificationForm.birthDate) nextErrors.birthDate = 'Birth date is required.';
+    if (!verificationForm.idType.trim()) nextErrors.idType = 'ID type is required.';
+    if (!verificationForm.idNumber.trim()) nextErrors.idNumber = 'ID number is required.';
+    if (!verificationForm.contactNumber.trim()) nextErrors.contactNumber = 'Contact number is required.';
+    if (!verificationForm.addressLine.trim()) nextErrors.addressLine = 'Address line is required.';
+    if (!selectedVerificationRegion) nextErrors.region = 'Region is required.';
+    if (!selectedVerificationProvince) nextErrors.province = 'Province is required.';
+    if (!selectedVerificationCity) nextErrors.city = 'City / Municipality is required.';
+    if (!selectedVerificationBarangay) nextErrors.barangay = 'Barangay is required.';
+    if (!verificationForm.postalCode.trim()) nextErrors.postalCode = 'Postal code is required.';
+    if (!verificationForm.country.trim()) nextErrors.country = 'Country is required.';
+    if (!verificationForm.idFrontUrl) nextErrors.idFrontUrl = 'ID front is required.';
+    if (!verificationForm.idBackUrl) nextErrors.idBackUrl = 'ID back is required.';
+    if (!verificationForm.selfieUrl) nextErrors.selfieUrl = 'Selfie is required.';
+
+    if (Object.keys(nextErrors).length > 0) {
+      return { errors: nextErrors, payload: null };
+    }
+
+    const composedAddressLine = [
+      verificationForm.addressLine.trim(),
+      selectedVerificationBarangay,
+    ].filter(Boolean).join(', ');
+
+    return {
+      errors: {},
+      payload: {
+        full_name: verificationForm.fullName.trim(),
+        birth_date: verificationForm.birthDate,
+        id_type: verificationForm.idType,
+        id_number: verificationForm.idNumber.trim(),
+        contact_number: verificationForm.contactNumber.trim(),
+        address_line: composedAddressLine,
+        city: selectedVerificationCity,
+        province: selectedVerificationProvince,
+        postal_code: verificationForm.postalCode.trim(),
+        country: verificationForm.country.trim(),
+        id_front_url: verificationForm.idFrontUrl,
+        id_back_url: verificationForm.idBackUrl,
+        selfie_url: verificationForm.selfieUrl,
+        profile_photo_url: meData?.avatar_url || undefined,
+      },
+    };
   };
 
   const mapMethodTypeToChannel = (methodType: PaymentMethodType): EncashmentChannel => {
@@ -628,93 +672,12 @@ const EncashmentTab = () => {
     }
   };
 
-  const handleSubmitVerificationRequest = async () => {
-    setMessage(null);
-    const nextErrors: VerificationErrors = {};
-
-    if (!verificationForm.fullName.trim()) nextErrors.fullName = 'Full name is required.';
-    if (!verificationForm.birthDate) nextErrors.birthDate = 'Birth date is required.';
-    if (!verificationForm.idType.trim()) nextErrors.idType = 'ID type is required.';
-    if (!verificationForm.idNumber.trim()) nextErrors.idNumber = 'ID number is required.';
-    if (!verificationForm.contactNumber.trim()) nextErrors.contactNumber = 'Contact number is required.';
-    if (!verificationForm.addressLine.trim()) nextErrors.addressLine = 'Address line is required.';
-    if (!selectedVerificationRegion) nextErrors.region = 'Region is required.';
-    if (!selectedVerificationProvince) nextErrors.province = 'Province is required.';
-    if (!selectedVerificationCity) nextErrors.city = 'City / Municipality is required.';
-    if (!selectedVerificationBarangay) nextErrors.barangay = 'Barangay is required.';
-    if (!verificationForm.postalCode.trim()) nextErrors.postalCode = 'Postal code is required.';
-    if (!verificationForm.country.trim()) nextErrors.country = 'Country is required.';
-    if (!verificationForm.idFrontUrl) nextErrors.idFrontUrl = 'ID front is required.';
-    if (!verificationForm.idBackUrl) nextErrors.idBackUrl = 'ID back is required.';
-    if (!verificationForm.selfieUrl) nextErrors.selfieUrl = 'Selfie is required.';
-
-    if (Object.keys(nextErrors).length > 0) {
-      setVerificationErrors(nextErrors);
-      const firstField = Object.keys(nextErrors)[0] as VerificationFieldKey;
-      setMessage({ type: 'error', text: nextErrors[firstField] ?? 'Please complete the required KYC fields.' });
-      scrollToVerificationField(firstField);
-      return;
-    }
-
-    setVerificationErrors({});
-    try {
-      const composedAddressLine = [
-        verificationForm.addressLine.trim(),
-        selectedVerificationBarangay,
-      ].filter(Boolean).join(', ');
-
-      const res = await submitVerificationRequest({
-        full_name: verificationForm.fullName.trim(),
-        birth_date: verificationForm.birthDate,
-        id_type: verificationForm.idType,
-        id_number: verificationForm.idNumber.trim(),
-        contact_number: verificationForm.contactNumber.trim(),
-        address_line: composedAddressLine,
-        city: selectedVerificationCity,
-        province: selectedVerificationProvince,
-        postal_code: verificationForm.postalCode.trim(),
-        country: verificationForm.country.trim(),
-        id_front_url: verificationForm.idFrontUrl,
-        id_back_url: verificationForm.idBackUrl,
-        selfie_url: verificationForm.selfieUrl,
-        profile_photo_url: meData?.avatar_url || undefined,
-      }).unwrap();
-      setMessage({
-        type: 'success',
-        text: `${res.message} Ref: ${res.reference_no ?? 'N/A'} | Approval owner: ${res.approval_owner.toUpperCase()}.`,
-      });
-      await refetch();
-    } catch (err: unknown) {
-      setMessage({
-        type: 'error',
-        text: getApiErrorText(err, 'Failed to submit verification request.'),
-      });
-    }
-  };
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setMessage(null);
 
     if (!isCustomerSession) {
       setMessage({ type: 'error', text: 'Encashment is only available for customer/affiliate accounts.' });
-      return;
-    }
-
-    if (!isEligibleByPolicy) {
-      if (canSubmitVerification && !isVerificationPending) {
-        setIsVerificationSpotlightActive(true);
-        verificationFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        window.setTimeout(() => setIsVerificationSpotlightActive(false), 1800);
-      }
-      setMessage({
-        type: 'error',
-        text: canSubmitVerification && !isVerificationPending
-          ? 'Submit your verification first before requesting encashment.'
-          : needsVerification
-            ? `Reach ${money.format(policy?.min_amount || 0)} available encashment balance first to unlock verification submission.`
-          : (eligibility?.message || 'You are currently not eligible to submit an encashment request.'),
-      });
       return;
     }
 
@@ -767,7 +730,49 @@ const EncashmentTab = () => {
       .filter(Boolean)
       .join('\n');
 
+    const shouldSubmitCombinedVerification = shouldUseCombinedVerificationFlow;
+
+    if (!isEligibleByPolicy && !shouldSubmitCombinedVerification) {
+      setMessage({
+        type: 'error',
+        text: needsVerification
+          ? `Reach ${money.format(policy?.min_amount || 0)} available encashment balance first to unlock verification submission.`
+          : (eligibility?.message || 'You are currently not eligible to submit an encashment request.'),
+      });
+      return;
+    }
+
     try {
+      if (shouldSubmitCombinedVerification) {
+        const verification = buildVerificationPayload();
+
+        if (!verification.payload) {
+          setVerificationErrors(verification.errors);
+          const firstField = Object.keys(verification.errors)[0] as VerificationFieldKey;
+          setMessage({ type: 'error', text: verification.errors[firstField] ?? 'Please complete the required KYC fields.' });
+          scrollToVerificationField(firstField);
+          return;
+        }
+
+        setVerificationErrors({});
+        const res = await submitVerificationWithPayout({
+          ...verification.payload,
+          amount: numericAmount,
+          channel: mappedChannel,
+          account_name: accountName || undefined,
+          account_number: accountNumber || undefined,
+          notes: appendedNotes || undefined,
+        }).unwrap();
+
+        setMessage({
+          type: 'success',
+          text: `Verification and encashment request submitted. KYC Ref: ${res.reference_no ?? 'N/A'} | Payout Ref: ${res.request.reference_no}.`,
+        });
+        setForm(initialForm);
+        await refetch();
+        return;
+      }
+
       const res = await createRequest({
         amount: numericAmount,
         channel: mappedChannel,
@@ -781,6 +786,7 @@ const EncashmentTab = () => {
         text: `Request submitted. Reference: ${res.request.reference_no}`,
       });
       setForm(initialForm);
+      await refetch();
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string; errors?: Record<string, string[]> } };
       const firstValidation = apiErr?.data?.errors ? Object.values(apiErr.data.errors)[0]?.[0] : undefined;
@@ -1132,9 +1138,9 @@ const EncashmentTab = () => {
             isVerificationSpotlightActive ? 'border-sky-400 dark:border-sky-700 ring-4 ring-sky-200/70 dark:ring-sky-900/50' : 'border-sky-200 dark:border-sky-800'
           }`}
         >
-          <h3 className="text-base font-bold text-sky-900 dark:text-sky-300">Verification Required</h3>
+          <h3 className="text-base font-bold text-sky-900 dark:text-sky-300">Encashment Verification & Request</h3>
           <p className="mt-1 text-sm text-sky-800 dark:text-sky-200">
-            To submit an encashment request, your account must be verified and active first. Complete the form and required documents for Admin/KYC review.
+            Complete your KYC details here, then submit your payout details below. Admin will review the verification and encashment request together.
           </p>
           {message && showMessageInVerificationCard && (
             <div
@@ -1388,17 +1394,17 @@ const EncashmentTab = () => {
           <div className="mt-4">
             <motion.button
               type="button"
-              onClick={handleSubmitVerificationRequest}
-              disabled={isSubmittingVerification || verificationUploadState.idFront || verificationUploadState.idBack || verificationUploadState.selfie}
+              onClick={() => document.getElementById('encashment-request-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              disabled={verificationUploadState.idFront || verificationUploadState.idBack || verificationUploadState.selfie}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
               className="inline-flex items-center gap-2 rounded-xl bg-sky-600 dark:bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 dark:hover:bg-sky-800 disabled:opacity-60"
             >
-              {isSubmittingVerification ? 'Submitting...' : 'Submit for Verification Approval'}
+              Continue to Payout Request
             </motion.button>
           </div>
           <p className="mt-2 text-xs text-sky-800/80 dark:text-sky-300/60">
-            Verification requests are reviewed by the Admin/KYC team.
+            This will be submitted together with your payout request below.
           </p>
         </motion.div>
       )}
@@ -1424,11 +1430,17 @@ const EncashmentTab = () => {
         </div>
       )}
 
-      {isCustomerSession && isEligibleByPolicy && (
-      <form onSubmit={handleSubmit} className="rounded-2xl border border-gray-200 dark:border-slate-700 dark:bg-gray-800 p-5 md:p-6">
+      {isCustomerSession && (isEligibleByPolicy || shouldUseCombinedVerificationFlow) && (
+      <form id="encashment-request-form" onSubmit={handleSubmit} className="scroll-mt-28 rounded-2xl border border-gray-200 dark:border-slate-700 dark:bg-gray-800 p-5 md:p-6">
         <div className="mb-5">
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">Request Encashment</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Submit payout request from your available earnings.</p>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">
+            {shouldUseCombinedVerificationFlow ? 'Submit Verification & Encashment Request' : 'Request Encashment'}
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            {shouldUseCombinedVerificationFlow
+              ? 'Your KYC details above and payout details here will be reviewed together.'
+              : 'Submit payout request from your available earnings.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1627,10 +1639,14 @@ const EncashmentTab = () => {
         <div className="mt-5 flex justify-end">
           <button
             type="submit"
-            disabled={isSubmitting || !isCustomerSession}
+            disabled={isSubmitting || isSubmittingVerificationWithPayout || !isCustomerSession}
             className="inline-flex items-center gap-2 rounded-xl bg-sky-500 dark:bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 dark:hover:bg-sky-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Request'}
+            {isSubmitting || isSubmittingVerificationWithPayout
+              ? 'Submitting...'
+              : shouldUseCombinedVerificationFlow
+                ? 'Submit Verification & Request'
+                : 'Submit Request'}
           </button>
         </div>
       </form>

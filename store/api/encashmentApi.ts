@@ -157,6 +157,14 @@ export interface VerificationRequestPayload {
   profile_photo_url?: string;
 }
 
+export type VerificationWithPayoutPayload = VerificationRequestPayload & CreateEncashmentPayload;
+
+export interface VerificationWithPayoutResponse extends VerificationRequestResponse {
+  request: EncashmentRequestItem;
+  eligibility?: EncashmentListResponse['eligibility'];
+  policy?: EncashmentListResponse['policy'];
+}
+
 export type AdminEncashmentStatus = 'pending' | 'approved_by_admin' | 'released' | 'rejected' | 'on_hold';
 
 export interface AdminEncashmentItem {
@@ -414,6 +422,14 @@ export const encashmentApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Encashment'],
     }),
+    submitEncashmentVerificationWithPayout: builder.mutation<VerificationWithPayoutResponse, VerificationWithPayoutPayload>({
+      query: (body) => ({
+        url: '/api/encashment/verification-request-with-payout',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Encashment', 'CustomerNotifications'],
+    }),
     getWalletOverview: builder.query<WalletOverviewResponse, { page?: number; perPage?: number; walletType?: WalletTypeFilter; refreshKey?: number } | void>({
       query: (params) => ({
         url: '/api/encashment/wallet',
@@ -497,6 +513,7 @@ export const {
   useCreateEncashmentPayoutMethodMutation,
   useDeleteEncashmentPayoutMethodMutation,
   useSubmitEncashmentVerificationRequestMutation,
+  useSubmitEncashmentVerificationWithPayoutMutation,
   useGetWalletOverviewQuery,
   useCreateAffiliateVoucherMutation,
   useGetAdminEncashmentRequestsQuery,
