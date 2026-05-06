@@ -82,16 +82,16 @@ const toDraft = (item?: WebPageItem): DraftState => {
 }
 
 const panelClass =
-  'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
+  'rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-sm shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
 
 const inputClass =
-  'w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:bg-slate-800'
+  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30'
 
 const selectClass =
-  'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-300 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:bg-slate-800'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30'
 
 const softCardClass =
-  'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70'
+  'rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70'
 
 export default function PartnerStorefrontStudio() {
   const [selectedId, setSelectedId] = useState<number | 'new'>('new')
@@ -787,14 +787,14 @@ export default function PartnerStorefrontStudio() {
   const saving = isCreating || isUpdating
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] text-slate-900 dark:text-slate-100">
+    <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)] text-slate-900 dark:text-slate-100">
       <aside className="space-y-4">
-        <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-white p-5 shadow-sm dark:border-emerald-900/50 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 dark:shadow-black/20">
+        <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-cyan-50 p-5 shadow-sm dark:border-emerald-900/50 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 dark:shadow-black/20">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Partner Storefronts</p>
-              <h1 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">Control Panel</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Create branded partner shop pages like `testshop` and control their visible categories.</p>
+              <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Storefront Studio</h1>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Build and manage branded partner shop pages with curated categories and product highlights.</p>
             </div>
             {!isPartnerScoped ? (
               <button
@@ -806,9 +806,20 @@ export default function PartnerStorefrontStudio() {
               </button>
             ) : null}
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
+              {storefronts.length} storefront{storefronts.length === 1 ? '' : 's'}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              Live editor
+            </span>
+          </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20">
+        <div className="rounded-3xl border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20">
+          <div className="mb-2 px-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Your Storefronts</p>
+          </div>
           <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
             {storefronts.map(({ item, config }) => {
               const active = selectedId === item.id
@@ -819,12 +830,17 @@ export default function PartnerStorefrontStudio() {
                   onClick={() => selectStorefront(item)}
                   className={`w-full rounded-2xl border p-3 text-left transition ${
                     active
-                      ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-500/10'
-                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
+                      ? 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:border-emerald-700 dark:bg-emerald-500/10'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                    </div>
+                    {active ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Active</span> : null}
+                  </div>
                   <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
                 </button>
               )
@@ -841,7 +857,7 @@ export default function PartnerStorefrontStudio() {
 
       <section className="space-y-5">
         <div className={panelClass}>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Identity</p>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Configure core storefront details and branding.</p>
@@ -945,7 +961,7 @@ export default function PartnerStorefrontStudio() {
                     value={draft.referralLink}
                     onChange={(event) => setDraft((current) => ({ ...current, referralLink: event.target.value }))}
                     placeholder="https://www.afhome.ph/shop?ref=yourcode"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-300 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500"
+                    className={inputClass}
                   />
                   {draft.referralLink.trim() ? (
                     <button
@@ -1055,7 +1071,7 @@ export default function PartnerStorefrontStudio() {
               type="button"
               onClick={() => void saveStorefront()}
               disabled={saving}
-              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"
+              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-60"
             >
               {saving ? 'Saving...' : 'Save Storefront'}
             </button>
@@ -1166,7 +1182,7 @@ export default function PartnerStorefrontStudio() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">ID {product.id} - Category {product.catid}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">ID {product.id} · Category {product.catid}</p>
                       </div>
                       <button
                         type="button"
@@ -1280,7 +1296,7 @@ export default function PartnerStorefrontStudio() {
                         </div>
                         <div className="min-w-0">
                           <p className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</p>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">ID {product.id} - Category {product.catid}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">ID {product.id} · Category {product.catid}</p>
                         </div>
                       </div>
                     </button>

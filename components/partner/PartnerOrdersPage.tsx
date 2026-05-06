@@ -1,11 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
 import { useGetAdminMeQuery } from '@/store/api/authApi'
 import { useGetPartnerStorefrontOrdersQuery } from '@/store/api/adminOrdersApi'
 import { useGetAdminWebPageItemsQuery } from '@/store/api/webPagesApi'
+import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
+import { useGetProductsQuery } from '@/store/api/productsApi'
 
 const money = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -52,6 +54,9 @@ const extractErrorMessage = (error: unknown): string => {
 
 export default function PartnerOrdersPage() {
   const { data: me, isLoading: isMeLoading } = useGetAdminMeQuery()
+
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const storefrontIds = useMemo(() => me?.storefront_ids ?? [], [me?.storefront_ids])
   const { data: storefrontItems, isLoading: isStorefrontLoading } = useGetAdminWebPageItemsQuery(
     { type: 'partner-storefront', page: 1, perPage: 100, status: 'all' },
@@ -60,7 +65,7 @@ export default function PartnerOrdersPage() {
   const { data: ordersData, isLoading: isOrdersLoading, isFetching: isOrdersFetching, error } = useGetPartnerStorefrontOrdersQuery({
     filter: 'all',
     page: 1,
-    perPage: 200,
+    perPage: 25,
   })
 
   const storefrontSlugs = useMemo(() => {
@@ -85,29 +90,179 @@ export default function PartnerOrdersPage() {
     return Object.fromEntries(entries)
   }, [storefrontIds, storefrontItems?.items])
 
+  const allowedCategoryIds = useMemo(() => {
+    const allowed = new Set<number>()
+
+    if (!storefrontItems?.items || storefrontIds.length === 0) return []
+
+    for (const item of storefrontItems.items) {
+      if (!storefrontIds.includes(item.id)) continue
+      const config = getPartnerStorefrontConfig(item)
+      for (const catId of config?.allowedCategoryIds ?? []) {
+        if (Number.isFinite(catId) && catId > 0) allowed.add(catId)
+      }
+    }
+
+    return Array.from(allowed.values()).sort((a, b) => a - b)
+  }, [storefrontIds, storefrontItems?.items])
+
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useGetCategoriesQuery(
+    { page: 1, per_page: 500, used_only: true },
+    { skip: allowedCategoryIds.length === 0 },
+  )
+
+  const allowedCategories = useMemo(() => {
+    const all = categoriesData?.categories ?? []
+    const allowed = new Set(allowedCategoryIds)
+    return all.filter((c) => allowed.has(c.id))
+  }, [categoriesData?.categories, allowedCategoryIds])
+
+  const {
+    data: productsForSelectedCategoryData,
+    isLoading: isProductsForCategoryLoading,
+  } = useGetProductsQuery(
+    categoryFilter === 'all'
+      ? ({ page: 1, perPage: 1 } as any)
+      : { page: 1, perPage: 500, catId: Number(categoryFilter) },
+    {
+      skip:
+        categoryFilter === 'all' ||
+        !Number.isFinite(Number(categoryFilter)) ||
+        allowedCategoryIds.length === 0,
+    },
+  )
+
+  const productSkusForSelectedCategory = useMemo(() => {
+    const products = productsForSelectedCategoryData?.products ?? []
+    const skuSet = new Set<string>()
+    for (const p of products) {
+      const sku = String(p.sku ?? '').trim().toLowerCase()
+      if (sku) skuSet.add(sku)
+    }
+    return skuSet
+  }, [productsForSelectedCategoryData?.products])
+
   const partnerOrders = useMemo(() => {
     const allowedSlugs = new Set(storefrontSlugs.map((slug) => slug.toLowerCase()))
     if (allowedSlugs.size === 0) return []
 
     return (ordersData?.orders ?? []).filter((order) => {
       const sourceSlug = String(order.source_slug ?? '').trim().toLowerCase()
-      return sourceSlug !== '' && allowedSlugs.has(sourceSlug)
-    })
-  }, [ordersData?.orders, storefrontSlugs])
+      if (sourceSlug === '' || !allowedSlugs.has(sourceSlug)) return false
 
-  const loading = isMeLoading || isStorefrontLoading || isOrdersLoading
+      if (statusFilter !== 'all') {
+        const fulfillmentStatus = String(order.fulfillment_status ?? '').trim().toLowerCase()
+        const normalized = statusFilter.trim().toLowerCase()
+        if (fulfillmentStatus !== normalized) return false
+      }
+
+      if (categoryFilter !== 'all') {
+        const sku = String(order.product_sku ?? '').trim().toLowerCase()
+        if (!sku) return false
+        if (!productSkusForSelectedCategory.has(sku)) return false
+      }
+
+      return true
+    })
+  }, [ordersData?.orders, storefrontSlugs, statusFilter, categoryFilter, productSkusForSelectedCategory])
+
+  const loading =
+    isMeLoading || isStorefrontLoading || isOrdersLoading || isCategoriesLoading || isProductsForCategoryLoading
   const ordersErrorMessage = useMemo(() => extractErrorMessage(error), [error])
+
+  const statusOptions = useMemo(() => {
+    return [
+      { value: 'all', label: 'All statuses' },
+      { value: 'pending', label: 'Pending' },
+      { value: 'processing', label: 'Processing' },
+      { value: 'packed', label: 'Packed' },
+      { value: 'shipped', label: 'Shipped' },
+      { value: 'out_for_delivery', label: 'Out for delivery' },
+      { value: 'delivered', label: 'Delivered' },
+      { value: 'cancelled', label: 'Cancelled' },
+      { value: 'refunded', label: 'Refunded' },
+    ]
+  }, [])
+
+  const categoryOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string }> = [{ value: 'all', label: 'All categories' }]
+    for (const c of allowedCategories) {
+      options.push({ value: String(c.id), label: c.name })
+    }
+    return options
+  }, [allowedCategories])
 
   return (
     <section className="space-y-5">
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Storefront Orders</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Showing orders placed from your assigned storefronts.
-        </p>
-        {isOrdersFetching && !loading ? (
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Refreshing orders...</p>
-        ) : null}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-teal-500/20 via-emerald-500/20 to-indigo-500/20 dark:from-teal-500/10 dark:via-emerald-500/10 dark:to-indigo-500/10" />
+        <div className="relative p-6 sm:p-7">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Partner Orders</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Orders placed from your assigned storefronts.</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                {partnerOrders.length} shown
+              </div>
+            </div>
+          </div>
+
+          {isOrdersFetching && !loading ? (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Refreshing orders...</p>
+          ) : null}
+
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-teal-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                disabled={loading}
+              >
+                {statusOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Category</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-teal-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                disabled={loading || allowedCategoryIds.length === 0}
+              >
+                {categoryOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <button
+                type="button"
+                className="w-full rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:opacity-60"
+                onClick={() => {
+                  setStatusFilter('all')
+                  setCategoryFilter('all')
+                }}
+                disabled={loading && statusFilter === 'all' && categoryFilter === 'all'}
+              >
+                Reset
+              </button>
+              <p className="mt-2 text-center text-[11px] font-medium text-slate-500 dark:text-slate-400">Use dropdowns to refine results</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -127,13 +282,13 @@ export default function PartnerOrdersPage() {
         ) : null}
 
         {!loading && !error && storefrontIds.length > 0 && partnerOrders.length === 0 ? (
-          <div className="p-6 text-sm text-slate-500 dark:text-slate-400">No orders found for your storefront yet.</div>
+          <div className="p-6 text-sm text-slate-500 dark:text-slate-400">No orders match your current filters.</div>
         ) : null}
 
         {!loading && !error && partnerOrders.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-              <thead className="bg-slate-50 dark:bg-slate-800/50">
+            <table className="min-w-full border-separate border-spacing-0">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800/60">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Order</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Storefront</th>
@@ -144,18 +299,25 @@ export default function PartnerOrdersPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {partnerOrders.map((order) => {
                   const sourceSlug = String(order.source_slug ?? '').trim().toLowerCase()
                   const storefrontName = storefrontNameBySlug[sourceSlug] ?? sourceSlug
                   return (
-                    <tr key={order.id} className="align-top">
+                    <tr
+                      key={order.id}
+                      className="align-top transition hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
+                    >
                       <td className="px-4 py-3">
                         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">#{order.id}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">{order.checkout_id}</p>
                       </td>
+
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{storefrontName}</td>
+
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{order.customer_name || '-'}</td>
+
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                         <div className="flex max-w-[360px] gap-3">
                           <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -171,9 +333,11 @@ export default function PartnerOrdersPage() {
                               <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">N/A</div>
                             )}
                           </div>
+
                           <div className="min-w-0">
                             <p className="truncate font-medium">{order.product_name}</p>
-                            <div className="mt-1 flex flex-wrap gap-1">
+
+                            <div className="mt-1 flex flex-wrap gap-1.5">
                               {order.product_sku ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                   SKU: {order.product_sku}
@@ -195,18 +359,22 @@ export default function PartnerOrdersPage() {
                                 </span>
                               ) : null}
                             </div>
+
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                               Qty: {order.quantity} · Unit: {money.format(Number(order.amount ?? 0) / Math.max(1, Number(order.quantity ?? 1)))}
                             </p>
                           </div>
                         </div>
                       </td>
+
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{money.format(Number(order.amount ?? 0))}</td>
+
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(order.fulfillment_status)}`}>
                           {order.fulfillment_status}
                         </span>
                       </td>
+
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                         {order.created_at ? dateTime.format(new Date(order.created_at)) : '-'}
                       </td>
