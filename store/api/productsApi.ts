@@ -618,8 +618,22 @@ const getEffectiveProductQty = (variants: ProductVariant[], fallbackQty: number)
   return activeVariants.reduce((total, variant) => total + Number(variant.qty ?? 0), 0)
 }
 
+const dedupeImageUrls = (urls: string[]) => {
+  const seen = new Set<string>()
+
+  return urls
+    .map((url) => url.trim())
+    .filter((url) => {
+      if (!url) return false
+      const key = url.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
 export const normalizeProduct = (input: Product & Record<string, unknown>): Product => {
-  const parsedImages = toStringArray(input.images ?? input.pd_images)
+  const parsedImages = dedupeImageUrls(toStringArray(input.images ?? input.pd_images))
   const primaryImage = typeof input.image === 'string' && input.image.trim().length > 0
     ? input.image
     : (typeof input.pd_image === 'string' && input.pd_image.trim().length > 0 ? input.pd_image : null)
@@ -653,7 +667,7 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
           prodpv: typeof row.prodpv === 'number' ? row.prodpv : (typeof row.prodpv === 'string' ? Number(row.prodpv) : (typeof row.pv_prodpv === 'number' ? row.pv_prodpv : (typeof row.pv_prodpv === 'string' ? Number(row.pv_prodpv) : undefined))),
           qty: typeof row.qty === 'number' ? row.qty : (typeof row.qty === 'string' ? Number(row.qty) : (typeof row.pv_qty === 'number' ? row.pv_qty : (typeof row.pv_qty === 'string' ? Number(row.pv_qty) : undefined))),
           status: typeof row.status === 'number' ? row.status : (typeof row.status === 'string' ? Number(row.status) : (typeof row.pv_status === 'number' ? row.pv_status : (typeof row.pv_status === 'string' ? Number(row.pv_status) : undefined))),
-          images: toStringArray(row.images ?? row.pv_images),
+          images: dedupeImageUrls(toStringArray(row.images ?? row.pv_images)),
         } satisfies ProductVariant
       })
   const uniqueVariants = dedupeProductVariants(parsedVariants)
