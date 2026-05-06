@@ -598,6 +598,20 @@ const dedupeVariantValues = (values: string[]) => {
     })
 }
 
+const dedupeImageUrls = (urls: string[]) => {
+  const seen = new Set<string>()
+
+  return urls
+    .map((url) => url.trim())
+    .filter((url) => {
+      if (!url) return false
+      const key = url.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
 const getAllVariantStyles = (variant: Pick<VariantFormState, 'pv_style' | 'pv_extra_styles'>) =>
   dedupeVariantValues([variant.pv_style, ...(Array.isArray(variant.pv_extra_styles) ? variant.pv_extra_styles : [])])
 
@@ -1185,8 +1199,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const [brandText,          setBrandText]          = useState('')
   const [draftRestored,      setDraftRestored]      = useState(false)
   const [activeNewImageAdjustIndex, setActiveNewImageAdjustIndex] = useState<number | null>(null)
-  const activeExistingImagePointerIndexRef = useRef<number | null>(null)
-  const activeNewImagePointerIndexRef = useRef<number | null>(null)
+  const activeExistingImageDragIndexRef = useRef<number | null>(null)
+  const activeNewImageDragIndexRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formContentRef = useRef<HTMLDivElement>(null)
 
@@ -1313,9 +1327,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     }
     setForm(nextForm)
     setInitialForm(nextForm)
-    const existing = Array.isArray(openedProduct.images) && openedProduct.images.length > 0
+    const existing = dedupeImageUrls(Array.isArray(openedProduct.images) && openedProduct.images.length > 0
       ? openedProduct.images.filter((img): img is string => Boolean(img))
-      : (openedProduct.image ? [openedProduct.image] : [])
+      : (openedProduct.image ? [openedProduct.image] : []))
     setInitialImageUrls(existing)
     const rawNextVariants = Array.isArray(openedProduct.variants)
       ? dedupeVariantFormStates(mapProductVariantsToFormStates(openedProduct.variants))
@@ -1373,7 +1387,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
               ? dedupeVariantValues(parsedDraft.globalSizeValues)
               : restoredCollapsedState.globalSizeValues
             setForm({ ...nextForm, ...parsedDraft.form })
-            setExistingImageUrls(Array.isArray(parsedDraft.imageUrls) ? parsedDraft.imageUrls : existing)
+            setExistingImageUrls(Array.isArray(parsedDraft.imageUrls) ? dedupeImageUrls(parsedDraft.imageUrls) : existing)
             setVariants(restoredVariants)
             setGlobalColors(restoredGlobalColors)
             setGlobalPrimaryValues(restoredGlobalPrimaryValues)
@@ -1469,39 +1483,45 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleExistingImagePointerDown = (index: number) => {
-    activeExistingImagePointerIndexRef.current = index
+  const handleExistingImageDragStart = (index: number) => (event: React.DragEvent<HTMLElement>) => {
+    activeExistingImageDragIndexRef.current = index
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
   }
 
-  const handleExistingImagePointerEnter = (targetIndex: number) => {
-    const sourceIndex = activeExistingImagePointerIndexRef.current
+  const handleExistingImageDragEnter = (targetIndex: number) => (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault()
+    const sourceIndex = activeExistingImageDragIndexRef.current
     if (sourceIndex == null || sourceIndex === targetIndex) return
 
     setExistingImageUrls((prev) => moveItem(prev, sourceIndex, targetIndex))
     setUploadedUrls([])
-    activeExistingImagePointerIndexRef.current = targetIndex
+    activeExistingImageDragIndexRef.current = targetIndex
   }
 
-  const handleNewImagePointerDown = (index: number) => {
-    activeNewImagePointerIndexRef.current = index
+  const handleNewImageDragStart = (index: number) => (event: React.DragEvent<HTMLElement>) => {
+    activeNewImageDragIndexRef.current = index
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
   }
 
-  const handleNewImagePointerEnter = (targetIndex: number) => {
-    const sourceIndex = activeNewImagePointerIndexRef.current
+  const handleNewImageDragEnter = (targetIndex: number) => (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault()
+    const sourceIndex = activeNewImageDragIndexRef.current
     if (sourceIndex == null || sourceIndex === targetIndex) return
 
     setImageFiles((prev) => moveItem(prev, sourceIndex, targetIndex))
     setImagePreviews((prev) => moveItem(prev, sourceIndex, targetIndex))
     setUploadedUrls([])
-    activeNewImagePointerIndexRef.current = targetIndex
+    activeNewImageDragIndexRef.current = targetIndex
   }
 
-  const stopExistingImagePointerDrag = () => {
-    activeExistingImagePointerIndexRef.current = null
+  const stopExistingImageDrag = () => {
+    activeExistingImageDragIndexRef.current = null
   }
 
-  const stopNewImagePointerDrag = () => {
-    activeNewImagePointerIndexRef.current = null
+  const stopNewImageDrag = () => {
+    activeNewImageDragIndexRef.current = null
   }
 
   const handleApplyAdjustedNewImage = async (nextFile: File) => {
@@ -1683,7 +1703,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         uploaded.push(json.url)
       }
       setVariants(prev =>
-        prev.map((item, i) => i === index ? { ...item, pv_images: [...item.pv_images, ...uploaded] } : item),
+        prev.map((item, i) => i === index ? { ...item, pv_images: dedupeImageUrls([...item.pv_images, ...uploaded]) } : item),
       )
       setImageError('')
     } catch (err: unknown) {
@@ -1766,7 +1786,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
           : undefined,
         pv_qty:       v.pv_qty       ? Number(v.pv_qty)       : undefined,
         pv_status:    Number(v.pv_status),
-        pv_images:    v.pv_images.length > 0 ? v.pv_images : undefined,
+        pv_images:    dedupeImageUrls(v.pv_images).length > 0 ? dedupeImageUrls(v.pv_images) : undefined,
       }
       if (!v.pv_colors.length) {
         return [{ ...base, pv_sku: variantSku }]
@@ -1809,7 +1829,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       return
     }
 
-    let finalImageUrls = [...existingImageUrls]
+    let finalImageUrls = dedupeImageUrls(existingImageUrls)
     if (imageFiles.length > 0 && uploadedUrls.length === 0) {
       setIsUploading(true)
       try {
@@ -1822,7 +1842,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
           if (!res.ok) throw new Error(json.error ?? 'Upload failed')
           uploaded.push(json.url)
         }
-        finalImageUrls = [...existingImageUrls, ...uploaded]
+        finalImageUrls = dedupeImageUrls([...existingImageUrls, ...uploaded])
         setUploadedUrls(finalImageUrls)
       } catch (err: unknown) {
         setImageError(getUploadErrorMessage(err, 'Image upload failed.'))
@@ -1832,7 +1852,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       setIsUploading(false)
     }
     if (imageFiles.length > 0 && uploadedUrls.length > 0) {
-      finalImageUrls = uploadedUrls
+      finalImageUrls = dedupeImageUrls(uploadedUrls)
     }
 
     const imagesChanged =
@@ -2091,10 +2111,12 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         {existingImageUrls.map((url, index) => (
                           <motion.div
                             key={`existing-${index}`}
-                            onPointerDown={() => handleExistingImagePointerDown(index)}
-                            onPointerEnter={() => handleExistingImagePointerEnter(index)}
-                            onPointerUp={stopExistingImagePointerDrag}
-                            onPointerCancel={stopExistingImagePointerDrag}
+                            draggable
+                            onDragStart={handleExistingImageDragStart(index)}
+                            onDragEnter={handleExistingImageDragEnter(index)}
+                            onDragOver={preventFileDropNavigation}
+                            onDragEnd={stopExistingImageDrag}
+                            onDrop={stopExistingImageDrag}
                             className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 active:cursor-grabbing"
                             layout
                             whileTap={{ scale: 0.97 }}
@@ -2132,10 +2154,12 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         {imagePreviews.map((preview, index) => (
                           <motion.div
                             key={`new-${index}`}
-                            onPointerDown={() => handleNewImagePointerDown(index)}
-                            onPointerEnter={() => handleNewImagePointerEnter(index)}
-                            onPointerUp={stopNewImagePointerDrag}
-                            onPointerCancel={stopNewImagePointerDrag}
+                            draggable
+                            onDragStart={handleNewImageDragStart(index)}
+                            onDragEnter={handleNewImageDragEnter(index)}
+                            onDragOver={preventFileDropNavigation}
+                            onDragEnd={stopNewImageDrag}
+                            onDrop={stopNewImageDrag}
                             className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 ring-2 ring-emerald-400 active:cursor-grabbing"
                             layout
                             whileTap={{ scale: 0.97 }}
