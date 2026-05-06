@@ -9,21 +9,21 @@ import { useMeQuery } from '@/store/api/userApi';
 const requirementItems = [
   'Valid government-issued ID',
   'Clear selfie holding your ID',
-  'Accurate personal and contact details',
-  'Current address and supporting information',
+  'Accurate personal, contact, and address details',
+  'Payout account details for your encashment request',
 ];
 
 const featureItems = [
-  'Unlock affiliate referral features',
-  'Qualify for verified affiliate activity',
-  'Build trust with customers and your network',
-  'Prepare your account for commission-related workflows',
+  'Confirm that your encashment request belongs to the correct member',
+  'Help the admin team verify your identity before releasing funds',
+  'Submit verification and payout details in one combined flow',
+  'Track your request from pending review until release',
 ];
 
 const STEPS = [
   {
-    title: 'Submit your details',
-    text: 'Fill out the verification form and upload the required files.',
+    title: 'Prepare your details',
+    text: 'Review the requirements, then continue to the profile encashment form.',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -32,8 +32,8 @@ const STEPS = [
     ),
   },
   {
-    title: 'Admin reviews your request',
-    text: 'Our team checks the submitted information and documents.',
+    title: 'Submit one request',
+    text: 'Your KYC documents and payout details are submitted together.',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -42,8 +42,8 @@ const STEPS = [
     ),
   },
   {
-    title: 'Receive your status update',
-    text: 'You will be notified once your verification is approved or rejected.',
+    title: 'Wait for admin review',
+    text: 'Admin reviews the verification and payout request before release.',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -63,7 +63,7 @@ function getStatusInfo(status: VerificationStatus) {
         dot: 'bg-emerald-500',
         badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         label: 'Verified',
-        ctaLabel: 'View Profile',
+        ctaLabel: 'Request Encashment',
         ctaHref: '/profile?tab=encashment',
         ctaPrimary: true,
       }
@@ -73,7 +73,7 @@ function getStatusInfo(status: VerificationStatus) {
         dot: 'bg-amber-400',
         badge: 'bg-amber-50 text-amber-700 border-amber-200',
         label: 'Pending review',
-        ctaLabel: 'Review My Submission',
+        ctaLabel: 'Review My Request',
         ctaHref: '/profile?tab=encashment&focus=verification#verification-form',
         ctaPrimary: false,
       }
@@ -89,11 +89,11 @@ function getStatusInfo(status: VerificationStatus) {
       }
     default:
       return {
-        text: 'Verify your account to unlock affiliate-only features.',
+        text: 'You are eligible to complete encashment verification.',
         dot: 'bg-orange-400',
         badge: 'bg-orange-50 text-orange-700 border-orange-200',
         label: 'Not verified',
-        ctaLabel: 'Start Verification',
+        ctaLabel: 'Continue to Verification & Request',
         ctaHref: '/profile?tab=encashment&focus=verification#verification-form',
         ctaPrimary: true,
       }
@@ -146,13 +146,13 @@ export default function VerificationOverviewPage() {
 
           {/* Text content — centered on mobile, left on desktop */}
           <div className="mx-auto max-w-3xl text-center lg:text-left">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Affiliate Verification</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Encashment Verification</p>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl md:text-4xl lg:text-5xl">
-              Verify your AF Home account before you start earning with confidence.
+              You are eligible to submit your encashment verification.
             </h1>
             <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
-              Complete your verification to unlock the affiliate-side features of AF Home. This helps us protect your
-              account, validate your identity, and keep referrals and commissions tied to legitimate members only.
+              Before AF Home releases your payout, we need to verify your identity and collect your payout details.
+              The next step will open your profile encashment form where you can submit KYC documents and the payout request together.
             </p>
           </div>
         </motion.div>
@@ -168,7 +168,7 @@ export default function VerificationOverviewPage() {
           >
             <div className="grid gap-6 sm:gap-8 sm:grid-cols-2">
               <div>
-                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Why get verified?</h2>
+                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">Why this is required</h2>
                 <ul className="mt-3 space-y-3 text-sm text-slate-600 sm:mt-4">
                   {featureItems.map((item) => (
                     <li key={item} className="flex items-start gap-3">
@@ -184,7 +184,7 @@ export default function VerificationOverviewPage() {
               </div>
 
               <div>
-                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">What you need</h2>
+                <h2 className="text-base font-semibold text-slate-900 sm:text-lg">What to prepare</h2>
                 <ul className="mt-3 space-y-3 text-sm text-slate-600 sm:mt-4">
                   {requirementItems.map((item) => (
                     <li key={item} className="flex items-start gap-3">
@@ -227,11 +227,11 @@ export default function VerificationOverviewPage() {
             transition={{ duration: 0.4, delay: 0.1 }}
             className="rounded-3xl border border-stone-200 bg-[#0f172a] p-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.2)] sm:rounded-[28px] sm:p-8"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-orange-300">Verification Reminder</p>
-            <h2 className="mt-3 text-xl font-semibold sm:mt-4 sm:text-2xl">Only unverified accounts need to complete this step.</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-orange-300">Before You Continue</p>
+            <h2 className="mt-3 text-xl font-semibold sm:mt-4 sm:text-2xl">This page explains the requirement before opening the form.</h2>
             <p className="mt-3 text-sm leading-7 text-slate-300 sm:mt-4">
-              If you are already verified, you can return to your profile anytime. If your request is pending or on hold,
-              you may review your submission and wait for the admin decision.
+              Once you continue, you will be sent to your profile Encashment tab. Complete the verification fields,
+              enter your payout method, then submit one request for admin review.
             </p>
 
             <div className="mt-6 space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:mt-8 sm:p-5">

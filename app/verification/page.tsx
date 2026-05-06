@@ -1,13 +1,13 @@
-import { redirect } from 'next/navigation';
 import { buildPageMetadata } from '@/app/seo';
+import VerificationOverviewPage from '@/components/verification/VerificationOverviewPage';
 
 export const metadata = buildPageMetadata({
-  title: 'Verification',
-  description: 'Redirecting to the AF Home encashment verification flow.',
+  title: 'Encashment Verification',
+  description: 'Learn what is needed before submitting your AF Home encashment verification and payout request.',
   path: '/verification',
   noIndex: true,
 });
 
 export default function Page() {
-  redirect('/profile?tab=encashment&focus=verification#verification-form');
+  return <VerificationOverviewPage />;
 }
