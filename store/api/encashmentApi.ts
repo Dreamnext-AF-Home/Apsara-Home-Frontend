@@ -249,6 +249,22 @@ export interface AffiliateVoucherItem {
   updated_at?: string | null;
 }
 
+export interface UnilevelAwardItem {
+  id: number;
+  source_customer_id?: number | null;
+  source_name?: string | null;
+  source_username?: string | null;
+  source_email?: string | null;
+  level_no: number;
+  reference_order_id?: number | null;
+  checkout_id?: string | null;
+  product_name?: string | null;
+  earned_pv: number;
+  bonus_rate: number;
+  bonus_amount: number;
+  awarded_at?: string | null;
+}
+
 export interface CreateAffiliateVoucherPayload {
   amount: number;
   expires_at?: string;
@@ -347,6 +363,7 @@ export interface WalletOverviewResponse {
   };
   ledger: WalletLedgerItem[];
   affiliate_vouchers: AffiliateVoucherItem[];
+  unilevel_awards: UnilevelAwardItem[];
   meta: {
     current_page: number;
     last_page: number;
@@ -397,7 +414,7 @@ export const encashmentApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Encashment'],
     }),
-    getWalletOverview: builder.query<WalletOverviewResponse, { page?: number; perPage?: number; walletType?: WalletTypeFilter } | void>({
+    getWalletOverview: builder.query<WalletOverviewResponse, { page?: number; perPage?: number; walletType?: WalletTypeFilter; refreshKey?: number } | void>({
       query: (params) => ({
         url: '/api/encashment/wallet',
         method: 'GET',
@@ -405,6 +422,7 @@ export const encashmentApi = baseApi.injectEndpoints({
           page: params?.page ?? 1,
           per_page: params?.perPage ?? 20,
           wallet_type: params?.walletType ?? 'all',
+          _refresh: params?.refreshKey,
         },
       }),
       providesTags: ['Encashment'],

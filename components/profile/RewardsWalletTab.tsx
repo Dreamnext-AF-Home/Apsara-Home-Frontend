@@ -5,10 +5,8 @@ import PvStatCard from './PvStatCard';
 import { AffiliateVoucherItem } from '@/store/api/encashmentApi';
 
 interface RewardsWalletTabProps {
-  isVerified: boolean;
   afVoucherBalance: number;
   afVoucherSourceBalance: number;
-  afVoucherReservedBalance: number;
   cashbackSourceBalance: number;
   cashbackReservedBalance: number;
   availableEgcBalance: number;
@@ -128,10 +126,8 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function RewardsWalletTab({
-  isVerified,
   afVoucherBalance,
   afVoucherSourceBalance,
-  afVoucherReservedBalance,
   cashbackSourceBalance,
   cashbackReservedBalance,
   availableEgcBalance,
@@ -223,11 +219,6 @@ export default function RewardsWalletTab({
               <h3 className="mt-1 text-lg font-bold text-slate-900 dark:text-white">Create Affiliate Voucher</h3>
             </div>
             <div className="flex items-center gap-2">
-              {isVerified ? (
-                <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-400">
-                  Verified
-                </span>
-              ) : null}
               <div className="rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-gray-900 px-4 py-2 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-gray-500">Active Coupon</p>
                 <p className="mt-0.5 text-xl font-bold text-slate-900 dark:text-white">{activeVoucherCount}</p>
@@ -250,8 +241,7 @@ export default function RewardsWalletTab({
             </div>
           </div>
 
-          {isVerified ? (
-            <form className="space-y-4" onSubmit={handleCreateVoucher}>
+          <form className="space-y-4" onSubmit={handleCreateVoucher}>
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-gray-300">
                   Voucher Amount <span className="text-rose-500">*</span>
@@ -327,27 +317,7 @@ export default function RewardsWalletTab({
               <p className="text-[11px] leading-5 text-slate-400 dark:text-gray-500">
                 The reserved amount is deducted from your available cashback balance immediately and returned if the code is cancelled.
               </p>
-            </form>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-sky-200 dark:border-sky-800 dark:bg-sky-900/20 px-5 py-5">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
-                  </svg>
-                </span>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Verification required</h4>
-              </div>
-              <p className="text-sm leading-6 text-slate-600 dark:text-gray-400">
-                Only verified affiliate accounts can create customer voucher codes. Complete your AF Home verification to unlock this feature.
-              </p>
-            </div>
-          )}
+          </form>
         </div>
 
         <div className="space-y-4 rounded-3xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 p-6">
