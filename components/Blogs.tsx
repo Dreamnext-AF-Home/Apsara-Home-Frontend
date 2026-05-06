@@ -3,6 +3,7 @@
 import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/landing-page/Footer';
+import { useBlogsContent } from '@/lib/blogs-cms';
 
 type BlogsProps = {
   initialCategories?: any[];
@@ -10,58 +11,9 @@ type BlogsProps = {
 
 const blogCategories = ['Design Tips', 'Small Space', 'Style Guide', 'Buying Guide', 'Home Care']
 
-const blogPosts = [
-  {
-    id: 1,
-    title: '7 Living Room Layouts That Make Small Spaces Look Bigger',
-    excerpt: 'Simple furniture placement rules to open up your floor plan and keep movement effortless.',
-    category: 'Small Space',
-    readTime: '6 min read',
-    date: 'March 2026',
-  },
-  {
-    id: 2,
-    title: 'How To Match Wood Tones Without Making Your Room Look Busy',
-    excerpt: 'A practical color-matching approach for cabinets, tables, and accent pieces.',
-    category: 'Style Guide',
-    readTime: '5 min read',
-    date: 'February 2026',
-  },
-  {
-    id: 3,
-    title: 'Sofa Buying Checklist: Comfort, Fabric, and Long-Term Durability',
-    excerpt: 'What to check before you buy so your sofa still feels right after years of use.',
-    category: 'Buying Guide',
-    readTime: '8 min read',
-    date: 'February 2026',
-  },
-  {
-    id: 4,
-    title: 'Bedroom Refresh In One Weekend: Lighting, Textiles, and Storage',
-    excerpt: 'Quick upgrades that make your bedroom feel calmer and more functional.',
-    category: 'Design Tips',
-    readTime: '7 min read',
-    date: 'January 2026',
-  },
-  {
-    id: 5,
-    title: 'Kitchen Counter Styling That Stays Minimal and Useful',
-    excerpt: 'Keep your counters clean while still making the space warm and inviting.',
-    category: 'Home Care',
-    readTime: '4 min read',
-    date: 'January 2026',
-  },
-  {
-    id: 6,
-    title: 'Entryway Essentials: What Actually Helps Daily Flow',
-    excerpt: 'A smarter setup for shoes, bags, and keys so your home feels organized at the door.',
-    category: 'Design Tips',
-    readTime: '5 min read',
-    date: 'December 2025',
-  },
-]
-
 const Blogs = ({ initialCategories }: BlogsProps) => {
+  const { blogPosts, isLoading } = useBlogsContent()
+
   return (
     <>
       <TopBar />
@@ -100,32 +52,54 @@ const Blogs = ({ initialCategories }: BlogsProps) => {
       </section>
 
       <section className="container mx-auto px-4 pb-14">
-        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {blogPosts.map((post, index) => (
-            <article
-              key={post.id}
-              className={`group overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800  transition-all hover:-translate-y-0.5  ${index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}`}
-            >
-              <div className={`h-40 w-full bg-gradient-to-br ${index % 3 === 0 ? 'from-orange-100 to-rose-100' : index % 3 === 1 ? 'from-cyan-100 to-blue-100' : 'from-emerald-100 to-lime-100'} sm:h-44`} />
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-gray-400">
-                  <span className="rounded-full bg-slate-100 dark:bg-gray-700 px-2.5 py-1 font-medium text-slate-700 dark:text-gray-300">{post.category}</span>
-                  <span>{post.readTime}</span>
+        {isLoading ? (
+          <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-64 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-700" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {blogPosts.map((post, index) => (
+              <article
+                key={post.id}
+                className={`group overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800  transition-all hover:-translate-y-0.5  ${index === 0 ? 'md:col-span-2 lg:col-span-2' : ''}`}
+              >
+                {post.image_url ? (
+                  <div className="h-40 w-full sm:h-44">
+                    <img src={post.image_url} alt={post.title} className="h-full w-full object-cover" />
+                  </div>
+                ) : (
+                  <div className={`h-40 w-full bg-gradient-to-br ${index % 3 === 0 ? 'from-orange-100 to-rose-100' : index % 3 === 1 ? 'from-cyan-100 to-blue-100' : 'from-emerald-100 to-lime-100'} sm:h-44`} />
+                )}
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-gray-400">
+                    {post.category && <span className="rounded-full bg-slate-100 dark:bg-gray-700 px-2.5 py-1 font-medium text-slate-700 dark:text-gray-300">{post.category}</span>}
+                    {post.readTime && <span>{post.readTime}</span>}
+                  </div>
+                  <h2 className="mt-3 text-lg font-semibold leading-snug text-slate-900 dark:text-white transition-colors group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
+                    {post.title}
+                  </h2>
+                  {(post.subtitle || post.body) && (
+                    <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">{post.subtitle || post.body}</p>
+                  )}
+                  <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3 text-xs text-slate-500 dark:text-gray-400">
+                    {post.date && <span>{post.date}</span>}
+                    {post.slug ? (
+                      <a href={`/blog/${post.slug}`} className="font-semibold text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300">
+                        Read article
+                      </a>
+                    ) : (
+                      <button type="button" className="font-semibold text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300">
+                        Read article
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <h2 className="mt-3 text-lg font-semibold leading-snug text-slate-900 dark:text-white transition-colors group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
-                  {post.title}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">{post.excerpt}</p>
-                <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3 text-xs text-slate-500 dark:text-gray-400">
-                  <span>{post.date}</span>
-                  <button type="button" className="font-semibold text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300">
-                    Read article
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
 
         <div className="mt-10 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6  sm:flex sm:items-center sm:justify-between">
           <div>

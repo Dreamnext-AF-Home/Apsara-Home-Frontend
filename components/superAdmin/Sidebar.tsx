@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -11,7 +11,7 @@ import { useGetAdminOrdersQuery } from '@/store/api/adminOrdersApi'
 import { membersApi, useGetMembersStatsQuery } from '@/store/api/membersApi'
 import { baseApi, clearAccessTokenCache } from '@/store/api/baseApi'
 import { useAppDispatch } from '@/store/hooks'
-import { normalizeAdminPermissions } from '@/libs/adminPermissions'
+import { canAccessWebContentSection, normalizeAdminPermissions } from '@/libs/adminPermissions'
 import { clearAdminSession } from '@/libs/adminSession'
 
 interface SubItem { label: string; path: string; badge?: number }
@@ -161,6 +161,7 @@ const navItems: NavItem[] = [
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" /></svg>,
     children: [
       { label: 'Shop Builder', path: '/admin/webpages/shop-builder' },
+      { label: 'DreamBuild', path: '/admin/webpages/dreambuild' },
       { label: 'Partner Storefronts', path: '/admin/webpages/partner-storefronts' },
       { label: 'Partner Users', path: '/admin/webpages/partner-users' },
       { label: 'Assembly Guides', path: '/admin/webpages/assembly-guides' },
@@ -242,7 +243,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const [logoutApi] = useLogoutMutation()
   const sessionRole = String(session?.user?.role ?? '').toLowerCase()
   const sessionUserLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
-  const sessionPermissions = normalizeAdminPermissions((session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions ?? [])
+  const sessionAdminPermissions = (session?.user as { adminPermissions?: string[] } | undefined)?.adminPermissions
+  const rawSessionPermissions = useMemo(
+    () => (sessionAdminPermissions ?? []).filter((permission): permission is string => typeof permission === 'string'),
+    [sessionAdminPermissions],
+  )
+  const sessionPermissions = useMemo(() => normalizeAdminPermissions(rawSessionPermissions), [rawSessionPermissions])
   const sessionAccessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '')
   const adminIdentityKey = sessionAccessToken
     ? `${String((session?.user as { id?: string } | undefined)?.id ?? 'unknown')}:${sessionAccessToken}`
@@ -267,7 +273,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const isMerchantAdmin = effectiveRole === 'merchant_admin' || effectiveUserLevelId === 7
   const isSupplierAdmin = effectiveRole === 'supplier_admin' || effectiveUserLevelId === 8
   const isAdminPortalRole = isSuperAdmin || isAdmin || isWebContent || isAccounting || isFinanceOfficer || isMerchantAdmin || isSupplierAdmin
-  const effectiveAdminPermissions = normalizeAdminPermissions(resolvedAdminMe?.admin_permissions ?? sessionPermissions)
+  const rawEffectivePermissions = ((resolvedAdminMe?.admin_permissions ?? rawSessionPermissions) as string[])
+    .filter((permission): permission is string => typeof permission === 'string')
+  const effectiveAdminPermissions = normalizeAdminPermissions(rawEffectivePermissions)
+  const webContentPermissions = rawEffectivePermissions.filter((permission) => permission.startsWith('wc:'))
   const adminPermissions = effectiveAdminPermissions
   const hasCustomAdminPermissions = isAdmin && adminPermissions.length > 0
   const customAdminNavIds = new Set(['dashboard', ...adminPermissions.map((permission) => ADMIN_PERMISSION_NAV_IDS[permission]).filter(Boolean)])
@@ -296,14 +305,21 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       // Do not overwrite the current session with a different admin identity.
       return
     }
-    const latestPermissions = normalizeAdminPermissions(adminMe.admin_permissions ?? [])
+    const latestRawPermissions = (adminMe.admin_permissions ?? [])
+      .filter((permission): permission is string => typeof permission === 'string')
+    const latestPermissions = Number(adminMe.user_level_id ?? 0) === 4
+      ? latestRawPermissions
+      : normalizeAdminPermissions(latestRawPermissions)
     const latestStorefrontIds = Array.isArray((adminMe as { storefront_ids?: number[] }).storefront_ids)
       ? ((adminMe as { storefront_ids?: number[] }).storefront_ids ?? [])
       : []
 
     const roleChanged = sessionRole !== String(adminMe.role ?? '').toLowerCase()
     const levelChanged = sessionLevel !== Number(adminMe.user_level_id ?? 0)
-    const permissionsChanged = sessionPermissions.join('|') !== latestPermissions.join('|')
+    const currentSessionPermissions = Number(adminMe.user_level_id ?? 0) === 4
+      ? rawSessionPermissions
+      : sessionPermissions
+    const permissionsChanged = currentSessionPermissions.join('|') !== latestPermissions.join('|')
     const storefrontsChanged = ((session?.user as { storefrontIds?: number[] } | undefined)?.storefrontIds ?? []).join('|') !== latestStorefrontIds.join('|')
 
     if (!roleChanged && !levelChanged && !permissionsChanged && !storefrontsChanged) return
@@ -315,7 +331,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       storefrontIds: latestStorefrontIds,
       supplierId: adminMe.supplier_id ?? null,
     })
-  }, [adminMe, isAdminPortalRole, session?.user, sessionPermissions, sessionRole, update])
+  }, [adminMe, isAdminPortalRole, rawSessionPermissions, session?.user, sessionPermissions, sessionRole, update])
 
   const toggleMenu = (id: string) =>
     setOpenMenus(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id])
@@ -370,15 +386,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       }
 
       if (item.id === 'webpages' && isWebContent) {
-        const partnerOnly = (item.children ?? [])
-          .filter((child) =>
-            child.path === '/admin/webpages/partner-storefronts' || child.path === '/admin/webpages/partner-users'
-          )
-          .map((child) => ({
-            ...child,
-            path: child.path.replace('/admin', '/partner'),
-          }))
-        return partnerOnly.length > 0 ? { ...item, children: partnerOnly } : null
+        const children = (item.children ?? []).filter((child) => {
+          if (child.path === '/admin/webpages/shop-builder') {
+            return canAccessWebContentSection(webContentPermissions, 'wc:shop-builder')
+          }
+          if (child.path === '/admin/webpages/dreambuild') {
+            return canAccessWebContentSection(webContentPermissions, 'wc:dreambuild')
+          }
+          if (child.path === '/admin/webpages/partner-storefronts' || child.path === '/admin/webpages/partner-users') {
+            return canAccessWebContentSection(webContentPermissions, 'wc:partner-storefronts')
+          }
+          return webContentPermissions.length === 0
+        })
+        return children.length > 0 ? { ...item, children } : null
       }
       return item
     })

@@ -30,6 +30,16 @@ const ADMIN_ALLOWED_PREFIXES = [
 const PARTNER_ALLOWED_PREFIXES = [
   "/partner/webpages",
 ];
+const WEB_CONTENT_SECTION_PREFIXES: Record<string, string[]> = {
+  "wc:shop-builder": ["/admin/webpages/shop-builder"],
+  "wc:dreambuild": ["/admin/webpages/dreambuild"],
+  "wc:partner-storefronts": [
+    "/admin/webpages/partner-storefronts",
+    "/admin/webpages/partner-users",
+    "/partner/webpages/partner-storefronts",
+    "/partner/webpages/partner-users",
+  ],
+};
 const ADMIN_PERMISSION_PREFIXES: Record<string, string[]> = {
   members: ["/admin/members"],
   orders: ["/admin/orders"],
@@ -82,6 +92,25 @@ const getAdminRedirectPath = (role: string): string => {
     default:
       return "/admin/dashboard";
   }
+};
+
+const getRequiredWebContentPermission = (pathname: string): string | null => {
+  for (const [permission, prefixes] of Object.entries(WEB_CONTENT_SECTION_PREFIXES)) {
+    if (prefixes.some((prefix) => pathname.startsWith(prefix))) {
+      return permission;
+    }
+  }
+
+  return null;
+};
+
+const canAccessWebContentPath = (permissions: string[], pathname: string): boolean => {
+  const sectionPermissions = permissions.filter((permission) => permission.startsWith("wc:"));
+  if (sectionPermissions.length === 0) return true;
+  if (pathname === "/admin" || pathname === "/admin/webpages" || pathname === "/partner") return true;
+
+  const requiredPermission = getRequiredWebContentPermission(pathname);
+  return requiredPermission !== null && sectionPermissions.includes(requiredPermission);
 };
 
 export async function proxy(req: NextRequest) {
@@ -190,7 +219,9 @@ export async function proxy(req: NextRequest) {
     const role = String((adminToken as { role?: string } | null)?.role ?? "").toLowerCase();
     const userLevelId = Number((adminToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
     const isWebContent = role === "web_content" || userLevelId === 4;
-    const adminPermissions = normalizeAdminPermissions((adminToken as { adminPermissions?: string[] } | null)?.adminPermissions ?? []);
+    const rawAdminPermissions = ((adminToken as { adminPermissions?: string[] } | null)?.adminPermissions ?? [])
+      .filter((permission): permission is string => typeof permission === "string");
+    const adminPermissions = normalizeAdminPermissions(rawAdminPermissions);
     const hasCustomAdminPermissions = (role === "admin" || userLevelId === 2) && adminPermissions.length > 0;
     const adminAllowedPrefixes = hasCustomAdminPermissions
       ? ["/admin/dashboard", ...adminPermissions.flatMap((permission) => ADMIN_PERMISSION_PREFIXES[permission] ?? [])]
@@ -206,7 +237,16 @@ export async function proxy(req: NextRequest) {
     }
 
     if (isWebContent) {
-      return NextResponse.redirect(new URL("/partner/webpages/partner-storefronts", req.url));
+      const allowed =
+        pathname === "/admin" ||
+        pathname === "/admin/webpages" ||
+        pathname.startsWith("/admin/webpages/");
+      if (!allowed) {
+        return NextResponse.redirect(new URL("/admin/webpages", req.url));
+      }
+      if (!canAccessWebContentPath(rawAdminPermissions, pathname)) {
+        return NextResponse.redirect(new URL("/admin/webpages", req.url));
+      }
     }
 
     if (isAccounting) {
@@ -261,6 +301,8 @@ export async function proxy(req: NextRequest) {
     const role = String((partnerToken as { role?: string } | null)?.role ?? "").toLowerCase();
     const userLevelId = Number((partnerToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
     const isWebContent = role === "web_content" || userLevelId === 4;
+    const rawPartnerPermissions = ((partnerToken as { adminPermissions?: string[] } | null)?.adminPermissions ?? [])
+      .filter((permission): permission is string => typeof permission === "string");
 
     if (!isWebContent) {
       return NextResponse.redirect(new URL(getAdminRedirectPath(role), req.url));
@@ -271,6 +313,10 @@ export async function proxy(req: NextRequest) {
       PARTNER_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
     if (!allowed) {
       return NextResponse.redirect(new URL("/partner/webpages/partner-storefronts", req.url));
+    }
+
+    if (!canAccessWebContentPath(rawPartnerPermissions, pathname)) {
+      return NextResponse.redirect(new URL("/admin/webpages", req.url));
     }
   }
 

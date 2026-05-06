@@ -1,20 +1,14 @@
 import { buildPageMetadata } from '@/app/seo'
-import WebPageItemsManager from '@/components/superAdmin/webpages/WebPageItemsManager'
+import BlogsContentManager from '@/components/superAdmin/webpages/BlogsContentManager'
 
 export const metadata = buildPageMetadata({
-  title: 'Admin Web Pages Blogs',
-  description: 'Manage blogs landing content.',
+  title: 'Admin Blogs Content',
+  description: 'Manage dynamic blog content.',
   path: '/admin/webpages/blogs',
   noIndex: true,
 })
 
-export default function AdminWebPagesBlogsPage() {
-  return (
-    <WebPageItemsManager
-      type="home"
-      title="Web Pages / Blogs"
-      description="Manage blog highlights, links, and featured blog cards."
-    />
-  )
+export default function AdminBlogsContentPage() {
+  return <BlogsContentManager />
 }
 

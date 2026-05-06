@@ -1,3 +1,25 @@
+// ─── Web Content sub-section permissions (for level 4 users) ────────────────────
+// Stored in admin_permissions as 'wc:' prefixed strings.
+// Empty list = full access to all sections.
+
+export const WEB_CONTENT_SECTION_OPTIONS = [
+  { id: 'wc:shop-builder',        label: 'Shop Builder',        description: 'Shop layout, merch blocks, and promo placements.' },
+  { id: 'wc:dreambuild',          label: 'DreamBuild',          description: 'DreamBuild landing page — hero, services, projects, etc.' },
+  { id: 'wc:partner-storefronts', label: 'Partner Storefronts', description: 'Client-specific storefront pages and branding.' },
+] as const
+
+export type WebContentSectionId = (typeof WEB_CONTENT_SECTION_OPTIONS)[number]['id']
+
+/** Returns true if the user can access a specific web content section.
+ *  Empty permissions = no restriction = full access. */
+export const canAccessWebContentSection = (permissions: string[], wcKey: string): boolean => {
+  const wcSections = permissions.filter(p => p.startsWith('wc:'))
+  if (wcSections.length === 0) return true
+  return wcSections.includes(wcKey)
+}
+
+// ─── Main admin permission options ───────────────────────────────────────────────
+
 export const ADMIN_PERMISSION_OPTIONS = [
   {
     id: 'members',

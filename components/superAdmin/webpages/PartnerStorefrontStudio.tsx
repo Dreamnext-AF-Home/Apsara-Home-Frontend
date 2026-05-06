@@ -109,9 +109,13 @@ export default function PartnerStorefrontStudio() {
   const storefrontIds = (session?.user as { storefrontIds?: number[] } | undefined)?.storefrontIds ?? []
   const isPartnerScoped = sessionUserLevelId === 4 || sessionRole === 'web_content'
   const canManageAiSupport = sessionUserLevelId === 1 || sessionUserLevelId === 2 || sessionRole === 'super_admin' || sessionRole === 'admin'
+  // Only restrict to specific IDs when some are explicitly assigned; empty = full access (same pattern as wc: permissions)
+  const validStorefrontIds = storefrontIds.filter((id) => Number.isInteger(id) && id > 0)
+  const hasSpecificStorefrontIds = isPartnerScoped && validStorefrontIds.length > 0
   const allowedStorefrontIds = useMemo(
-    () => (isPartnerScoped ? storefrontIds.filter((id) => Number.isInteger(id) && id > 0) : []),
-    [isPartnerScoped, storefrontIds],
+    () => (hasSpecificStorefrontIds ? validStorefrontIds : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasSpecificStorefrontIds, storefrontIds],
   )
   const { data, isLoading, isError, refetch } = useGetAdminWebPageItemsQuery(
     {
@@ -143,12 +147,12 @@ export default function PartnerStorefrontStudio() {
       }))
       .filter((entry): entry is { item: WebPageItem; config: NonNullable<ReturnType<typeof getPartnerStorefrontConfig>> } => Boolean(entry.config))
 
-    const scoped = isPartnerScoped
+    const scoped = hasSpecificStorefrontIds
       ? items.filter((entry) => allowedStorefrontIds.includes(entry.item.id))
       : items
 
     return scoped.sort((a, b) => a.config.displayName.localeCompare(b.config.displayName))
-  }, [data?.items, allowedStorefrontIds, isPartnerScoped])
+  }, [data?.items, allowedStorefrontIds, hasSpecificStorefrontIds])
 
   const categories = categoriesData?.categories ?? []
   const allowedCategoryOptions = useMemo(
@@ -309,7 +313,7 @@ export default function PartnerStorefrontStudio() {
       const nextDraft = { ...current, featuredProductIds: nextFeaturedProductIds }
 
       if (typeof selectedId === 'number') {
-        if (isPartnerScoped && !allowedStorefrontIds.includes(selectedId)) {
+        if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
           showErrorToast('You do not have access to edit this storefront.')
           return current
         }
@@ -365,7 +369,7 @@ export default function PartnerStorefrontStudio() {
       showSuccessToast('Logo uploaded successfully.')
 
       if (targetId) {
-        if (isPartnerScoped && !allowedStorefrontIds.includes(targetId)) {
+        if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(targetId)) {
           showErrorToast('You do not have access to edit this storefront.')
           return
         }
@@ -407,7 +411,7 @@ export default function PartnerStorefrontStudio() {
       return
     }
 
-    if (isPartnerScoped && !allowedStorefrontIds.includes(selectedId)) {
+    if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
       showErrorToast('You do not have access to edit this storefront.')
       return
     }
@@ -551,7 +555,7 @@ export default function PartnerStorefrontStudio() {
       return
     }
 
-    if (isPartnerScoped && draft.id && !allowedStorefrontIds.includes(draft.id)) {
+    if (hasSpecificStorefrontIds && draft.id && !allowedStorefrontIds.includes(draft.id)) {
       showErrorToast('You do not have access to edit this storefront.')
       return
     }
@@ -592,7 +596,7 @@ export default function PartnerStorefrontStudio() {
       return
     }
 
-    if (isPartnerScoped && !allowedStorefrontIds.includes(nextDraft.id)) {
+    if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(nextDraft.id)) {
       setDraft((current) => ({ ...current, referralLink: previousReferral }))
       showErrorToast('You do not have access to edit this storefront.')
       return
@@ -828,7 +832,7 @@ export default function PartnerStorefrontStudio() {
 
             {storefronts.length === 0 ? (
               <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
-                {isPartnerScoped ? 'No storefront assigned to this account yet.' : 'No partner storefronts yet.'}
+                {hasSpecificStorefrontIds ? 'No storefront assigned to this account yet.' : 'No partner storefronts yet.'}
               </p>
             ) : null}
           </div>

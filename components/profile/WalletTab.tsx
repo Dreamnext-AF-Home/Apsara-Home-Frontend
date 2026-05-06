@@ -35,7 +35,7 @@ const walletOptions: Array<{ key: WalletTypeFilter; label: string }> = [
 const walletMeta = {
   all: {
     title: 'Wallet Center',
-    subtitle: 'Track balances, deductions, and PV credits from approved orders.',
+    subtitle: 'Track balances, deductions, and Performance Value credits from delivered orders.',
   },
   cash: {
     title: 'Cash Wallet',
@@ -56,14 +56,16 @@ type WalletTabProps = {
   initialWalletType?: WalletTypeFilter;
 };
 
-export default function WalletTab({ isVerified = false, initialWalletType = 'all' }: WalletTabProps) {
+export default function WalletTab({ initialWalletType = 'all' }: WalletTabProps) {
   const [walletType, setWalletType] = useState<WalletTypeFilter>(initialWalletType);
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [createAffiliateVoucher, { isLoading: isCreatingVoucher }] = useCreateAffiliateVoucherMutation();
-  const { data, isLoading, isFetching, isError } = useGetWalletOverviewQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useGetWalletOverviewQuery({
     page,
     perPage: 15,
     walletType,
+    refreshKey,
   });
 
   const summary = data?.summary;
@@ -76,7 +78,7 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
         .filter((row) => row.wallet_type === 'pv')
         .map((row) => ({
           id: row.id,
-          description: row.notes || row.reference_no || 'PV wallet entry',
+          description: row.notes || row.reference_no || 'Performance Value wallet entry',
           source: row.source_type || 'wallet',
           amount: Math.abs(Number(row.amount ?? 0)),
           status: (row.entry_type === 'debit' ? 'cancelled' : 'approved') as 'approved' | 'cancelled' | 'pending',
@@ -97,8 +99,8 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
     const items = [
       { label: 'Cash Credits', value: summary.cash_credits, total: Math.max(summary.cash_credits + summary.cash_debits, 1), color: 'bg-emerald-500', isPv: false },
       { label: 'Cash Debits', value: summary.cash_debits, total: Math.max(summary.cash_credits + summary.cash_debits, 1), color: 'bg-rose-500', isPv: false },
-      { label: 'PV Credits', value: summary.pv_credits, total: Math.max(summary.pv_credits + summary.pv_debits, 1), color: 'bg-blue-500', isPv: true },
-      { label: 'PV Debits', value: summary.pv_debits, total: Math.max(summary.pv_credits + summary.pv_debits, 1), color: 'bg-sky-500', isPv: true },
+      { label: 'Performance Value Credits', value: summary.pv_credits, total: Math.max(summary.pv_credits + summary.pv_debits, 1), color: 'bg-blue-500', isPv: true },
+      { label: 'Performance Value Debits', value: summary.pv_debits, total: Math.max(summary.pv_credits + summary.pv_debits, 1), color: 'bg-sky-500', isPv: true },
     ];
     return items.map((item) => ({
       ...item,
@@ -109,11 +111,24 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 p-5 md:p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">{currentWalletMeta.title}</h3>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-gray-400">{currentWalletMeta.subtitle}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRefreshKey(Date.now());
+              refetch();
+            }}
+            disabled={isFetching}
+            className="rounded-xl border border-sky-200 px-3.5 py-1.5 text-xs font-semibold text-sky-600 transition-all hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-900/30"
+          >
+            {isFetching ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
             {walletOptions.map((item) => (
               <button
@@ -156,9 +171,10 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
               ) : (
                 <div className="mt-5">
                   <PvWalletTab
-                    currentPv={Number(summary?.affiliate_retail_profit ?? summary?.current_pv ?? 0)}
+                    currentPv={Number(summary?.cashback_balance ?? summary?.affiliate_retail_profit ?? summary?.current_pv ?? 0)}
                     pendingPv={Number(summary?.pending_pv ?? 0)}
                     lifetimePv={Number(summary?.affiliate_performance_bonus ?? summary?.lifetime_pv ?? 0)}
+                    lifetimePersonalPerformanceValue={Number(summary?.lifetime_pv ?? 0)}
                     personalPurchasePv={Number(summary?.global_purchase_bonus ?? summary?.personal_purchase_pv ?? 0)}
                     groupPv={Number(summary?.group_purchase_bonus ?? summary?.group_pv ?? 0)}
                     currentMonthGroupPv={Number(summary?.monthly_purchase_points ?? summary?.current_month_group_pv ?? 0)}
@@ -171,6 +187,8 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
                     totalReferrals={Number(summary?.referrals?.total ?? 0)}
                     verifiedReferrals={Number(summary?.referrals?.verified ?? 0)}
                     activeReferrals={Number(summary?.referrals?.active ?? 0)}
+                    monthlyActivation={summary?.monthly_activation}
+                    unilevelAwards={data?.unilevel_awards ?? []}
                   />
                 </div>
               )
@@ -187,10 +205,8 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
               ) : (
                 <div className="mt-5">
                   <RewardsWalletTab
-                    isVerified={isVerified && Boolean(summary?.can_create_affiliate_voucher)}
                     afVoucherBalance={Number(summary?.af_voucher_balance ?? 0)}
                     afVoucherSourceBalance={Number(summary?.af_voucher_source_balance ?? 0)}
-                    afVoucherReservedBalance={Number(summary?.af_voucher_reserved_balance ?? 0)}
                     cashbackSourceBalance={Number(summary?.cashback_source_balance ?? 0)}
                     cashbackReservedBalance={Number(summary?.cashback_reserved_balance ?? 0)}
                     availableEgcBalance={Number(summary?.available_egc_balance ?? 0)}
@@ -218,7 +234,7 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
                 <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
                   {[
                     { label: 'Cash Balance',         value: peso(summary?.cash_balance ?? 0),          sub: 'Available for encashment',       border: 'border-emerald-200 dark:border-emerald-800', dbg: 'dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', val: 'text-emerald-900 dark:text-emerald-300' },
-                    { label: 'PV Balance',            value: `${numberFmt(summary?.pv_balance ?? 0)} PV`, sub: 'Credits after order approval',  border: 'border-blue-200 dark:border-blue-800',    dbg: 'dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-400',    val: 'text-blue-900 dark:text-blue-300'    },
+                    { label: 'Performance Value Balance', value: `${numberFmt(summary?.pv_balance ?? 0)} Performance Value`, sub: 'Credits after delivery',  border: 'border-blue-200 dark:border-blue-800',    dbg: 'dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-400',    val: 'text-blue-900 dark:text-blue-300'    },
                     { label: 'Locked Encashment',     value: peso(summary?.encashment_locked ?? 0),     sub: 'Pending & ready-for-release',    border: 'border-sky-200 dark:border-sky-800',   dbg: 'dark:bg-sky-900/30',   text: 'text-sky-700 dark:text-sky-400',   val: 'text-sky-900 dark:text-sky-300'   },
                     { label: 'Encashment Available',  value: peso(summary?.encashment_available ?? 0),  sub: 'Can be requested now',           border: 'border-sky-200 dark:border-sky-800',  dbg: 'dark:bg-sky-900/30',  text: 'text-sky-700 dark:text-sky-400',  val: 'text-sky-900 dark:text-sky-300'  },
                   ].map(({ label, value, sub, border, dbg, text, val }) => (
@@ -254,7 +270,7 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
                         <div key={row.label}>
                           <div className="mb-1 flex items-center justify-between text-xs">
                             <span className="text-slate-500 dark:text-gray-400">{row.label}</span>
-                            <span className="font-semibold text-slate-800 dark:text-gray-200">{row.isPv ? `${numberFmt(row.value)} PV` : peso(row.value)}</span>
+                            <span className="font-semibold text-slate-800 dark:text-gray-200">{row.isPv ? `${numberFmt(row.value)} Performance Value` : peso(row.value)}</span>
                           </div>
                           <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-gray-700">
                             <div className={`h-full ${row.color} rounded-full transition-all`} style={{ width: `${row.pct}%` }} />
@@ -315,7 +331,7 @@ export default function WalletTab({ isVerified = false, initialWalletType = 'all
                     const isCredit = row.entry_type === 'credit';
                     const amountLabel =
                       row.wallet_type === 'pv'
-                        ? `${isCredit ? '+' : '-'}${numberFmt(row.amount)} PV`
+                        ? `${isCredit ? '+' : '-'}${numberFmt(row.amount)} Performance Value`
                         : `${isCredit ? '+' : '-'}${peso(row.amount)}`;
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/50 transition-colors">
