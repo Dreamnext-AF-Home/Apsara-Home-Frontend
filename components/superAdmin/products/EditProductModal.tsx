@@ -612,6 +612,23 @@ const dedupeImageUrls = (urls: string[]) => {
     })
 }
 
+type ProductImageItem =
+  | { id: string; kind: 'existing'; url: string }
+  | { id: string; kind: 'new'; file: File; preview: string }
+
+const makeExistingImageItem = (url: string): ProductImageItem => ({
+  id: `existing:${url}`,
+  kind: 'existing',
+  url,
+})
+
+const makeNewImageItem = (file: File): ProductImageItem => ({
+  id: `new:${Date.now()}:${Math.random().toString(36).slice(2)}`,
+  kind: 'new',
+  file,
+  preview: URL.createObjectURL(file),
+})
+
 const getAllVariantStyles = (variant: Pick<VariantFormState, 'pv_style' | 'pv_extra_styles'>) =>
   dedupeVariantValues([variant.pv_style, ...(Array.isArray(variant.pv_extra_styles) ? variant.pv_extra_styles : [])])
 
@@ -1177,14 +1194,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   })
   const [errors,             setErrors]             = useState<Errors>({})
   const [serverError,        setServerError]        = useState('')
-  const [imageFiles,         setImageFiles]         = useState<File[]>([])
-  const [imagePreviews,      setImagePreviews]      = useState<string[]>([])
-  const [existingImageUrls,  setExistingImageUrls]  = useState<string[]>([])
+  const [imageItems,         setImageItems]         = useState<ProductImageItem[]>([])
   const [initialImageUrls,   setInitialImageUrls]   = useState<string[]>([])
   const [initialForm,        setInitialForm]        = useState<FormState | null>(null)
   const [initialVariants,    setInitialVariants]    = useState<VariantFormState[]>([])
   const [isUploading,        setIsUploading]        = useState(false)
-  const [uploadedUrls,       setUploadedUrls]       = useState<string[]>([])
   const [imageError,         setImageError]         = useState('')
   const [variants,           setVariants]           = useState<VariantFormState[]>([])
   const [globalColors,       setGlobalColors]       = useState<VariantColor[]>([])
@@ -1198,9 +1212,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
   const [roomTouched,        setRoomTouched]        = useState(false)
   const [brandText,          setBrandText]          = useState('')
   const [draftRestored,      setDraftRestored]      = useState(false)
-  const [activeNewImageAdjustIndex, setActiveNewImageAdjustIndex] = useState<number | null>(null)
-  const activeExistingImageDragIndexRef = useRef<number | null>(null)
-  const activeNewImageDragIndexRef = useRef<number | null>(null)
+  const [activeNewImageAdjustId, setActiveNewImageAdjustId] = useState<string | null>(null)
+  const activeImageDragIndexRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const formContentRef = useRef<HTMLDivElement>(null)
 
@@ -1344,7 +1357,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     setGlobalColors(collapsedInitialState.globalColors)
     setGlobalPrimaryValues(collapsedInitialState.globalPrimaryValues)
     setGlobalSizeValues(collapsedInitialState.globalSizeValues)
-    setImageFiles([]); setImagePreviews([]); setUploadedUrls([])
+    setImageItems(existing.map(makeExistingImageItem))
     setNewGlobalColorInput({ name: '', hex: '#94a3b8' })
     setNewGlobalPrimaryValue('')
     setNewGlobalSizeValue('')
@@ -1352,7 +1365,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     setNewStyleInputs({})
     setErrors({}); setServerError(''); setImageError('')
     setDraftRestored(false)
-    setActiveNewImageAdjustIndex(null)
+    setActiveNewImageAdjustId(null)
 
     if (typeof window !== 'undefined') {
       try {
@@ -1387,7 +1400,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
               ? dedupeVariantValues(parsedDraft.globalSizeValues)
               : restoredCollapsedState.globalSizeValues
             setForm({ ...nextForm, ...parsedDraft.form })
-            setExistingImageUrls(Array.isArray(parsedDraft.imageUrls) ? dedupeImageUrls(parsedDraft.imageUrls) : existing)
+            setImageItems((Array.isArray(parsedDraft.imageUrls) ? dedupeImageUrls(parsedDraft.imageUrls) : existing).map(makeExistingImageItem))
             setVariants(restoredVariants)
             setGlobalColors(restoredGlobalColors)
             setGlobalPrimaryValues(restoredGlobalPrimaryValues)
@@ -1402,7 +1415,7 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       }
     }
 
-    setExistingImageUrls(existing)
+    setImageItems(existing.map(makeExistingImageItem))
     setVariants(collapsedInitialState.visibleVariants)
     setGlobalColors(collapsedInitialState.globalColors)
     setGlobalPrimaryValues(collapsedInitialState.globalPrimaryValues)
@@ -1445,11 +1458,11 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       if (!IMAGE_MIME_TYPES.includes(file.type)) { setImageError('Only JPEG, PNG, WEBP, or GIF allowed.'); return }
       if (file.size > MAX_IMAGE_BYTES) { setImageError('File too large. Max 5MB.'); return }
     }
-    const maxNew = 15 - existingImageUrls.length
-    const next = [...imageFiles, ...files].slice(0, maxNew)
-    setImageFiles(next)
-    setImagePreviews(next.map(f => URL.createObjectURL(f)))
-    setUploadedUrls([])
+    setImageItems((prev) => {
+      const availableSlots = Math.max(0, 15 - prev.length)
+      if (availableSlots <= 0) return prev
+      return [...prev, ...files.slice(0, availableSlots).map(makeNewImageItem)]
+    })
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1466,73 +1479,53 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
     applySelectedImages(Array.from(e.dataTransfer.files ?? []))
   }
 
-  const handleRemoveImage         = (index: number) => {
-    const next = imageFiles.filter((_, i) => i !== index)
-    setImageFiles(next)
-    setImagePreviews(next.map(f => URL.createObjectURL(f)))
-    setUploadedUrls([])
-    if (!next.length && fileInputRef.current) fileInputRef.current.value = ''
-  }
-  const handleRemoveExistingImage = (index: number) => {
-    setExistingImageUrls(prev => prev.filter((_, i) => i !== index))
-    setUploadedUrls([])
+  const handleRemoveImageItem = (id: string) => {
+    setImageItems((prev) => {
+      const next = prev.filter((item) => item.id !== id)
+      if (fileInputRef.current && !next.some((item) => item.kind === 'new')) {
+        fileInputRef.current.value = ''
+      }
+      return next
+    })
+    setActiveNewImageAdjustId((prev) => (prev === id ? null : prev))
   }
   const handleClearNewImages      = () => {
-    setImageFiles([]); setImagePreviews([]); setUploadedUrls([])
+    setImageItems((prev) => prev.filter((item) => item.kind === 'existing'))
+    setActiveNewImageAdjustId(null)
     setImageError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleExistingImageDragStart = (index: number) => (event: React.DragEvent<HTMLElement>) => {
-    activeExistingImageDragIndexRef.current = index
+  const handleImageDragStart = (index: number) => (event: React.DragEvent<HTMLElement>) => {
+    activeImageDragIndexRef.current = index
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', String(index))
   }
 
-  const handleExistingImageDragEnter = (targetIndex: number) => (event: React.DragEvent<HTMLElement>) => {
+  const handleImageDragEnter = (targetIndex: number) => (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault()
-    const sourceIndex = activeExistingImageDragIndexRef.current
+    const sourceIndex = activeImageDragIndexRef.current
     if (sourceIndex == null || sourceIndex === targetIndex) return
 
-    setExistingImageUrls((prev) => moveItem(prev, sourceIndex, targetIndex))
-    setUploadedUrls([])
-    activeExistingImageDragIndexRef.current = targetIndex
+    setImageItems((prev) => moveItem(prev, sourceIndex, targetIndex))
+    activeImageDragIndexRef.current = targetIndex
   }
 
-  const handleNewImageDragStart = (index: number) => (event: React.DragEvent<HTMLElement>) => {
-    activeNewImageDragIndexRef.current = index
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(index))
-  }
-
-  const handleNewImageDragEnter = (targetIndex: number) => (event: React.DragEvent<HTMLElement>) => {
-    event.preventDefault()
-    const sourceIndex = activeNewImageDragIndexRef.current
-    if (sourceIndex == null || sourceIndex === targetIndex) return
-
-    setImageFiles((prev) => moveItem(prev, sourceIndex, targetIndex))
-    setImagePreviews((prev) => moveItem(prev, sourceIndex, targetIndex))
-    setUploadedUrls([])
-    activeNewImageDragIndexRef.current = targetIndex
-  }
-
-  const stopExistingImageDrag = () => {
-    activeExistingImageDragIndexRef.current = null
-  }
-
-  const stopNewImageDrag = () => {
-    activeNewImageDragIndexRef.current = null
+  const stopImageDrag = () => {
+    activeImageDragIndexRef.current = null
   }
 
   const handleApplyAdjustedNewImage = async (nextFile: File) => {
-    if (activeNewImageAdjustIndex == null) return
+    if (activeNewImageAdjustId == null) return
 
-    const nextFiles = [...imageFiles]
-    nextFiles[activeNewImageAdjustIndex] = nextFile
-    setImageFiles(nextFiles)
-    setImagePreviews(nextFiles.map((file) => URL.createObjectURL(file)))
-    setUploadedUrls([])
-    setActiveNewImageAdjustIndex(null)
+    setImageItems((prev) =>
+      prev.map((item) =>
+        item.id === activeNewImageAdjustId && item.kind === 'new'
+          ? { ...item, file: nextFile, preview: URL.createObjectURL(nextFile) }
+          : item,
+      ),
+    )
+    setActiveNewImageAdjustId(null)
   }
 
   /* ── variant handlers ── */
@@ -1819,40 +1812,46 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       JSON.stringify(dedupeVariantValues(globalPrimaryValues)) !== JSON.stringify(collectVariantNames(initialVariants))
     const globalSizeValuesChanged =
       JSON.stringify(dedupeVariantValues(globalSizeValues)) !== JSON.stringify(collectVariantSizes(initialVariants))
+    const hasNewImages = imageItems.some((item) => item.kind === 'new')
+    const currentExistingImageUrls = imageItems
+      .filter((item): item is Extract<ProductImageItem, { kind: 'existing' }> => item.kind === 'existing')
+      .map((item) => item.url)
     const existingImagesChanged =
-      existingImageUrls.length !== initialImageUrls.length ||
-      existingImageUrls.some((url, index) => url !== initialImageUrls[index])
+      hasNewImages ||
+      currentExistingImageUrls.length !== initialImageUrls.length ||
+      currentExistingImageUrls.some((url, index) => url !== initialImageUrls[index])
 
-    if (!baseChanged && !variantsChanged && !globalPrimaryValuesChanged && !globalSizeValuesChanged && !existingImagesChanged && imageFiles.length === 0) {
+    if (!baseChanged && !variantsChanged && !globalPrimaryValuesChanged && !globalSizeValuesChanged && !existingImagesChanged) {
       showSuccessToast('No changes detected.')
       onClose()
       return
     }
 
-    let finalImageUrls = dedupeImageUrls(existingImageUrls)
-    if (imageFiles.length > 0 && uploadedUrls.length === 0) {
+    let finalImageUrls = dedupeImageUrls(currentExistingImageUrls)
+    if (hasNewImages) {
       setIsUploading(true)
       try {
-        const uploaded: string[] = []
-        for (const file of imageFiles) {
+        const uploadedById = new Map<string, string>()
+        for (const item of imageItems) {
+          if (item.kind !== 'new') continue
           const fd = new FormData()
-          fd.append('file', file)
+          fd.append('file', item.file)
           const res  = await fetch('/api/admin/upload', { method: 'POST', body: fd })
           const json = await res.json()
           if (!res.ok) throw new Error(json.error ?? 'Upload failed')
-          uploaded.push(json.url)
+          uploadedById.set(item.id, json.url)
         }
-        finalImageUrls = dedupeImageUrls([...existingImageUrls, ...uploaded])
-        setUploadedUrls(finalImageUrls)
+        finalImageUrls = dedupeImageUrls(
+          imageItems
+            .map((item) => item.kind === 'existing' ? item.url : uploadedById.get(item.id) ?? '')
+            .filter(Boolean),
+        )
       } catch (err: unknown) {
         setImageError(getUploadErrorMessage(err, 'Image upload failed.'))
         setIsUploading(false)
         return
       }
       setIsUploading(false)
-    }
-    if (imageFiles.length > 0 && uploadedUrls.length > 0) {
-      finalImageUrls = dedupeImageUrls(uploadedUrls)
     }
 
     const imagesChanged =
@@ -1956,25 +1955,19 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
 
   const handleClose = () => { if (isLoading || isUploading) return; onClose() }
   const isBusy      = isLoading || isUploading
-  const hasAnyImages = existingImageUrls.length > 0 || imagePreviews.length > 0
+  const hasAnyImages = imageItems.length > 0
+  const pendingImageCount = imageItems.filter((item) => item.kind === 'new').length
 
   /* ── change detection (for button disable + grid visibility) ── */
-  const baseChanged =
-    initialForm !== null &&
-    JSON.stringify(normalizeFormForComparison(form)) !== JSON.stringify(normalizeFormForComparison(initialForm))
-  const variantsChangedNow =
-    JSON.stringify(normalizeVariantsForComparison(variants)) !== JSON.stringify(normalizeVariantsForComparison(initialVariants))
-  const globalPrimaryValuesChangedNow =
-    JSON.stringify(dedupeVariantValues(globalPrimaryValues)) !== JSON.stringify(collectVariantNames(initialVariants))
-  const globalSizeValuesChangedNow =
-    JSON.stringify(dedupeVariantValues(globalSizeValues)) !== JSON.stringify(collectVariantSizes(initialVariants))
-  const existingImagesChangedNow =
-    existingImageUrls.length !== initialImageUrls.length ||
-    existingImageUrls.some((url, i) => url !== initialImageUrls[i])
-  const hasChanged = baseChanged || variantsChangedNow || globalPrimaryValuesChangedNow || globalSizeValuesChangedNow || existingImagesChangedNow || imageFiles.length > 0
+  const orderedCurrentImageUrls = imageItems
+    .filter((item): item is Extract<ProductImageItem, { kind: 'existing' }> => item.kind === 'existing')
+    .map((item) => item.url)
   /* Keep grid visible even after all existing images are removed so user can still add new ones */
   const showImageGrid = hasAnyImages || initialImageUrls.length > 0
-  const draftImageUrls = uploadedUrls.length > 0 ? uploadedUrls : existingImageUrls
+  const draftImageUrls = orderedCurrentImageUrls
+  const activeNewImageAdjustItem = activeNewImageAdjustId
+    ? imageItems.find((item): item is Extract<ProductImageItem, { kind: 'new' }> => item.kind === 'new' && item.id === activeNewImageAdjustId) ?? null
+    : null
 
   useEffect(() => {
     if (!isOpen || !openedProduct || typeof window === 'undefined') return
@@ -2092,110 +2085,81 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-slate-700">Images</span>
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                            {existingImageUrls.length + imagePreviews.length} / 15
+                            {imageItems.length} / 15
                           </span>
-                          {imagePreviews.length > 0 && (
+                          {pendingImageCount > 0 && (
                             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                              +{imagePreviews.length} pending
+                              +{pendingImageCount} pending
                             </span>
                           )}
                         </div>
-                        {imagePreviews.length > 0 && (
+                        {pendingImageCount > 0 && (
                           <button type="button" onClick={handleClearNewImages} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">
                             Clear new
                           </button>
                         )}
                       </div>
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
-                        {/* Existing images */}
-                        {existingImageUrls.map((url, index) => (
-                          <motion.div
-                            key={`existing-${index}`}
-                            draggable
-                            onDragStart={handleExistingImageDragStart(index)}
-                            onDragEnter={handleExistingImageDragEnter(index)}
-                            onDragOver={preventFileDropNavigation}
-                            onDragEnd={stopExistingImageDrag}
-                            onDrop={stopExistingImageDrag}
-                            className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 active:cursor-grabbing"
-                            layout
-                            whileTap={{ scale: 0.97 }}
-                            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-                          >
-                            <Image
-                              src={url}
-                              alt={`Image ${index + 1}`}
-                              fill
-                              className="object-cover pointer-events-none"
-                              unoptimized
-                            />
-                            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
-                            <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] font-bold text-white">
-                              {index + 1}
-                            </span>
-                            {index === 0 && (
-                              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">Main</span>
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveExistingImage(index)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white shadow hover:bg-red-600"
-                                title="Remove"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                              </button>
+                        {imageItems.map((item, index) => {
+                          const src = item.kind === 'existing' ? item.url : item.preview
+                          return (
+                            <div
+                              key={item.id}
+                              draggable
+                              onDragStart={handleImageDragStart(index)}
+                              onDragEnter={handleImageDragEnter(index)}
+                              onDragOver={preventFileDropNavigation}
+                              onDragEnd={stopImageDrag}
+                              onDrop={stopImageDrag}
+                              className={`group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 active:cursor-grabbing ${
+                                item.kind === 'new' ? 'ring-2 ring-emerald-400' : ''
+                              }`}
+                            >
+                              <Image
+                                src={src}
+                                alt={`Image ${index + 1}`}
+                                fill
+                                className="object-cover pointer-events-none"
+                                unoptimized
+                              />
+                              <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
+                              <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-[10px] font-bold text-white">
+                                {index + 1}
+                              </span>
+                              <div className="absolute bottom-1.5 left-1.5 flex flex-wrap gap-1">
+                                {index === 0 && (
+                                  <span className="rounded-md bg-blue-500 px-1.5 py-0.5 text-[9px] font-bold text-white">Main</span>
+                                )}
+                                {item.kind === 'new' && (
+                                  <span className="rounded-md bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">New</span>
+                                )}
+                              </div>
+                              <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                {item.kind === 'new' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveNewImageAdjustId(item.id)}
+                                    className="h-7 rounded-full bg-white/90 px-2.5 text-[10px] font-bold text-slate-700 shadow hover:bg-white"
+                                  >
+                                    Adjust
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveImageItem(item.id)}
+                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white shadow hover:bg-red-600"
+                                  title="Remove"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
-                          </motion.div>
-                        ))}
-                        {/* New (pending upload) images */}
-                        {imagePreviews.map((preview, index) => (
-                          <motion.div
-                            key={`new-${index}`}
-                            draggable
-                            onDragStart={handleNewImageDragStart(index)}
-                            onDragEnter={handleNewImageDragEnter(index)}
-                            onDragOver={preventFileDropNavigation}
-                            onDragEnd={stopNewImageDrag}
-                            onDrop={stopNewImageDrag}
-                            className="group relative aspect-square cursor-grab overflow-hidden rounded-xl bg-slate-100 ring-2 ring-emerald-400 active:cursor-grabbing"
-                            layout
-                            whileTap={{ scale: 0.97 }}
-                            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-                          >
-                            <Image
-                              src={preview}
-                              alt={`New ${index + 1}`}
-                              fill
-                              className="object-cover pointer-events-none"
-                              unoptimized
-                            />
-                            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
-                            <span className="absolute bottom-1.5 left-1.5 rounded-md bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold text-white">New</span>
-                            <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button
-                                type="button"
-                                onClick={() => setActiveNewImageAdjustIndex(index)}
-                                className="h-7 rounded-full bg-white/90 px-2.5 text-[10px] font-bold text-slate-700 shadow hover:bg-white"
-                              >
-                                Adjust
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveImage(index)}
-                                className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white shadow hover:bg-red-600"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))}
+                          )
+                        })}
                         {/* Add more slot */}
-                        {existingImageUrls.length + imagePreviews.length < 15 && (
+                        {imageItems.length < 15 && (
                           <label
                             htmlFor="edit-product-image-input"
                             onDragOver={preventFileDropNavigation}
@@ -2211,8 +2175,8 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
                       </div>
                       <p className="text-[11px] text-slate-400">
                         {!hasAnyImages
-                          ? 'All images removed — click + to add new images'
-                          : 'Drag to reorder within each group · first image is the main'}
+                          ? 'All images removed - click + to add new images'
+                          : 'Drag images to reorder - first image is the main'}
                       </p>
                     </div>
                   ) : (
@@ -3220,10 +3184,10 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
         </>
       )}
       <ImagePositionEditorModal
-        isOpen={activeNewImageAdjustIndex != null}
-        imageSrc={activeNewImageAdjustIndex != null ? imagePreviews[activeNewImageAdjustIndex] ?? null : null}
-        fileName={activeNewImageAdjustIndex != null ? imageFiles[activeNewImageAdjustIndex]?.name : undefined}
-        onClose={() => setActiveNewImageAdjustIndex(null)}
+        isOpen={activeNewImageAdjustItem != null}
+        imageSrc={activeNewImageAdjustItem?.preview ?? null}
+        fileName={activeNewImageAdjustItem?.file.name}
+        onClose={() => setActiveNewImageAdjustId(null)}
         onSave={handleApplyAdjustedNewImage}
       />
     </AnimatePresence>
