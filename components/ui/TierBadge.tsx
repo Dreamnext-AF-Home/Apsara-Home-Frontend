@@ -4,6 +4,7 @@ import { MemberTier } from '@/types/members/types'
 type TierBadgeProps = {
   tier: MemberTier | string
   className?: string
+  sizeClassName?: string
 }
 
 const tierBadgeConfig: Record<MemberTier, { label: string; imageSrc: string; imageAlt: string }> = {
@@ -34,7 +35,7 @@ const tierBadgeConfig: Record<MemberTier, { label: string; imageSrc: string; ima
   },
 }
 
-export default function TierBadge({ tier, className = '' }: TierBadgeProps) {
+export default function TierBadge({ tier, className = '', sizeClassName = 'h-14 w-14' }: TierBadgeProps) {
   const cfg = tierBadgeConfig[tier as MemberTier]
 
   if (!cfg) {
@@ -43,7 +44,7 @@ export default function TierBadge({ tier, className = '' }: TierBadgeProps) {
         className={`inline-flex items-center justify-center ${className}`.trim()}
         title={String(tier || 'Unknown tier')}
       >
-        <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-bold uppercase text-slate-500">
+        <span className={`inline-flex ${sizeClassName} shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-[10px] font-bold uppercase text-slate-500`}>
           N/A
         </span>
       </span>
@@ -55,12 +56,12 @@ export default function TierBadge({ tier, className = '' }: TierBadgeProps) {
       className={`inline-flex items-center justify-center ${className}`.trim()}
       title={cfg.label}
     >
-      <span className="relative h-14 w-14 shrink-0 overflow-hidden">
+      <span className={`relative ${sizeClassName} shrink-0 overflow-hidden`}>
         <Image
           src={cfg.imageSrc}
           alt={cfg.imageAlt}
           fill
-          sizes="56px"
+          sizes="96px"
           className="object-contain"
         />
       </span>

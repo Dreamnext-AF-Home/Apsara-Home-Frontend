@@ -921,8 +921,6 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   };
 
   const completion = useMemo(() => {
-    if (isVerified) return 100;
-
     return getProfileCompletion(profileData ?? {
       ...form,
       email: form.email,
@@ -2207,10 +2205,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
           )}
         </AnimatePresence>
 
-        {/* Tab navigation bar - mobile: 4x2 grid, desktop: horizontal bar */}
-        <div className="sticky top-16 z-20 -mx-4 mb-6 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-700">
+        {/* Tab navigation bar */}
+        <div className="sticky top-16 z-20 -mx-4 mb-6 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-100 dark:border-gray-700/60 shadow-sm">
           {/* Mobile/tablet horizontal scroll (hidden on xl+) */}
-          <nav className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:hidden px-3 py-1 gap-1 md:justify-center md:gap-2">
+          <nav className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:hidden px-3 py-2 gap-1.5">
             {(() => {
               const shortLabel: Record<Tab, string> = {
                 profile: 'Profile',
@@ -2230,13 +2228,13 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   key={key}
                   type="button"
                   onClick={() => handleTabChange(key)}
-                  className={`shrink-0 flex flex-col items-center gap-1 rounded-xl border px-3 py-2.5 md:px-6 md:py-3 text-[10px] md:text-xs font-medium transition-colors min-w-[60px] md:min-w-[80px] ${
+                  className={`shrink-0 inline-flex flex-col items-center gap-1 rounded-xl px-3.5 py-2 text-[10px] font-semibold transition-all ${
                     activeTab === key
-                      ? 'border-sky-500 dark:border-sky-600 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-700 dark:hover:text-gray-200'
+                      ? 'bg-sky-500 dark:bg-sky-600 text-white shadow-sm shadow-sky-200/60 dark:shadow-sky-900/40'
+                      : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                 >
-                  <TabIcon className={`h-5 w-5 md:h-6 md:w-6 ${activeTab === key ? 'text-sky-500 dark:text-sky-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <TabIcon className={`h-4 w-4 ${activeTab === key ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`} />
                   {shortLabel[key]}
                 </button>
               ));
@@ -2244,22 +2242,24 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
           </nav>
 
           {/* Desktop horizontal bar (hidden below xl) */}
-          <nav className="hidden xl:flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-4">
-            {TABS.map(({ key, label, Icon: TabIcon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleTabChange(key)}
-                className={`shrink-0 inline-flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === key
-                    ? 'border-sky-500 dark:border-sky-500 text-sky-600 dark:text-sky-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <TabIcon className={`h-4 w-4 ${activeTab === key ? 'text-sky-600 dark:text-sky-400' : 'text-gray-400 dark:text-gray-500'}`} />
-                {label}
-              </button>
-            ))}
+          <nav className="hidden xl:block overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-4 py-2">
+            <div className="flex items-center gap-1 justify-between">
+              {TABS.map(({ key, label, Icon: TabIcon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleTabChange(key)}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                    activeTab === key
+                      ? 'bg-sky-500 dark:bg-sky-600 text-white shadow-sm shadow-sky-200/60 dark:shadow-sky-900/40'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:text-gray-800 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <TabIcon className={`h-3.5 w-3.5 shrink-0 ${activeTab === key ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`} />
+                  {label}
+                </button>
+              ))}
+            </div>
           </nav>
         </div>
 
@@ -2314,36 +2314,48 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               initial="hidden"
               animate="visible"
               custom={0}
-              className="rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 overflow-hidden"
+              className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-gray-900 overflow-hidden shadow-sm"
             >
               {/* Cover banner - tier-specific gradient */}
-              <div className={`h-36 bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} relative overflow-hidden`}>
-                {/* Shine overlays */}
-                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 18% 65%, rgba(255,255,255,0.28) 0%, transparent 55%), radial-gradient(circle at 82% 18%, rgba(255,255,255,0.18) 0%, transparent 50%)' }} />
-                {/* Decorative blur circles */}
-                <div className="absolute -bottom-10 -left-10 h-36 w-36 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-                <div className="absolute -top-6 left-1/3 h-24 w-24 rounded-full bg-white/8 blur-xl pointer-events-none" />
+              <div className={`h-44 bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} relative overflow-hidden`}>
+                {/* Layered shine overlays */}
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 70%, rgba(255,255,255,0.32) 0%, transparent 55%), radial-gradient(ellipse at 80% 15%, rgba(255,255,255,0.22) 0%, transparent 50%), radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.15) 0%, transparent 60%)' }} />
+                {/* Decorative blobs */}
+                <div className="absolute -bottom-14 -left-14 h-48 w-48 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+                <div className="absolute -top-8 right-1/4 h-32 w-32 rounded-full bg-white/8 blur-2xl pointer-events-none" />
+                <div className="absolute bottom-0 right-0 h-24 w-32 bg-black/10 blur-2xl pointer-events-none" />
+                {/* Subtle grid pattern */}
+                <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(255,255,255,0.5) 30px, rgba(255,255,255,0.5) 31px), repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(255,255,255,0.5) 30px, rgba(255,255,255,0.5) 31px)' }} />
+
+                {/* Rank label - top left */}
+                <div className="absolute top-3.5 left-4">
+                  <span className="text-[10px] font-black text-white/70 tracking-[0.25em] uppercase">Member Profile</span>
+                </div>
+
                 {/* Badge - top right with glass frame */}
                 <div className="absolute top-3 right-3 flex flex-col items-center gap-1.5">
-                  <div className="rounded-2xl bg-white/25 backdrop-blur-md p-1.5 border border-white/40 shadow-xl">
+                  <div className="rounded-2xl bg-white/20 backdrop-blur-lg p-2 border border-white/35 shadow-2xl">
                     <img
                       src={TIER_BADGE_IMAGE[loyaltyTier]}
                       alt={loyaltyTier}
-                      className="h-16 w-16 object-contain drop-shadow-lg"
+                      className="h-16 w-16 object-contain drop-shadow-xl"
                     />
                   </div>
-                  <span className="text-[9px] font-bold text-white tracking-widest uppercase bg-black/25 backdrop-blur-sm rounded-full px-2.5 py-0.5 border border-white/20">
-                    {loyaltyTier.split(' ')[0]}
+                  <span className="text-[9px] font-black text-white tracking-[0.2em] uppercase bg-black/30 backdrop-blur-sm rounded-full px-2.5 py-0.5 border border-white/20 shadow-sm">
+                    {loyaltyTier}
                   </span>
                 </div>
               </div>
 
               {/* Avatar - centered, floating over banner */}
-              <div className="flex flex-col items-center -mt-12 pb-5 px-5">
-                <div className="relative mb-3">
+              <div className="flex flex-col items-center -mt-14 pb-5 px-5">
+                <div className="relative mb-4">
+                  {/* Tier-colored ring behind avatar */}
+                  <div className={`absolute -inset-1 rounded-full bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} opacity-80 blur-[2px]`} />
+
                   {/* Spin ring while uploading */}
                   {isUploadingAvatar && (
-                    <span className="pointer-events-none absolute -inset-1.5 rounded-full border-[3px] border-transparent border-t-sky-400 border-r-sky-300 animate-spin z-10" />
+                    <span className="pointer-events-none absolute -inset-2 rounded-full border-[3px] border-transparent border-t-white border-r-white/60 animate-spin z-20" />
                   )}
 
                   {/* Avatar image or initials */}
@@ -2351,29 +2363,29 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     <button
                       type="button"
                       onClick={() => setIsAvatarPreviewOpen(true)}
-                      className="group relative cursor-zoom-in"
+                      className="group relative cursor-zoom-in block"
                       aria-label="View profile photo"
                     >
                       <img
                         src={effectiveAvatarUrl}
                         alt={form.name || 'Profile photo'}
-                        className="h-24 w-24 rounded-full object-cover ring-4 ring-white dark:ring-gray-800 shadow-xl"
+                        className="relative h-28 w-28 rounded-full object-cover ring-4 ring-white dark:ring-gray-900 shadow-2xl z-10"
                       />
-                      <div className="absolute inset-0 rounded-full bg-black/0 transition-colors group-hover:bg-black/30 flex items-center justify-center">
-                        <svg className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="absolute inset-0 rounded-full bg-black/0 transition-colors group-hover:bg-black/35 flex items-center justify-center z-10">
+                        <svg className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0zm0 0l2 2" />
                         </svg>
                       </div>
                     </button>
                   ) : (
-                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-sky-400 to-sky-500 text-white text-2xl font-bold flex items-center justify-center ring-4 ring-white dark:ring-gray-800 shadow-xl">
+                    <div className={`relative h-28 w-28 rounded-full bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} text-white text-3xl font-black flex items-center justify-center ring-4 ring-white dark:ring-gray-900 shadow-2xl z-10`}>
                       {initials}
                     </div>
                   )}
 
                   {/* Edit badge — always visible, bottom-right */}
                   <label
-                    className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-sky-500 hover:bg-sky-600 active:bg-sky-700 border-2 border-white dark:border-gray-800 shadow-md transition-colors z-10"
+                    className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white dark:bg-gray-800 border-2 border-slate-200 dark:border-slate-600 shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all z-20"
                     title="Change profile photo"
                     aria-label="Change profile photo"
                   >
@@ -2383,39 +2395,50 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       className="hidden"
                       onChange={handleAvatarUpload}
                     />
-                    <Icon.Camera className="h-4 w-4 text-white" />
+                    <Icon.Camera className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                   </label>
                 </div>
 
-                {/* Tier pill */}
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${TIER_COVER[loyaltyTier].pill} mb-3`}>
-                  <img src={TIER_BADGE_IMAGE[loyaltyTier]} alt={loyaltyTier} className="h-4 w-4 object-contain shrink-0" />
-                  <span className="text-[11px] font-bold">{loyaltyTier}</span>
-                </div>
-
                 {/* User info - centered */}
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white text-center leading-tight">
+                <h2 className="text-xl font-black text-slate-900 dark:text-white text-center leading-tight tracking-tight">
                   {form.name || 'AF Home User'}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 text-center">{form.email}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 text-center">{form.email}</p>
                 {form.username && (
-                  <span className="inline-block text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 font-mono font-medium mt-1.5 border border-slate-200 dark:border-slate-700">
+                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono font-semibold mt-1.5 border border-slate-200 dark:border-slate-700">
                     @{form.username}
                   </span>
                 )}
 
-                {/* Account stats from snapshot */}
-                <div className="mt-3 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-gray-400">
+                {/* Tier pill - premium version */}
+                <div className={`mt-3 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r ${TIER_COVER[loyaltyTier].gradient} shadow-md`} style={{ boxShadow: `0 4px 14px ${TIER_COVER[loyaltyTier].glow}` }}>
+                  <img src={TIER_BADGE_IMAGE[loyaltyTier]} alt={loyaltyTier} className="h-4 w-4 object-contain shrink-0 drop-shadow" />
+                  <span className="text-[11px] font-black text-white tracking-wide">{loyaltyTier}</span>
+                  <span className="text-[10px] text-white/70 font-bold">• Rank {effectiveRank}</span>
+                </div>
+
+                {/* Account micro-stats */}
+                <div className="mt-4 flex items-center divide-x divide-slate-200 dark:divide-slate-700 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800/60 w-full">
                   {accountSnapshot?.loyalty?.join_date && (
-                    <span>Joined {new Date(accountSnapshot.loyalty.join_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <div className="flex-1 text-center px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Joined</p>
+                      <p className="font-bold text-slate-700 dark:text-slate-200 text-xs mt-0.5">
+                        {new Date(accountSnapshot.loyalty.join_date).toLocaleDateString('en-PH', { month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
                   )}
-                  {(accountSnapshot?.loyalty?.referral_count ?? 0) > 0 && (
-                    <span>{accountSnapshot?.loyalty?.referral_count ?? 0} referrals</span>
-                  )}
+                  <div className="flex-1 text-center px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Referrals</p>
+                    <p className="font-black text-slate-700 dark:text-slate-200 text-sm mt-0.5">{accountSnapshot?.loyalty?.referral_count ?? 0}</p>
+                  </div>
+                  <div className="flex-1 text-center px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Rank</p>
+                    <p className="font-black text-slate-700 dark:text-slate-200 text-sm mt-0.5">{effectiveRank}</p>
+                  </div>
                 </div>
 
                 {isUploadingAvatar && (
-                  <p className="mt-2 text-xs text-sky-500 font-medium animate-pulse">Uploading photo...</p>
+                  <p className="mt-2 text-xs text-sky-500 font-semibold animate-pulse">Uploading photo…</p>
                 )}
                 {effectiveAvatarUrl && !isUploadingAvatar && (
                   <button
@@ -2428,26 +2451,24 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 )}
 
                 {/* Profile completion */}
-                <div className="mt-4 w-full p-3.5 rounded-xl border border-slate-200 dark:border-sky-800 dark:bg-sky-900/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-slate-600 dark:text-gray-400">Profile Completion</span>
-                    <span className="text-xs font-bold text-sky-600 dark:text-sky-400">{completion}%</span>
+                <div className="mt-4 w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Profile Completion</span>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        {completion >= 100 ? 'Fully verified account.' : completion < 60 ? 'Fill in your details to unlock all features.' : 'Almost there — just a few fields left.'}
+                      </p>
+                    </div>
+                    <span className={`text-xl font-black tabular-nums ${completion >= 100 ? 'text-emerald-500' : 'text-sky-600 dark:text-sky-400'}`}>{completion}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-sky-100 dark:bg-sky-900/30 overflow-hidden">
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-sky-400 to-sky-400"
+                      className={`h-full rounded-full ${completion >= 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : 'bg-gradient-to-r from-sky-400 to-indigo-500'}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${completion}%` }}
-                      transition={{ duration: 0.7, ease: 'easeOut' }}
+                      transition={{ duration: 0.9, ease: 'easeOut' }}
                     />
                   </div>
-                  <p className="mt-1.5 text-[11px] text-slate-400 dark:text-gray-500">
-                    {completion >= 100
-                      ? 'Fully verified account.'
-                      : completion < 60
-                      ? 'Fill in your details to unlock all features.'
-                      : 'Almost there - just a few fields left.'}
-                  </p>
                 </div>
 
                 {/* Level Progress Teaser */}
@@ -2477,48 +2498,58 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   const activeCover = effectiveRank >= 5 ? TIER_COVER['Lifestyle Elite'] : nextCover;
 
                   return (
-                    <div className="mt-4 w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
-                      {/* Mini header */}
-                      <div className={`bg-gradient-to-r ${activeCover.gradient} px-3.5 py-2 flex items-center gap-2`}>
-                        <svg className="h-3 w-3 text-white/90" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                          <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-                        </svg>
-                        <span className="text-[11px] font-bold text-white tracking-wide uppercase">Level Progress</span>
-                        {effectiveRank >= 5 && (
-                          <span className="ml-auto text-[10px] font-black bg-white/25 text-white rounded-full px-2 py-0.5 border border-white/30">MAX</span>
+                    <div className="mt-4 w-full rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-700/60 shadow-sm bg-white dark:bg-slate-900">
+                      {/* Header */}
+                      <div className={`relative bg-gradient-to-r ${activeCover.gradient} px-4 py-3 flex items-center justify-between overflow-hidden`}>
+                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.4) 0px, rgba(255,255,255,0.4) 1px, transparent 1px, transparent 8px)' }} />
+                        <div className="relative flex items-center gap-2">
+                          <svg className="h-3.5 w-3.5 text-white/90" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                            <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+                          </svg>
+                          <span className="text-xs font-black text-white tracking-wide uppercase">Rank Progress</span>
+                        </div>
+                        {effectiveRank >= 5 ? (
+                          <span className="relative text-[10px] font-black bg-white/25 text-white rounded-full px-2.5 py-0.5 border border-white/30 backdrop-blur-sm">MAX RANK</span>
+                        ) : (
+                          <span className="relative text-[10px] font-bold text-white/80">{overallPct}% to next</span>
                         )}
                       </div>
 
-                      <div className="p-3.5 bg-white dark:bg-gray-800">
+                      <div className="p-4">
                         {/* Badge comparison */}
-                        <div className="flex items-center justify-center gap-3 mb-3">
-                          <div className="flex flex-col items-center gap-1">
-                            <div className={`rounded-xl bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} p-1.5 opacity-70`}>
-                              <img src={TIER_BADGE_IMAGE[loyaltyTier]} alt={loyaltyTier} className="h-10 w-10 object-contain" />
+                        <div className="flex items-center justify-center gap-4 mb-4">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <div className={`rounded-2xl bg-gradient-to-br ${TIER_COVER[loyaltyTier].gradient} p-2 opacity-80 shadow-md`}>
+                              <img src={TIER_BADGE_IMAGE[loyaltyTier]} alt={loyaltyTier} className="h-11 w-11 object-contain" />
                             </div>
-                            <p className="text-[9px] text-slate-500 dark:text-gray-400 font-semibold">Rank {effectiveRank}</p>
+                            <div className="text-center">
+                              <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">Current</p>
+                              <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Rank {effectiveRank}</p>
+                            </div>
                           </div>
 
                           {effectiveRank < 5 && (
                             <>
-                              <div
-                                className={`h-7 w-7 rounded-full bg-gradient-to-br ${nextCover.gradient} flex items-center justify-center shrink-0 shadow-md`}
-                                style={{ boxShadow: `0 3px 10px ${nextCover.glow}` }}
-                              >
-                                <svg className="h-3.5 w-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                                </svg>
-                              </div>
                               <div className="flex flex-col items-center gap-1">
-                                <div
-                                  className={`rounded-xl bg-gradient-to-br ${nextCover.gradient} p-1.5`}
-                                  style={{ boxShadow: `0 4px 12px ${nextCover.glow}` }}
-                                >
-                                  <img src={TIER_BADGE_IMAGE[nextTier]} alt={nextTier} className="h-10 w-10 object-contain drop-shadow" />
+                                <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${nextCover.gradient} flex items-center justify-center shrink-0 shadow-lg`} style={{ boxShadow: `0 4px 12px ${nextCover.glow}` }}>
+                                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                  </svg>
                                 </div>
-                                <p className="text-[9px] text-slate-500 dark:text-gray-400 font-semibold">Rank {nextRank}</p>
+                                <div className="h-1 w-8 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                  <motion.div className={`h-full rounded-full bg-gradient-to-r ${nextCover.gradient}`} initial={{ width: 0 }} animate={{ width: `${overallPct}%` }} transition={{ duration: 0.9, ease: 'easeOut' }} />
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-center gap-1.5">
+                                <div className={`rounded-2xl bg-gradient-to-br ${nextCover.gradient} p-2 shadow-lg`} style={{ boxShadow: `0 6px 16px ${nextCover.glow}` }}>
+                                  <img src={TIER_BADGE_IMAGE[nextTier]} alt={nextTier} className="h-11 w-11 object-contain drop-shadow" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">Next</p>
+                                  <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Rank {nextRank}</p>
+                                </div>
                               </div>
                             </>
                           )}
@@ -2526,32 +2557,32 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
                         {/* Overall progress bar */}
                         {effectiveRank < 5 && (
-                          <>
+                          <div className="mb-4">
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400">Overall Progress</span>
-                              <span className={`text-[11px] font-bold ${overallPct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-gray-300'}`}>{overallPct}%</span>
+                              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Overall Progress</span>
+                              <span className={`text-[11px] font-black tabular-nums ${overallPct >= 100 ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-300'}`}>{overallPct}%</span>
                             </div>
-                            <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden mb-3">
+                            <div className="h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                               <motion.div
                                 className={`h-full rounded-full ${overallPct >= 100 ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : `bg-gradient-to-r ${nextCover.gradient}`}`}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${overallPct}%` }}
-                                transition={{ duration: 0.85, ease: 'easeOut' }}
+                                transition={{ duration: 0.9, ease: 'easeOut' }}
                               />
                             </div>
-                          </>
+                          </div>
                         )}
 
                         {/* View details button */}
                         <button
                           type="button"
                           onClick={() => handleTabChange('levels')}
-                          className={`w-full rounded-xl bg-gradient-to-r ${activeCover.gradient} px-3 py-2 text-xs font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5`}
-                          style={{ boxShadow: `0 3px 12px ${activeCover.glow}` }}
+                          className={`w-full rounded-xl bg-gradient-to-r ${activeCover.gradient} px-3 py-2.5 text-xs font-black text-white hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md`}
+                          style={{ boxShadow: `0 4px 14px ${activeCover.glow}` }}
                         >
                           View My Level Details
-                          <svg className="h-3.5 w-3.5 text-white/80" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                          <svg className="h-3.5 w-3.5 text-white/80" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
                       </div>
@@ -2563,7 +2594,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {/* Referral section */}
               {(
                 <div className="px-5 pb-5">
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 p-4">
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 p-4">
                     {/* Header */}
                     <div className="flex items-center justify-between gap-2 mb-3">
                       <div className="flex items-center gap-2">
@@ -2660,20 +2691,23 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               initial="hidden"
               animate="visible"
               custom={1}
-              className="rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 p-5"
+              className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-gray-900 p-5 shadow-sm"
             >
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-3">Account Snapshot</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Account Snapshot</h3>
+                <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800 ml-3" />
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {accountStats.map((item) => (
                   <button
                     key={item.label}
                     type="button"
                     onClick={item.onClick}
-                    className="group rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 hover:border-sky-200 dark:hover:border-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/30 px-3 py-3 text-left transition-colors"
+                    className="group relative overflow-hidden rounded-xl border border-slate-100 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/60 hover:border-sky-200 dark:hover:border-sky-700 hover:bg-sky-50/80 dark:hover:bg-sky-900/20 px-3 py-3 text-left transition-all duration-200 active:scale-[0.97]"
                   >
-                    <item.Icon className="h-4 w-4 text-slate-400 group-hover:text-sky-500 transition-colors" />
-                    <p className="text-lg font-bold text-slate-800 dark:text-gray-200 mt-1.5 leading-none">{item.value}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">{item.label}</p>
+                    <item.Icon className="h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-sky-500 transition-colors" />
+                    <p className="text-xl font-black text-slate-800 dark:text-slate-100 mt-2 leading-none tabular-nums">{item.value}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-wide">{item.label}</p>
                   </button>
                 ))}
               </div>
@@ -2685,23 +2719,31 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               initial="hidden"
               animate="visible"
               custom={2}
-              className="rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-gray-800 p-5"
+              className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-gray-900 p-5 shadow-sm"
             >
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-3">Quick Actions</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Quick Actions</h3>
+                <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800 ml-3" />
+              </div>
               <div className="space-y-1.5">
                 {[
-                  { label: 'View My Orders', Icon: Icon.Bag, href: '/orders' },
-                  { label: 'Saved Wishlist', Icon: Icon.Heart, href: '/wishlist' },
-                  { label: 'Manage Addresses', Icon: Icon.MapPin, href: '#' },
+                  { label: 'View My Orders', Icon: Icon.Bag, href: '/orders', color: 'group-hover:text-violet-500' },
+                  { label: 'Saved Wishlist', Icon: Icon.Heart, href: '/wishlist', color: 'group-hover:text-rose-500' },
+                  { label: 'Manage Addresses', Icon: Icon.MapPin, href: '#', color: 'group-hover:text-emerald-500' },
                 ].map((item) => (
                   <button
                     key={item.label}
                     type="button"
                     onClick={() => router.push(item.href)}
-                    className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-800 hover:bg-sky-50 dark:hover:bg-sky-900/30 hover:text-sky-600 dark:hover:text-sky-400 text-sm font-medium text-slate-700 dark:text-gray-300 transition-colors"
+                    className="group w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-200 transition-all duration-150 active:scale-[0.98]"
                   >
-                    <item.Icon className="h-4 w-4 text-slate-400 dark:text-gray-500 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors" />
-                    {item.label}
+                    <div className="flex items-center gap-2.5">
+                      <item.Icon className={`h-4 w-4 text-slate-400 dark:text-slate-500 transition-colors ${item.color}`} />
+                      {item.label}
+                    </div>
+                    <svg className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-400 dark:group-hover:text-slate-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
                 ))}
               </div>

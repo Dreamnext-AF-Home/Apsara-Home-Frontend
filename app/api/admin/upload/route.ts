@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const folderType = String(formData.get('folder') ?? 'products').toLowerCase()
     const assetType = String(formData.get('asset_type') ?? 'image').toLowerCase()
 
-    const isAdminUpload = ['super_admin', 'admin', 'web_content'].includes(role)
+    const isAdminUpload = ['super_admin', 'admin', 'web_content', 'accounting', 'finance_officer'].includes(role)
     const isCustomerProfileUpload = role === 'customer' && folderType === 'profile'
     if (!session?.user || (!isAdminUpload && !isCustomerProfileUpload)) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })

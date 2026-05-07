@@ -173,6 +173,8 @@ export interface AdminEncashmentItem {
   invoice_no?: string | null;
   affiliate_name?: string | null;
   affiliate_email?: string | null;
+  affiliate_avatar?: string | null;
+  affiliate_tier?: string | null;
   amount: number;
   withholding_tax?: number;
   processing_fee?: number;
