@@ -1463,7 +1463,7 @@ function PreviewCategoryGrid(props: {
 
         {cards.length > 4 ? (
           <p className="mt-3 text-center text-[11px] text-slate-400">
-            Showing {offset + 1}–{Math.min(offset + 4, cards.length)} of {cards.length} categories
+            Showing {offset + 1}-{Math.min(offset + 4, cards.length)} of {cards.length} categories
           </p>
         ) : null}
       </div>

@@ -104,7 +104,7 @@ function DetailModal({ item, onClose, onAction, canApprove, canRelease }: {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-800">{item.affiliate_name || 'Affiliate'}</h2>
-              <p className="text-xs text-slate-400">{item.reference_no} Â· {item.affiliate_email || 'No email'}</p>
+              <p className="text-xs text-slate-400">{item.reference_no} · {item.affiliate_email || 'No email'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ function ActionModal({ action, busy, uploading, notes, proofUrl, proofFileName, 
               value={notes}
               onChange={e => onNotes(e.target.value)}
               rows={4}
-              placeholder="Write clear reason / details (min 5 characters)â€¦"
+placeholder="Write clear reason / details (min 5 characters)…"
               className="w-full rounded-[18px] border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 outline-none transition-all focus:border-sky-400 dark:border-white/18 dark:bg-white/12 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-sky-400/60 resize-none"
             />
           </div>
@@ -528,7 +528,7 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Search reference, affiliate, emailâ€¦"
+            placeholder="Search reference, affiliate, email…"
             className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400 bg-slate-50 text-slate-700 placeholder-slate-400 transition"
           />
         </div>
@@ -730,7 +730,7 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
             <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 dark:border-slate-800 dark:text-slate-300">
               <span>
                 Showing{' '}
-                <span className="font-semibold text-slate-600">{data?.meta?.from ?? 0}â€“{data?.meta?.to ?? 0}</span>
+                <span className="font-semibold text-slate-600">{data?.meta?.from ?? 0}-{data?.meta?.to ?? 0}</span>
                 {' '}of <span className="font-semibold text-slate-600">{data?.meta?.total ?? 0}</span>
               </span>
               <div className="flex items-center gap-1.5">
