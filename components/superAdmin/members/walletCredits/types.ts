@@ -2,6 +2,7 @@ export interface MemberWallet {
   id: number
   name: string
   email: string
+  avatar?: string | null
   tier: string
   status: 'active' | 'pending' | 'blocked'
   cashBalance: number

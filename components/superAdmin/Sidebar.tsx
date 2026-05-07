@@ -22,6 +22,7 @@ interface NavItem {
   icon: React.ReactNode
   badge?: number
   children?: SubItem[]
+  sectionLabel?: string
 }
 
 interface SidebarProps {
@@ -54,7 +55,7 @@ const navItems: NavItem[] = [
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
   },
   {
-    id: 'members', label: 'Members', badge: 3,
+    id: 'members', label: 'Members', badge: 3, sectionLabel: 'Operations',
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
     children: [
       { label: 'All Members', path: '/admin/members' },
@@ -76,7 +77,7 @@ const navItems: NavItem[] = [
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h3m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h6.586a2 2 0 011.414.586l3.414 3.414A2 2 0 0119 8.414V19a2 2 0 01-2 2z" /></svg>,
   },
   {
-    id: 'encashment', label: 'Encashment',
+    id: 'encashment', label: 'Encashment', sectionLabel: 'Finance',
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
     children: [
       { label: 'All Requests', path: '/admin/encashment' },
@@ -123,7 +124,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    id: 'products', label: 'Products',
+    id: 'products', label: 'Products', sectionLabel: 'Catalog',
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>,
     children: [
       { label: 'All Products', path: '/admin/products' },
@@ -149,7 +150,7 @@ const navItems: NavItem[] = [
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
   },
   {
-    id: 'inquiry', label: 'Inquiry', path: '/admin/inquiry',
+    id: 'inquiry', label: 'Inquiry', path: '/admin/inquiry', sectionLabel: 'System',
     icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 8h10M7 12h6m-6 4h8M5 4h14a2 2 0 012 2v11a2 2 0 01-2 2H9l-4 3v-3H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>,
   },
   {
@@ -535,6 +536,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
             return (
               <div key={item.id}>
+                {!isCollapsed && item.sectionLabel && (
+                  <div className={`flex items-center gap-2 px-2 pb-1.5 ${visibleNavItems[0]?.id === item.id ? 'pt-1' : 'pt-4'}`}>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{item.sectionLabel}</span>
+                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700/60" />
+                  </div>
+                )}
                 {hasChildren ? (
                   <button
                     onClick={() => !isCollapsed && !isAccounting && !isFinanceOfficer && toggleMenu(item.id)}
@@ -546,7 +553,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       ${isCollapsed ? 'justify-center' : ''}
                     `}
                   >
-                    <span className="shrink-0">{item.icon}</span>
+                    <span className={`shrink-0 flex items-center justify-center h-7 w-7 rounded-lg transition-colors ${active ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'}`}>{item.icon}</span>
                     {!isCollapsed && (
                       <>
                         <span className="flex-1 text-left font-medium">{item.label}</span>
@@ -574,7 +581,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                       ${isCollapsed ? 'justify-center' : ''}
                     `}
                   >
-                    <span className="shrink-0">{item.icon}</span>
+                    <span className={`shrink-0 flex items-center justify-center h-7 w-7 rounded-lg transition-colors ${active ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'}`}>{item.icon}</span>
                     {!isCollapsed && <span className="font-medium">{item.label}</span>}
                     {isCollapsed && (
                       <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl border border-slate-700">{item.label}</span>
@@ -591,7 +598,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                         exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="ml-5 mt-1 pl-4 border-l border-slate-200 dark:border-slate-700 py-1.5 space-y-1">
+                        <div className="mt-1 ml-2 space-y-0.5 py-1">
                           {item.children?.map((child) => (
                             <Link
                               key={child.path}
@@ -602,13 +609,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                                 if (child.path === '/admin/members') prefetchMembersData()
                                 if (isOpen) onClose()
                               }}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 border-l-2
                                 ${isExactActive(child.path)
-                                  ? 'text-sky-700 dark:text-sky-300 font-semibold bg-sky-50 dark:bg-sky-900/30'
-                                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70'}
+                                  ? 'border-sky-500 text-sky-700 dark:text-sky-300 font-semibold bg-sky-50 dark:bg-sky-900/20'
+                                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/70'}
                               `}
                             >
-                              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${isExactActive(child.path) ? 'bg-sky-500 dark:bg-sky-400' : 'bg-slate-300 dark:bg-slate-600'}`} />
                               <span className="flex-1 truncate">{child.label}</span>
                               {typeof child.badge === 'number' && child.badge > 0 && (
                                 <span className={`${isExactActive(child.path)
