@@ -147,7 +147,7 @@ function TopFilterSkeleton() {
       <Skeleton className="h-10 w-full rounded-xl" />
 
       {/* Controls row skeleton */}
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-wrap gap-3 justify-end">
         <Skeleton className="h-9 w-24 rounded-lg" />
         <Skeleton className="h-9 w-28 rounded-lg" />
         <Skeleton className="h-9 w-28 rounded-lg" />
@@ -196,9 +196,9 @@ function ProductFilterSkeleton() {
 function BrandProfileSkeleton() {
   return (
     <div className="rounded-lg bg-white dark:bg-gray-800 p-6 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
         {/* Image skeleton */}
-        <Skeleton className="h-32 w-32 rounded-lg shrink-0" />
+        <Skeleton className="h-28 w-28 sm:h-32 sm:w-32 rounded-lg shrink-0 self-center sm:self-auto" />
 
         {/* Content skeleton */}
         <div className="flex-1 space-y-4">
@@ -209,7 +209,7 @@ function BrandProfileSkeleton() {
           <Skeleton className="h-4 w-full rounded" />
 
           {/* Stats row */}
-          <div className="grid grid-cols-4 gap-4 pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-2">
                 <Skeleton className="h-4 w-full rounded" />
@@ -220,7 +220,7 @@ function BrandProfileSkeleton() {
         </div>
 
         {/* Back button skeleton */}
-        <Skeleton className="h-10 w-20 rounded-lg shrink-0" />
+        <Skeleton className="h-10 w-20 rounded-lg shrink-0 self-center sm:self-auto" />
       </div>
     </div>
   )
@@ -285,6 +285,7 @@ export default function ByBrandPageMain() {
   const [addToCart, { isLoading: isAddingToCart }] = useAddToCartMutation()
   const [hoveringShareProductId, setHoveringShareProductId] = useState<number | null>(null)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false)
   const productsRef = useRef<HTMLDivElement>(null)
 
   // Handlers for TopFilters
@@ -498,6 +499,16 @@ export default function ByBrandPageMain() {
     return filtered
   }, [rawBrandProducts, filters, sortBy])
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 10000) count++
+    if (filters.pvRange[0] > 0 || filters.pvRange[1] < 5000) count++
+    if (filters.inStock) count++
+    if (filters.discountOnly) count++
+    if (filters.hasPvOnly) count++
+    return count
+  }, [filters])
+
   return (
     <>
       <div
@@ -527,6 +538,17 @@ export default function ByBrandPageMain() {
         <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="container mx-auto px-4 py-6">
             <div className="mt-4">
+              {selectedBrandItem && (
+                <button
+                  onClick={() => router.back()}
+                  className="sm:hidden mb-3 flex items-center gap-1 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                  Back
+                </button>
+              )}
               <p className="text-xs font-bold uppercase tracking-[0.35em] text-sky-500 dark:text-sky-400">Shop by Brand</p>
               <h1 className="mt-2 text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
                 {selectedBrand && selectedBrandItem ? selectedBrandItem.name : 'All Brands'}
@@ -548,9 +570,10 @@ export default function ByBrandPageMain() {
         {selectedBrandItem && !isFetchingProducts && (
           <>
             <div className="rounded-lg bg-white dark:bg-gray-800 p-6 border border-gray-200 dark:border-gray-700 relative">
+              {/* Share button - mobile only (absolute), desktop version is beside Back button */}
               <button
                 onClick={() => setShareModalOpen(true)}
-                className="absolute top-4 right-4 p-2 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-sky-500 hover:border-sky-500 dark:hover:bg-sky-500 dark:hover:border-sky-500 hover:text-white transition-all duration-200 cursor-pointer"
+                className="sm:hidden absolute top-4 right-4 p-2 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-sky-500 hover:border-sky-500 dark:hover:bg-sky-500 dark:hover:border-sky-500 hover:text-white transition-all duration-200 cursor-pointer"
                 title="Share Brand"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-300 hover:text-white transition-colors">
@@ -561,8 +584,8 @@ export default function ByBrandPageMain() {
                   <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                 </svg>
               </button>
-              <div className="flex items-center gap-6">
-                <div className={`relative flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600`}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+                <div className={`relative flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 self-center sm:self-auto items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600`}>
                   {selectedBrandItem.image ? (
                     <Image src={selectedBrandItem.image} alt={selectedBrandItem.name} fill className="object-contain p-2" unoptimized />
                   ) : (
@@ -572,7 +595,7 @@ export default function ByBrandPageMain() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 justify-center sm:justify-start">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedBrandItem.name}</h1>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                         (selectedBrandItem.status ?? 0) === 0
@@ -583,10 +606,10 @@ export default function ByBrandPageMain() {
                         {(selectedBrandItem.status ?? 0) === 0 ? 'Online' : 'Offline'}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
                     Browse all products from this brand
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+                  <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm">
                     <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -618,9 +641,22 @@ export default function ByBrandPageMain() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <OutlineButton onClick={() => router.back()} className="shrink-0 !px-4 !py-2.5 !text-sm">
-                    ?? Back
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setShareModalOpen(true)}
+                    className="p-2 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-sky-500 hover:border-sky-500 dark:hover:bg-sky-500 dark:hover:border-sky-500 hover:text-white transition-all duration-200 cursor-pointer"
+                    title="Share Brand"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-300 hover:text-white transition-colors">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                  </button>
+                  <OutlineButton onClick={() => router.back()} className="!px-4 !py-2.5 !text-sm">
+                    Back
                   </OutlineButton>
                 </div>
               </div>
@@ -782,7 +818,18 @@ export default function ByBrandPageMain() {
 
         {/* Hero Banner */}
         {selectedBrandItem && !isFetchingProducts && brandProducts.length > 0 && (
-          <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 h-64 md:h-80 bg-white dark:bg-gray-800">
+          <div
+            className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 h-64 md:h-80 bg-white dark:bg-gray-800"
+            onTouchStart={(e) => { (e.currentTarget as HTMLDivElement).dataset.touchX = String(e.touches[0].clientX) }}
+            onTouchEnd={(e) => {
+              const startX = Number((e.currentTarget as HTMLDivElement).dataset.touchX ?? 0)
+              const diff = startX - e.changedTouches[0].clientX
+              if (Math.abs(diff) > 40) {
+                const max = Math.min(4, brandProducts.length - 1)
+                setCurrentSlide(prev => diff > 0 ? (prev === max ? 0 : prev + 1) : (prev === 0 ? max : prev - 1))
+              }
+            }}
+          >
             {/* Subtle Pattern Background */}
             <div className="absolute inset-0 opacity-5 dark:opacity-10" style={{
               backgroundImage: 'radial-gradient(circle at 2px 2px, #000 1px, transparent 0)',
@@ -792,9 +839,11 @@ export default function ByBrandPageMain() {
             {brandProducts.slice(0, 5).map((product, index) => (
               <div
                 key={product.id}
-                className={`absolute inset-0 transition-opacity duration-500 ${
-                  currentSlide === index ? 'opacity-100' : 'opacity-0'
-                }`}
+                className="absolute inset-0"
+                style={{
+                  transform: `translateX(${(index - currentSlide) * 100}%)`,
+                  transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
               >
                 {product.image ? (
                   <Image
@@ -813,20 +862,20 @@ export default function ByBrandPageMain() {
             ))}
 
             {/* Left Content Overlay */}
-            <div className="absolute left-0 top-0 bottom-0 w-48 md:w-64 bg-gradient-to-r from-sky-500 to-sky-500/10 flex flex-col justify-center px-6 z-10">
-              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white/90">Featured</p>
-              <h2 className="mt-2 text-xl font-bold text-white">
+            <div className="absolute left-0 top-0 bottom-0 w-28 sm:w-48 md:w-64 bg-gradient-to-r from-sky-500 to-sky-500/10 flex flex-col justify-center px-3 sm:px-6 z-10">
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white/90 hidden sm:block">Featured</p>
+              <h2 className="mt-0 sm:mt-2 text-sm sm:text-xl font-bold text-white line-clamp-2">
                 {selectedBrandItem.name}
               </h2>
-              <p className="mt-1 text-sm text-white/80">
+              <p className="mt-1 text-xs sm:text-sm text-white/80 hidden sm:block">
                 Premium quality products
               </p>
             </div>
 
             {/* Right Content Overlay */}
-            <div className="absolute right-0 top-0 bottom-0 w-48 md:w-64 bg-gradient-to-l from-sky-400 to-sky-400/10 flex flex-col justify-center items-end px-6 text-right z-10">
-              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white/90">Exclusive</p>
-              <p className="mt-2 text-sm text-white/80">
+            <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-48 md:w-64 bg-gradient-to-l from-sky-400 to-sky-400/10 flex flex-col justify-center items-end px-3 sm:px-6 text-right z-10">
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white/90 hidden sm:block">Exclusive</p>
+              <p className="mt-2 text-sm text-white/80 hidden sm:block">
                 Limited Edition
               </p>
             </div>
@@ -844,10 +893,10 @@ export default function ByBrandPageMain() {
               ))}
             </div>
 
-            {/* Navigation Arrows */}
+            {/* Navigation Arrows - desktop only, mobile uses dots */}
             <button
               onClick={() => setCurrentSlide((prev: number) => (prev === 0 ? Math.min(4, brandProducts.length - 1) : prev - 1))}
-              className="absolute left-48 md:left-64 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full shadow-md transition-colors cursor-pointer z-20"
+              className="hidden sm:flex absolute sm:left-48 md:left-64 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full shadow-md transition-colors cursor-pointer z-20"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="15 18 9 12 15 6" />
@@ -855,7 +904,7 @@ export default function ByBrandPageMain() {
             </button>
             <button
               onClick={() => setCurrentSlide((prev: number) => (prev === Math.min(4, brandProducts.length - 1) ? 0 : prev + 1))}
-              className="absolute right-48 md:right-64 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full shadow-md transition-colors cursor-pointer z-20"
+              className="hidden sm:flex absolute sm:right-48 md:right-64 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-full shadow-md transition-colors cursor-pointer z-20"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="9 18 15 12 9 6" />
@@ -867,8 +916,8 @@ export default function ByBrandPageMain() {
         {/* Brand Products Section */}
         {selectedBrandItem && (
           <div className="flex flex-col gap-6 lg:flex-row">
-            {/* Left Sidebar - Filter */}
-            <div className="lg:w-72 shrink-0">
+            {/* Left Sidebar - Filter (desktop only, mobile uses bottom drawer) */}
+            <div className="hidden lg:block lg:w-72 shrink-0">
               {isFetchingProducts ? (
                 <ProductFilterSkeleton />
               ) : (
@@ -891,9 +940,28 @@ export default function ByBrandPageMain() {
                   <p className="text-xs font-bold uppercase tracking-[0.3em] text-sky-500 dark:text-sky-400">Brand Products</p>
                   <h2 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{selectedBrandItem.name}</h2>
                 </div>
-                <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-600 dark:text-sky-400 ring-1 ring-sky-200 dark:ring-sky-500/30">
-                  {isFetchingProducts ? 'Loading...' : `${productsMeta?.total ?? brandProducts.length} product${(productsMeta?.total ?? brandProducts.length) !== 1 ? 's' : ''}`}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-600 dark:text-sky-400 ring-1 ring-sky-200 dark:ring-sky-500/30">
+                    {isFetchingProducts ? 'Loading...' : `${productsMeta?.total ?? brandProducts.length} product${(productsMeta?.total ?? brandProducts.length) !== 1 ? 's' : ''}`}
+                  </span>
+                  {/* Mobile filter button */}
+                  <button
+                    onClick={() => setIsFilterDrawerOpen(true)}
+                    className="lg:hidden relative inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:border-sky-400 hover:text-sky-500 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="4" y1="6" x2="20" y2="6" />
+                      <line x1="8" y1="12" x2="16" y2="12" />
+                      <line x1="12" y1="18" x2="12" y2="18" strokeLinecap="round" />
+                    </svg>
+                    Filters
+                    {activeFilterCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Top Filters */}
@@ -1154,18 +1222,22 @@ export default function ByBrandPageMain() {
               <h2 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">Other Brands</h2>
             </div>
             {isFetching ? (
-              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                {Array.from({ length: 6 }).map((_, i) => <BrandCardSkeleton key={i} />)}
+              <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 sm:overflow-x-visible sm:pb-0">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="w-36 shrink-0 sm:w-auto">
+                    <BrandCardSkeleton />
+                  </div>
+                ))}
               </div>
             ) : allBrands.filter(b => b.id !== selectedBrandItem.id).length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <p className="text-sm text-gray-500 dark:text-gray-400">No other brands available</p>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 sm:overflow-x-visible sm:pb-0 -mx-6 px-6 sm:mx-0 sm:px-0">
                 {allBrands
                   .filter(b => b.id !== selectedBrandItem.id)
-                  .slice(0, 6)
+                  .slice(0, 12)
                   .map((brand) => {
                     const brandSlug = toSlug(brand.name)
 
@@ -1173,7 +1245,7 @@ export default function ByBrandPageMain() {
                       <Link
                         key={brand.id}
                         href={`/by-brand?brand=${encodeURIComponent(brandSlug)}`}
-                        className="group flex flex-col items-center rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:border-sky-500 dark:hover:border-sky-400 transition-colors"
+                        className="group flex w-36 shrink-0 sm:w-auto flex-col items-center rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:border-sky-500 dark:hover:border-sky-400 transition-colors"
                       >
                         <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded">
                           {brand.image ? (
@@ -1184,7 +1256,7 @@ export default function ByBrandPageMain() {
                             </span>
                           )}
                         </div>
-                        <h3 className="mt-3 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <h3 className="mt-3 w-full truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                           {highlightText(brand.name, searchQuery)}
                         </h3>
                       </Link>
@@ -1195,6 +1267,65 @@ export default function ByBrandPageMain() {
           </div>
         )}
       </div>
+      {/* Mobile Filter Bottom Drawer */}
+      {selectedBrandItem && (
+        <>
+          {/* Backdrop */}
+          <div
+            className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 lg:hidden ${isFilterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            onClick={() => setIsFilterDrawerOpen(false)}
+          />
+          {/* Drawer */}
+          <div
+            className={`fixed bottom-0 left-0 right-0 z-50 lg:hidden flex flex-col bg-white dark:bg-gray-800 rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out max-h-[85vh] ${isFilterDrawerOpen ? 'translate-y-0' : 'translate-y-full'}`}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Filters</h3>
+                {activeFilterCount > 0 && (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-500 text-[10px] font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setIsFilterDrawerOpen(false)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            {/* Scrollable filter content */}
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              <ProductFilter
+                onFilterChange={setFilters}
+                pvRange={filters.pvRange}
+                search={filters.search}
+                isBrandPage={true}
+                brands={allBrands}
+                currentBrand={selectedBrandItem?.name}
+              />
+            </div>
+            {/* Footer */}
+            <div className="shrink-0 px-5 py-4 border-t border-gray-100 dark:border-gray-700">
+              <button
+                onClick={() => setIsFilterDrawerOpen(false)}
+                className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm transition-colors"
+              >
+                Show Results ({brandProducts.length})
+              </button>
+            </div>
+          </div>
+        </>
+      )}
       <Footer />
       <ScrollToTop />
       {/* Share Modal */}

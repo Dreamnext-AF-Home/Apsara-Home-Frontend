@@ -482,12 +482,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       </AnimatePresence>
 
       <aside className={`
-        fixed top-0 left-0 h-screen z-30 flex flex-col
+        fixed top-0 left-0 h-[100dvh] z-30 flex flex-col
         bg-white/95 dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-700/50 backdrop-blur-xl
         transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         ${isCollapsed ? 'w-16' : 'w-64'}
-        lg:translate-x-0 lg:sticky lg:top-0w
+        lg:translate-x-0 lg:sticky lg:top-0
       `}>
         {/* Logo */}
         <div className={`flex items-center h-16 px-3 border-b border-slate-200/80 dark:border-slate-700/50 shrink-0 ${isCollapsed ? 'justify-center' : 'gap-2'}`}>

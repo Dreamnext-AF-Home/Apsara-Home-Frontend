@@ -21,12 +21,41 @@
 html {
   scroll-behavior: smooth;
   overflow-x: clip;
+  max-width: 100vw;
 }
 
 body {
   font-family: var(--font-poppins), system-ui, sans-serif;
   overflow-x: clip;
   width: 100%;
+  max-width: 100vw;
+  min-height: 100dvh;
+}
+
+/* ── Box sizing reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ── Prevent images/videos from overflowing ── */
+img, video, iframe, embed, object {
+  max-width: 100%;
+}
+
+/* ── iOS: prevent auto-zoom on focused inputs (requires font-size >= 16px) ── */
+input, textarea, select {
+  font-size: max(16px, 1em);
+}
+
+/* ── iOS: remove tap highlight flash ── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Prevent long words/URLs from causing horizontal overflow ── */
+p, li, h1, h2, h3, h4, h5, h6, span, label {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .bg-af-cream {

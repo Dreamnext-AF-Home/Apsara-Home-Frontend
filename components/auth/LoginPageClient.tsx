@@ -71,7 +71,7 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
   const handleTabChange = (nextMode: 'login' | 'signup') => setManualMode(nextMode);
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto flex flex-col">
+    <div className="relative min-h-[100dvh] w-full overflow-x-hidden overflow-y-auto flex flex-col">
       <VideoBackground />
       <div className="absolute inset-0 bg-black/25 dark:bg-black/55 backdrop-blur-[2px]" />
 
@@ -79,14 +79,14 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
         <Header cartCount={0} />
       </div>
 
-      <div className={`relative z-10 flex justify-center w-full px-4 ${mode === 'signup' ? 'items-start pt-28 pb-10 sm:pt-32' : 'min-h-screen items-center'}`}>
+      <div className={`relative z-10 flex justify-center w-full px-4 ${mode === 'signup' ? 'items-start pt-28 pb-10 sm:pt-32' : 'min-h-[100dvh] items-center py-8'}`}>
         <motion.div
           initial={{ opacity: 0, y: 32, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1]}}
           className={`w-full transition-all duration-300 ${mode === 'signup' ? 'max-w-4xl' : 'max-w-md'}`}
         >
-          <div className={`rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-800 ${mode === 'signup' ? 'p-9 sm:p-10' : 'p-8'}`}>
+          <div className={`rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-800 ${mode === 'signup' ? 'p-5 sm:p-9 md:p-10' : 'p-5 sm:p-8'}`}>
             {mode !== 'force-password-change' && (
               <AuthTabs mode={mode === 'signup' ? 'signup' : 'login'} setMode={handleTabChange} />
             )}
