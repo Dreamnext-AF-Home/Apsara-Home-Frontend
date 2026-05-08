@@ -1,9 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 // import Script from "next/script";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import ShopAiSupportGate from "@/components/ai-support/ShopAiSupportGate";
 import CustomerServiceButton from "@/components/CustomerServiceButton";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+};
 
 export const metadata: Metadata = {
   title: "AF Home - Premium Furniture & Appliances",

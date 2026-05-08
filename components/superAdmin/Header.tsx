@@ -318,7 +318,9 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     const isDashboardPage = pathname?.startsWith('/admin/dashboard');
 
     return (
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4">
+        <header className="sticky top-0 z-10 shrink-0 border border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md">
+            {/* ── Main row ── */}
+            <div className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 px-4">
             <button
                 onClick={onMenuClick}
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
@@ -333,9 +335,12 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                 <p className="text-slate-400 dark:text-slate-500">Welcome back, {displayName}</p>
             </div>
 
-            <SearchCommandPalette />
+            {/* Search: inline on desktop, hidden on mobile (shown in row 2) */}
+            <div className="hidden sm:contents">
+                <SearchCommandPalette />
+            </div>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-1 sm:gap-2 ml-auto">
                 {isDashboardPage && (
                     <div className="hidden md:flex items-center gap-2">
                         <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 dark:border-slate-800 dark:bg-slate-800/60">
@@ -422,7 +427,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                                 transition={{ duration: 0.15 }}
-                                className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/40"
+                                className="absolute right-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/40"
                             >
                                 {/* Header */}
                                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
@@ -516,7 +521,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                             setUserOpen(!userOpen);
                             setNotifOpen(false);
                         }}
-                        className="flex items-center gap-2 rounded-xl py-1 pl-1 pr-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="flex items-center gap-2 rounded-xl py-1 pl-1 pr-2 sm:pr-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                         {avatarSrc ? (
                             <Image
@@ -545,7 +550,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                                 initial={{ opacity: 0, y: 8, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                                className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-100 bg-white py-1 dark:border-slate-800 dark:bg-slate-900"
+                                className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-100 bg-white py-1 shadow-xl dark:border-slate-800 dark:bg-slate-900"
                             >
                                 {userMenuItems.map((item) => (
                                     <button
@@ -578,6 +583,13 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                         )}
                     </AnimatePresence>
                 </div>
+            </div>
+
+            </div>{/* end main row */}
+
+            {/* ── Mobile search row ── */}
+            <div className="sm:hidden px-4 pb-3">
+                <SearchCommandPalette />
             </div>
 
             {(notifOpen || userOpen) && (

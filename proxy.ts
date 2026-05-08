@@ -2,6 +2,14 @@ import { NextResponse, NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { normalizeAdminPermissions } from "@/libs/adminPermissions";
 
+const MOBILE_UA_RE = /Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|CriOS|webOS/i;
+const DESKTOP_UA_RE = /Windows NT|Macintosh|X11; Linux/i;
+
+function isMobileDevice(ua: string): boolean {
+  if (DESKTOP_UA_RE.test(ua)) return false;
+  return MOBILE_UA_RE.test(ua);
+}
+
 const ADMIN_ALLOWED_ROLES = new Set([
   "admin",
   "super_admin",
@@ -115,6 +123,18 @@ const canAccessWebContentPath = (permissions: string[], pathname: string): boole
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Block mobile devices from admin/super_admin routes
+  if (
+    (pathname.startsWith("/admin") || pathname.startsWith("/super_admin")) &&
+    !pathname.startsWith("/admin/mobile-blocked")
+  ) {
+    const ua = req.headers.get("user-agent") ?? "";
+    if (isMobileDevice(ua)) {
+      return NextResponse.redirect(new URL("/admin/mobile-blocked", req.url));
+    }
+  }
+
   const memberToken = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
