@@ -167,79 +167,110 @@ export default function NetworkEarningsTab({ awards, monthlyActivation }: Props)
           </div>
 
           <div className="overflow-x-auto pb-2">
-            <div className="min-w-[320px]">
-              {/* Root — You */}
-              <div className="flex flex-col items-center">
-                <div className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 px-5 py-3 shadow-lg ring-2 ring-slate-700">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-sm font-black text-white shadow">
-                    You
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-white">You</p>
-                    <p className="text-[11px] text-slate-400">Network root · {levels.length} active level{levels.length !== 1 ? 's' : ''}</p>
-                  </div>
+            <div className="min-w-[360px] flex flex-col items-center">
+
+              {/* Root node — You */}
+              <div className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 px-5 py-3 shadow-lg ring-2 ring-slate-700 z-10">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-[11px] font-black text-white shadow">
+                  You
                 </div>
+                <div>
+                  <p className="text-sm font-black text-white leading-tight">You</p>
+                  <p className="text-[11px] text-slate-400">Network root · {levels.length} level{levels.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
 
-                {/* Levels */}
-                {levels.map((lvl, li) => {
-                  const c = colorOf(lvl.level);
-                  const members = contributors.filter((con) => con.levels.has(lvl.level));
-                  const visible = members.slice(0, 5);
-                  const overflow = members.length - visible.length;
-                  return (
-                    <div key={lvl.level} className="flex flex-col items-center w-full">
-                      {/* Connector */}
-                      <div className="flex flex-col items-center">
-                        <div className="w-px h-5 bg-gradient-to-b from-slate-300 to-slate-200 dark:from-slate-600 dark:to-slate-700" />
-                        <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-black text-white shadow-sm ${c.badge}`}>
-                          Level {lvl.level} · {(lvl.rate * 100).toFixed(0)}% · {peso(lvl.bonus)}
-                        </div>
-                        <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
-                      </div>
+              {levels.map((lvl, li) => {
+                const c = colorOf(lvl.level);
+                const members = contributors.filter((con) => con.levels.has(lvl.level));
+                const visible = members.slice(0, 6);
+                const overflow = members.length - visible.length;
+                const nodeCount = visible.length + (overflow > 0 ? 1 : 0) || 1;
+                const isLast = li === levels.length - 1;
 
-                      {/* Members row */}
-                      <div className="flex flex-wrap justify-center gap-2 px-2">
+                return (
+                  <div key={lvl.level} className="flex flex-col items-center w-full">
+
+                    {/* Spine line from parent to level badge */}
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+
+                    {/* Level badge */}
+                    <div className={`z-10 flex items-center gap-2 rounded-full px-4 py-1.5 text-[11px] font-black text-white shadow-md ${c.badge}`}>
+                      <span>Level {lvl.level}</span>
+                      <span className="opacity-70">·</span>
+                      <span>{(lvl.rate * 100).toFixed(0)}%</span>
+                      <span className="opacity-70">·</span>
+                      <span>{peso(lvl.bonus)}</span>
+                    </div>
+
+                    {/* Spine to horizontal branch */}
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+
+                    {/* Members row with connecting lines */}
+                    <div className="relative w-full flex justify-center">
+                      {/* Horizontal branch line — spans center of first to center of last node */}
+                      {nodeCount > 1 && (
+                        <div
+                          className="absolute top-0 h-px bg-slate-200 dark:bg-slate-700"
+                          style={{
+                            left:  `calc(50% - (${nodeCount - 1} * 56px))`,
+                            right: `calc(50% - (${nodeCount - 1} * 56px))`,
+                          }}
+                        />
+                      )}
+
+                      <div className="flex gap-3 flex-wrap justify-center">
                         {visible.length === 0 ? (
-                          <div className={`rounded-xl border px-3 py-2 text-center text-xs font-semibold ${c.bg} ${c.text} ring-1 ${c.ring}`}>
-                            No named contributors at this level
+                          <div className="flex flex-col items-center">
+                            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                            <div className={`rounded-xl px-3 py-2 text-[11px] font-semibold ring-1 ${c.bg} ${c.text} ${c.ring}`}>
+                              No contributors yet
+                            </div>
                           </div>
                         ) : (
                           <>
-                            {visible.map((member) => (
+                            {visible.map((member, mi) => (
                               <motion.div
                                 key={member.key}
-                                initial={{ opacity: 0, y: 8 }}
+                                initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3, delay: li * 0.05 }}
-                                className={`flex flex-col items-center gap-1 rounded-xl border p-2.5 min-w-[88px] max-w-[110px] text-center ring-1 ${c.bg} ${c.ring}`}
+                                transition={{ duration: 0.3, delay: li * 0.05 + mi * 0.04 }}
+                                className="flex flex-col items-center"
                               >
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${c.badge} text-[11px] font-black text-white shadow`}>
-                                  {(member.name[0] ?? '?').toUpperCase()}
+                                {/* Vertical drop from horizontal branch */}
+                                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                                {/* Node card */}
+                                <div className={`flex flex-col items-center gap-1 rounded-xl p-2.5 w-[88px] text-center ring-1 ${c.bg} ${c.ring}`}>
+                                  <div className={`flex h-8 w-8 items-center justify-center rounded-full ${c.badge} text-[11px] font-black text-white shadow-sm`}>
+                                    {(member.name[0] ?? '?').toUpperCase()}
+                                  </div>
+                                  <p className={`w-full truncate text-[11px] font-bold leading-tight ${c.text}`}>{member.name}</p>
+                                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">+{peso(member.totalBonus)}</p>
+                                  <p className="text-[10px] text-slate-400">{member.txCount} tx</p>
                                 </div>
-                                <p className={`w-full truncate text-[11px] font-bold ${c.text}`}>{member.name}</p>
-                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">+{peso(member.totalBonus)}</p>
                               </motion.div>
                             ))}
                             {overflow > 0 && (
-                              <div className={`flex flex-col items-center justify-center gap-1 rounded-xl border p-2.5 min-w-[88px] ring-1 ${c.bg} ${c.ring}`}>
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${c.badge} text-xs font-black text-white`}>
-                                  +{overflow}
+                              <div className="flex flex-col items-center">
+                                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                                <div className={`flex flex-col items-center gap-1 rounded-xl p-2.5 w-[88px] text-center ring-1 ${c.bg} ${c.ring}`}>
+                                  <div className={`flex h-8 w-8 items-center justify-center rounded-full ${c.badge} text-xs font-black text-white`}>
+                                    +{overflow}
+                                  </div>
+                                  <p className={`text-[11px] font-bold ${c.text}`}>more</p>
                                 </div>
-                                <p className={`text-[11px] font-bold ${c.text}`}>more</p>
                               </div>
                             )}
                           </>
                         )}
                       </div>
-
-                      {/* Bottom connector — only if not last level */}
-                      {li < levels.length - 1 && (
-                        <div className="w-px h-5 bg-gradient-to-b from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 mt-2" />
-                      )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Spine continuing down — hidden on last level */}
+                    {!isLast && <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mt-3" />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
