@@ -2,8 +2,10 @@
 
 import { ReactNode, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { useAddToCartMutation, useGetCartQuery, useRemoveCartItemMutation, useUpdateCartItemMutation } from '@/store/api/cartApi'
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting'
 import {
   addToCart as addToCartAction,
   removeFromCart as removeFromCartAction,
@@ -14,7 +16,7 @@ import {
   setCartItems,
 } from '@/store/slices/cartSlice'
 
-const GUEST_CART_STORAGE_KEY = 'partner_guest_cart_items'
+const GUEST_CART_STORAGE_KEY_PREFIX = 'guest_cart_items'
 
 export interface CartItem {
   id: string
@@ -62,11 +64,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart(): CartContextType {
   const dispatch = useAppDispatch()
+  const pathname = usePathname()
   const { data: session, status } = useSession()
   const role = String(session?.user?.role ?? '').toLowerCase()
   const isLoggedIn = status === 'authenticated' && role === 'customer'
   const { items, isOpen, selectedIds } = useAppSelector((state) => state.cart)
   const guestCartHydratedRef = useRef(false)
+  const guestCartHydratedKeyRef = useRef<string>('')
+  const partnerSlug = extractPartnerSlugFromPath(pathname)
+  const guestCartStorageKey = `${GUEST_CART_STORAGE_KEY_PREFIX}:${partnerSlug || 'main'}`
   const { data: cartData, isLoading: isCartLoading } = useGetCartQuery(undefined, {
     skip: !isLoggedIn,
   })
@@ -77,26 +83,21 @@ export function useCart(): CartContextType {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (isLoggedIn || isCartLoading) return
-    if (guestCartHydratedRef.current) return
-    if (items.length > 0) {
-      guestCartHydratedRef.current = true
-      return
-    }
+    if (guestCartHydratedRef.current && guestCartHydratedKeyRef.current === guestCartStorageKey) return
 
     try {
-      const raw = window.localStorage.getItem(GUEST_CART_STORAGE_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as CartItem[]
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        dispatch(setCartItems(parsed))
-        dispatch(setCartSelectionAction({ ids: parsed.map((item) => item.id) }))
-      }
+      const raw = window.localStorage.getItem(guestCartStorageKey)
+      const parsed = raw ? (JSON.parse(raw) as CartItem[]) : []
+      const scopedItems = Array.isArray(parsed) ? parsed : []
+      dispatch(setCartItems(scopedItems))
+      dispatch(setCartSelectionAction({ ids: scopedItems.map((item) => item.id) }))
     } catch {
       // Ignore invalid local storage payload.
     } finally {
       guestCartHydratedRef.current = true
+      guestCartHydratedKeyRef.current = guestCartStorageKey
     }
-  }, [dispatch, isCartLoading, isLoggedIn, items.length])
+  }, [dispatch, guestCartStorageKey, isCartLoading, isLoggedIn])
 
   // Sync cart items from backend when logged in
   useEffect(() => {
@@ -130,11 +131,11 @@ export function useCart(): CartContextType {
     if (!guestCartHydratedRef.current) return
 
     try {
-      window.localStorage.setItem(GUEST_CART_STORAGE_KEY, JSON.stringify(items))
+      window.localStorage.setItem(guestCartStorageKey, JSON.stringify(items))
     } catch {
       // Ignore localStorage write failures.
     }
-  }, [isLoggedIn, items])
+  }, [guestCartStorageKey, isLoggedIn, items])
 
   const addToCart = (item: Omit<CartItem, 'quantity'>) => {
     dispatch(addToCartAction(item))

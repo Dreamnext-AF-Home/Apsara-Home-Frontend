@@ -31,6 +31,20 @@ const getStatusStyles = (status: string) => {
   return { badge: 'border-slate-200 bg-slate-50 text-slate-600', dot: 'bg-slate-400' }
 }
 
+const colorGradients = [
+  'from-orange-400 to-orange-600',
+  'from-emerald-400 to-emerald-600',
+  'from-red-400 to-red-600',
+  'from-purple-500 to-purple-700',
+  'from-blue-500 to-blue-700',
+  'from-teal-400 to-teal-600',
+]
+
+const getGradientColor = (id: number | string) => {
+  const index = String(id).charCodeAt(0) % colorGradients.length
+  return colorGradients[index]
+}
+
 export default function PaymentsVouchersPageMain() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'redeemed' | 'expired'>('all')
@@ -59,31 +73,25 @@ export default function PaymentsVouchersPageMain() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-gradient-to-br from-white via-white to-sky-50/40 dark:from-gray-900 dark:via-gray-900 dark:to-sky-950/20"
+        className="relative overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-200/30 via-transparent to-transparent" />
-        <div className="relative p-5 sm:p-6">
+        <div className="relative p-5 sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-sky-50/70 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200/80 dark:bg-sky-950/20 dark:text-sky-300 dark:ring-sky-900/60">
-                <span className="h-2 w-2 rounded-full bg-sky-500" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-semibold text-sky-700 uppercase tracking-wide">
+                <span className="h-2.5 w-2.5 rounded-full bg-sky-600" />
                 Admin • Vouchers
               </div>
-              <h1 className="mt-3 text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-                Vouchers
-              </h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Manage and track affiliate voucher codes
+              <p className="mt-2 text-base font-bold text-gray-900 dark:text-white">
+                VOUCHER
+              </p>
+              <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                Share these codes to give discounts or rewards.
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Link
-                href="/admin/payments"
-                className="inline-flex items-center rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-100 transition hover:border-sky-300/80 dark:hover:border-sky-700/80 hover:bg-sky-50 dark:hover:bg-sky-950/20"
-              >
-                Back to Payments
-              </Link>
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 font-semibold whitespace-nowrap">
+              📊 <span>{vouchersData?.meta?.total ?? 0} total – {statusFilter === 'all' ? 'All' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
             </div>
           </div>
         </div>
@@ -102,12 +110,12 @@ export default function PaymentsVouchersPageMain() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.03 }}
-            className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5"
+            className="rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
           >
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
                 {/* Search */}
-                <div className="relative w-full sm:max-w-[380px]">
+                <div className="relative flex-1 sm:max-w-sm">
                   <svg
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500"
                     fill="none"
@@ -128,7 +136,7 @@ export default function PaymentsVouchersPageMain() {
                       setPage(1)
                     }}
                     placeholder="Search code, username, or email..."
-                    className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200/80 dark:border-gray-800 rounded-xl bg-gray-50/80 dark:bg-gray-800/70 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/50 dark:focus:ring-sky-400/20 dark:focus:border-sky-400/50 transition"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200/80 dark:border-gray-800 rounded-lg bg-gray-50/80 dark:bg-gray-800/70 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 dark:focus:ring-orange-400/20 dark:focus:border-orange-400/50 transition"
                   />
                 </div>
 
@@ -140,7 +148,7 @@ export default function PaymentsVouchersPageMain() {
                       setStatusFilter(e.target.value as any)
                       setPage(1)
                     }}
-                    className="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/70 px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/50 dark:focus:ring-sky-400/20 dark:focus:border-sky-400/50"
+                    className="rounded-lg border border-gray-200/80 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/70 px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 dark:focus:ring-orange-400/20 dark:focus:border-orange-400/50"
                   >
                     <option value="all">All Vouchers</option>
                     <option value="active">Active</option>
@@ -150,110 +158,121 @@ export default function PaymentsVouchersPageMain() {
                 </div>
               </div>
 
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                 Showing{' '}
                 <span className="font-semibold text-gray-700 dark:text-gray-200">
-                  {vouchersData?.meta?.total ?? 0}
+                  {vouchersData?.data?.length ?? 0}
                 </span>{' '}
-                vouchers total
+                of{' '}
+                <span className="font-semibold text-gray-700 dark:text-gray-200">
+                  {vouchersData?.meta?.total ?? 0}
+                </span>
               </div>
             </div>
           </motion.div>
 
           {/* Voucher cards */}
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-64 rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 animate-pulse"
-                />
+                <div key={i} className="space-y-3">
+                  <div className="h-56 rounded-3xl animate-pulse bg-gray-200 dark:bg-gray-800" />
+                  <div className="h-12 rounded-lg animate-pulse bg-gray-200 dark:bg-gray-800" />
+                </div>
               ))}
             </div>
           ) : vouchersData?.data && vouchersData.data.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <AnimatePresence>
-                {vouchersData.data.map((voucher) => {
+                {vouchersData.data.map((voucher, index) => {
                   const statusStyles = getStatusStyles(voucher.status)
+                  const gradient = getGradientColor(voucher.id)
 
                   return (
                     <motion.div
                       key={voucher.id}
-                      initial={{ opacity: 0, scale: 0.98 }}
+                      initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      className="group rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:border-gray-300/90 dark:hover:border-gray-700/90 transition"
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="group"
                     >
-                      {/* top row */}
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div>
-                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                            Code
-                          </p>
-                          <p className="mt-1 text-base sm:text-lg font-extrabold text-gray-900 dark:text-white font-mono tracking-wider">
-                            {voucher.code}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border capitalize ${statusStyles.badge}`}
-                        >
-                          <span className={`h-1.5 w-1.5 rounded-full ${statusStyles.dot}`} />
-                          {voucher.status}
-                        </span>
-                      </div>
-
-                      {/* amount */}
-                      <div className="mb-4 rounded-2xl bg-gradient-to-br from-sky-50 to-teal-50 dark:from-sky-950/30 dark:to-teal-950/30 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-[11px] font-semibold text-sky-700 dark:text-sky-300 uppercase tracking-wide">
-                              Amount
-                            </p>
-                            <p className="text-2xl font-extrabold text-sky-800 dark:text-sky-200 mt-1">
-                              {formatMoney(voucher.amount)}
+                      {/* Card */}
+                      <div className={`relative bg-linear-to-br ${gradient} rounded-2xl p-4 text-white shadow-lg hover:shadow-xl transition-shadow overflow-hidden`}
+                        style={{
+                          clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 10px), 98% calc(100% - 5px), 96% calc(100% - 10px), 94% calc(100% - 5px), 92% calc(100% - 10px), 90% calc(100% - 5px), 88% calc(100% - 10px), 86% calc(100% - 5px), 84% calc(100% - 10px), 82% calc(100% - 5px), 80% calc(100% - 10px), 78% calc(100% - 5px), 76% calc(100% - 10px), 74% calc(100% - 5px), 72% calc(100% - 10px), 70% calc(100% - 5px), 68% calc(100% - 10px), 66% calc(100% - 5px), 64% calc(100% - 10px), 62% calc(100% - 5px), 60% calc(100% - 10px), 58% calc(100% - 5px), 56% calc(100% - 10px), 54% calc(100% - 5px), 52% calc(100% - 10px), 50% calc(100% - 5px), 48% calc(100% - 10px), 46% calc(100% - 5px), 44% calc(100% - 10px), 42% calc(100% - 5px), 40% calc(100% - 10px), 38% calc(100% - 5px), 36% calc(100% - 10px), 34% calc(100% - 5px), 32% calc(100% - 10px), 30% calc(100% - 5px), 28% calc(100% - 10px), 26% calc(100% - 5px), 24% calc(100% - 10px), 22% calc(100% - 5px), 20% calc(100% - 10px), 18% calc(100% - 5px), 16% calc(100% - 10px), 14% calc(100% - 5px), 12% calc(100% - 10px), 10% calc(100% - 5px), 8% calc(100% - 10px), 6% calc(100% - 5px), 4% calc(100% - 10px), 2% calc(100% - 5px), 0 calc(100% - 10px))',
+                        }}
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <p className="text-[10px] font-bold tracking-widest uppercase opacity-90">
+                              🎟️ Voucher
                             </p>
                           </div>
-                          {voucher.max_uses ? (
-                            <div className="text-right">
-                              <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">
-                                Uses
-                              </p>
-                              <p className="text-[12px] font-bold text-gray-900 dark:text-white">
-                                {voucher.used_count ?? 0} / {voucher.max_uses}
-                              </p>
-                            </div>
-                          ) : null}
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold capitalize bg-white/20 backdrop-blur-sm`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${statusStyles.dot}`} />
+                            {voucher.status}
+                          </span>
+                        </div>
+
+                        {/* Amount Display */}
+                        <div className="mb-3 flex items-baseline gap-1">
+                          <span className="text-3xl sm:text-4xl font-black">₱{(voucher.amount || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}</span>
+                          <span className="text-sm font-bold opacity-90">OFF</span>
+                        </div>
+
+                        {/* Code */}
+                        <div className="font-mono text-xs font-bold tracking-wider opacity-95 mb-3">
+                          {voucher.code}
+                        </div>
+
+                        {/* Bottom info */}
+                        <div className="flex items-end justify-between pt-2 border-t border-white/20">
+                          <div>
+                            <p className="text-[8px] font-semibold opacity-75 uppercase">Uses</p>
+                            <p className="text-xs font-bold">
+                              {voucher.max_uses ? `${voucher.used_count ?? 0} / ${voucher.max_uses}` : '∞'}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
-                      {/* creator */}
-                      <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-800">
-                        <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          Creator
-                        </p>
-                        <p className="mt-1 text-sm font-bold text-gray-900 dark:text-white">
-                          {voucher.customer.name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">@{voucher.customer.username}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{voucher.customer.email}</p>
-                      </div>
+                      {/* Creator Info Below Card */}
+                      <div className="mt-3 rounded-xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Left: Creator Info */}
+                          <div>
+                            <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Creator</p>
+                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                              {voucher.customer.name}
+                            </p>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">@{voucher.customer.username}</p>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{voucher.customer.email}</p>
+                          </div>
 
-                      {/* dates */}
-                      <div className="space-y-2 text-xs">
-                        <p className="text-gray-600 dark:text-gray-300">
-                          <span className="font-semibold">Created:</span> {formatDateTime(voucher.created_at)}
-                        </p>
-                        {voucher.expires_at ? (
-                          <p className="text-gray-600 dark:text-gray-300">
-                            <span className="font-semibold">Expires:</span> {formatDateTime(voucher.expires_at)}
-                          </p>
-                        ) : null}
-                        {voucher.redeemed_at ? (
-                          <p className="text-sky-700 dark:text-sky-300">
-                            <span className="font-semibold">Redeemed:</span> {formatDateTime(voucher.redeemed_at)}
-                          </p>
-                        ) : null}
+                          {/* Right: Dates */}
+                          <div>
+                            <p className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Dates</p>
+                            <div className="space-y-1 text-[10px] text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-1">
+                                <span>📅</span>
+                                <span>{formatDateTime(voucher.created_at)}</span>
+                              </div>
+                              {voucher.expires_at ? (
+                                <div className="flex items-center gap-1">
+                                  <span>⏰</span>
+                                  <span>{formatDateTime(voucher.expires_at)}</span>
+                                </div>
+                              ) : null}
+                              {voucher.redeemed_at ? (
+                                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                  <span>✓</span>
+                                  <span>{formatDateTime(voucher.redeemed_at)}</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   )
@@ -282,12 +301,12 @@ export default function PaymentsVouchersPageMain() {
 
           {/* Pagination */}
           {vouchersData?.meta && vouchersData.meta.last_page > 1 ? (
-            <div className="mt-4 flex items-center justify-center">
+            <div className="mt-8 flex items-center justify-center">
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 }}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-4"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full rounded-2xl border border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
               >
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Page{' '}
@@ -305,17 +324,17 @@ export default function PaymentsVouchersPageMain() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="px-3 py-2 rounded-xl border border-gray-200/80 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition"
+                    className="px-4 py-2 rounded-lg border border-gray-200/80 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition"
                   >
-                    Previous
+                    ← Previous
                   </button>
                   <button
                     type="button"
                     onClick={() => setPage((p) => p + 1)}
                     disabled={page >= vouchersData.meta.last_page}
-                    className="px-3 py-2 rounded-xl border border-gray-200/80 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition"
+                    className="px-4 py-2 rounded-lg border border-gray-200/80 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition"
                   >
-                    Next
+                    Next →
                   </button>
                 </div>
               </motion.div>

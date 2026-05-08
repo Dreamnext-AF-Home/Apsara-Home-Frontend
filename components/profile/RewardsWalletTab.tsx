@@ -41,6 +41,19 @@ const formatDate = (value?: string | null) => {
   });
 };
 
+const colorGradients = [
+  'from-orange-400 via-orange-500 to-amber-500',
+  'from-violet-500 via-indigo-500 to-cyan-500',
+  'from-emerald-400 via-teal-500 to-sky-500',
+  'from-rose-500 via-fuchsia-500 to-purple-600',
+];
+
+const getGradientColor = (id: number | string) => {
+  const key = String(id ?? '0');
+  const index = key.charCodeAt(0) % colorGradients.length;
+  return colorGradients[index];
+};
+
 const STATUS_CONFIG: Record<string, { label: string; cls: string; dot: string }> = {
   active: {
     label: 'Active',
@@ -414,45 +427,61 @@ export default function RewardsWalletTab({
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Create your first affiliate voucher above.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-slate-700">
-                    {['Voucher Code', 'Amount', 'Valid Until', 'Uses', 'Created', 'Status'].map((heading) => (
-                      <th key={heading} className="pb-2.5 pr-4 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 last:pr-0">
-                        {heading}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {vouchers.map((voucher) => (
-                    <tr key={voucher.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/20 transition-colors">
-                      <td className="py-3.5 pr-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`inline-flex items-center rounded-lg px-2.5 py-1 font-mono text-xs font-bold tracking-wider ${
-                            voucher.status === 'active'
-                              ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700'
-                              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                          }`}>{voucher.code}</span>
-                          {voucher.status === 'active' ? <CopyButton text={voucher.code} /> : null}
+            <div className="space-y-4">
+              {vouchers.map((voucher) => {
+                const gradient = getGradientColor(voucher.id);
+                const usesText = voucher.max_uses != null ? `${voucher.used_count ?? 0} / ${voucher.max_uses}` : '∞ uses';
+
+                return (
+                  <div key={voucher.id} className={`relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-r ${gradient} p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)]`}>
+                    <span className="pointer-events-none absolute left-0 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20" />
+                    <span className="pointer-events-none absolute right-0 top-1/2 h-6 w-6 translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20" />
+
+                    <div className="grid gap-4 lg:grid-cols-[1.9fr_1.2fr_0.8fr] items-center">
+                      <div className="space-y-3 text-white">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/15 text-xl">
+                            <span>🎟</span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-white/80">discount voucher</p>
+                            <p className="mt-2 text-3xl font-black tracking-tight">₱{(voucher.amount || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+                          </div>
                         </div>
-                      </td>
-                      <td className="py-3.5 pr-4 font-semibold text-slate-800 dark:text-white">{peso(voucher.amount)}</td>
-                      <td className="py-3.5 pr-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
-                        {voucher.expires_at ? formatDate(voucher.expires_at) : <span className="text-slate-300 dark:text-slate-600">No expiry</span>}
-                      </td>
-                      <td className="py-3.5 pr-4 text-xs text-slate-500 dark:text-slate-400">
-                        {voucher.max_uses != null ? `${voucher.used_count ?? 0} / ${voucher.max_uses}` : <span className="text-slate-300 dark:text-slate-600">Unlimited</span>}
-                      </td>
-                      <td className="py-3.5 pr-4 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{formatDate(voucher.created_at)}</td>
-                      <td className="py-3.5">
-                        <StatusBadge status={voucher.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="rounded-full bg-white/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/90">{voucher.code}</span>
+                          <CopyButton text={voucher.code} />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 rounded-[28px] bg-white/10 p-3 text-sm text-white/95">
+                        <div className="space-y-1">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-white/70">Valid until</p>
+                          <p className="font-semibold">{voucher.expires_at ? formatDate(voucher.expires_at) : 'No expiry'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-white/70">Uses</p>
+                          <p className="font-semibold">{usesText}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-white/70">Created</p>
+                          <p className="font-semibold">{formatDate(voucher.created_at)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col justify-between gap-4 rounded-[28px] bg-white/10 p-4 text-white/95">
+                        <div className="flex items-center justify-between gap-3">
+                          <StatusBadge status={voucher.status} />
+                        </div>
+                        <div>
+                          <CopyButton text={voucher.code} />
+                        </div>
+                        <p className="text-right text-xs uppercase tracking-[0.2em] text-white/75">{usesText}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

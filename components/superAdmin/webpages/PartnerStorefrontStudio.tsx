@@ -22,6 +22,7 @@ type DraftState = {
   heroSubtitle: string
   logoUrl: string
   tabLogoUrl: string
+  heroVideoUrl: string
   logoVersion: string
   referralLink: string
   themeColor: string
@@ -40,6 +41,7 @@ const emptyDraft: DraftState = {
   heroSubtitle: '',
   logoUrl: '',
   tabLogoUrl: '',
+  heroVideoUrl: '',
   logoVersion: '',
   referralLink: '',
   themeColor: '#0f766e',
@@ -69,6 +71,7 @@ const toDraft = (item?: WebPageItem): DraftState => {
     heroSubtitle: config.heroSubtitle,
     logoUrl: config.logoUrl ?? '',
     tabLogoUrl: config.tabLogoUrl ?? '',
+    heroVideoUrl: config.heroVideoUrl ?? '',
     logoVersion: config.logoVersion ?? '',
     referralLink: config.referralLink ?? '',
     themeColor: config.themeColor,
@@ -133,6 +136,8 @@ export default function PartnerStorefrontStudio() {
   const logoInputRef = useRef<HTMLInputElement | null>(null)
   const [isUploadingTabLogo, setIsUploadingTabLogo] = useState(false)
   const tabLogoInputRef = useRef<HTMLInputElement | null>(null)
+  const [isUploadingHeroVideo, setIsUploadingHeroVideo] = useState(false)
+  const heroVideoInputRef = useRef<HTMLInputElement | null>(null)
   const { data: categoriesData } = useGetCategoriesQuery({ per_page: 200 })
   const [fetchProducts] = useLazyGetProductsQuery()
   const [fetchPublicProduct] = useLazyGetPublicProductQuery()
@@ -198,6 +203,9 @@ export default function PartnerStorefrontStudio() {
       if (tabLogoInputRef.current) {
         tabLogoInputRef.current.value = ''
       }
+      if (heroVideoInputRef.current) {
+        heroVideoInputRef.current.value = ''
+      }
       return
     }
 
@@ -210,6 +218,9 @@ export default function PartnerStorefrontStudio() {
     }
     if (tabLogoInputRef.current) {
       tabLogoInputRef.current.value = ''
+    }
+    if (heroVideoInputRef.current) {
+      heroVideoInputRef.current.value = ''
     }
   }
 
@@ -291,6 +302,7 @@ export default function PartnerStorefrontStudio() {
           hero_subtitle: nextDraft.heroSubtitle.trim(),
           logo_url: nextDraft.logoUrl.trim(),
           tab_logo_url: nextDraft.tabLogoUrl.trim(),
+          hero_video_url: nextDraft.heroVideoUrl.trim(),
           logo_version: nextDraft.logoVersion.trim(),
           referral_link: nextDraft.referralLink.trim(),
           theme_color: nextDraft.themeColor.trim(),
@@ -546,6 +558,107 @@ export default function PartnerStorefrontStudio() {
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
       showErrorToast(apiErr?.data?.message || 'Failed to remove tab logo.')
+    }
+  }
+
+  const handleHeroVideoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const payload = new FormData()
+    payload.append('file', file)
+    payload.append('folder', 'partner-storefronts')
+    payload.append('asset_type', 'video')
+
+    setIsUploadingHeroVideo(true)
+
+    try {
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: payload,
+      })
+
+      const result = (await response.json()) as { url?: string; error?: string }
+      if (!response.ok || !result.url) {
+        throw new Error(result.error || 'Failed to upload video.')
+      }
+
+      const nextVideoUrl = result.url ?? ''
+      const nextDraft = { ...draft, heroVideoUrl: nextVideoUrl }
+      const targetId = typeof selectedId === 'number' ? selectedId : nextDraft.id
+
+      setDraft((current) => ({
+        ...current,
+        heroVideoUrl: nextVideoUrl || current.heroVideoUrl,
+      }))
+      showSuccessToast('Hero video uploaded successfully.')
+
+      if (targetId) {
+        if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(targetId)) {
+          showErrorToast('You do not have access to edit this storefront.')
+          return
+        }
+
+        const slug = toSlug(nextDraft.slug || nextDraft.displayName)
+        if (!slug) {
+          showErrorToast('Add a slug or display name first.')
+          return
+        }
+
+        const data = buildStorefrontPayload(nextDraft)
+        try {
+          await updateItem({ type: 'partner-storefront', id: targetId, data }).unwrap()
+          showSuccessToast('Hero video saved to storefront.')
+          refetch()
+        } catch (error) {
+          const apiErr = error as { data?: { message?: string } }
+          showErrorToast(apiErr?.data?.message || 'Failed to save hero video.')
+        }
+      } else {
+        showErrorToast('Hero video uploaded. Click "Save Storefront" to apply it.')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to upload hero video.'
+      showErrorToast(message)
+    } finally {
+      setIsUploadingHeroVideo(false)
+      if (heroVideoInputRef.current) {
+        heroVideoInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleRemoveHeroVideo = async () => {
+    if (typeof selectedId !== 'number') {
+      setDraft((current) => ({ ...current, heroVideoUrl: '' }))
+      showSuccessToast('Hero video cleared. Click "Save Storefront" to apply it.')
+      return
+    }
+
+    if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
+      showErrorToast('You do not have access to edit this storefront.')
+      return
+    }
+
+    const slug = toSlug(draft.slug || draft.displayName)
+    if (!slug) {
+      showErrorToast('Add a slug or display name first.')
+      return
+    }
+
+    const data = buildStorefrontPayload({
+      ...draft,
+      heroVideoUrl: '',
+    })
+
+    try {
+      await updateItem({ type: 'partner-storefront', id: selectedId, data }).unwrap()
+      setDraft((current) => ({ ...current, heroVideoUrl: '' }))
+      showSuccessToast('Hero video removed.')
+      refetch()
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to remove hero video.')
     }
   }
 
@@ -977,7 +1090,7 @@ export default function PartnerStorefrontStudio() {
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved when you click <span className="font-semibold text-slate-700 dark:text-slate-200">Save Storefront</span>.</p>
               </div>
             </Field>
-            <Field label="Tab Logo Upload">
+            <Field label="Tab Logo Upload" className="md:col-span-1">
               <div className="space-y-3">
                 <div className={`${softCardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
                   <div>
@@ -1021,6 +1134,52 @@ export default function PartnerStorefrontStudio() {
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Tab logo uploaded.</p>
+                  </div>
+                ) : null}
+              </div>
+            </Field>
+            <Field label="Hero Video Upload" className="md:col-span-1">
+              <div className="space-y-3">
+                <div className={softCardClass}>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Upload storefront hero video</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Accepted: MP4, MOV, WEBM, AVI, WMV. Minimum file size is 5MB.</p>
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <input
+                      ref={heroVideoInputRef}
+                      type="file"
+                      accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv"
+                      onChange={handleHeroVideoUpload}
+                      className="hidden"
+                    />
+                    {draft.heroVideoUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveHeroVideo()}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => heroVideoInputRef.current?.click()}
+                      disabled={isUploadingHeroVideo}
+                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                    >
+                      {isUploadingHeroVideo ? 'Uploading...' : 'Upload Hero Video'}
+                    </button>
+                  </div>
+                </div>
+                {draft.heroVideoUrl ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70">
+                    <video
+                      src={draft.heroVideoUrl}
+                      controls
+                      className="w-full max-h-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-900"
+                    />
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Hero video uploaded.</p>
                   </div>
                 ) : null}
               </div>

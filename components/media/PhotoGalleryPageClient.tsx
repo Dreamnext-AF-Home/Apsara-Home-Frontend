@@ -7,10 +7,12 @@ import TopBar from '@/components/layout/TopBar'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/landing-page/Footer'
 import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
+
+
 import type { Category } from '@/store/api/categoriesApi'
-import { Skeleton } from '@heroui/react/skeleton'
 
 type PhotoGalleryPageClientProps = {
+
   initialCategories?: Category[]
 }
 
@@ -118,28 +120,41 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const { data, isLoading } = useGetPublicWebPageItemsQuery('photo-gallery')
 
-  const galleryItems = data?.items?.filter((item) => item.is_active) ?? []
+  // Fallback demo items so the UI always shows like a real gallery even if API returns empty.
+  const fallbackGalleryItems = SAMPLE_GALLERY_ITEMS.map((it) => ({
+    id: it.id,
+    title: it.title,
+    subtitle: it.subtitle,
+    image_url: it.image_url,
+    payload: { category: it.category },
+    is_active: true,
+  }))
+
+  const galleryItems = (data?.items?.filter((item) => item.is_active) ?? [])
+  const effectiveGalleryItems = galleryItems.length > 0 ? galleryItems : fallbackGalleryItems
+
 
   // Extract unique categories
   const categories = useMemo(() => {
     const cats = new Set(
-      galleryItems.map((item) => {
+      effectiveGalleryItems.map((item) => {
         const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category.trim() : ''
         return payloadCategory !== '' ? payloadCategory : 'Other'
       }),
     )
     return ['All', ...Array.from(cats)].sort()
-  }, [galleryItems])
+  }, [effectiveGalleryItems])
 
   // Filter items by category
   const filteredItems = useMemo(() => {
-    if (selectedCategory === 'All') return galleryItems
-    return galleryItems.filter((item) => {
+    if (selectedCategory === 'All') return effectiveGalleryItems
+    return effectiveGalleryItems.filter((item) => {
       const payloadCategory = typeof item.payload?.category === 'string' ? item.payload.category.trim() : ''
       const category = payloadCategory !== '' ? payloadCategory : 'Other'
       return category === selectedCategory
     })
-  }, [galleryItems, selectedCategory])
+  }, [effectiveGalleryItems, selectedCategory])
+
 
   const selectedImage = galleryItems.find(item => item.id === selectedImageId)
   const selectedIndex = filteredItems.findIndex(item => item.id === selectedImageId)
@@ -163,15 +178,56 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
       <main className="bg-white dark:bg-gradient-to-b dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
         <div className="container mx-auto px-4 py-8 md:py-12">
           {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-10"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">Photo Gallery</h1>
-            <p className="mt-3 text-lg text-gray-600 dark:text-gray-400">
-              Explore our curated collection of premium home and lifestyle inspirations
-            </p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative mb-10">
+            {/* Colored background for the title container */}
+            <div aria-hidden className="absolute -inset-3 -z-10 rounded-3xl bg-gradient-to-br from-blue-100 via-sky-50 to-white blur-2xl" />
+            <div aria-hidden className="absolute -inset-3 -z-10 rounded-3xl bg-[radial-gradient(ellipse_at_top_left,rgba(37,99,235,0.22),transparent_55%)]" />
+            <div aria-hidden className="absolute -left-24 top-6 h-24 w-24 -z-10 rounded-full bg-blue-200/25 blur-3xl" />
+            <div aria-hidden className="absolute -right-24 bottom-6 h-24 w-24 -z-10 rounded-full bg-sky-200/25 blur-3xl" />
+
+            <div className="rounded-3xl border border-blue-200/70 bg-white/80 p-6 shadow-[0_0_0_1px_rgba(37,99,235,0.06)] backdrop-blur">
+              <div className="flex items-center justify-between gap-6 flex-wrap">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-700">
+                    {/* camera / photo icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  </div>
+
+                  <div>
+                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 dark:text-white">
+                      Photo Gallery
+                    </h1>
+                    <p className="mt-3 text-lg text-gray-600 dark:text-gray-400">
+                      Explore premium home and lifestyle inspirations—beautifully curated in blue.
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9" />
+                          <path d="M7 20h10" />
+                          <path d="M12 20v-7" />
+                          <path d="m8 13 4-4 4 4" />
+                        </svg>
+                        Curated
+                      </div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/60 px-3 py-1 text-xs font-semibold text-blue-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 9l8-7 8 7" />
+                          <path d="M6 10v10h12V10" />
+                        </svg>
+                        Tap a photo to view
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2" />
+              </div>
+            </div>
           </motion.div>
 
           {/* Category Filter */}
@@ -188,10 +244,10 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                   setSelectedCategory(category)
                   setSelectedImageId(null)
                 }}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                className={`px-4 py-2 rounded-xl font-medium transition-all ${
                   selectedCategory === category
-                    ? 'bg-sky-600 text-white dark:bg-sky-700'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent hover:border-blue-100'
                 }`}
               >
                 {category}
@@ -203,7 +259,7 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
           {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-square rounded-lg" />
+                <div key={i} className="aspect-square rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white animate-pulse" />
               ))}
             </div>
           ) : filteredItems.length === 0 ? (
@@ -211,12 +267,16 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-8 py-16 text-center"
+              className="rounded-2xl border border-blue-200/70 bg-white/70 px-8 py-16 text-center shadow-sm"
             >
               <div className="flex justify-center mb-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-400 dark:text-gray-500">
-                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 7a2 2 0 0 1 2-2h3" />
+                    <path d="M14 5h4a2 2 0 0 1 2 2v3" />
+                    <path d="M4 17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7z" />
+                    <path d="M8 12h4" />
+                    <path d="M10 10v4" />
                   </svg>
                 </div>
               </div>
@@ -239,10 +299,10 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all hover:border-sky-400 dark:hover:border-sky-500 hover:shadow-xl"
+                    className="group cursor-pointer overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-xl"
                     onClick={() => setSelectedImageId(item.id)}
                   >
-                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
+                    <div className="relative aspect-square bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
                       {item.image_url ? (
                         <>
                           <Image
@@ -255,12 +315,14 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                             loading="lazy"
                           />
                           {/* Overlay */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors duration-300 flex items-center justify-center">
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <svg className="h-12 w-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
+                              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600/90">
+                                <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </div>
                             </div>
                           </div>
                         </>
@@ -275,13 +337,13 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
                     {item.title && (
                       <div className="p-4">
                         <div className="mb-2">
-                          <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wide">
+                          <span className="text-xs font-semibold text-blue-700 dark:text-sky-300 uppercase tracking-wide">
                             {typeof item.payload?.category === 'string' && item.payload.category.trim() !== ''
                               ? item.payload.category
                               : 'Gallery'}
                           </span>
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                        <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-sky-300 transition-colors">
                           {item.title}
                         </h3>
                         {item.subtitle && (
