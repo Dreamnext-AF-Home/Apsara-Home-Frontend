@@ -62,17 +62,10 @@ function CheckoutSuccessPage() {
   const [verifyCheckoutSession] = useLazyVerifyCheckoutSessionQuery();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [checkoutSourceSlug] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    return (
-      window.localStorage.getItem('last_checkout_source_slug')
-      || window.sessionStorage.getItem('last_checkout_source_slug')
-      || readCookieValue('last_checkout_source_slug')
-      || ''
-    ).trim().toLowerCase();
-  });
   const partnerSlugFromPath = extractPartnerSlugFromPath(pathname);
-  const effectiveCheckoutSourceSlug = (partnerSlugFromPath || checkoutSourceSlug || '').trim().toLowerCase();
+  // Only treat as partner storefront checkout when the URL itself is partner-scoped.
+  // This prevents stale local/session storage from leaking partner branding into /checkout/success.
+  const effectiveCheckoutSourceSlug = (partnerSlugFromPath || '').trim().toLowerCase();
   const trackOrderBaseHref = effectiveCheckoutSourceSlug ? `/${effectiveCheckoutSourceSlug}/track-order` : '/track-order';
   const homeHref = effectiveCheckoutSourceSlug ? `/shop/${effectiveCheckoutSourceSlug}` : '/';
   const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
