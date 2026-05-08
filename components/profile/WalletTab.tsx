@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { WalletTypeFilter, useCreateAffiliateVoucherMutation, useGetWalletOverviewQuery } from '@/store/api/encashmentApi';
 import PvWalletTab from './PvWalletTab';
 import RewardsWalletTab from './RewardsWalletTab';
+import NetworkEarningsTab from './NetworkEarningsTab';
 
 const peso = (value: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value || 0);
@@ -26,11 +27,19 @@ const formatDate = (value?: string | null) => {
 };
 
 // "Cash" tab removed — "All Wallets" is now the unified cash overview + ledger
-const walletOptions: Array<{ key: WalletTypeFilter; label: string; icon: string }> = [
+type WalletViewType = WalletTypeFilter | 'network';
+
+const walletOptions: Array<{ key: WalletViewType; label: string; icon: string }> = [
+  { key: 'network', label: 'Network Earnings', icon: 'N' },
   { key: 'all',     label: 'Overview',    icon: '◈' },
   { key: 'pv',      label: 'AF Voucher',  icon: '◆' },
   { key: 'rewards', label: 'Rewards',     icon: '✦' },
 ];
+
+const walletOptionOrder: WalletViewType[] = ['all', 'pv', 'network', 'rewards'];
+const orderedWalletOptions = [...walletOptions].sort(
+  (a, b) => walletOptionOrder.indexOf(a.key) - walletOptionOrder.indexOf(b.key),
+);
 
 const walletMeta = {
   all: {
@@ -44,6 +53,12 @@ const walletMeta = {
     subtitle: 'Monitor your AF Home voucher balances, referral metrics, and approved voucher history.',
     gradient: 'from-blue-500 via-indigo-500 to-violet-500',
     glow: 'shadow-blue-500/20',
+  },
+  network: {
+    title: 'Network Earnings',
+    subtitle: 'See each Unilevel bonus, downline source, delivered PV, rate, and computation.',
+    gradient: 'from-sky-500 via-cyan-500 to-emerald-500',
+    glow: 'shadow-sky-500/20',
   },
   rewards: {
     title: 'Rewards Center',
@@ -60,15 +75,16 @@ type WalletTabProps = {
 
 export default function WalletTab({ initialWalletType = 'all' }: WalletTabProps) {
   // Treat the now-removed 'cash' type as 'all' if it arrives via prop/URL
-  const resolvedInitial: WalletTypeFilter = initialWalletType === 'cash' ? 'all' : initialWalletType;
-  const [walletType, setWalletType] = useState<WalletTypeFilter>(resolvedInitial);
+  const resolvedInitial: WalletViewType = initialWalletType === 'cash' ? 'all' : initialWalletType;
+  const [walletType, setWalletType] = useState<WalletViewType>(resolvedInitial);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [createAffiliateVoucher, { isLoading: isCreatingVoucher }] = useCreateAffiliateVoucherMutation();
+  const queryWalletType: WalletTypeFilter = walletType === 'network' ? 'all' : walletType;
   const { data, isLoading, isFetching, isError, refetch } = useGetWalletOverviewQuery({
     page,
     perPage: 15,
-    walletType,
+    walletType: queryWalletType,
     refreshKey,
   });
 
@@ -148,7 +164,7 @@ export default function WalletTab({ initialWalletType = 'all' }: WalletTabProps)
 
           {/* Tabs */}
           <div className="mt-5 flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl w-fit">
-            {walletOptions.map((item) => (
+            {orderedWalletOptions.map((item) => (
               <button
                 key={item.key}
                 type="button"
@@ -206,6 +222,13 @@ export default function WalletTab({ initialWalletType = 'all' }: WalletTabProps)
                     activeReferrals={Number(summary?.referrals?.active ?? 0)}
                     monthlyActivation={summary?.monthly_activation}
                     unilevelAwards={data?.unilevel_awards ?? []}
+                  />
+                )
+              ) : walletType === 'network' ? (
+                isLoading ? <SkeletonCards /> : isError ? <ErrorBanner msg="Failed to load Network Earnings data." /> : (
+                  <NetworkEarningsTab
+                    awards={data?.unilevel_awards ?? []}
+                    monthlyActivation={summary?.monthly_activation}
                   />
                 )
               ) : walletType === 'rewards' ? (
