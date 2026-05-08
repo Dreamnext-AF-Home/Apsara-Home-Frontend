@@ -3,7 +3,7 @@
 import Image from 'next/image'
 
 type LoadingScreenProps = {
-  logoSrc?: string
+  logoSrc?: string | null
   logoAlt?: string
   brandText?: string
   tagline?: string
@@ -15,6 +15,7 @@ export default function LoadingScreen({
   brandText = 'AF HOME',
   tagline = 'Your Trusted Home Partner',
 }: LoadingScreenProps) {
+  const resolvedLogoSrc = logoSrc === null ? '' : (logoSrc ?? '/Images/af_home_logo.png')
   const [firstWord, ...rest] = brandText.trim().split(/\s+/)
   const highlightWord = rest.join(' ')
 
@@ -41,14 +42,18 @@ export default function LoadingScreen({
         <span className="absolute h-32 w-32 rounded-full bg-[#2c5f4f]/10 blur-md dark:bg-sky-400/15" />
 
         <div className="relative z-10 animate-logo-enter">
-          <Image
-            src={logoSrc}
-            alt={logoAlt}
-            width={110}
-            height={110}
-            priority
-            className="object-contain drop-shadow-xl mix-blend-multiply dark:mix-blend-normal dark:drop-shadow-[0_0_32px_rgba(56,189,248,0.22)]"
-          />
+          {resolvedLogoSrc ? (
+            <Image
+              src={resolvedLogoSrc}
+              alt={logoAlt}
+              width={110}
+              height={110}
+              priority
+              className="object-contain drop-shadow-xl mix-blend-multiply dark:mix-blend-normal dark:drop-shadow-[0_0_32px_rgba(56,189,248,0.22)]"
+            />
+          ) : (
+            <span className="block h-[110px] w-[110px]" />
+          )}
         </div>
       </div>
 
