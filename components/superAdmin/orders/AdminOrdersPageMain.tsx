@@ -980,8 +980,8 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                     <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Date</th>
                           <th className="min-w-[260px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Customer / Delivery</th>
                     <th className="min-w-[120px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Amount</th>
-                    <th className="min-w-[110px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Approval</th>
-                    <th className="min-w-[110px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">SLA</th>
+                    <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Approval</th>
+                    <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">SLA</th>
                     <th className="min-w-[340px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Tracking</th>
                     <th className="min-w-[200px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Actions</th>
                   </tr>
@@ -1142,18 +1142,18 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                           </td>
 
                           {/* Approval badge */}
-                          <td className="px-5 py-3.5 align-middle">
-                            <Chip size="sm" variant="soft" className={`border text-[11px] font-semibold ${approval.badge}`}>
+                          <td className="min-w-[140px] px-5 py-3.5 align-middle">
+                            <Chip size="sm" variant="soft" className={`inline-flex min-w-[92px] items-center justify-center whitespace-nowrap border text-[11px] font-semibold ${approval.badge}`}>
                               <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${approval.dot}`} />
                               {approval.label}
                             </Chip>
                           </td>
 
                           {/* SLA */}
-                          <td className="px-5 py-3.5 align-middle">
+                          <td className="min-w-[140px] px-5 py-3.5 align-middle">
                             {sla ? (
                               <div className="space-y-1">
-                                <Chip size="sm" variant="soft" className={`border text-[11px] font-semibold ${sla.badge}`}>
+                                <Chip size="sm" variant="soft" className={`inline-flex min-w-[92px] items-center justify-center whitespace-nowrap border text-[11px] font-semibold ${sla.badge}`}>
                                   <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${sla.dot}`} />
                                   {sla.label}
                                 </Chip>
