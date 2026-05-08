@@ -87,6 +87,7 @@ export interface ValidateVoucherResponse {
 export type CustomerOrderStatus =
   | 'pending'
   | 'processing'
+  | 'packed'
   | 'shipped'
   | 'out_for_delivery'
   | 'delivered'
@@ -112,11 +113,13 @@ export interface CustomerOrder {
   status: CustomerOrderStatus
   items: CustomerOrderItem[]
   total: number
+  total_amount?: number
   shipping_fee: number
   payment_method: string
   shipping_address: string
   courier?: string | null
   tracking_no?: string | null
+  tracking_number?: string | null
   shipment_status?: string | null
   shipped_at?: string | null
   created_at: string
@@ -169,6 +172,33 @@ export const paymentApi = baseApi.injectEndpoints({
       query: () => ({
         url: '/api/orders/history',
         method: 'GET',
+      }),
+      transformResponse: (response: CheckoutHistoryResponse | { orders?: Array<Partial<CustomerOrder>> }) => ({
+        orders: (response.orders ?? []).map((order) => ({
+          ...order,
+          id: Number(order.id ?? 0),
+          order_number: String(order.order_number ?? ''),
+          status: (order.status ?? 'pending') as CustomerOrderStatus,
+          items: Array.isArray(order.items)
+            ? order.items.map((item) => ({
+                ...item,
+                id: Number(item.id ?? 0),
+                product_id: item.product_id ?? null,
+                name: String(item.name ?? 'Order Item'),
+                image: String(item.image ?? '/Images/HeroSection/sofas.jpg'),
+                quantity: Number(item.quantity ?? 1) || 1,
+                price: Number(item.price ?? 0) || 0,
+              }))
+            : [],
+          total: Number(order.total ?? order.total_amount ?? 0) || 0,
+          total_amount: Number(order.total_amount ?? order.total ?? 0) || 0,
+          shipping_fee: Number(order.shipping_fee ?? 0) || 0,
+          payment_method: String(order.payment_method ?? 'Payment'),
+          shipping_address: String(order.shipping_address ?? 'Shipping address not available'),
+          tracking_no: order.tracking_no ?? order.tracking_number ?? null,
+          tracking_number: order.tracking_number ?? order.tracking_no ?? null,
+          created_at: String(order.created_at ?? ''),
+        })) as CustomerOrder[],
       }),
       providesTags: ['Orders'],
     }),

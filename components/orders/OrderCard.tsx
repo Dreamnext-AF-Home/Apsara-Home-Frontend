@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Icon from "./Icons";
-import Image from "next/image";
 import Link from "next/link";
 import { TRACK_STEPS } from "@/types/Data";
 import formatDate from "@/helpers/FormatDate";
@@ -70,6 +69,11 @@ const buildProductHref = (item: OrderItem) => {
     if (!productId) return null;
     const slug = slugify(item.name || 'product');
     return `/product/${slug}-i${productId}`;
+};
+
+const getOrderImageSrc = (src?: string | null) => {
+    const value = String(src ?? '').trim();
+    return value || '/Images/HeroSection/sofas.jpg';
 };
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; badge: string; dot: string; step: number }> = {
@@ -176,14 +180,14 @@ const OrderCard = ({ order }: OrderCardProps) => {
                   href={href}
                   className={imageClassName}
                 >
-                  <Image src={item.image} alt={item.name} width={40} height={40} className="h-full w-full object-cover" />
+                  <img src={getOrderImageSrc(item.image)} alt={item.name || 'Order item'} className="h-full w-full object-cover" loading="lazy" />
                 </Link>
               ) : (
                 <div
                   key={item.id}
                   className={imageClassName}
                 >
-                  <Image src={item.image} alt={item.name} width={40} height={40} className="h-full w-full object-cover" />
+                  <img src={getOrderImageSrc(item.image)} alt={item.name || 'Order item'} className="h-full w-full object-cover" loading="lazy" />
                 </div>
               );
             })}
@@ -342,11 +346,11 @@ const OrderCard = ({ order }: OrderCardProps) => {
                             href={href}
                             className={imageClassName}
                           >
-                            <Image src={item.image} alt={item.name} width={48} height={48} className="h-full w-full object-cover" />
+                            <img src={getOrderImageSrc(item.image)} alt={item.name || 'Order item'} className="h-full w-full object-cover" loading="lazy" />
                           </Link>
                         ) : (
                           <div className={imageClassName}>
-                            <Image src={item.image} alt={item.name} width={48} height={48} className="h-full w-full object-cover" />
+                            <img src={getOrderImageSrc(item.image)} alt={item.name || 'Order item'} className="h-full w-full object-cover" loading="lazy" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
