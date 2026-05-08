@@ -8,6 +8,31 @@ import AvatarImg from '@/components/superAdmin/AvatarImg'
 const getInitials = (name: string) =>
   name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
 
+const formatUserAgent = (userAgent?: string | null) => {
+  if (!userAgent) return 'N/A'
+
+  const ua = userAgent.toLowerCase()
+  const browser = ua.includes('edg/') ? 'Edge'
+    : ua.includes('opr/') || ua.includes('opera') ? 'Opera'
+      : ua.includes('chrome/') || ua.includes('crios/') ? 'Chrome'
+        : ua.includes('safari/') && !ua.includes('chrome/') ? 'Safari'
+          : ua.includes('firefox/') || ua.includes('fxios/') ? 'Firefox'
+            : 'Unknown Browser'
+
+  const device = ua.includes('ipad') || ua.includes('tablet') ? 'Tablet'
+    : ua.includes('mobile') || ua.includes('iphone') || ua.includes('android') ? 'Mobile'
+      : 'Desktop'
+
+  const platform = ua.includes('windows') ? 'Windows'
+    : ua.includes('mac os') || ua.includes('macintosh') ? 'Mac'
+      : ua.includes('android') ? 'Android'
+        : ua.includes('iphone') || ua.includes('ipad') ? 'iOS'
+          : ua.includes('linux') ? 'Linux'
+            : 'Unknown OS'
+
+  return `${browser} - ${device} - ${platform}`
+}
+
 const ACTIVITY_TYPES: Record<string, { label: string; icon: string; bg: string; text: string }> = {
   login: { label: 'Login', icon: '🔐', bg: 'bg-blue-50', text: 'text-blue-700' },
   logout: { label: 'Logout', icon: '🚪', bg: 'bg-slate-100', text: 'text-slate-600' },
@@ -99,7 +124,9 @@ export default function ActivityLogsTable({ logs }: ActivityLogsTableProps) {
                     {/* IP / User Agent */}
                     <td className="px-4 py-3.5">
                       <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{log.ip_address || 'N/A'}</p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[180px]">{log.user_agent ? log.user_agent.split('/')[0] : 'N/A'}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[180px]" title={log.user_agent || undefined}>
+                        {formatUserAgent(log.user_agent)}
+                      </p>
                     </td>
 
                     {/* Time */}

@@ -12,7 +12,7 @@ const statusMap: Record<MemberStatus, { label: string; className: string; dot: s
 const MembersStatusBadge = ({ status }: { status: MemberStatus }) => {
   const cfg = statusMap[status]
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.className}`}>
+    <span className={`inline-flex min-w-[82px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold leading-none ${cfg.className}`}>
       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dot}`} />
       {cfg.label}
     </span>

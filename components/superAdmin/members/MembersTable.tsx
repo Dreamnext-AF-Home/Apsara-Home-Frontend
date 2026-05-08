@@ -1162,7 +1162,7 @@ const MembersTable = ({
                     </td>
 
                     {/* Status */}
-                    <td className="px-5 py-3.5 relative">
+                    <td className="relative min-w-[120px] px-5 py-3.5">
                       <MembersStatusBadge status={member.status} />
                     </td>
 
