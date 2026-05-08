@@ -295,6 +295,7 @@ export default function PartnerOrdersPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Customer</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Product</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Payment</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
                 </tr>
@@ -368,6 +369,16 @@ export default function PartnerOrdersPage() {
                       </td>
 
                       <td className="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{money.format(Number(order.amount ?? 0))}</td>
+
+                      <td className="px-4 py-3">
+                        {order.payment_method ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold capitalize text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                            {String(order.payment_method).replace(/_/g, ' ')}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </td>
 
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(order.fulfillment_status)}`}>

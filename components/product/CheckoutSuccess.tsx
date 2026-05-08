@@ -17,6 +17,41 @@ import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
 const LOCAL_PAYMENT_MODE_HOSTS = new Set(['localhost', '127.0.0.1']);
 
 function CheckoutSuccessPage() {
+  const getVerifyErrorMessage = (err: unknown): string => {
+    if (err instanceof Error && err.message.trim() !== '') {
+      return err.message;
+    }
+
+    if (err && typeof err === 'object') {
+      const apiErr = err as {
+        data?: {
+          message?: string;
+          error?: {
+            errors?: Array<{ detail?: string }>;
+          };
+        };
+        error?: string;
+        status?: number | string;
+      };
+
+      const gatewayDetail = apiErr?.data?.error?.errors?.[0]?.detail;
+      if (gatewayDetail && gatewayDetail.trim() !== '') return gatewayDetail;
+
+      const apiMessage = apiErr?.data?.message;
+      if (apiMessage && apiMessage.trim() !== '') return apiMessage;
+
+      if (typeof apiErr.error === 'string' && apiErr.error.trim() !== '') {
+        return apiErr.error;
+      }
+
+      if (apiErr.status) {
+        return `Verification request failed (HTTP ${apiErr.status}).`;
+      }
+    }
+
+    return 'Verification failed';
+  };
+
   const readCookieValue = (name: string): string => {
     if (typeof document === 'undefined') return '';
     const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -27,17 +62,10 @@ function CheckoutSuccessPage() {
   const [verifyCheckoutSession] = useLazyVerifyCheckoutSessionQuery();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [checkoutSourceSlug] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    return (
-      window.localStorage.getItem('last_checkout_source_slug')
-      || window.sessionStorage.getItem('last_checkout_source_slug')
-      || readCookieValue('last_checkout_source_slug')
-      || ''
-    ).trim().toLowerCase();
-  });
   const partnerSlugFromPath = extractPartnerSlugFromPath(pathname);
-  const effectiveCheckoutSourceSlug = (partnerSlugFromPath || checkoutSourceSlug || '').trim().toLowerCase();
+  // Only treat as partner storefront checkout when the URL itself is partner-scoped.
+  // This prevents stale local/session storage from leaking partner branding into /checkout/success.
+  const effectiveCheckoutSourceSlug = (partnerSlugFromPath || '').trim().toLowerCase();
   const trackOrderBaseHref = effectiveCheckoutSourceSlug ? `/${effectiveCheckoutSourceSlug}/track-order` : '/track-order';
   const homeHref = effectiveCheckoutSourceSlug ? `/shop/${effectiveCheckoutSourceSlug}` : '/';
   const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
@@ -80,10 +108,14 @@ function CheckoutSuccessPage() {
     const pollMs = 5000;
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    const normalizeStatus = (status: string | null | undefined) => typeof status === 'string' ? status.toLowerCase() : '';
-    const isPaidStatus = (status: string | null | undefined) => ['paid', 'succeeded', 'success'].includes(normalizeStatus(status));
-    const isPendingStatus = (status: string | null | undefined) => ['active', 'unpaid', 'pending'].includes(normalizeStatus(status));
-    const isFailedStatus = (status: string | null | undefined) => ['failed', 'cancelled', 'expired'].includes(normalizeStatus(status));
+    const normalizeStatus = (status: string | null | undefined) =>
+      typeof status === 'string' ? status.toLowerCase() : '';
+    const isPaidStatus = (status: string | null | undefined) =>
+      ['paid', 'succeeded', 'success'].includes(normalizeStatus(status));
+    const isPendingStatus = (status: string | null | undefined) =>
+      ['active', 'unpaid', 'pending'].includes(normalizeStatus(status));
+    const isFailedStatus = (status: string | null | undefined) =>
+      ['failed', 'cancelled', 'expired'].includes(normalizeStatus(status));
 
     const stopPolling = () => {
       if (intervalId) {
@@ -93,36 +125,79 @@ function CheckoutSuccessPage() {
     };
 
     const verify = async (isInitial = false) => {
-      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const searchParams =
+        typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const checkoutIdFromQuery =
-        (searchParams?.get('checkout_id') || '').trim()
-        || (searchParams?.get('checkoutId') || '').trim()
-        || (searchParams?.get('order') || '').trim()
-        || (searchParams?.get('reference') || '').trim();
+        (searchParams?.get('checkout_id') || '').trim() ||
+        (searchParams?.get('checkoutId') || '').trim() ||
+        (searchParams?.get('order') || '').trim() ||
+        (searchParams?.get('reference') || '').trim();
       const checkoutIdFromStorage =
-        localStorage.getItem('last_checkout_id')
-        || sessionStorage.getItem('last_checkout_id')
-        || readCookieValue('last_checkout_id')
-        || '';
+        localStorage.getItem('last_checkout_id') ||
+        sessionStorage.getItem('last_checkout_id') ||
+        readCookieValue('last_checkout_id') ||
+        '';
       const checkoutId = checkoutIdFromQuery || checkoutIdFromStorage;
       const canUseLocalPaymentMode =
         typeof window !== 'undefined' && LOCAL_PAYMENT_MODE_HOSTS.has(window.location.hostname);
+
       const paymentMode = canUseLocalPaymentMode
-        ? (localStorage.getItem('last_checkout_payment_mode') || sessionStorage.getItem('last_checkout_payment_mode') || undefined)
+        ? localStorage.getItem('last_checkout_payment_mode') ||
+          sessionStorage.getItem('last_checkout_payment_mode') ||
+          undefined
         : 'live';
+
       if (checkoutIdFromQuery) {
         localStorage.setItem('last_checkout_id', checkoutIdFromQuery);
         sessionStorage.setItem('last_checkout_id', checkoutIdFromQuery);
       }
+
       if (!checkoutId) {
         if (!isMounted) return;
-        setError('No checkout reference found. Please use the checkout link with order reference, or track your order manually.');
+        setError(
+          'No checkout reference found. Please use the checkout link with order reference, or track your order manually.',
+        );
         setLoading(false);
         stopPolling();
         return;
       }
+
       try {
-        const data = await verifyCheckoutSession({ checkoutId, paymentMode: paymentMode === 'test' || paymentMode === 'live' ? paymentMode : undefined }).unwrap();
+        const requestedMode = paymentMode === 'test' || paymentMode === 'live' ? paymentMode : undefined;
+
+        let data: {
+          checkout_id: string;
+          status: string | null;
+          payment_intent_id: string | null;
+          customer?: {
+            name?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            address?: string | null;
+          };
+          order_summary?: {
+            description?: string | null;
+            amount?: number | null;
+            shipping_fee?: number | null;
+            payment_method?: string | null;
+            product_name?: string | null;
+            product_sku?: string | null;
+            quantity?: number | null;
+          };
+        };
+
+        try {
+          data = await verifyCheckoutSession({ checkoutId, paymentMode: requestedMode }).unwrap();
+        } catch (verifyErr) {
+          // Some sessions are created in a different mode than local storage hints.
+          // Retry once without forced mode so backend can auto-resolve it.
+          if (requestedMode) {
+            data = await verifyCheckoutSession({ checkoutId }).unwrap();
+          } else {
+            throw verifyErr;
+          }
+        }
+
         if (!isMounted) return;
         setResult(data);
 
@@ -150,7 +225,37 @@ function CheckoutSuccessPage() {
         }
       } catch (e) {
         if (!isMounted) return;
-        setError(e instanceof Error ? e.message : 'Verification failed');
+
+        // IMPORTANT: if backend/payments verification throws 500,
+        // don't hard-fail the success page. Mark as pending and allow user to proceed.
+        const searchParams =
+          typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const checkoutIdFromQuery =
+          (searchParams?.get('checkout_id') || '').trim() ||
+          (searchParams?.get('checkoutId') || '').trim() ||
+          (searchParams?.get('order') || '').trim() ||
+          (searchParams?.get('reference') || '').trim();
+        const checkoutIdFromStorage =
+          localStorage.getItem('last_checkout_id') ||
+          sessionStorage.getItem('last_checkout_id') ||
+          readCookieValue('last_checkout_id') ||
+          '';
+        const fallbackCheckoutId = checkoutIdFromQuery || checkoutIdFromStorage;
+
+        if (fallbackCheckoutId) {
+          // Show a friendly message but keep page usable.
+          setResult({
+            checkout_id: fallbackCheckoutId,
+            status: 'pending',
+            payment_intent_id: null,
+          });
+          setError('We’re still confirming your payment. If this takes too long, you can track your order instead.');
+          setLoading(false);
+          stopPolling();
+          return;
+        }
+
+        setError(getVerifyErrorMessage(e));
         setLoading(false);
         stopPolling();
       }
@@ -170,7 +275,23 @@ function CheckoutSuccessPage() {
 
   // -- LOADING --------------------------------------------------
   if (loading) {
-    return <LoadingScreen tagline="Verifying your checkout" />;
+    const loadingBrandText = partnerStorefrontConfig?.displayName
+      || (effectiveCheckoutSourceSlug
+        ? effectiveCheckoutSourceSlug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+        : 'AF Home');
+    // When on a partner storefront but the API hasn't resolved the logo yet,
+    // pass null explicitly so LoadingScreen hides the image (no AF Home flash).
+    const loadingLogoSrc: string | null = partnerStorefrontConfig?.logoUrl
+      ? `${partnerStorefrontConfig.logoUrl}${partnerStorefrontConfig.logoUrl.includes('?') ? '&' : '?'}v=${partnerStorefrontConfig.logoVersion || '1'}`
+      : effectiveCheckoutSourceSlug ? null : '/Images/af_home_logo.png';
+    return (
+      <LoadingScreen
+        tagline="Verifying your checkout"
+        brandText={loadingBrandText}
+        logoSrc={loadingLogoSrc}
+        logoAlt={`${loadingBrandText} Logo`}
+      />
+    );
   }
 
   // -- ERROR -----------------------------------------------------
@@ -198,6 +319,15 @@ function CheckoutSuccessPage() {
             <p className="text-slate-400 text-sm mt-2 leading-relaxed">{error}</p>
 
             <div className="mt-7 flex flex-col gap-2.5">
+              <Link
+                href={`${trackOrderBaseHref}?order=${encodeURIComponent(result?.checkout_id ?? '')}`}
+                className="w-full py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-sky-200 text-slate-700 hover:text-sky-700 font-semibold text-sm text-center transition-all flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 17h4V5H2v12h3m9 0h4m0 0a2 2 0 100 4 2 2 0 000-4zm-10 0a2 2 0 100 4 2 2 0 000-4m10 0V12l-4-4h-4" />
+                </svg>
+                Track This Order
+              </Link>
               <Link href={homeHref}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white font-semibold text-sm text-center transition-all shadow-md shadow-sky-100 flex items-center justify-center gap-2"
               >

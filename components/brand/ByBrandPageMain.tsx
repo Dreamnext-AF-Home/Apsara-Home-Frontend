@@ -278,7 +278,7 @@ export default function ByBrandPageMain() {
     search: '',
     hasPvOnly: false
   })
-    const [viewType, setViewType] = useState<'grid' | 'list'>('grid')
+  const [viewType, setViewType] = useState<'grid' | 'list'>('grid')
   const [showNumber, setShowNumber] = useState<number | 'all'>(12)
   const { data: session } = useSession()
   const isLoggedIn = Boolean(session?.user)
@@ -304,6 +304,7 @@ export default function ByBrandPageMain() {
   // Show number change handler for TopFilter component
   const handleShowNumberChange = (showNumber: number | 'all') => {
     setShowNumber(showNumber)
+    setProductPage(1)
   }
 
   const handleAddToCart = async (productId: number, e: React.MouseEvent) => {
@@ -364,13 +365,13 @@ export default function ByBrandPageMain() {
   const perPage = showNumber === 'all' ? 500 : (typeof showNumber === 'number' ? showNumber : 12)
 
   const selectedBrandItem = useMemo(() => {
-    if (!selectedBrand || !data?.brands) return null
-    const found = data.brands.find((brand) => {
+    if (!selectedBrand) return null
+    const found = allBrands.find((brand) => {
       const slugged = toSlug(brand.name)
       return slugged === selectedBrand
     })
     return found ?? null
-  }, [data?.brands, selectedBrand])
+  }, [allBrands, selectedBrand])
 
   // Reset to page 1 when brand changes or filters change
   const prevBrand = useRef(selectedBrand)
@@ -386,10 +387,6 @@ export default function ByBrandPageMain() {
       setProductPage(1)
     }
   }, [selectedBrand, filters])
-
-  useEffect(() => {
-    setProductPage(1)
-  }, [showNumber])
 
   // Auto-scroll to products section when brand changes
   useEffect(() => {
@@ -655,7 +652,10 @@ export default function ByBrandPageMain() {
                       <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
                     </svg>
                   </button>
-                  <OutlineButton onClick={() => router.back()} className="!px-4 !py-2.5 !text-sm">
+                  <OutlineButton onClick={() => router.back()} className="shrink-0 !px-4 !py-2.5 !text-sm flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
                     Back
                   </OutlineButton>
                 </div>
