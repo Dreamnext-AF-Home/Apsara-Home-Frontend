@@ -12,6 +12,7 @@ export interface TopEarner {
   joinedAt: string
   lastActive: string
   totalSpent: number
+  avatar?: string
 }
 
 export type SortKey = 'earnings' | 'orders' | 'referrals' | 'totalSpent'
@@ -31,10 +32,10 @@ export const STATUS_CONFIG: Record<string, { dot: string; text: string; label: s
   blocked: { dot: 'bg-red-400', text: 'text-red-500', label: 'Blocked' },
 }
 
-export const MEDALS: Record<number, { emoji: string; ring: string; bg: string }> = {
-  1: { emoji: '#1', ring: 'ring-2 ring-yellow-400', bg: 'bg-gradient-to-br from-yellow-400 to-sky-500' },
-  2: { emoji: '#2', ring: 'ring-2 ring-slate-400', bg: 'bg-gradient-to-br from-slate-400 to-slate-500' },
-  3: { emoji: '#3', ring: 'ring-2 ring-sky-600', bg: 'bg-gradient-to-br from-sky-600 to-sky-700' },
+export const MEDALS: Record<number, { label: string; ring: string; bg: string; glow: string; crown: string }> = {
+  1: { label: '1st', ring: 'ring-2 ring-yellow-400/80', bg: 'bg-gradient-to-br from-yellow-400 to-amber-500',   glow: 'shadow-yellow-400/40',  crown: '👑' },
+  2: { label: '2nd', ring: 'ring-2 ring-slate-300/80',  bg: 'bg-gradient-to-br from-slate-400 to-slate-500',   glow: 'shadow-slate-400/30',   crown: '🥈' },
+  3: { label: '3rd', ring: 'ring-2 ring-orange-400/80', bg: 'bg-gradient-to-br from-orange-400 to-amber-600',  glow: 'shadow-orange-400/30',  crown: '🥉' },
 }
 
 export const TIERS = [

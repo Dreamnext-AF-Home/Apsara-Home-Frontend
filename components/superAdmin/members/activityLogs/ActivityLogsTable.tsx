@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { formatTimestamp, timeAgo } from './types'
 import type { ActivityLog } from '@/store/api/activityLogsApi'
+import AvatarImg from '@/components/superAdmin/AvatarImg'
 
 const getInitials = (name: string) =>
   name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
@@ -66,9 +67,7 @@ export default function ActivityLogsTable({ logs }: ActivityLogsTableProps) {
                     {/* Member */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {getInitials(customerName)}
-                        </div>
+                        <AvatarImg src={log.customer?.avatar_url} name={customerName} size="h-8 w-8" bg="bg-gradient-to-br from-teal-400 to-teal-600" textSize="text-[10px]" />
                         <div>
                           <p className="text-sm font-semibold text-gray-800 dark:text-white">{customerName}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{customerEmail}</p>

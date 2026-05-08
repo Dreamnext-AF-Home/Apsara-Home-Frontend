@@ -103,6 +103,7 @@ export interface TopEarnerResponseItem {
   joinedAt: string
   lastActive: string
   totalSpent: number
+  avatar?: string
 }
 
 export interface TopEarnersResponse {

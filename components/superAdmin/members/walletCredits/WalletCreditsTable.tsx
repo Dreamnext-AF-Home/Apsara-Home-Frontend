@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import DataTableShell from '@/components/superAdmin/DataTableShell'
 import { MemberWallet, TIER_COLORS, STATUS_CONFIG, php, pv, getInitials, timeAgo } from './types'
+import AvatarImg from '@/components/superAdmin/AvatarImg'
 
 interface WalletCreditsTableProps {
   wallets:    MemberWallet[]
@@ -19,9 +20,7 @@ function WalletRow({ wallet, onAdjust }: { wallet: MemberWallet; onAdjust: () =>
       {/* Member */}
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold bg-gradient-to-br from-teal-400 to-teal-600">
-            {getInitials(wallet.name)}
-          </div>
+          <AvatarImg src={wallet.avatar} name={wallet.name} size="h-9 w-9" bg="bg-gradient-to-br from-teal-400 to-teal-600" textSize="text-xs" />
           <div>
             <p className="text-sm font-semibold text-slate-800">{wallet.name}</p>
             <p className="text-xs text-slate-400">{wallet.email}</p>
