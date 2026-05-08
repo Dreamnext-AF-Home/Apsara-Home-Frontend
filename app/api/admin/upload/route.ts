@@ -80,6 +80,12 @@ export async function POST(req: NextRequest) {
     }
 
     const maxSizeBytes = isPdf ? 20 * 1024 * 1024 : isVideo ? 150 * 1024 * 1024 : 5 * 1024 * 1024
+    const minVideoSizeBytes = 5 * 1024 * 1024
+    if (isVideo && file.size < minVideoSizeBytes) {
+      return NextResponse.json({
+        error: 'Video file is too small. Minimum size is 5MB.',
+      }, { status: 400 })
+    }
     if (file.size > maxSizeBytes) {
       return NextResponse.json({
         error: isPdf
@@ -102,6 +108,7 @@ export async function POST(req: NextRequest) {
       'assembly-guides': 'apsara/assembly-guides',
       'web-content': 'apsara/web-content',
       'project-gallery': 'apsara/project-gallery',
+      'partner-storefronts': 'apsara/partner-storefronts',
     }
     const folder = folderMap[folderType] ?? folderMap.products
 

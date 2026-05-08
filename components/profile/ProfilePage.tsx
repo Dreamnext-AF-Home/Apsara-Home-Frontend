@@ -1792,27 +1792,52 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const recentActivity = (activityData?.items ?? []).map((item) => ({
-    title: item.title || 'Account activity',
-    time: formatRelativeTime(item.created_at ?? null),
-    rawTime: item.created_at ?? null,
-  }));
+  const recentActivity = (activityData?.items ?? [])
+    .filter((item) => String(item.activity_type ?? '').toLowerCase() === 'login')
+    .sort((a, b) => {
+      const ta = new Date(a.created_at ?? 0).getTime();
+      const tb = new Date(b.created_at ?? 0).getTime();
+      return tb - ta;
+    })
+    .slice(0, 5)
+    .map((item) => ({
+      title: item.title || 'Account activity',
+      time: formatRelativeTime(item.created_at ?? null),
+      rawTime: item.created_at ?? null,
+    }));
 
-  const sessionItems = sessionsData?.items ?? [];
-  const activityTotalPages = Math.max(1, Math.ceil(recentActivity.length / ACTIVITY_PAGE_SIZE));
+  const sortedSessionItems = [...(sessionsData?.items ?? [])].sort((a, b) => {
+    if (a.is_current && !b.is_current) return -1;
+    if (!a.is_current && b.is_current) return 1;
+    const ta = new Date(a.last_active_at ?? a.created_at ?? 0).getTime();
+    const tb = new Date(b.last_active_at ?? b.created_at ?? 0).getTime();
+    return tb - ta;
+  });
+  const fallbackCurrentSession = {
+    id: 0,
+    token_id: 0,
+    device: 'Current Device',
+    platform: 'Unknown OS',
+    browser: 'Unknown Browser',
+    location: 'Current location',
+    ip_address: '',
+    user_agent: '',
+    created_at: new Date().toISOString(),
+    last_active_at: new Date().toISOString(),
+    is_current: true,
+  };
+  const sessionItems = sortedSessionItems.length > 0 ? sortedSessionItems : [fallbackCurrentSession];
+  const activityTotalPages = 1;
   const sessionTotalPages = Math.max(1, Math.ceil(sessionItems.length / ACTIVITY_PAGE_SIZE));
-  const paginatedRecentActivity = recentActivity.slice(
-    (activityPage - 1) * ACTIVITY_PAGE_SIZE,
-    activityPage * ACTIVITY_PAGE_SIZE
-  );
+  const paginatedRecentActivity = recentActivity;
   const paginatedSessionItems = sessionItems.slice(
     (sessionPage - 1) * ACTIVITY_PAGE_SIZE,
     sessionPage * ACTIVITY_PAGE_SIZE
   );
 
   useEffect(() => {
-    setActivityPage((prev) => Math.min(prev, activityTotalPages));
-  }, [activityTotalPages]);
+    setActivityPage(1);
+  }, [recentActivity.length]);
 
   useEffect(() => {
     setSessionPage((prev) => Math.min(prev, sessionTotalPages));
@@ -4187,7 +4212,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                               <button
                                 type="button"
                                 onClick={() => handleRevokeSession(session.token_id, session.is_current)}
-                                disabled={isRevokingSession && revokingTokenId === session.token_id}
+                                disabled={session.token_id <= 0 || (isRevokingSession && revokingTokenId === session.token_id)}
                                 className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <Icon.LogOut className="h-3.5 w-3.5" />
