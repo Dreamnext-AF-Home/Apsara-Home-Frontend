@@ -22,6 +22,7 @@ export interface CreateCheckoutSessionPayload {
   voucher_code?: string
   source_label?: string | null
   source_slug?: string | null
+  storefront_partner?: string | null
   source_host?: string | null
   source_url?: string | null
   customer?: CheckoutCustomerPayload

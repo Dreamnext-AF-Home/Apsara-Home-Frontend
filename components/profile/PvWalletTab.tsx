@@ -57,6 +57,7 @@ interface PvWalletTabProps {
     activeReferrals?: number;
     monthlyActivation?: MonthlyActivation;
     unilevelAwards?: UnilevelAwardItem[];
+    showUnilevelBreakdown?: boolean;
 }
 
 function statusClasses(status: PvHistoryItem['status']) {
@@ -120,6 +121,7 @@ const PvWalletTab = ({
     activeReferrals = 0,
     monthlyActivation,
     unilevelAwards = [],
+    showUnilevelBreakdown = true,
 }: PvWalletTabProps) => {
   const goalCurrent = typeof goalProgressPv === 'number' ? goalProgressPv : currentPv
   const progress = Math.min((goalCurrent / goalPv) * 100, 100)
@@ -299,6 +301,7 @@ const PvWalletTab = ({
       </div>
 
       {/* ── Unilevel Breakdown ── */}
+      {showUnilevelBreakdown && (
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 dark:border-slate-700 dark:bg-gray-800/60">
         <SectionHeader
           eyebrow="Unilevel Breakdown"
@@ -396,6 +399,7 @@ const PvWalletTab = ({
           )}
         </div>
       </section>
+      )}
 
       {/* ── PV Goal + Referral Summary ── */}
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
