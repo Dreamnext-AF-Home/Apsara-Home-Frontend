@@ -30,13 +30,13 @@ const formatDate = (value?: string | null) => {
 type WalletViewType = WalletTypeFilter | 'network';
 
 const walletOptions: Array<{ key: WalletViewType; label: string; icon: string }> = [
-  { key: 'network', label: 'Network Earnings', icon: 'N' },
+  { key: 'network', label: 'Network Earnings', icon: '↗' },
   { key: 'all',     label: 'Overview',    icon: '◈' },
   { key: 'pv',      label: 'AF Voucher',  icon: '◆' },
   { key: 'rewards', label: 'Rewards',     icon: '✦' },
 ];
 
-const walletOptionOrder: WalletViewType[] = ['all', 'pv', 'network', 'rewards'];
+const walletOptionOrder: WalletViewType[] = ['all', 'pv', 'rewards', 'network'];
 const orderedWalletOptions = [...walletOptions].sort(
   (a, b) => walletOptionOrder.indexOf(a.key) - walletOptionOrder.indexOf(b.key),
 );

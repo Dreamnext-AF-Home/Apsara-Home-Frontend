@@ -474,11 +474,20 @@ export default function NetworkEarningsTab({ awards, monthlyActivation }: Props)
               <Empty title="No entries yet" desc="Delivered downline purchases will appear here once you are active." />
             </div>
           ) : (
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[980px] table-fixed text-sm">
+              <colgroup>
+                <col className="w-[180px]" />
+                <col className="w-[80px]" />
+                <col className="w-[230px]" />
+                <col className="w-[130px]" />
+                <col className="w-[110px]" />
+                <col className="w-[180px]" />
+                <col className="w-[150px]" />
+              </colgroup>
               <thead>
                 <tr className="bg-slate-50/80 text-left text-[10px] font-black uppercase tracking-widest text-slate-400 dark:bg-slate-800/40 dark:text-slate-500">
                   {['Downline', 'Level', 'Product / Order', 'PV', 'Rate', 'Formula', 'Bonus'].map((h) => (
-                    <th key={h} className={`px-4 py-3 first:pl-5 last:pr-5 md:first:pl-6 md:last:pr-6 ${['PV', 'Rate', 'Bonus'].includes(h) ? 'text-right' : ''}`}>{h}</th>
+                    <th key={h} className={`whitespace-nowrap px-4 py-3 first:pl-5 last:pr-5 md:first:pl-6 md:last:pr-6 ${['PV', 'Rate', 'Bonus'].includes(h) ? 'text-right' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -511,18 +520,18 @@ export default function NetworkEarningsTab({ awards, monthlyActivation }: Props)
                           {award.checkout_id || formatDate(award.awarded_at)}
                         </p>
                       </td>
-                      <td className="px-4 py-3.5 text-right font-bold tabular-nums text-slate-900 dark:text-white">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right font-bold tabular-nums text-slate-900 dark:text-white">
                         {num(pv)} PV
                       </td>
-                      <td className={`px-4 py-3.5 text-right font-black tabular-nums ${c.text}`}>
+                      <td className={`whitespace-nowrap px-4 py-3.5 text-right font-black tabular-nums ${c.text}`}>
                         {UNILEVEL_TOTAL_RATE_PERCENT}% / {UNILEVEL_LEVEL_SPLIT}
                       </td>
                       <td className="px-4 py-3.5">
-                        <code className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        <code className="inline-flex whitespace-nowrap rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                           {num(pv)} × {(rate * 100).toFixed(2).replace(/\.00$/, '')}%
                         </code>
                       </td>
-                      <td className="px-4 py-3.5 text-right text-base font-black tabular-nums text-emerald-600 last:pr-5 dark:text-emerald-400 md:last:pr-6">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right text-base font-black tabular-nums text-emerald-600 last:pr-5 dark:text-emerald-400 md:last:pr-6">
                         +{peso(bon)}
                       </td>
                     </tr>

@@ -414,12 +414,15 @@ const getUploadErrorMessage = (err: unknown, fallback: string) => {
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const PERSONAL_CASHBACK_RATE = 0.04
+const UNILEVEL_POOL_RATE = 0.06
+const DIRECT_EDGE_POINTS_RATE = 0.029
 const GLOBAL_PURCHASE_BONUS_RATE = 0.01
-const AFFILIATE_PERFORMANCE_RATE = 0.1
-const TOTAL_PAYOUT_RATE =
-  PERSONAL_CASHBACK_RATE +
-  GLOBAL_PURCHASE_BONUS_RATE +
-  AFFILIATE_PERFORMANCE_RATE
+const PRODUCT_PURCHASE_POINTS_RATE =
+  1 -
+  PERSONAL_CASHBACK_RATE -
+  UNILEVEL_POOL_RATE -
+  DIRECT_EDGE_POINTS_RATE -
+  GLOBAL_PURCHASE_BONUS_RATE
 const VAT_RATE = 0.12
 
 type PricingSummary = {
@@ -431,8 +434,10 @@ type PricingSummary = {
   retailProfit: number
   reversedMultiplier: number
   personalCashback: number
+  unilevelPool: number
+  directEdgePoints: number
   globalPurchaseBonus: number
-  affiliatePerformanceBonus: number
+  productPurchasePoints: number
   totalAllocation: number
   vatOnMemberPrice: number
   dealerDiscount: number
@@ -562,9 +567,11 @@ const buildPricingSummary = ({
     retailProfit,
     reversedMultiplier: multiplierValue,
     personalCashback: pvValue * PERSONAL_CASHBACK_RATE,
+    unilevelPool: pvValue * UNILEVEL_POOL_RATE,
+    directEdgePoints: pvValue * DIRECT_EDGE_POINTS_RATE,
     globalPurchaseBonus: pvValue * GLOBAL_PURCHASE_BONUS_RATE,
-    affiliatePerformanceBonus: pvValue * AFFILIATE_PERFORMANCE_RATE,
-    totalAllocation: pvValue * TOTAL_PAYOUT_RATE,
+    productPurchasePoints: pvValue * PRODUCT_PURCHASE_POINTS_RATE,
+    totalAllocation: pvValue,
     vatOnMemberPrice: effectiveMemberPrice * VAT_RATE,
     dealerDiscount: srpValue > 0 && dealerValue > 0 ? srpValue - dealerValue : 0,
     dealerDiscountRate: srpValue > 0 && dealerValue > 0 ? ((srpValue - dealerValue) / srpValue) * 100 : 0,
@@ -623,11 +630,15 @@ function PricingSummaryPanel({
   const mult = summary.reversedMultiplier.toFixed(4)
   const pricingTierLabel = summary.pricingTier === 'high_end' ? 'High-End' : 'Low-End'
 
-  const bonusRows: { label: string; rate: string; value: number; note: string }[] = [
-    { label: 'Personal Cashback', rate: '4%', value: summary.personalCashback, note: 'For personal purchase only.' },
-    { label: 'Global Purchase Bonus', rate: '1%', value: summary.globalPurchaseBonus, note: 'Year-end only for top 10 qualifiers.' },
-    { label: 'Affiliate Performance', rate: '10%', value: summary.affiliatePerformanceBonus, note: 'Depends on downline, up to 10 levels with compression rules.' },
+  const allocationRows: { label: string; rate: string; value: number; unit: 'currency' | 'points'; note: string }[] = [
+    { label: 'Cashback / e-GC', rate: '4%', value: summary.personalCashback, unit: 'currency', note: 'Credited from delivered personal purchase PV.' },
+    { label: 'Unilevel Pool', rate: '6%', value: summary.unilevelPool, unit: 'currency', note: 'Total pool split across 10 levels at 0.6% per level.' },
+    { label: '50K Points Reward', rate: '2.9%', value: summary.directEdgePoints, unit: 'points', note: 'Direct-edge progress allocation toward the 50,000 points reward.' },
+    { label: 'Global Purchase Bonus', rate: '1%', value: summary.globalPurchaseBonus, unit: 'points', note: 'Year-end global pool allocation.' },
+    { label: 'Product Purchase Points', rate: '86.1%', value: summary.productPurchasePoints, unit: 'points', note: 'Remaining product points after bonus allocations.' },
   ]
+  const formatAllocationValue = (value: number, unit: 'currency' | 'points') =>
+    unit === 'currency' ? `₱ ${fmt(value)}` : `${fmt(value)} pts`
 
   return (
     <div className="rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
@@ -697,37 +708,37 @@ function PricingSummaryPanel({
           </div>
         </div>
 
-        {/* â"€â"€ Section 3: Bonus distribution â"€â"€ */}
+        {/* â"€â"€ Section 3: PV allocation preview â"€â"€ */}
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400">Reference Bonus Distribution</p>
-            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] md:text-[11px] font-bold text-white">15% of PV</span>
+            <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400">PV Allocation Preview</p>
+            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] md:text-[11px] font-bold text-white">100% of PV</span>
           </div>
           <div className="rounded-xl bg-white border border-slate-100 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/70 dark:divide-slate-800/70">
-            {bonusRows.map(({ label, rate, value, note }, index) => (
-              <div key={`bonus-row-${index}`} className="flex items-center justify-between px-3 py-2 gap-2">
+            {allocationRows.map(({ label, rate, value, unit, note }, index) => (
+              <div key={`allocation-row-${index}`} className="flex items-center justify-between px-3 py-2 gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="shrink-0 rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] md:text-[11px] font-bold text-blue-500">{rate}</span>
                     <span className="text-[11px] md:text-sm font-semibold text-slate-600 truncate">{label}</span>
                   </div>
                   <p className="font-mono text-[11px] md:text-xs text-slate-400 mt-0.5">
-                    {pvStr} PV <span className="text-slate-300">x</span> {rate} <span className="text-slate-300">=</span> <span className="font-semibold text-slate-600">â‚± {fmt(value)}</span>
+                    {pvStr} PV <span className="text-slate-300">x</span> {rate} <span className="text-slate-300">=</span> <span className="font-semibold text-slate-600">{formatAllocationValue(value, unit)}</span>
                   </p>
                   <p className="text-[10px] md:text-[11px] text-slate-400 mt-1">{note}</p>
                 </div>
-                <span className="shrink-0 text-sm md:text-base font-bold text-slate-800 tabular-nums">â‚± {fmt(value)}</span>
+                <span className="shrink-0 text-sm md:text-base font-bold text-slate-800 tabular-nums">{formatAllocationValue(value, unit)}</span>
               </div>
             ))}
             <div className="flex items-center justify-between px-3 py-2.5 bg-blue-600">
               <div className="flex items-center gap-2">
-                <span className="shrink-0 rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] md:text-[11px] font-bold text-white">15%</span>
+                <span className="shrink-0 rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] md:text-[11px] font-bold text-white">100%</span>
                 <div>
-                  <p className="text-[11px] md:text-sm font-semibold text-white">Total Reference Allocation</p>
-                  <p className="font-mono text-[10px] md:text-xs text-blue-200">{pvStr} PV x 15%</p>
+                  <p className="text-[11px] md:text-sm font-semibold text-white">Total PV Allocation</p>
+                  <p className="font-mono text-[10px] md:text-xs text-blue-200">All rows are derived from {pvStr} PV</p>
                 </div>
               </div>
-              <span className="text-base md:text-lg font-bold text-white tabular-nums">â‚± {fmt(summary.totalAllocation)}</span>
+              <span className="text-base md:text-lg font-bold text-white tabular-nums">{fmtPv(summary.totalAllocation)} PV</span>
             </div>
           </div>
         </div>

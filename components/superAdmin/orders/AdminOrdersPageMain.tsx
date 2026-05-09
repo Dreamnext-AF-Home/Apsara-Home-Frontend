@@ -117,6 +117,55 @@ const ZQ_STATUS_STYLES: Record<string, string> = {
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(value || 0)
 
+const formatPv = (value: number) =>
+  new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0)
+
+const PV_ALLOCATION_RATES = {
+  cashback: 0.04,
+  unilevel: 0.06,
+  directEdge: 0.029,
+  global: 0.01,
+  productPoints: 0.861,
+} as const
+
+const buildPvAllocation = (pv: number) => [
+  {
+    label: 'Cashback / e-GC',
+    rate: '4%',
+    value: pv * PV_ALLOCATION_RATES.cashback,
+    unit: 'currency' as const,
+    note: 'Cashback issued as voucher/e-GC.',
+  },
+  {
+    label: 'Unilevel Pool',
+    rate: '6%',
+    value: pv * PV_ALLOCATION_RATES.unilevel,
+    unit: 'currency' as const,
+    note: 'Split across 10 levels at 0.6% per paid level.',
+  },
+  {
+    label: '50K Points Reward',
+    rate: '2.9%',
+    value: pv * PV_ALLOCATION_RATES.directEdge,
+    unit: 'points' as const,
+    note: 'Counts toward the 50,000 direct Level 1 points goal.',
+  },
+  {
+    label: 'Global Purchase Bonus',
+    rate: '1%',
+    value: pv * PV_ALLOCATION_RATES.global,
+    unit: 'points' as const,
+    note: 'Reserved for global bonus pool computation.',
+  },
+  {
+    label: 'Product Purchase Points',
+    rate: '86.1%',
+    value: pv * PV_ALLOCATION_RATES.productPoints,
+    unit: 'points' as const,
+    note: 'Remaining product purchase point allocation.',
+  },
+]
+
 const parseOrderDate = (value?: string | null) => {
   if (!value) return null
   const trimmed = value.trim()
@@ -366,6 +415,16 @@ interface Props {
   initialData?: AdminOrdersResponse | null
 }
 
+type AdminOrderItem = AdminOrdersResponse['orders'][number]
+
+const getOrderTotalPv = (order: AdminOrderItem) => {
+  const earnedPv = Number(order.earned_pv ?? 0)
+  if (earnedPv > 0) return earnedPv
+
+  const productPv = Number(order.product_pv ?? 0)
+  return productPv > 0 ? productPv : 0
+}
+
 export default function AdminOrdersPageMain({ initialFilter = 'all', initialData = null }: Props) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -380,6 +439,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
   const [sortBy,      setSortBy]      = useState<'default' | 'customer_az' | 'amount_low_high'>('default')
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null)
   const [payloadPreview, setPayloadPreview] = useState<{ checkoutId: string; payload: Record<string, unknown> | Array<unknown> | null } | null>(null)
+  const [orderDetailPreview, setOrderDetailPreview] = useState<AdminOrderItem | null>(null)
   const [stableData, setStableData] = useState<AdminOrdersResponse | null>(initialData)
   const tableScrollRef = useRef<HTMLDivElement>(null)
   const tableDragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 })
@@ -1376,58 +1436,69 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
 
                           {/* Actions */}
                           <td className="px-5 py-3.5 align-middle">
-                            {canApproveThisOrder ? (
-                              <div className="flex w-36 flex-col gap-1.5">
-                                <div className="grid grid-cols-2 gap-1">
-                                  <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleApprove(order.id)} className="border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                                    Approve
-                                  </Button>
-                                  <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleReject(order.id)} className="border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-100">
-                                    Reject
-                                  </Button>
+                            <div className="flex w-40 flex-col gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="tertiary"
+                                onPress={() => setOrderDetailPreview(order)}
+                                className="w-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
+                              >
+                                View Details
+                              </Button>
+
+                              {canApproveThisOrder ? (
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="grid grid-cols-2 gap-1">
+                                    <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleApprove(order.id)} className="border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                      Approve
+                                    </Button>
+                                    <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleReject(order.id)} className="border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-100">
+                                      Reject
+                                    </Button>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 dark:text-slate-300">Approve first before fulfillment actions.</p>
                                 </div>
-                                <p className="text-[11px] text-slate-400 dark:text-slate-300">Approve first before fulfillment actions.</p>
-                              </div>
-                            ) : order.approval_status === 'approved' ? (
-                              <div className="flex w-36 flex-col gap-1.5">
-                                {isZqMode ? (
-                                  <>
-                                    <Button size="sm" variant="tertiary" isDisabled={isBusy || !canPushZq} onPress={() => handlePushToZq(order.id)} className={`w-full border px-3 py-1.5 text-xs font-semibold transition ${canPushZq ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                                      {hasZqOrder ? 'ZQ Pushed' : 'Push ZQ'}
-                                    </Button>
-                                    <div className="grid grid-cols-2 gap-1">
-                                    <Button size="sm" variant="tertiary" isDisabled={isBusy || !canUseZqLookup} onPress={() => handleFetchZqDetail(order.id)} className={`border px-2 py-1.5 text-[11px] font-semibold transition ${canUseZqLookup ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'}`}>
-                                      ZQ Detail
-                                    </Button>
-                                      <Button size="sm" variant="tertiary" isDisabled={isBusy || !canUseZqLookup} onPress={() => handleSyncZqTracking(order.id)} className={`border px-2 py-1.5 text-[11px] font-semibold transition ${canUseZqLookup ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                                        ZQ Track
+                              ) : order.approval_status === 'approved' ? (
+                                <div className="flex flex-col gap-1.5">
+                                  {isZqMode ? (
+                                    <>
+                                      <Button size="sm" variant="tertiary" isDisabled={isBusy || !canPushZq} onPress={() => handlePushToZq(order.id)} className={`w-full border px-3 py-1.5 text-xs font-semibold transition ${canPushZq ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+                                        {hasZqOrder ? 'ZQ Pushed' : 'Push ZQ'}
                                       </Button>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <Chip size="sm" variant="soft" className={`border text-[11px] font-semibold ${isManualMode ? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200' : 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300'}`}>
-                                    {isManualMode ? 'Manual Flow' : 'Local Courier Flow'}
-                                  </Chip>
-                                )}
-                                {isZqMode ? (
-                                  !hasZqOrder ? (
-                                    <p className="text-[11px] text-slate-400 dark:text-slate-300">Push to ZQ first to unlock detail and tracking.</p>
+                                      <div className="grid grid-cols-2 gap-1">
+                                      <Button size="sm" variant="tertiary" isDisabled={isBusy || !canUseZqLookup} onPress={() => handleFetchZqDetail(order.id)} className={`border px-2 py-1.5 text-[11px] font-semibold transition ${canUseZqLookup ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'}`}>
+                                        ZQ Detail
+                                      </Button>
+                                        <Button size="sm" variant="tertiary" isDisabled={isBusy || !canUseZqLookup} onPress={() => handleSyncZqTracking(order.id)} className={`border px-2 py-1.5 text-[11px] font-semibold transition ${canUseZqLookup ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+                                          ZQ Track
+                                        </Button>
+                                      </div>
+                                    </>
                                   ) : (
-                                    <p className="text-[11px] text-violet-600">ZQ lookup is now available for this order.</p>
-                                  )
-                                ) : (
-                                  <p className="text-[11px] text-slate-400 dark:text-slate-300">
-                                    {isManualMode
-                                      ? 'Use the tracking column for manual shipment status updates only.'
-                                      : 'Use the courier controls in the tracking column for local fulfillment.'}
-                                  </p>
-                                )}
-                              </div>
-                            ) : (
-                              <Chip size="sm" variant="soft" className="border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 dark:border-[#31405f] dark:bg-[#1b2640] dark:text-slate-300">
-                                {order.approval_status === 'pending_approval' ? 'Awaiting approval' : 'No actions'}
-                              </Chip>
-                            )}
+                                    <Chip size="sm" variant="soft" className={`border text-[11px] font-semibold ${isManualMode ? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200' : 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300'}`}>
+                                      {isManualMode ? 'Manual Flow' : 'Local Courier Flow'}
+                                    </Chip>
+                                  )}
+                                  {isZqMode ? (
+                                    !hasZqOrder ? (
+                                      <p className="text-[11px] text-slate-400 dark:text-slate-300">Push to ZQ first to unlock detail and tracking.</p>
+                                    ) : (
+                                      <p className="text-[11px] text-violet-600">ZQ lookup is now available for this order.</p>
+                                    )
+                                  ) : (
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-300">
+                                      {isManualMode
+                                        ? 'Use the tracking column for manual shipment status updates only.'
+                                        : 'Use the courier controls in the tracking column for local fulfillment.'}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <Chip size="sm" variant="soft" className="border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 dark:border-[#31405f] dark:bg-[#1b2640] dark:text-slate-300">
+                                  {order.approval_status === 'pending_approval' ? 'Awaiting approval' : 'No actions'}
+                                </Chip>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )
@@ -1498,6 +1569,146 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
           </div>
         </motion.div>
       )}
+
+      {orderDetailPreview ? (() => {
+        const orderPv = getOrderTotalPv(orderDetailPreview)
+        const allocationRows = buildPvAllocation(orderPv)
+        const pvSource = Number(orderDetailPreview.earned_pv ?? 0) > 0
+          ? 'Posted earned PV'
+          : Number(orderDetailPreview.product_pv ?? 0) > 0
+            ? 'Checkout product PV'
+            : 'No PV recorded'
+
+        return (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4">
+            <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#0f172a]">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-500">Order Details</p>
+                  <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">{orderDetailPreview.checkout_id}</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Full order summary, customer details, and PV allocation preview.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOrderDetailPreview(null)}
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="max-h-[calc(92vh-92px)] overflow-y-auto p-5">
+                <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Product</p>
+                    <div className="mt-4 flex gap-4">
+                      <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+                        {orderDetailPreview.product_image ? (
+                          <img src={orderDetailPreview.product_image} alt={orderDetailPreview.product_name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-400">No image</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-lg font-bold text-slate-900 dark:text-white">{orderDetailPreview.product_name}</h4>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{orderDetailPreview.product_sku || 'No SKU'}</p>
+                        <div className="mt-3 grid gap-2 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+                          <span className="rounded-xl bg-white px-3 py-2 dark:bg-slate-800">Qty: <b>{orderDetailPreview.quantity}</b></span>
+                          <span className="rounded-xl bg-white px-3 py-2 dark:bg-slate-800">Amount: <b>{formatMoney(orderDetailPreview.amount)}</b></span>
+                          {orderDetailPreview.selected_color ? <span className="rounded-xl bg-white px-3 py-2 dark:bg-slate-800">Color: <b>{orderDetailPreview.selected_color}</b></span> : null}
+                          {orderDetailPreview.selected_size ? <span className="rounded-xl bg-white px-3 py-2 dark:bg-slate-800">Size: <b>{orderDetailPreview.selected_size}</b></span> : null}
+                          {orderDetailPreview.selected_type ? <span className="rounded-xl bg-white px-3 py-2 dark:bg-slate-800">Type: <b>{orderDetailPreview.selected_type}</b></span> : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Customer & Delivery</p>
+                    <div className="mt-4 grid gap-3 text-sm">
+                      <div className="rounded-2xl border border-slate-100 p-3 dark:border-slate-800">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Customer</p>
+                        <p className="mt-1 font-bold text-slate-900 dark:text-white">{orderDetailPreview.customer_name || 'N/A'}</p>
+                        <p className="text-slate-500 dark:text-slate-400">{orderDetailPreview.customer_email || 'No email'}</p>
+                        <p className="text-slate-500 dark:text-slate-400">{orderDetailPreview.customer_phone || 'No phone'}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-100 p-3 dark:border-slate-800">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Delivery Address</p>
+                        <p className="mt-1 text-slate-700 dark:text-slate-300">{orderDetailPreview.customer_address || 'No address provided'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Payment</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                      <p>Method: <b>{orderDetailPreview.payment_method || 'N/A'}</b></p>
+                      <p>Status: <b className="capitalize">{orderDetailPreview.payment_status || 'N/A'}</b></p>
+                      <p>Paid: <b>{formatDateOnly(orderDetailPreview.paid_at)}</b></p>
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Workflow</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                      <p>Approval: <b className="capitalize">{orderDetailPreview.approval_status.replace(/_/g, ' ')}</b></p>
+                      <p>Fulfillment: <b className="capitalize">{orderDetailPreview.fulfillment_status.replace(/_/g, ' ')}</b></p>
+                      <p>Created: <b>{formatDateOnly(orderDetailPreview.created_at)} {formatTimeOnly(orderDetailPreview.created_at)}</b></p>
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Shipment</p>
+                    <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                      <p>Courier: <b>{formatCourierLabel(orderDetailPreview.courier) || 'N/A'}</b></p>
+                      <p>Tracking: <b>{orderDetailPreview.tracking_no || 'N/A'}</b></p>
+                      <p>Status: <b className="capitalize">{orderDetailPreview.shipment_status?.replace(/_/g, ' ') || 'N/A'}</b></p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-3xl border border-sky-200 bg-sky-50/70 p-5 dark:border-sky-500/30 dark:bg-sky-500/10">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">PV Allocation Breakdown</p>
+                      <h4 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{formatPv(orderPv)} PV</h4>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                        Source: {pvSource}. Display values are rounded to 2 decimals.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/80 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      Total allocation: 100%
+                    </div>
+                  </div>
+
+                  {orderPv > 0 ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                      {allocationRows.map((row) => (
+                        <div key={row.label} className="rounded-2xl border border-white/90 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{row.label}</p>
+                          <div className="mt-3 flex items-end justify-between gap-2">
+                            <span className="text-sm font-bold text-sky-600 dark:text-sky-300">{row.rate}</span>
+                            <span className="text-lg font-black text-slate-900 dark:text-white">
+                              {row.unit === 'currency' ? formatMoney(row.value) : `${formatPv(row.value)} pts`}
+                            </span>
+                          </div>
+                          <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{row.note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                      No PV has been recorded for this order yet, so the allocation breakdown cannot be computed.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })() : null}
 
       {payloadPreview ? (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4">

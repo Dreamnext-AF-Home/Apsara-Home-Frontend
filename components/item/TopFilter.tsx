@@ -14,6 +14,7 @@ interface TopFilterProps {
   sortValue?: string
   className?: string
   hasActiveFilters?: boolean
+  showPageSizeControl?: boolean
 }
 
 const SHOW_NUMBER_OPTIONS = ['all', 12, 16, 24, 48, 96]
@@ -36,7 +37,8 @@ export default function TopFilter({
   showNumber = 12,
   sortValue = 'default',
   className = '',
-  hasActiveFilters = false
+  hasActiveFilters = false,
+  showPageSizeControl = true
 }: TopFilterProps) {
   const [search, setSearch] = useState(searchValue)
   const [currentViewType, setCurrentViewType] = useState<'grid' | 'list'>(viewType)
@@ -156,21 +158,22 @@ export default function TopFilter({
             </select>
           </div>
 
-          {/* Show number dropdown */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="hidden sm:inline text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Show:</span>
-            <select
-              value={currentShowNumber}
-              onChange={(e) => handleShowNumberChange(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30 transition-all cursor-pointer hover:border-sky-300"
-            >
-              {SHOW_NUMBER_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
+          {showPageSizeControl && (
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="hidden sm:inline text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Show:</span>
+              <select
+                value={currentShowNumber}
+                onChange={(e) => handleShowNumberChange(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30 transition-all cursor-pointer hover:border-sky-300"
+              >
+                {SHOW_NUMBER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* View toggle */}
           <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 sm:p-1">

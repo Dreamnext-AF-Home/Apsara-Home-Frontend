@@ -117,7 +117,7 @@ const BuyNowOptionsModal = ({
   const canUseMemberPrice = status === 'authenticated' && (role === 'customer' || role === '');
   const baseSrp = toPositiveNumber(product.originalPrice) ?? toPositiveNumber(product.price) ?? 0;
   const srpPrice = toPositiveNumber(activeVariant?.priceSrp) ?? baseSrp;
-  const memberPrice = toPositiveNumber(activeVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
+  const memberPrice = toPositiveNumber(product.priceMember) ?? toPositiveNumber(activeVariant?.priceMember) ?? 0;
   const hasMemberPrice = memberPrice > 0 && memberPrice < srpPrice;
   // Guest checkout must always use SRP. Member price applies only for authenticated customer accounts.
   const unitPrice = !forceRealPrice && canUseMemberPrice && hasMemberPrice ? memberPrice : srpPrice;

@@ -49,7 +49,7 @@ const StickyAddToCart = ({ product, selectedVariant, forceRealPrice = false }: S
     ? (toPositiveNumber(selectedVariant?.prodpv) ?? 0)
     : Number(product.prodpv ?? 0);
   const srp = toPositiveNumber(selectedVariant?.priceSrp) ?? toPositiveNumber(product.originalPrice) ?? Number(product.price ?? 0);
-  const member = toPositiveNumber(selectedVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
+  const member = toPositiveNumber(product.priceMember) ?? toPositiveNumber(selectedVariant?.priceMember) ?? 0;
   const seenTitleParts = new Set<string>();
   const selectedVariantTitleParts = [
     selectedVariant?.name?.trim(),
