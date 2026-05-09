@@ -57,6 +57,11 @@ const toNumber = (value: string | number) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const getProductImage = (image: string | null, images?: string[] | null) => {
+  if (image?.trim()) return image
+  return images?.find((item) => item?.trim()) ?? null
+}
+
 const downloadCsv = (filename: string, rows: Array<Array<string | number>>) => {
   const csv = rows
     .map((row) =>
@@ -83,19 +88,25 @@ const downloadCsv = (filename: string, rows: Array<Array<string | number>>) => {
 export default function ProfitSimulationMain() {
   const [scenario, setScenario] = useState<Scenario>('single')
   const [productSearch, setProductSearch] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [productName, setProductName] = useState('Manual Product')
   const [sellingPrice, setSellingPrice] = useState('0')
   const [productCost, setProductCost] = useState('0')
   const [productPv, setProductPv] = useState('0')
   const [quantity, setQuantity] = useState('1')
   const [shippingCost, setShippingCost] = useState('0')
+  const [targetMargin, setTargetMargin] = useState('15')
   const [rates, setRates] = useState<RateConfig>(DEFAULT_RATES)
+  const hasProductSearch = productSearch.trim().length > 0
 
-  const { data: productsData, isFetching: productsFetching } = useGetProductsQuery({
-    page: 1,
-    perPage: 10,
-    search: productSearch.trim() || undefined,
-  })
+  const { data: productsData, isFetching: productsFetching } = useGetProductsQuery(
+    {
+      page: 1,
+      perPage: 8,
+      search: productSearch.trim(),
+    },
+    { skip: !hasProductSearch },
+  )
 
   const computed = useMemo(() => {
     const qty = Math.max(0, toNumber(quantity))
@@ -171,21 +182,63 @@ export default function ProfitSimulationMain() {
 
   const rateTotal = rates.cashback + rates.unilevel + rates.directEdge + rates.global + rates.productPoints
   const isProfitable = computed.estimatedMargin >= 0
+  const targetMarginRate = Math.min(Math.max(toNumber(targetMargin), 0), 95)
+  const meetsTargetMargin = computed.marginPercent >= targetMarginRate
+  const decisionStatus = !isProfitable ? 'loss' : meetsTargetMargin ? 'healthy' : 'belowTarget'
+  const decisionLabel =
+    decisionStatus === 'loss' ? 'Loss Risk' : decisionStatus === 'healthy' ? 'Healthy' : 'Below Target'
+  const decisionTone =
+    decisionStatus === 'loss'
+      ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+      : decisionStatus === 'healthy'
+        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+        : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+  const targetMarginGap = computed.marginPercent - targetMarginRate
+  const suggestedMinSellingPrice =
+    computed.qty > 0 && targetMarginRate < 100
+      ? Math.max(
+          0,
+          (computed.totalProductCost + computed.shipping + computed.cashAllocation) /
+            (computed.qty * (1 - targetMarginRate / 100)),
+        )
+      : 0
   const hasHighPayoutRisk = computed.allocationPercentOfSales > 30
+  const productOptions = productsData?.products ?? []
 
   const handleScenarioChange = (nextScenario: Scenario) => {
     setScenario(nextScenario)
     setQuantity(String(SCENARIO_COPY[nextScenario].quantity))
   }
 
+  const handleProductSearchChange = (value: string) => {
+    setProductSearch(value)
+  }
+
   const handleSelectProduct = (productId: string) => {
-    const selected = productsData?.products.find((product) => String(product.id) === productId)
+    const selected = productOptions.find((product) => String(product.id) === productId)
     if (!selected) return
 
+    setSelectedProductId(productId)
+    setProductSearch('')
     setProductName(selected.name)
     setSellingPrice(String(selected.priceMember || selected.priceSrp || 0))
     setProductCost(String(selected.priceDp || 0))
     setProductPv(String(selected.prodpv || 0))
+  }
+
+  const handleUseManualProduct = () => {
+    setSelectedProductId(null)
+    setProductSearch('')
+    setProductName('Manual Product')
+  }
+
+  const handleTargetMarginChange = (value: string) => {
+    if (value === '') {
+      setTargetMargin('')
+      return
+    }
+
+    setTargetMargin(String(Math.min(Math.max(toNumber(value), 0), 95)))
   }
 
   const handleRateChange = (key: keyof RateConfig, value: string) => {
@@ -210,6 +263,8 @@ export default function ProfitSimulationMain() {
       ['Product Purchase Points', computed.productPoints],
       ['Estimated Company Margin', computed.estimatedMargin],
       ['Margin %', computed.marginPercent],
+      ['Target Margin %', targetMarginRate],
+      ['Suggested Minimum Selling Price', suggestedMinSellingPrice],
       ['Break-even Cost Per Unit', computed.breakEvenCostPerUnit],
       [],
       ['Allocation', 'Rate', 'Amount'],
@@ -280,39 +335,97 @@ export default function ProfitSimulationMain() {
             </div>
 
             <div className="space-y-4">
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Find Product</span>
+              <div className="block">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Search Product</span>
+                  <button
+                    type="button"
+                    onClick={handleUseManualProduct}
+                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Use Manual Input
+                  </button>
+                </div>
                 <input
                   value={productSearch}
-                  onChange={(event) => setProductSearch(event.target.value)}
+                  onChange={(event) => handleProductSearchChange(event.target.value)}
                   placeholder="Search product name or SKU..."
                   className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-950"
                 />
-              </label>
+                {hasProductSearch && (
+                  <div className="mt-2 max-h-80 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+                    {productsFetching && (
+                      <div className="bg-slate-50 px-4 py-3 text-xs font-bold text-cyan-600 dark:bg-slate-950">
+                        Loading products...
+                      </div>
+                    )}
+                    {!productsFetching && productOptions.length === 0 && (
+                      <div className="bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                        No matching products. You can still enter the values manually below.
+                      </div>
+                    )}
+                    {!productsFetching &&
+                      productOptions.map((product) => {
+                        const productId = String(product.id)
+                        const active = selectedProductId === productId
+                        const productImage = getProductImage(product.image, product.images)
+
+                        return (
+                          <button
+                            type="button"
+                            key={product.id}
+                            onClick={() => handleSelectProduct(productId)}
+                            className={`flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm transition last:border-b-0 dark:border-slate-800 ${
+                              active
+                                ? 'bg-cyan-50 text-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-100'
+                                : 'bg-white hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900'
+                            }`}
+                          >
+                            <span className="flex min-w-0 items-center gap-3">
+                              <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-xs font-black text-slate-400 dark:bg-slate-800">
+                                {productImage ? (
+                                  <img src={productImage} alt={product.name} className="h-full w-full object-cover" />
+                                ) : (
+                                  'AF'
+                                )}
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block truncate font-bold">{product.name}</span>
+                                <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">
+                                  {product.sku ? `${product.sku} - ` : ''}
+                                  {money(product.priceMember || product.priceSrp || 0)} - {pv(product.prodpv || 0)}
+                                </span>
+                              </span>
+                            </span>
+                            {active && (
+                              <span className="shrink-0 text-xs font-black text-cyan-700 dark:text-cyan-300">
+                                Selected
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                  </div>
+                )}
+              </div>
 
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Product Selector</span>
-                <select
-                  onChange={(event) => handleSelectProduct(event.target.value)}
-                  defaultValue=""
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-950"
-                >
-                  <option value="">Manual mode / choose a product</option>
-                  {productsData?.products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} - {money(product.priceMember || product.priceSrp || 0)} - {pv(product.prodpv || 0)}
-                    </option>
-                  ))}
-                </select>
-                {productsFetching && <span className="mt-1 block text-xs text-cyan-600">Loading products...</span>}
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Product Name</span>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Product Name</span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-black ${
+                      selectedProductId
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {selectedProductId ? 'Product Applied' : 'Manual Product'}
+                  </span>
+                </div>
                 <input
                   value={productName}
-                  onChange={(event) => setProductName(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                  disabled
+                  className="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
                 />
               </label>
 
@@ -372,17 +485,28 @@ export default function ProfitSimulationMain() {
                   <h2 className="mt-2 text-xl font-black">Business Decision</h2>
                 </div>
                 <span
-                  className={`rounded-full px-4 py-2 text-sm font-black ${
-                    isProfitable
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                      : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                  }`}
+                  className={`rounded-full px-4 py-2 text-sm font-black ${decisionTone}`}
                 >
-                  {isProfitable ? 'Profitable' : 'Loss Risk'}
+                  {decisionLabel}
                 </span>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Target Margin</p>
+                  <p className={`mt-2 text-xl font-black ${meetsTargetMargin ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {percent(targetMarginRate)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {targetMarginGap >= 0 ? '+' : ''}
+                    {percent(targetMarginGap)} vs target
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Min Price for Target</p>
+                  <p className="mt-2 text-xl font-black">{money(suggestedMinSellingPrice)}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">per unit at current cost/PV</p>
+                </div>
                 <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Break-even Cost / Unit</p>
                   <p className="mt-2 text-xl font-black">{money(computed.breakEvenCostPerUnit)}</p>
@@ -391,17 +515,21 @@ export default function ProfitSimulationMain() {
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Cash Allocation vs Sales</p>
                   <p className="mt-2 text-xl font-black">{percent(computed.allocationPercentOfSales)}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Rate Check</p>
-                  <p className={`mt-2 text-xl font-black ${Math.abs(rateTotal - 100) < 0.01 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {percent(rateTotal)}
-                  </p>
-                </div>
               </div>
 
-              {(hasHighPayoutRisk || !isProfitable || Math.abs(rateTotal - 100) >= 0.01) && (
+              <div className="mt-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Rate Check</p>
+                <p className={`mt-2 text-xl font-black ${Math.abs(rateTotal - 100) < 0.01 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {percent(rateTotal)}
+                </p>
+              </div>
+
+              {(hasHighPayoutRisk || !isProfitable || !meetsTargetMargin || Math.abs(rateTotal - 100) >= 0.01) && (
                 <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                   {!isProfitable && <p className="font-bold">Warning: estimated margin is negative for this setup.</p>}
+                  {isProfitable && !meetsTargetMargin && (
+                    <p className="font-bold">Margin is profitable but below the target margin.</p>
+                  )}
                   {hasHighPayoutRisk && <p className="mt-1">Cash allocation is above 30% of gross sales. Review pricing/cost assumptions.</p>}
                   {Math.abs(rateTotal - 100) >= 0.01 && <p className="mt-1">Allocation rates do not total 100%. Check formula settings.</p>}
                 </div>
@@ -514,7 +642,19 @@ export default function ProfitSimulationMain() {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Target Margin %</span>
+              <input
+                type="number"
+                min="0"
+                max="95"
+                step="0.01"
+                value={targetMargin}
+                onChange={(event) => handleTargetMarginChange(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+              />
+            </label>
             {[
               ['Cashback %', 'cashback'],
               ['Unilevel %', 'unilevel'],
