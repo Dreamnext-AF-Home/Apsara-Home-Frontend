@@ -88,13 +88,13 @@ const panelClass =
   'rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-sm shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
 
 const inputClass =
-  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30'
+  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30'
 
 const selectClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30'
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium leading-6 text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30'
 
 const softCardClass =
-  'rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70'
+  'rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 dark:border-slate-700 dark:bg-slate-800/70'
 
 export default function PartnerStorefrontStudio() {
   const [selectedId, setSelectedId] = useState<number | 'new'>('new')
@@ -137,6 +137,7 @@ export default function PartnerStorefrontStudio() {
   const [isUploadingTabLogo, setIsUploadingTabLogo] = useState(false)
   const tabLogoInputRef = useRef<HTMLInputElement | null>(null)
   const [isUploadingHeroVideo, setIsUploadingHeroVideo] = useState(false)
+  const [isUploadingReferralLink, setIsUploadingReferralLink] = useState(false)
   const heroVideoInputRef = useRef<HTMLInputElement | null>(null)
   const { data: categoriesData } = useGetCategoriesQuery({ per_page: 200 })
   const [fetchProducts] = useLazyGetProductsQuery()
@@ -697,6 +698,43 @@ export default function PartnerStorefrontStudio() {
     }
   }
 
+  const handleApplyReferralLink = async () => {
+    const referral = draft.referralLink.trim()
+    if (!referral) {
+      showErrorToast('Enter a referral link before uploading.')
+      return
+    }
+
+    if (!draft.id) {
+      showSuccessToast('Referral link set. Click "Save Storefront" to apply it.')
+      return
+    }
+
+    if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(draft.id)) {
+      showErrorToast('You do not have access to edit this storefront.')
+      return
+    }
+
+    const slug = toSlug(draft.slug || draft.displayName)
+    if (!slug) {
+      showErrorToast('Add a slug or display name first.')
+      return
+    }
+
+    setIsUploadingReferralLink(true)
+
+    try {
+      await updateItem({ type: 'partner-storefront', id: draft.id, data: buildStorefrontPayload(draft) }).unwrap()
+      showSuccessToast('Referral link saved successfully.')
+      refetch()
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to save referral link.')
+    } finally {
+      setIsUploadingReferralLink(false)
+    }
+  }
+
   const handleRemoveReferralLink = async () => {
     const previousReferral = draft.referralLink
     if (!previousReferral.trim()) return
@@ -905,9 +943,9 @@ export default function PartnerStorefrontStudio() {
         <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-cyan-50 p-5 shadow-sm dark:border-emerald-900/50 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 dark:shadow-black/20">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">Partner Storefronts</p>
-              <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Storefront Studio</h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Build and manage branded partner shop pages with curated categories and product highlights.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.20em] text-emerald-700 dark:text-emerald-300">Partner Storefronts</p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Storefront Studio</h1>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300">Build and manage branded partner shop pages with curated categories, product highlights, and landing page branding in one place.</p>
             </div>
             {!isPartnerScoped ? (
               <button
@@ -919,11 +957,11 @@ export default function PartnerStorefrontStudio() {
               </button>
             ) : null}
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-200 bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
               {storefronts.length} storefront{storefronts.length === 1 ? '' : 's'}
             </span>
-            <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               Live editor
             </span>
           </div>
@@ -970,10 +1008,10 @@ export default function PartnerStorefrontStudio() {
 
       <section className="space-y-5">
         <div className={panelClass}>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Identity</p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Configure core storefront details and branding.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Identity</p>
+              <p className="mt-2 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300">Configure your storefront identity, hero messaging, brand assets, and partner settings for a polished launch.</p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
               Live
@@ -981,7 +1019,7 @@ export default function PartnerStorefrontStudio() {
             </span>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Slug">
+            <Field label="Slug" className="md:order-1">
               <input
                 value={draft.slug}
                 onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
@@ -990,7 +1028,7 @@ export default function PartnerStorefrontStudio() {
                 className={inputClass}
               />
             </Field>
-            <Field label="Display Name">
+            <Field label="Display Name" className="md:order-2">
               <input
                 value={draft.displayName}
                 onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))}
@@ -998,7 +1036,7 @@ export default function PartnerStorefrontStudio() {
                 className={inputClass}
               />
             </Field>
-            <Field label="Hero Title">
+            <Field label="Hero Title" className="md:order-3">
               <input
                 value={draft.heroTitle}
                 onChange={(event) => setDraft((current) => ({ ...current, heroTitle: event.target.value }))}
@@ -1006,7 +1044,7 @@ export default function PartnerStorefrontStudio() {
                 className={inputClass}
               />
             </Field>
-            <Field label="Partner Notification Email">
+            <Field label="Partner Notification Email" className="md:order-4">
               <input
                 value={draft.notificationEmail}
                 onChange={(event) => setDraft((current) => ({ ...current, notificationEmail: event.target.value }))}
@@ -1014,8 +1052,7 @@ export default function PartnerStorefrontStudio() {
                 className={inputClass}
               />
             </Field>
-            
-            <Field label="Logo Upload">
+            <Field label="Logo Upload" className="md:order-7">
               <div className="space-y-3">
                 <div className={`${softCardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
                   <div>
@@ -1034,7 +1071,7 @@ export default function PartnerStorefrontStudio() {
                       <button
                         type="button"
                         onClick={() => void handleRemoveLogo()}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        className="min-w-[112px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         Remove
                       </button>
@@ -1043,7 +1080,7 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => logoInputRef.current?.click()}
                       disabled={isUploadingLogo}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="min-w-[140px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
                       {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
                     </button>
@@ -1063,34 +1100,54 @@ export default function PartnerStorefrontStudio() {
                 ) : null}
               </div>
             </Field>
-            <Field label="Referral Upload">
+            <Field label="Referral & Shop Link Upload" className="md:order-6">
               <div className="space-y-3">
                 <div className={softCardClass}>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Upload referral link</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Paste your referral URL for this storefront.</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Add referral & shop link</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Set both links for this storefront in one place.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Referral Link</p>
                   <input
                     value={draft.referralLink}
                     onChange={(event) => setDraft((current) => ({ ...current, referralLink: event.target.value }))}
-                    placeholder="https://www.afhome.ph/shop?ref=yourcode"
-                    className={inputClass}
+                    placeholder="https://www.afhome.ph/ref/yourcode"
+                    className="min-w-0 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30"
                   />
-                  {draft.referralLink.trim() ? (
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <input
+                    value={draft.domainLink}
+                    onChange={(event) => setDraft((current) => ({ ...current, domainLink: event.target.value }))}
+                    placeholder="https://www.afhome.ph/shop/jujutsu-kaisen"
+                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => void handleRemoveReferralLink()}
-                      disabled={saving}
-                      className="shrink-0 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:bg-slate-800 dark:text-red-300 dark:hover:bg-red-950/30"
+                      onClick={() => void handleApplyReferralLink()}
+                      disabled={isUploadingReferralLink || saving}
+                    className="min-w-[116px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
-                      Remove
+                      {isUploadingReferralLink ? 'Saving...' : 'Save Link'}
                     </button>
-                  ) : null}
+                    {draft.referralLink.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveReferralLink()}
+                        disabled={saving}
+                        className="min-w-[112px] whitespace-nowrap rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold leading-tight text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/60 dark:bg-slate-800 dark:text-red-300 dark:hover:bg-red-950/30"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved when you click <span className="font-semibold text-slate-700 dark:text-slate-200">Save Storefront</span>.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Shop URL</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Saved when you click <span className="font-semibold text-slate-700 dark:text-slate-200">Save Storefront</span>, or upload directly for existing storefronts.</p>
               </div>
             </Field>
-            <Field label="Tab Logo Upload" className="md:col-span-1">
+            <Field label="Tab Logo Upload" className="md:col-span-1 md:order-9">
               <div className="space-y-3">
                 <div className={`${softCardClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
                   <div>
@@ -1109,7 +1166,7 @@ export default function PartnerStorefrontStudio() {
                       <button
                         type="button"
                         onClick={() => void handleRemoveTabLogo()}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        className="min-w-[112px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         Remove
                       </button>
@@ -1118,7 +1175,7 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => tabLogoInputRef.current?.click()}
                       disabled={isUploadingTabLogo}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="min-w-[140px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
                       {isUploadingTabLogo ? 'Uploading...' : 'Upload Tab Logo'}
                     </button>
@@ -1138,7 +1195,7 @@ export default function PartnerStorefrontStudio() {
                 ) : null}
               </div>
             </Field>
-            <Field label="Hero Video Upload" className="md:col-span-1">
+            <Field label="Hero Video Upload" className="md:col-span-1 md:order-8">
               <div className="space-y-3">
                 <div className={softCardClass}>
                   <div>
@@ -1157,7 +1214,7 @@ export default function PartnerStorefrontStudio() {
                       <button
                         type="button"
                         onClick={() => void handleRemoveHeroVideo()}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        className="min-w-[112px] whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       >
                         Remove
                       </button>
@@ -1166,7 +1223,7 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => heroVideoInputRef.current?.click()}
                       disabled={isUploadingHeroVideo}
-                      className="rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="min-w-[164px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
                       {isUploadingHeroVideo ? 'Uploading...' : 'Upload Hero Video'}
                     </button>
@@ -1184,7 +1241,7 @@ export default function PartnerStorefrontStudio() {
                 ) : null}
               </div>
             </Field>
-            <Field label="Hero Subtitle" className="md:col-span-2">
+            <Field label="Hero Subtitle" className="md:col-span-2 md:order-10">
               <textarea
                 value={draft.heroSubtitle}
                 onChange={(event) => setDraft((current) => ({ ...current, heroSubtitle: event.target.value }))}
@@ -1193,7 +1250,7 @@ export default function PartnerStorefrontStudio() {
                 className={inputClass}
               />
             </Field>
-            <Field label="Theme Color">
+            <Field label="Theme Color" className="md:order-11">
               <input
                 type="color"
                 value={draft.themeColor}
@@ -1201,7 +1258,7 @@ export default function PartnerStorefrontStudio() {
                 className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800/80"
               />
             </Field>
-            <Field label="Accent Color">
+            <Field label="Accent Color" className="md:order-12">
               <input
                 type="color"
                 value={draft.accentColor}
@@ -1210,7 +1267,7 @@ export default function PartnerStorefrontStudio() {
               />
             </Field>
             {canManageAiSupport ? (
-              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2 dark:border-slate-700 dark:bg-slate-800/70">
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2 md:order-13 dark:border-slate-700 dark:bg-slate-800/70">
                 <input
                   type="checkbox"
                   checked={draft.enableAiSupport}
@@ -1254,8 +1311,8 @@ export default function PartnerStorefrontStudio() {
             <div className={panelClass}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Allowed Categories</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Only these categories will appear on the partner shop page.</p>
+                <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Allowed Categories</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">Only the selected categories will appear on the partner storefront page, creating a cleaner curated shop experience.</p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 {draft.allowedCategoryIds.length} selected
@@ -1289,12 +1346,12 @@ export default function PartnerStorefrontStudio() {
 
             <div className={`flex h-[500px] flex-col ${panelClass}`}>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Selected Products</h2>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Selected Products</h2>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   {draft.featuredProductIds.length} selected
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Products checked in Product Helper will appear here and auto-save.</p>
+              <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-400">Products checked in Product Helper will appear here and auto-save.</p>
               <label className="mt-3 block">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Filter Category</span>
                 <select
@@ -1388,8 +1445,8 @@ export default function PartnerStorefrontStudio() {
             </div>
 
             <div className={`flex h-[500px] flex-col ${panelClass}`}>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Product Helper</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">All active products in the selected category.</p>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Product Helper</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">Select active products from the allowed category to feature them on your partner storefront.</p>
               <label className="mt-3 block">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Category</span>
                 <select
@@ -1448,7 +1505,7 @@ export default function PartnerStorefrontStudio() {
                           {imageUrl ? (
                             <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">
+                <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-slate-400 dark:text-slate-500">
                               No Image
                             </div>
                           )}
@@ -1486,7 +1543,7 @@ function Field({
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{label}</span>
       {children}
     </label>
   )

@@ -473,9 +473,6 @@ export default function RewardsWalletTab({
                         <div className="flex items-center justify-between gap-3">
                           <StatusBadge status={voucher.status} />
                         </div>
-                        <div>
-                          <CopyButton text={voucher.code} />
-                        </div>
                         <p className="text-right text-xs uppercase tracking-[0.2em] text-white/75">{usesText}</p>
                       </div>
                     </div>

@@ -143,6 +143,7 @@ const CustomerCheckoutMain = ({
     const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '');
     const normalizedPartner = (storefrontPartner ?? '').trim().toLowerCase();
     const isPartnerStorefront = normalizedPartner.length > 0;
+    const hasPartnerContext = isPartnerStorefront || Boolean(storefrontDisplayName?.trim());
     const isLoggedIn = isPartnerStorefront ? false : isCustomerSession;
     const { data: meData } = useMeQuery(undefined, { skip: !isCustomerSession });
     const { data: publicSettingsData } = useGetPublicGeneralSettingsQuery();
@@ -538,10 +539,10 @@ const CustomerCheckoutMain = ({
     if (!checkoutData) {
         return (
             <LoadingScreen
-                logoSrc={partnerLogo || '/Images/af_home_logo.png'}
+                logoSrc={hasPartnerContext ? (partnerLogo || null) : '/Images/af_home_logo.png'}
                 logoAlt={`${partnerName} Logo`}
                 brandText={partnerName.toUpperCase()}
-                tagline={isPartnerStorefront ? 'Partner Storefront' : 'Your Trusted Home Partner'}
+                tagline={hasPartnerContext ? 'Partner Storefront' : 'Your Trusted Home Partner'}
             />
         );
     }

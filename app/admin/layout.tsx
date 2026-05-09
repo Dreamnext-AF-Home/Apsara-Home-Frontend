@@ -1,11 +1,11 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import DashboardLayout from '@/components/superAdmin/DashboardLayout'
 import { SessionProvider } from 'next-auth/react'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const [pathname] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : ''))
 
   if (pathname === '/admin/login') {
     return (

@@ -1,8 +1,6 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { Suspense } from 'react'
-import { ThemeProvider } from 'next-themes'
 import { CartProvider } from '@/context/CartContext'
 import { WishlistProvider } from '@/context/WishlistContext'
 import CartDrawer from '@/components/ui/CartDrawer'
@@ -13,7 +11,6 @@ import { store } from '@/store/store'
 import { Toaster } from 'react-hot-toast'
 import { useMeQuery } from '@/store/api/userApi'
 import { useEffect, useState } from 'react'
-import ReferralCapture from '@/components/referrals/ReferralCapture'
 import { useAccountDeletedListener } from '@/hooks/useAccountDeletedListener'
 
 function CustomerSessionGuard() {
@@ -140,14 +137,10 @@ function CustomerDeletedOverlay() {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
     <SessionProvider>
         <ReduxProvider store={store}>
           <CartProvider>
           <WishlistProvider>
-            <Suspense fallback={null}>
-              <ReferralCapture />
-            </Suspense>
             <CustomerSessionGuard />
             <AccountDeletedListener />
             <CustomerBannedOverlay />
@@ -173,6 +166,5 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           </CartProvider>
         </ReduxProvider>
     </SessionProvider>
-    </ThemeProvider>
   )
 }

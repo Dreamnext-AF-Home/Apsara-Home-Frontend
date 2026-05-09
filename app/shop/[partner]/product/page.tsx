@@ -26,6 +26,7 @@ type ApiProductResponse = {
 }
 
 const REQUEST_TIMEOUT_MS = 12000
+const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController()
@@ -120,7 +121,10 @@ export async function generateMetadata({ params }: PageProps) {
         icon: [{ url: partnerIcon, type: 'image/png' }],
         apple: partnerIcon,
       }
-      : metadata.icons,
+      : {
+        icon: [{ url: BLANK_FAVICON, type: 'image/svg+xml' }],
+        apple: BLANK_FAVICON,
+      },
     openGraph: metadata.openGraph
       ? {
         ...metadata.openGraph,
@@ -252,6 +256,7 @@ export default async function PartnerProductPage({ params }: PageProps) {
         logoSrc: payload.partner?.logoUrl || payload.partner?.tabLogoUrl || '/Images/af_home_logo.png',
         displayName: payload.partner?.displayName || resolved.partner,
         productHref: `/shop/${resolved.partner}/product`,
+        heroVideoUrl: payload.partner?.heroVideoUrl || undefined,
       }}
     />
   )

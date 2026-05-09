@@ -40,6 +40,7 @@ type DisplayProduct = {
   verified?: boolean
   stock?: number
 }
+const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) => {
   if (!rawImage) return '/Images/HeroSection/chairs_stools.jpg'
@@ -110,7 +111,10 @@ export async function generateMetadata({ params }: PageProps) {
         icon: [{ url: iconUrl, type: 'image/png' }],
         apple: iconUrl,
       }
-      : metadata.icons,
+      : {
+        icon: [{ url: BLANK_FAVICON, type: 'image/svg+xml' }],
+        apple: BLANK_FAVICON,
+      },
     openGraph: metadata.openGraph
       ? {
         ...metadata.openGraph,
@@ -212,6 +216,7 @@ export default async function PartnerCategoryPage({ params }: PageProps) {
         logoSrc: payload.partner.logoUrl || payload.partner.tabLogoUrl || '/Images/af_home_logo.png',
         displayName: payload.partner.displayName,
         productHref: `/shop/${resolved.partner}/product`,
+        heroVideoUrl: payload.partner.heroVideoUrl || undefined,
       }}
     />
   )

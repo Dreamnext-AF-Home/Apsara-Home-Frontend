@@ -16,6 +16,7 @@ type PageProps = {
 type PublicWebPageItemsResponse = {
   items?: WebPageItem[]
 }
+const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 async function getStorefrontReferralCode(partnerSlug: string): Promise<string> {
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL;
@@ -35,7 +36,7 @@ async function getStorefrontReferralCode(partnerSlug: string): Promise<string> {
       return config?.slug === partnerSlug;
     });
     const config = getPartnerStorefrontConfig(storefront);
-    return normalizeReferralCode(config?.referralLink ?? '');
+    return normalizeReferralCode(config?.domainLink ?? config?.referralLink ?? '');
   } catch {
     return '';
   }
@@ -47,7 +48,7 @@ export async function generateMetadata({ params }: PageProps) {
   const storefront = await getPartnerStorefrontBySlug(normalizedPartner);
 
   const metadata = buildPageMetadata({
-    title: storefront?.displayName ? `Checkout | ${storefront.displayName}` : 'Checkout',
+    title: 'Checkout',
     description: storefront?.displayName
       ? `Complete your checkout for ${storefront.displayName} orders.`
       : 'Complete your checkout.',
@@ -63,7 +64,10 @@ export async function generateMetadata({ params }: PageProps) {
         icon: [{ url: storefront.tabLogoUrl || storefront.logoUrl || '', type: 'image/png' }],
         apple: storefront.tabLogoUrl || storefront.logoUrl || '',
       }
-      : metadata.icons,
+      : {
+        icon: [{ url: BLANK_FAVICON, type: 'image/svg+xml' }],
+        apple: BLANK_FAVICON,
+      },
   };
 }
 

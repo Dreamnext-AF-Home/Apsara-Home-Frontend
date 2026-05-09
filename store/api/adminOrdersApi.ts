@@ -47,7 +47,10 @@ export interface AdminOrder {
   zq_synced_at?: string | null
   product_id?: number | null
   product_name: string
+  product_id?: number | null
   product_sku?: string | null
+  product_category_id?: number | null
+  product_category_name?: string | null
   product_image?: string | null
   product_pv?: number | null
   earned_pv?: number | null
