@@ -1,6 +1,6 @@
 # Frontend Docker Setup
 
-This runs the Next.js frontend in a containerized dev environment so every developer uses the same Node and npm versions.
+This runs the Next.js frontend in a containerized dev environment so every developer uses the same Node and pnpm versions.
 
 ## Files
 

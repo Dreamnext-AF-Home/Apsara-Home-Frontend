@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import { ChevronLeft, ChevronRight, MessageSquareText, Star, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MessageSquareText, Play, Star, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Product,
   ProductReview,
+  ProductsResponse,
   useGetProductsQuery,
   useGetProductReviewsQuery,
   useLazyGetProductsQuery,
@@ -14,6 +15,10 @@ import {
 
 const clampRating = (value: number) => Math.max(0, Math.min(5, value))
 const formatRating = (value: number) => clampRating(value).toFixed(2)
+const PRODUCTS_PER_PAGE = 250
+const INITIAL_PRODUCTS_PER_STAR = 18
+const PRODUCTS_PER_STAR_STEP = 18
+const FALLBACK_IMAGE = '/af_home_logo.png'
 const dedupeProducts = (items: Product[]) =>
   Array.from(
     items.reduce((map, product) => {
@@ -43,6 +48,40 @@ const formatDate = (value?: string | null) => {
   return parsed.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const normalizeReviewMediaUrl = (value: string | null | undefined) => {
+  if (!value) return null
+  const cleanedValue = value.trim().replace(/^"+|"+$/g, '').replace(/%22$/i, '')
+  if (!cleanedValue) return null
+
+  const fallbackBase =
+    process.env.NEXT_PUBLIC_LARAVEL_API_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
+
+  try {
+    const parsed = new URL(cleanedValue)
+    const base = fallbackBase ? new URL(fallbackBase) : null
+
+    if (base && parsed.pathname.startsWith('/storage/') && parsed.host !== base.host) {
+      parsed.protocol = base.protocol
+      parsed.host = base.host
+      return parsed.toString()
+    }
+
+    const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
+    if (isLocalhost && base) {
+      parsed.protocol = base.protocol
+      parsed.host = base.host
+      return parsed.toString()
+    }
+
+    return parsed.toString()
+  } catch {
+    if (fallbackBase && cleanedValue.startsWith('/')) return new URL(cleanedValue, fallbackBase).toString()
+    if (fallbackBase && cleanedValue.startsWith('storage/')) return new URL(`/${cleanedValue}`, fallbackBase).toString()
+    return cleanedValue
+  }
+}
+
 function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   const safeRating = clampRating(rating)
   const filled = Math.floor(safeRating)
@@ -59,20 +98,186 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   )
 }
 
-export default function ProductsReviewsPageMain() {
+function ReviewImage({
+  src,
+  alt,
+  className,
+  sizes,
+}: {
+  src: string
+  alt: string
+  className: string
+  sizes: string
+}) {
+  const [imageSrc, setImageSrc] = useState(src)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    setImageSrc(src)
+    setIsLoaded(false)
+  }, [src])
+
+  return (
+    <>
+      {!isLoaded ? <div className="absolute inset-0 animate-pulse bg-slate-200 dark:bg-slate-700" /> : null}
+      <Image
+        src={imageSrc}
+        alt={alt}
+        fill
+        sizes={sizes}
+        className={className}
+        unoptimized
+        onLoad={() => setIsLoaded(true)}
+        onError={() => {
+          setImageSrc(FALLBACK_IMAGE)
+          setIsLoaded(true)
+        }}
+      />
+    </>
+  )
+}
+
+function ReviewVideo({
+  src,
+  className,
+  controls = false,
+  autoPlay = false,
+  muted = true,
+  previewOnly = false,
+}: {
+  src: string
+  className: string
+  controls?: boolean
+  autoPlay?: boolean
+  muted?: boolean
+  previewOnly?: boolean
+}) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    setIsLoaded(false)
+    setHasError(false)
+  }, [src])
+
+  if (previewOnly) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-slate-900 text-white`}>
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
+          <Play size={17} className="ml-0.5 fill-white" />
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {!isLoaded && !hasError ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
+          <div className="text-center">
+            <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <p className="mt-3 text-xs font-semibold text-white/80">Loading video...</p>
+          </div>
+        </div>
+      ) : null}
+      {hasError ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900 px-4 text-center text-white">
+          <div>
+            <p className="text-sm font-semibold">Video cannot be played here</p>
+            <p className="mt-1 text-xs text-white/70">The file may be missing or not browser-compatible.</p>
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-900"
+            >
+              Open video
+            </a>
+          </div>
+        </div>
+      ) : (
+        <video
+          key={src}
+          src={src}
+          preload={controls ? 'auto' : 'metadata'}
+          controls={controls}
+          autoPlay={autoPlay}
+          muted={muted}
+          playsInline
+          className={className}
+          onLoadedMetadata={() => setIsLoaded(true)}
+          onCanPlay={() => setIsLoaded(true)}
+          onError={() => {
+            setHasError(true)
+            setIsLoaded(true)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+type ProductsReviewsPageMainProps = {
+  initialData?: ProductsResponse | null
+}
+
+function ProductReviewCard({
+  product,
+  onSelect,
+}: {
+  product: Product
+  onSelect: (product: Product) => void
+}) {
+  const [imageSrc, setImageSrc] = useState(product.image || FALLBACK_IMAGE)
+  const avgRating = clampRating(Number(product.avgRating ?? 0))
+
+  useEffect(() => {
+    setImageSrc(product.image || FALLBACK_IMAGE)
+  }, [product.image])
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(product)}
+      className="w-44 shrink-0 snap-start rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-orange-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800/60 dark:hover:border-orange-500"
+    >
+      <div className="relative mb-3 h-24 w-full overflow-hidden rounded-lg bg-white dark:bg-slate-900">
+        <Image
+          src={imageSrc}
+          alt={product.name}
+          fill
+          sizes="176px"
+          loading="lazy"
+          className="object-cover"
+          unoptimized
+          onError={() => setImageSrc(FALLBACK_IMAGE)}
+        />
+      </div>
+      <p className="line-clamp-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{product.name}</p>
+      <div className="mt-2 flex items-center justify-between">
+        <Stars rating={avgRating} size={12} />
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{formatRating(avgRating)}</span>
+      </div>
+    </button>
+  )
+}
+
+export default function ProductsReviewsPageMain({ initialData = null }: ProductsReviewsPageMainProps) {
   const [triggerGetProducts] = useLazyGetProductsQuery()
+  const hasInitialData = Boolean(initialData)
   const {
     data: firstPageData,
     isLoading: isFirstPageLoading,
     isFetching: isFirstPageFetching,
     error: firstPageError,
   } = useGetProductsQuery(
-    { page: 1, perPage: 100, status: '1' },
-    { refetchOnMountOrArgChange: true },
+    { page: 1, perPage: PRODUCTS_PER_PAGE, status: '1' },
+    { refetchOnMountOrArgChange: true, skip: hasInitialData },
   )
   const [products, setProducts] = useState<Product[]>([])
   const [isHydratingPages, setIsHydratingPages] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [visibleCounts, setVisibleCounts] = useState<Record<number, number>>({})
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [activeMediaReviewId, setActiveMediaReviewId] = useState<number | null>(null)
   const [activeMediaIndex, setActiveMediaIndex] = useState(0)
@@ -96,19 +301,20 @@ export default function ProductsReviewsPageMain() {
     let isActive = true
 
     const hydrateRemainingPages = async () => {
-      if (!firstPageData) return
+      const sourceData = initialData ?? firstPageData
+      if (!sourceData) return
 
-      const firstProducts = firstPageData.products ?? []
+      const firstProducts = sourceData.products ?? []
       if (isActive) {
         setProducts(dedupeProducts(firstProducts))
       }
 
-      const lastPage = Math.max(1, Number(firstPageData.meta?.last_page ?? 1))
+      const lastPage = Math.max(1, Number(sourceData.meta?.last_page ?? 1))
       if (lastPage <= 1) return
 
       setIsHydratingPages(true)
       try {
-        const perPage = 100
+        const perPage = PRODUCTS_PER_PAGE
         const pages: number[] = []
         for (let page = 2; page <= lastPage; page += 1) pages.push(page)
 
@@ -151,7 +357,7 @@ export default function ProductsReviewsPageMain() {
     return () => {
       isActive = false
     }
-  }, [firstPageData])
+  }, [firstPageData, initialData])
 
   const groupedByStars = useMemo(() => {
     const groups: Record<number, Product[]> = { 5: [], 4: [], 3: [], 2: [], 1: [] }
@@ -172,7 +378,7 @@ export default function ProductsReviewsPageMain() {
 
   const ratingsOrder = [5, 4, 3, 2, 1] as const
   const hasRatedProducts = ratingsOrder.some((stars) => groupedByStars[stars].length > 0)
-  const isLoadingProducts = (isFirstPageLoading || isFirstPageFetching || isHydratingPages) && products.length === 0
+  const isLoadingProducts = (isFirstPageLoading || isFirstPageFetching) && products.length === 0
 
   const {
     data: selectedReviewsData,
@@ -182,6 +388,7 @@ export default function ProductsReviewsPageMain() {
   const selectedReviews = selectedReviewsData?.reviews ?? []
   const selectedSummary = selectedReviewsData?.summary
   const selectedReviewCount = selectedSummary?.count ?? selectedReviews.length
+  const isInitialReviewsLoading = isFetchingReviews && !selectedReviewsData
   const selectedBreakdown = useMemo(() => {
     const base: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
 
@@ -217,9 +424,9 @@ export default function ProductsReviewsPageMain() {
       : (review.review_video ? [review.review_video] : [])
 
     return [
-      ...imageLinks.map((url) => ({ type: 'image' as const, url })),
-      ...videoLinks.map((url) => ({ type: 'video' as const, url })),
-    ]
+      ...imageLinks.map((url) => ({ type: 'image' as const, url: normalizeReviewMediaUrl(url) })),
+      ...videoLinks.map((url) => ({ type: 'video' as const, url: normalizeReviewMediaUrl(url) })),
+    ].filter((item): item is { type: 'image' | 'video'; url: string } => Boolean(item.url))
   }
 
   return (
@@ -229,6 +436,11 @@ export default function ProductsReviewsPageMain() {
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Browse products grouped by star ratings. Click a product card to view all submitted reviews.
         </p>
+        {isHydratingPages && products.length > 0 ? (
+          <p className="mt-3 inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-500/10 dark:text-sky-200">
+            Still checking remaining product pages in the background...
+          </p>
+        ) : null}
       </div>
 
       {isLoadingProducts ? (
@@ -241,13 +453,16 @@ export default function ProductsReviewsPageMain() {
         </div>
       ) : !hasRatedProducts ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          No products have ratings yet.
+          {isHydratingPages ? 'Finding rated products...' : 'No products have ratings yet.'}
         </div>
       ) : (
         <div className="space-y-4">
           {ratingsOrder.map((stars) => {
             const items = groupedByStars[stars]
             if (items.length === 0) return null
+            const visibleCount = visibleCounts[stars] ?? INITIAL_PRODUCTS_PER_STAR
+            const visibleItems = items.slice(0, visibleCount)
+            const remainingCount = Math.max(0, items.length - visibleItems.length)
 
             return (
               <section
@@ -288,28 +503,30 @@ export default function ProductsReviewsPageMain() {
                   }}
                   className="flex snap-x gap-3 overflow-x-auto pb-2"
                 >
-                  {items.map((product) => {
-                    const image = product.image || '/af_home_logo.png'
-                    const avgRating = clampRating(Number(product.avgRating ?? 0))
-                    return (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onClick={() => setSelectedProduct(product)}
-                        className="w-44 shrink-0 snap-start rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-orange-300 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800/60 dark:hover:border-orange-500"
-                      >
-                        <div className="relative mb-3 h-24 w-full overflow-hidden rounded-lg bg-white dark:bg-slate-900">
-                          <Image src={image} alt={product.name} fill className="object-cover" unoptimized />
-                        </div>
-                        <p className="line-clamp-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{product.name}</p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <Stars rating={avgRating} size={12} />
-                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{formatRating(avgRating)}</span>
-                        </div>
-                      </button>
-                    )
-                  })}
+                  {visibleItems.map((product) => (
+                    <ProductReviewCard
+                      key={product.id}
+                      product={product}
+                      onSelect={setSelectedProduct}
+                    />
+                  ))}
                 </div>
+                {remainingCount > 0 ? (
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVisibleCounts((current) => ({
+                          ...current,
+                          [stars]: (current[stars] ?? INITIAL_PRODUCTS_PER_STAR) + PRODUCTS_PER_STAR_STEP,
+                        }))
+                      }
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    >
+                      Load {Math.min(PRODUCTS_PER_STAR_STEP, remainingCount)} more
+                    </button>
+                  </div>
+                ) : null}
               </section>
             )
           })}
@@ -341,7 +558,7 @@ export default function ProductsReviewsPageMain() {
             </div>
 
             <div className="max-h-[68vh] overflow-y-auto p-5">
-              {isFetchingReviews ? (
+              {isInitialReviewsLoading ? (
                 <p className="text-sm text-slate-600 dark:text-slate-300">Loading reviews...</p>
               ) : selectedSummary ? (
                 <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
@@ -424,9 +641,9 @@ export default function ProductsReviewsPageMain() {
                                 ? review.review_videos
                                 : (review.review_video ? [review.review_video] : [])
                               const media = [
-                                ...imageLinks.map((url) => ({ type: 'image' as const, url })),
-                                ...videoLinks.map((url) => ({ type: 'video' as const, url })),
-                              ]
+                                ...imageLinks.map((url) => ({ type: 'image' as const, url: normalizeReviewMediaUrl(url) })),
+                                ...videoLinks.map((url) => ({ type: 'video' as const, url: normalizeReviewMediaUrl(url) })),
+                              ].filter((item): item is { type: 'image' | 'video'; url: string } => Boolean(item.url))
                               const previewMedia = media.slice(0, 3)
                               const remaining = Math.max(0, media.length - previewMedia.length)
 
@@ -441,18 +658,17 @@ export default function ProductsReviewsPageMain() {
                                   className="group relative block h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm dark:border-slate-600 dark:bg-slate-700"
                                 >
                                   {item.type === 'image' ? (
-                                    <Image
+                                    <ReviewImage
                                       src={item.url}
                                       alt={`Review media ${idx + 1}`}
-                                      fill
+                                      sizes="96px"
                                       className="object-cover transition group-hover:scale-105"
-                                      unoptimized
                                     />
                                   ) : (
-                                    <video
+                                    <ReviewVideo
                                       src={item.url}
-                                      preload="metadata"
                                       className="h-full w-full object-cover"
+                                      previewOnly
                                     />
                                   )}
                                   {item.type === 'video' && (
@@ -513,12 +729,11 @@ export default function ProductsReviewsPageMain() {
                         transition={{ duration: 0.28, ease: 'easeOut' }}
                         className="absolute inset-0"
                       >
-                        <Image
+                        <ReviewImage
                           src={active.url}
                           alt={`Review media ${safeIndex + 1}`}
-                          fill
+                          sizes="90vw"
                           className="object-contain"
-                          unoptimized
                         />
                       </motion.div>
                     ) : (
@@ -530,10 +745,11 @@ export default function ProductsReviewsPageMain() {
                         transition={{ duration: 0.28, ease: 'easeOut' }}
                         className="absolute inset-0 flex items-center justify-center"
                       >
-                        <video
+                        <ReviewVideo
                           src={active.url}
                           controls
                           autoPlay
+                          muted={false}
                           className="max-h-full max-w-full"
                         />
                       </motion.div>
@@ -552,12 +768,9 @@ export default function ProductsReviewsPageMain() {
                         }`}
                       >
                         {item.type === 'image' ? (
-                          <Image src={item.url} alt={`Media thumb ${idx + 1}`} fill className="object-cover" unoptimized />
+                          <ReviewImage src={item.url} alt={`Media thumb ${idx + 1}`} sizes="56px" className="object-cover" />
                         ) : (
-                          <>
-                            <video src={item.url} className="h-full w-full object-cover" />
-                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">VID</span>
-                          </>
+                          <ReviewVideo src={item.url} className="h-full w-full object-cover" previewOnly />
                         )}
                       </button>
                     ))}

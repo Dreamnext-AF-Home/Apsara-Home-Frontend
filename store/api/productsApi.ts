@@ -781,6 +781,16 @@ export const normalizeProduct = (input: Product & Record<string, unknown>): Prod
     image: images[0] ?? primaryImage ?? null,
     images,
     variants: uniqueVariants,
+    avgRating:
+      typeof input.avgRating === 'number'
+        ? input.avgRating
+        : (typeof input.avg_rating === 'number'
+          ? input.avg_rating
+          : (typeof input.avg_rating === 'string'
+            ? Number(input.avg_rating)
+            : (typeof input.rating === 'number'
+              ? input.rating
+              : (typeof input.rating === 'string' ? Number(input.rating) : undefined)))),
     createdAt: typeof input.createdAt === 'string' ? input.createdAt : (typeof (input as Record<string, unknown>).created_at === 'string' ? (input as Record<string, unknown>).created_at as string : null),
     updatedAt: typeof input.updatedAt === 'string' ? input.updatedAt : (typeof (input as Record<string, unknown>).updated_at === 'string' ? (input as Record<string, unknown>).updated_at as string : null),
   }

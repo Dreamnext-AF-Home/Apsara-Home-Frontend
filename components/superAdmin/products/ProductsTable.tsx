@@ -188,8 +188,8 @@ function SortableColumnHeader({
   sortDirection?: SortDirection
 }) {
   return (
-    <span className="flex items-center justify-between gap-2">
-      <span>{children}</span>
+    <span className="flex items-center justify-between gap-2 whitespace-nowrap">
+      <span className="whitespace-nowrap">{children}</span>
       {!!sortDirection && (
         <svg
           className={cn(
@@ -215,7 +215,7 @@ function TableChip({
   className: string
 }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', className)}>
+    <span className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold', className)}>
       {children}
     </span>
   )
@@ -223,19 +223,19 @@ function TableChip({
 
 function StockCell({ qty }: { qty: number }) {
   if (qty === 0) {
-    return <span className="font-semibold text-red-500">{qty.toLocaleString()}</span>
+    return <span className="whitespace-nowrap font-semibold text-red-500">{qty.toLocaleString()}</span>
   }
 
   if (qty <= 5) {
     return (
-      <span className="inline-flex items-center gap-1 font-semibold text-orange-500">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-orange-500">
         <TriangleAlert className="h-3.5 w-3.5" />
         {qty.toLocaleString()}
       </span>
     )
   }
 
-  return <span className="text-slate-600 dark:text-slate-300">{qty.toLocaleString()}</span>
+  return <span className="whitespace-nowrap text-slate-600 dark:text-slate-300">{qty.toLocaleString()}</span>
 }
 
 function EmptyProductsState() {
@@ -424,10 +424,10 @@ export default function ProductsTable({
         onMouseUp={stopDrag}
         onMouseLeave={stopDrag}
       >
-        <table className={cn('w-full border-separate border-spacing-0 text-sm text-slate-700 dark:text-slate-200', isZqMode ? 'min-w-[1080px]' : 'min-w-[1260px]')}>
+        <table className={cn('w-full border-separate border-spacing-0 text-sm text-slate-700 dark:text-slate-200', isZqMode ? 'min-w-[1240px]' : 'min-w-[1540px]')}>
           <thead className="bg-slate-50/95 dark:bg-slate-900">
             <tr>
-              <th className="w-12 border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <th className="w-12 min-w-12 border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {!readOnly ? (
                   <input
                     type="checkbox"
@@ -438,7 +438,7 @@ export default function ProductsTable({
                   />
                 ) : null}
               </th>
-              <th className="border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">Image</th>
+              <th className="w-20 min-w-20 border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">Image</th>
               <th className="min-w-[240px] border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Product', 'name')}
               </th>
@@ -451,32 +451,32 @@ export default function ProductsTable({
               <th className="min-w-[180px] border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader(isZqMode ? 'Source' : 'Uploader', 'uploader')}
               </th>
-              <th className="border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <th className="min-w-[110px] border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Price', 'priceSrp', 'right')}
               </th>
               {!isZqMode ? (
-                <th className="border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <th className="min-w-[110px] border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                   {renderSortableHeader('Dealer', 'priceDp', 'right')}
                 </th>
               ) : null}
               {!isZqMode ? (
-                <th className="border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <th className="min-w-[110px] border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                   {renderSortableHeader('Member', 'priceMember', 'right')}
                 </th>
               ) : null}
-              <th className="border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <th className="min-w-[100px] border-b border-slate-200 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Stock', 'stock', 'right')}
               </th>
-              <th className="min-w-[130px] border-b border-slate-200 px-4 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <th className="min-w-[140px] border-b border-slate-200 px-4 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {isZqMode ? 'Import Status' : 'Badges'}
               </th>
-              <th className="border-b border-slate-200 px-4 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <th className="min-w-[120px] border-b border-slate-200 px-4 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Status', 'status', 'center')}
               </th>
               <th className="min-w-[160px] border-b border-slate-200 px-4 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 {renderSortableHeader('Uploaded', 'createdAt')}
               </th>
-              <th className="sticky right-0 z-20 border-b border-l border-slate-200 bg-slate-50/95 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-[-4px_0_8px_-2px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]">Actions</th>
+              <th className="sticky right-0 z-20 min-w-[150px] border-b border-l border-slate-200 bg-slate-50/95 px-4 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-[-4px_0_8px_-2px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]">Actions</th>
             </tr>
           </thead>
 
@@ -594,25 +594,25 @@ export default function ProductsTable({
                       </div>
                     </td>
 
-                    <td className="border-b border-slate-100 px-4 py-4 text-right font-semibold text-slate-700 dark:border-slate-800/70 dark:text-slate-200">
+                    <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-right font-semibold text-slate-700 dark:border-slate-800/70 dark:text-slate-200">
                       {formatPrice(product.priceSrp)}
                     </td>
                     {!isZqMode ? (
-                      <td className="border-b border-slate-100 px-4 py-4 text-right text-slate-500 dark:border-slate-800/70 dark:text-slate-400">
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-right text-slate-500 dark:border-slate-800/70 dark:text-slate-400">
                         {formatPrice(product.priceDp)}
                       </td>
                     ) : null}
                     {!isZqMode ? (
-                      <td className="border-b border-slate-100 px-4 py-4 text-right text-slate-500 dark:border-slate-800/70 dark:text-slate-400">
+                      <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-right text-slate-500 dark:border-slate-800/70 dark:text-slate-400">
                         {formatPrice(product.priceMember ?? 0)}
                       </td>
                     ) : null}
 
-                    <td className="border-b border-slate-100 px-4 py-4 text-right dark:border-slate-800/70">
+                    <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-right dark:border-slate-800/70">
                       <StockCell qty={effectiveStockQty} />
                     </td>
 
-                    <td className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
+                    <td className="min-w-[140px] border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
                       {isZqMode ? (
                         <div className="flex justify-center">
                           <TableChip className="bg-sky-50 text-sky-700 dark:bg-sky-500/12 dark:text-sky-200">
@@ -637,7 +637,7 @@ export default function ProductsTable({
                       )}
                     </td>
 
-                    <td className="border-b border-slate-100 px-4 py-4 text-center dark:border-slate-800/70">
+                    <td className="min-w-[120px] whitespace-nowrap border-b border-slate-100 px-4 py-4 text-center dark:border-slate-800/70">
                       <TableChip
                         className={
                           statusLabel === 'Active'
@@ -665,7 +665,7 @@ export default function ProductsTable({
                     </td>
 
                     <td className={cn(
-                      'sticky right-0 z-10 border-b border-l border-slate-100 px-4 py-4 shadow-[-4px_0_8px_-2px_rgba(15,23,42,0.06)] dark:border-slate-800/70 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]',
+                      'sticky right-0 z-10 min-w-[150px] border-b border-l border-slate-100 px-4 py-4 shadow-[-4px_0_8px_-2px_rgba(15,23,42,0.06)] dark:border-slate-800/70 dark:shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.25)]',
                       isSelected ? 'bg-teal-50/40 dark:bg-teal-500/10' : 'bg-white dark:bg-slate-950',
                     )}>
                       <div className="flex items-center justify-end gap-1">

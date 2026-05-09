@@ -313,27 +313,38 @@ export default function NetworkEarningsTab({ awards, monthlyActivation }: Props)
                                     No named contributors at this level yet
                                   </p>
                                 ) : (
-                                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                  <div className="grid gap-2 md:grid-cols-2">
                                     {visible.map((member, mi) => (
                                       <motion.div
                                         key={member.key}
                                         initial={{ opacity: 0, y: 6 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.2, delay: mi * 0.03 }}
-                                        className="flex items-center gap-3 rounded-xl bg-white/70 p-3 dark:bg-slate-900/60 ring-1 ring-white/60 dark:ring-slate-700/40"
+                                        className="rounded-xl bg-white/75 p-3 shadow-sm ring-1 ring-white/60 dark:bg-slate-900/60 dark:ring-slate-700/40"
                                       >
-                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.badge} text-xs font-black text-white shadow-sm`}>
-                                          {(member.name[0] ?? '?').toUpperCase()}
+                                        <div className="flex items-start gap-3">
+                                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.badge} text-xs font-black text-white shadow-sm`}>
+                                            {(member.name[0] ?? '?').toUpperCase()}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="break-words text-sm font-black leading-snug text-slate-900 dark:text-white">{member.name}</p>
+                                            <p className="mt-0.5 break-all text-[11px] font-medium leading-tight text-slate-400">
+                                              {member.username ? `@${member.username}` : member.email ?? 'Member'}
+                                            </p>
+                                          </div>
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                          <p className="break-words text-sm font-bold text-slate-900 dark:text-white">{member.name}</p>
-                                          <p className="break-all text-[11px] text-slate-400">
-                                            {member.username ? `@${member.username}` : member.email ?? 'Member'}
-                                          </p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                          <p className="text-sm font-black tabular-nums text-emerald-600 dark:text-emerald-400">+{peso(member.totalBonus)}</p>
-                                          <p className="text-[11px] text-slate-400">{member.txCount} tx</p>
+
+                                        <div className="mt-3 flex items-end justify-between gap-3 border-t border-slate-200/70 pt-2.5 dark:border-slate-700/60">
+                                          <div>
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Bonus</p>
+                                            <p className="text-sm font-black tabular-nums text-emerald-600 dark:text-emerald-400">+{peso(member.totalBonus)}</p>
+                                          </div>
+                                          <div className="text-right">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Activity</p>
+                                            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                              {member.txCount} tx <span className="text-slate-300 dark:text-slate-600">/</span> {num(member.totalPv)} PV
+                                            </p>
+                                          </div>
                                         </div>
                                       </motion.div>
                                     ))}
