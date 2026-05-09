@@ -9,9 +9,18 @@ interface WalletCreditsTableProps {
   wallets:    MemberWallet[]
   sortKey:    string
   onAdjust:   (member: MemberWallet) => void
+  onViewBreakdown: (member: MemberWallet) => void
 }
 
-function WalletRow({ wallet, onAdjust }: { wallet: MemberWallet; onAdjust: () => void }) {
+function WalletRow({
+  wallet,
+  onAdjust,
+  onViewBreakdown,
+}: {
+  wallet: MemberWallet
+  onAdjust: () => void
+  onViewBreakdown: () => void
+}) {
   const tier   = TIER_COLORS[wallet.tier]   ?? 'bg-slate-100 text-slate-600 border-slate-200'
   const status = STATUS_CONFIG[wallet.status]
 
@@ -75,21 +84,29 @@ function WalletRow({ wallet, onAdjust }: { wallet: MemberWallet; onAdjust: () =>
 
       {/* Action */}
       <td className="px-4 py-3.5">
-        <button
-          onClick={onAdjust}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-all"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Adjust
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={onViewBreakdown}
+            className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition-all hover:bg-sky-100"
+          >
+            PV Breakdown
+          </button>
+          <button
+            onClick={onAdjust}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-all"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Adjust
+          </button>
+        </div>
       </td>
     </tr>
   )
 }
 
-export default function WalletCreditsTable({ wallets, sortKey, onAdjust }: WalletCreditsTableProps) {
+export default function WalletCreditsTable({ wallets, sortKey, onAdjust, onViewBreakdown }: WalletCreditsTableProps) {
   const totalCash = wallets.reduce((s, m) => s + m.cashBalance, 0)
 
   return (
@@ -149,7 +166,12 @@ export default function WalletCreditsTable({ wallets, sortKey, onAdjust }: Walle
                 </tr>
               ) : (
                 wallets.map((w) => (
-                  <WalletRow key={w.id} wallet={w} onAdjust={() => onAdjust(w)} />
+                  <WalletRow
+                    key={w.id}
+                    wallet={w}
+                    onAdjust={() => onAdjust(w)}
+                    onViewBreakdown={() => onViewBreakdown(w)}
+                  />
                 ))
               )}
             </tbody>

@@ -111,6 +111,7 @@ const navItems: NavItem[] = [
       { label: 'Release Center', path: '/admin/encashment/approved_by_admin' },
       { label: 'Released', path: '/admin/encashment/released' },
       { label: 'Invoices', path: '/admin/accounting/invoices' },
+      { label: 'Profit Simulation', path: '/admin/reports/profit-simulation' },
     ],
   },
   {
@@ -121,6 +122,7 @@ const navItems: NavItem[] = [
       { label: 'Member Report', path: '/admin/reports/members' },
       { label: 'Product Report', path: '/admin/reports/products' },
       { label: 'Financial Report', path: '/admin/reports/financial' },
+      { label: 'Profit Simulation', path: '/admin/reports/profit-simulation' },
     ],
   },
   {

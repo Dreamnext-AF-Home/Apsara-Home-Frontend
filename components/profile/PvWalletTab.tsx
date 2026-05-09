@@ -102,6 +102,50 @@ const SectionHeader = ({
   </div>
 )
 
+const PV_ALLOCATION_RATES = [
+  {
+    label: 'Cashback / e-GC',
+    rateLabel: '4%',
+    rate: 0.04,
+    helper: 'Issued to the buyer as cashback / e-GC.',
+    accent: 'text-emerald-600 dark:text-emerald-400',
+  },
+  {
+    label: 'Unilevel Pool',
+    rateLabel: '6%',
+    rate: 0.06,
+    helper: 'Total Unilevel pool. Standard level display is 6% / 10 = 0.6% per level.',
+    accent: 'text-sky-600 dark:text-sky-400',
+  },
+  {
+    label: '50K Points Reward',
+    rateLabel: '2.9%',
+    rate: 0.029,
+    helper: 'Direct-affiliate progress toward the 50,000 point reward.',
+    accent: 'text-amber-600 dark:text-amber-400',
+  },
+  {
+    label: 'Global Purchase Bonus',
+    rateLabel: '1%',
+    rate: 0.01,
+    helper: 'Year-end global pool allocation.',
+    accent: 'text-violet-600 dark:text-violet-400',
+  },
+  {
+    label: 'Product Purchase Points',
+    rateLabel: '86.1%',
+    rate: 0.861,
+    helper: 'Remaining product point allocation after bonus pools.',
+    accent: 'text-slate-700 dark:text-slate-200',
+  },
+] as const
+
+const formatPvValue = (value: number) =>
+  Number(value || 0).toLocaleString('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+
 const PvWalletTab = ({
     currentPv,
     pendingPv,
@@ -129,6 +173,13 @@ const PvWalletTab = ({
   const activationTarget = monthlyActivation?.threshold_pv ?? 100
   const activationProgress = Math.min((activationCurrent / Math.max(activationTarget, 1)) * 100, 100)
   const isUnilevelActive = monthlyActivation?.status === 'active'
+  const allocationBasis = Math.max(
+    0,
+    Number(lifetimePersonalPerformanceValue ?? 0) ||
+      Number(yearlyPurchasePv ?? 0) ||
+      Number(goalCurrent ?? 0)
+  )
+  const unilevelPerLevelRate = 0.06 / 10
   const activationDeadline = monthlyActivation?.deadline_at
     ? new Date(monthlyActivation.deadline_at).toLocaleDateString('en-PH', {
         month: 'short',
@@ -301,6 +352,61 @@ const PvWalletTab = ({
       </div>
 
       {/* ── Unilevel Breakdown ── */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-gray-800/60">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-sky-50 px-5 py-4 dark:border-slate-700 dark:from-slate-900 dark:to-sky-950/40 md:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <SectionHeader
+              eyebrow="PV Allocation Formula"
+              title="How product PV is distributed"
+              description="Read-only guide based on the agreed allocation. Actual credits are still posted by delivered orders."
+            />
+            <div className="rounded-2xl border border-sky-200 bg-white px-4 py-3 text-right shadow-sm dark:border-sky-800/60 dark:bg-slate-900">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">PV Basis</p>
+              <p className="mt-1 text-xl font-black tabular-nums text-sky-700 dark:text-sky-300">
+                {formatPvValue(allocationBasis)} PV
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 p-5 md:grid-cols-2 md:p-6 xl:grid-cols-5">
+          {PV_ALLOCATION_RATES.map((row) => {
+            const computed = allocationBasis * row.rate
+            return (
+              <div
+                key={row.label}
+                className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-700/70 dark:bg-white/[0.03]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-sky-700 ring-1 ring-sky-100 dark:bg-slate-950 dark:text-sky-300 dark:ring-slate-700">
+                    {row.rateLabel}
+                  </span>
+                  <p className={`text-right text-lg font-black tabular-nums ${row.accent}`}>
+                    {formatPvValue(computed)}
+                  </p>
+                </div>
+                <p className="mt-3 text-sm font-bold text-slate-900 dark:text-white">{row.label}</p>
+                <p className="mt-1 font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                  {formatPvValue(allocationBasis)} x {row.rateLabel}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{row.helper}</p>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-700 md:px-6">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 dark:border-blue-900/60 dark:bg-blue-950/30">
+            <p className="text-sm font-bold text-blue-800 dark:text-blue-300">
+              Unilevel level rate: 6% / 10 levels = {(unilevelPerLevelRate * 100).toFixed(1)}% per level.
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-blue-700/80 dark:text-blue-300/80">
+              The 50,000 PV progress uses the direct-affiliate point allocation, not the Unilevel cash bonus amount.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {showUnilevelBreakdown && (
       <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 dark:border-slate-700 dark:bg-gray-800/60">
         <SectionHeader
@@ -309,7 +415,7 @@ const PvWalletTab = ({
           description="Shows who generated your Unilevel bonus, the paid level, rate, and delivered PV used."
           badge={
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:border-sky-800/60 dark:bg-sky-900/30 dark:text-sky-300">
-              6% per eligible level
+              6% / 10 = 0.6% per level
             </span>
           }
         />
