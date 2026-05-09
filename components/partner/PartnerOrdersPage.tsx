@@ -7,7 +7,6 @@ import { useGetAdminMeQuery } from '@/store/api/authApi'
 import { useGetPartnerStorefrontOrdersQuery } from '@/store/api/adminOrdersApi'
 import { useGetAdminWebPageItemsQuery } from '@/store/api/webPagesApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
-import { useGetProductsQuery } from '@/store/api/productsApi'
 
 const money = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -117,39 +116,8 @@ export default function PartnerOrdersPage() {
     return all.filter((c) => allowed.has(c.id))
   }, [categoriesData?.categories, allowedCategoryIds])
 
-  const {
-    data: productsForSelectedCategoryData,
-    isLoading: isProductsForCategoryLoading,
-  } = useGetProductsQuery(
-    categoryFilter === 'all'
-      ? ({ page: 1, perPage: 1 } as any)
-      : { page: 1, perPage: 500, catId: Number(categoryFilter) },
-    {
-      skip:
-        categoryFilter === 'all' ||
-        !Number.isFinite(Number(categoryFilter)) ||
-        allowedCategoryIds.length === 0,
-    },
-  )
-
-  const productSkusForSelectedCategory = useMemo(() => {
-    const products = productsForSelectedCategoryData?.products ?? []
-    const skuSet = new Set<string>()
-    for (const p of products) {
-      const sku = String(p.sku ?? '').trim().toLowerCase()
-      if (sku) skuSet.add(sku)
-    }
-    return skuSet
-  }, [productsForSelectedCategoryData?.products])
-
   const partnerOrders = useMemo(() => {
-    const allowedSlugs = new Set(storefrontSlugs.map((slug) => slug.toLowerCase()))
-    if (allowedSlugs.size === 0) return []
-
     return (ordersData?.orders ?? []).filter((order) => {
-      const sourceSlug = String(order.source_slug ?? '').trim().toLowerCase()
-      if (sourceSlug === '' || !allowedSlugs.has(sourceSlug)) return false
-
       if (statusFilter !== 'all') {
         const fulfillmentStatus = String(order.fulfillment_status ?? '').trim().toLowerCase()
         const normalized = statusFilter.trim().toLowerCase()
@@ -157,17 +125,19 @@ export default function PartnerOrdersPage() {
       }
 
       if (categoryFilter !== 'all') {
-        const sku = String(order.product_sku ?? '').trim().toLowerCase()
-        if (!sku) return false
-        if (!productSkusForSelectedCategory.has(sku)) return false
+        const selectedCategoryId = Number(categoryFilter)
+        const orderCategoryId = Number(order.product_category_id ?? 0)
+        if (!Number.isFinite(selectedCategoryId) || selectedCategoryId <= 0) return false
+        if (!Number.isFinite(orderCategoryId) || orderCategoryId <= 0) return false
+        if (selectedCategoryId !== orderCategoryId) return false
       }
 
       return true
     })
-  }, [ordersData?.orders, storefrontSlugs, statusFilter, categoryFilter, productSkusForSelectedCategory])
+  }, [ordersData?.orders, statusFilter, categoryFilter])
 
   const loading =
-    isMeLoading || isStorefrontLoading || isOrdersLoading || isCategoriesLoading || isProductsForCategoryLoading
+    isMeLoading || isStorefrontLoading || isOrdersLoading || isCategoriesLoading
   const ordersErrorMessage = useMemo(() => extractErrorMessage(error), [error])
 
   const statusOptions = useMemo(() => {
@@ -304,7 +274,7 @@ export default function PartnerOrdersPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {partnerOrders.map((order) => {
                   const sourceSlug = String(order.source_slug ?? '').trim().toLowerCase()
-                  const storefrontName = storefrontNameBySlug[sourceSlug] ?? sourceSlug
+                  const storefrontName = storefrontNameBySlug[sourceSlug] || order.source_label || sourceSlug || '-'
                   return (
                     <tr
                       key={order.id}

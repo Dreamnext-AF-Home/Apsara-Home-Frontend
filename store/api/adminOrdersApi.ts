@@ -46,7 +46,10 @@ export interface AdminOrder {
   zq_response?: Record<string, unknown> | null
   zq_synced_at?: string | null
   product_name: string
+  product_id?: number | null
   product_sku?: string | null
+  product_category_id?: number | null
+  product_category_name?: string | null
   product_image?: string | null
   quantity: number
   selected_color?: string | null

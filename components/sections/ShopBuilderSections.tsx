@@ -176,6 +176,7 @@ export type ShopBuilderSectionsData = {
 export type ShopBuilderSectionsProps = {
   data?: ShopBuilderSectionsData
   partnerSlug?: string
+  partnerHeroVideoUrl?: string
   allowedCategoryIds?: number[]
   featuredProductIds?: number[]
 }
@@ -194,7 +195,7 @@ export function normalizeShopBuilderApiResponse(data: ShopBuilderApiResponse | n
   }
 }
 
-export default function ShopBuilderSections({ data = null, partnerSlug, allowedCategoryIds, featuredProductIds }: ShopBuilderSectionsProps) {
+export default function ShopBuilderSections({ data = null, partnerSlug, partnerHeroVideoUrl, allowedCategoryIds, featuredProductIds }: ShopBuilderSectionsProps) {
   const { items, categories, products } = normalizeShopBuilderApiResponse(data)
 
   if (!data || items.length === 0) {
@@ -261,7 +262,15 @@ export default function ShopBuilderSections({ data = null, partnerSlug, allowedC
   return (
     <>
       {announcements ? <AnnouncementsSection section={announcements} /> : null}
-      {campaignBanners ? <CampaignBannersSection section={campaignBanners} categories={categories} products={products} partnerSlug={partnerSlug} /> : null}
+      {campaignBanners ? (
+        <CampaignBannersSection
+          section={campaignBanners}
+          categories={categories}
+          products={products}
+          partnerSlug={partnerSlug}
+          partnerHeroVideoUrl={partnerHeroVideoUrl}
+        />
+      ) : null}
 
       {categoryGrid && allCategoryCards.length > 0 && (!partnerSlug || partnerAllowedIds.length > 0) ? (
         <CategoryGridSection
@@ -328,13 +337,16 @@ function CampaignBannersSection({
   categories,
   products,
   partnerSlug,
+  partnerHeroVideoUrl,
 }: {
   section: WebPageItem
   categories: Category[]
   products: Product[]
   partnerSlug?: string
+  partnerHeroVideoUrl?: string
 }) {
   const videoUrl = getField(section, 'video_url')
+  const resolvedVideoUrl = (partnerHeroVideoUrl ?? '').trim() || videoUrl
   const posterUrl = getField(section, 'video_poster') || fallbackImage
   const eyebrow = getField(section, 'video_eyebrow') || 'Top Promos'
   const title = getField(section, 'video_title') || 'Weekend Furniture Drop'
@@ -363,7 +375,7 @@ function CampaignBannersSection({
     >
       <AnimatePresence initial={false}>
         <motion.div
-          key={`${title}-${posterUrl}-${videoUrl}`}
+          key={`${title}-${posterUrl}-${resolvedVideoUrl}`}
           initial={{ opacity: 0, y: 26, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -18, scale: 0.98 }}
@@ -375,10 +387,10 @@ function CampaignBannersSection({
               className="group relative isolate block overflow-hidden rounded-[32px]"
             >
               <div className="relative min-h-[280px] overflow-hidden rounded-[32px] md:min-h-[380px]">
-                {videoUrl ? (
+                {resolvedVideoUrl ? (
                   <video
                     className="absolute inset-0 h-full w-full rounded-[32px] object-cover"
-                    src={videoUrl}
+                    src={resolvedVideoUrl}
                     poster={posterUrl}
                     autoPlay
                     muted

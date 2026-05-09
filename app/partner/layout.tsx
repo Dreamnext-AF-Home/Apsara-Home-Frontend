@@ -1,11 +1,11 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import PartnerDashboardLayout from '@/components/partner/DashboardLayout'
 
 export default function PartnerLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const [pathname] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : ''))
 
   if (pathname === '/partner/login') {
     return (

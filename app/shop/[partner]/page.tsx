@@ -27,6 +27,7 @@ type ApiProductsResponse = {
 type ApiWebPagesResponse = {
   items?: WebPageItem[]
 }
+const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 export async function generateMetadata({ params }: PageProps) {
   const resolved = await params
@@ -62,12 +63,15 @@ export async function generateMetadata({ params }: PageProps) {
   const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
   const iconUrl = partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl
 
-  if (iconUrl) {
-    metadata.icons = {
+  metadata.icons = iconUrl
+    ? {
       icon: [{ url: iconUrl, type: 'image/png' }],
       apple: iconUrl,
     }
-  }
+    : {
+      icon: [{ url: BLANK_FAVICON, type: 'image/svg+xml' }],
+      apple: BLANK_FAVICON,
+    }
 
   return metadata
 }

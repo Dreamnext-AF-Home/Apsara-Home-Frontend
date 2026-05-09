@@ -123,6 +123,7 @@ interface CategoryListProductMainProps {
         logoSrc?: string;
         displayName?: string;
         productHref?: string;
+        heroVideoUrl?: string;
     };
     isRoomPage?: boolean;
     isLoading?: boolean;
@@ -162,6 +163,7 @@ export default function CategoryListProductMain({
     const partnerName = partnerBranding?.displayName || (partnerSlug ? titleFromSlug(partnerSlug) : 'Partner Store');
     const partnerProductHref = partnerBranding?.productHref || (partnerSlug ? `/shop/${partnerSlug}/product` : '/shop');
     const partnerLogoSrc = partnerBranding?.logoSrc || '/Images/af_home_logo.png';
+    const heroVideoSrc = partnerBranding?.heroVideoUrl || '/loginpageVideo/afhome.mp4';
     const meta = categoryMeta[slug];
     const staticProducts = categoryProducts[slug];
     const hasDynamicProducts = Array.isArray(initialProducts) && initialProducts.length > 0;
@@ -526,7 +528,7 @@ export default function CategoryListProductMain({
                             <div className="mt-4 rounded-2xl overflow-hidden aspect-square border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                                 <video
                                     className="h-full w-full object-cover"
-                                    src="/loginpageVideo/afhome.mp4"
+                                    src={heroVideoSrc}
                                     autoPlay
                                     muted
                                     loop

@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from "next";
 // import Script from "next/script";
 import "./globals.css";
 import Providers from "@/components/Providers";
-import ShopAiSupportGate from "@/components/ai-support/ShopAiSupportGate";
-import CustomerServiceButton from "@/components/CustomerServiceButton";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -44,8 +42,6 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-white dark:bg-gray-900">
         <Providers>{children}</Providers>
-        <ShopAiSupportGate />
-        <CustomerServiceButton />
         {/* <Script
           id="af-ai-support-base"
           strategy="afterInteractive"

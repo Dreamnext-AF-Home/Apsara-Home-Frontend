@@ -116,6 +116,7 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
       <ShopBuilderSections
         data={sanitizedData ?? data}
         partnerSlug={partner.slug}
+        partnerHeroVideoUrl={partner.heroVideoUrl || undefined}
         allowedCategoryIds={partner.allowedCategoryIds}
         featuredProductIds={partner.featuredProductIds}
       />
