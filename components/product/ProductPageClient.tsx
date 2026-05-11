@@ -83,7 +83,6 @@ const BrandCardComponent = ({ productId, toSlugBrand }: { productId?: number; to
     const rating = brandInfo.overallRating;
     const chatPerformance = brandInfo.chatPerformance ?? 95;
     const totalProducts = brandInfo.totalProducts ?? 0;
-    const totalReviews = brandInfo.totalReviews ?? 0;
     const isOnline = brandInfo.status === 0; // status 0 = online, other = offline
 
     // Format joined date
@@ -99,26 +98,11 @@ const BrandCardComponent = ({ productId, toSlugBrand }: { productId?: number; to
     const joinedDate = formatJoinedDate(brandInfo.joinedDate);
 
     return (
-        <div className="relative z-20 rounded-lg bg-white dark:bg-gray-800 p-6 border border-gray-200 dark:border-gray-700">
-            {/* Share Button */}
-            <button
-                onClick={() => setShareModalOpen(true)}
-                className="absolute top-4 right-4 p-2 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-sky-500 hover:border-sky-500 dark:hover:bg-sky-500 dark:hover:border-sky-500 hover:text-white transition-all duration-200 cursor-pointer"
-                title="Share Brand"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-300 hover:text-white transition-colors">
-                    <circle cx="18" cy="5" r="3" />
-                    <circle cx="6" cy="12" r="3" />
-                    <circle cx="18" cy="19" r="3" />
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                </svg>
-            </button>
-
+        <div className="relative z-20 rounded-lg bg-white dark:bg-gray-800 p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
             {/* Content */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-start gap-4 sm:items-center sm:gap-6">
                 {/* Brand Image */}
-                <div className="relative flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                <div className="relative flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 sm:h-32 sm:w-32">
                     {brandInfo.image ? (
                         <img src={brandInfo.image} alt={brandInfo.name} className="object-contain p-2 w-full h-full" />
                     ) : (
@@ -129,17 +113,33 @@ const BrandCardComponent = ({ productId, toSlugBrand }: { productId?: number; to
                 </div>
 
                 {/* Brand Info */}
-                <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{brandInfo.name}</h2>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            isOnline
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                        }`}>
-                            <span className={`inline-block w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
-                            {isOnline ? 'Online' : 'Offline'}
-                        </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                            <h2 className="text-xl font-bold leading-tight text-gray-900 dark:text-white sm:text-2xl">{brandInfo.name}</h2>
+                            <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                isOnline
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                            }`}>
+                                <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                                {isOnline ? 'Online' : 'Offline'}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => setShareModalOpen(true)}
+                            className="shrink-0 rounded-full border border-gray-200 bg-white p-2 text-gray-700 transition-all duration-200 hover:border-sky-500 hover:bg-sky-500 hover:text-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-sky-500 dark:hover:bg-sky-500"
+                            title="Share Brand"
+                            aria-label="Share Brand"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="18" cy="5" r="3" />
+                                <circle cx="6" cy="12" r="3" />
+                                <circle cx="18" cy="19" r="3" />
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                            </svg>
+                        </button>
                     </div>
                     <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                         Browse all products from this brand
