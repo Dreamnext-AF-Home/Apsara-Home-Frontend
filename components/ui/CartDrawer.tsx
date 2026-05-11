@@ -78,6 +78,7 @@ export default function CartDrawer() {
         manualCheckoutEnabled: checkoutItems.every((item) => item.manualCheckoutEnabled === true),
       },
       quantity: selectedCount,
+      variantId: checkoutItems.length === 1 ? (firstItem.variantId ?? null) : null,
       selectedColor: checkoutItems.length === 1 ? (firstItem.selectedColor ?? null) : null,
       selectedStyle: checkoutItems.length === 1 ? (firstItem.selectedStyle ?? null) : null,
       selectedSize: checkoutItems.length === 1 ? (firstItem.selectedSize ?? null) : null,

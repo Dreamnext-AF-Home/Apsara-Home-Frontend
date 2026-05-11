@@ -47,6 +47,44 @@ type CustomerRealtimeNotificationEvent = Partial<CustomerNotificationItem> & {
 
 const REALTIME_NOTIFICATION_DURATION_SECONDS = 10
 
+const getCustomerNotificationReadKey = (item: { id: string; title: string; description: string; count: number }) =>
+  `${item.id}:${item.title}:${item.description}:${item.count}`
+
+const normalizeCustomerNotificationTimestamp = (raw: string) => {
+  const trimmed = raw.trim()
+  if (!trimmed) return trimmed
+  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)
+  if (hasTimezone) return trimmed
+  const isoLike = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+  return `${isoLike}+08:00`
+}
+
+const getCustomerNotificationTimestamp = (value: string | null | undefined) => {
+  if (!value) return 0
+  const timestamp = new Date(normalizeCustomerNotificationTimestamp(value)).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const formatCustomerNotificationTime = (value: string | null | undefined) => {
+  if (!value) return null
+  const normalized = normalizeCustomerNotificationTimestamp(value)
+  let date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) {
+    date = new Date(value)
+  }
+  if (Number.isNaN(date.getTime())) return null
+
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date)
+}
+
 const navLinks: NavLink[] = [
   { label: 'Home', href: '/shop' },
   {
@@ -188,12 +226,14 @@ function NavbarInner({
     refetchOnFocus: true,
   })
   const customerNotificationStorageKey = `afhome-customer-notif-read:${customerNotificationCacheKey}`
+  const customerNotificationSurfacedStorageKey = `afhome-customer-notif-surfaced:${customerNotificationCacheKey}`
   const {
     data: wishlist = [],
   } = useGetWishlistQuery(undefined, {
     skip: !isLoggedIn || hideSignIn,
   })
   const [readCustomerNotificationKeys, setReadCustomerNotificationKeys] = useState<string[]>([])
+  const [surfacedCustomerNotificationKeys, setSurfacedCustomerNotificationKeys] = useState<string[]>([])
   const [realtimeNotification, setRealtimeNotification] = useState<CustomerNotificationItem | null>(null)
   const [freshRealtimeNotificationIds, setFreshRealtimeNotificationIds] = useState<string[]>([])
 
@@ -259,6 +299,10 @@ function NavbarInner({
         }),
       )
       dispatch(baseApi.util.invalidateTags(['Encashment', 'CustomerNotifications']))
+      const readKey = getCustomerNotificationReadKey(item)
+      setSurfacedCustomerNotificationKeys((current) => (
+        current.includes(readKey) ? current : [...current, readKey]
+      ))
       setFreshRealtimeNotificationIds((current) => [item.id, ...current.filter((id) => id !== item.id)].slice(0, 5))
       setRealtimeNotification(item)
       refetchNotifications()
@@ -276,6 +320,8 @@ function NavbarInner({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const notifMenuRef = useRef<HTMLDivElement | null>(null)
+  const readNotificationsHydratedRef = useRef(false)
+  const surfacedNotificationsHydratedRef = useRef(false)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const isProfileComplete = useMemo(() => {
@@ -461,22 +507,29 @@ function NavbarInner({
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    readNotificationsHydratedRef.current = false
+    let nextReadKeys: string[] = []
+
     try {
       const stored = window.localStorage.getItem(customerNotificationStorageKey)
-      if (!stored) {
-        setReadCustomerNotificationKeys([])
-        return
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        nextReadKeys = Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : []
       }
-
-      const parsed = JSON.parse(stored)
-      setReadCustomerNotificationKeys(Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : [])
     } catch {
-      setReadCustomerNotificationKeys([])
+      nextReadKeys = []
     }
+
+    const timeoutId = window.setTimeout(() => {
+      readNotificationsHydratedRef.current = true
+      setReadCustomerNotificationKeys(nextReadKeys)
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
   }, [customerNotificationStorageKey])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!readNotificationsHydratedRef.current) return
 
     try {
       window.localStorage.setItem(customerNotificationStorageKey, JSON.stringify(readCustomerNotificationKeys))
@@ -484,6 +537,40 @@ function NavbarInner({
       // Ignore localStorage write failures.
     }
   }, [customerNotificationStorageKey, readCustomerNotificationKeys])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    surfacedNotificationsHydratedRef.current = false
+    let nextSurfacedKeys: string[] = []
+
+    try {
+      const stored = window.localStorage.getItem(customerNotificationSurfacedStorageKey)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        nextSurfacedKeys = Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : []
+      }
+    } catch {
+      nextSurfacedKeys = []
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      surfacedNotificationsHydratedRef.current = true
+      setSurfacedCustomerNotificationKeys(nextSurfacedKeys)
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [customerNotificationSurfacedStorageKey])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!surfacedNotificationsHydratedRef.current) return
+
+    try {
+      window.localStorage.setItem(customerNotificationSurfacedStorageKey, JSON.stringify(surfacedCustomerNotificationKeys))
+    } catch {
+      // Ignore localStorage write failures.
+    }
+  }, [customerNotificationSurfacedStorageKey, surfacedCustomerNotificationKeys])
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -521,44 +608,6 @@ function NavbarInner({
     }
   }, [])
 
-  const getCustomerNotificationReadKey = (item: { id: string; title: string; description: string; count: number }) =>
-    `${item.id}:${item.title}:${item.description}:${item.count}`
-
-  const normalizeCustomerNotificationTimestamp = (raw: string) => {
-    const trimmed = raw.trim()
-    if (!trimmed) return trimmed
-    const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)
-    if (hasTimezone) return trimmed
-    const isoLike = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
-    return `${isoLike}+08:00`
-  }
-
-  const getCustomerNotificationTimestamp = (value: string | null | undefined) => {
-    if (!value) return 0
-    const timestamp = new Date(normalizeCustomerNotificationTimestamp(value)).getTime()
-    return Number.isNaN(timestamp) ? 0 : timestamp
-  }
-
-  const formatCustomerNotificationTime = (value: string | null | undefined) => {
-    if (!value) return null
-    const normalized = normalizeCustomerNotificationTimestamp(value)
-    let date = new Date(normalized)
-    if (Number.isNaN(date.getTime())) {
-      date = new Date(value)
-    }
-    if (Number.isNaN(date.getTime())) return null
-
-    return new Intl.DateTimeFormat('en-PH', {
-      timeZone: 'Asia/Manila',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    }).format(date)
-  }
-
   const visibleCustomerNotifications = useMemo(() => {
     const items = (notificationsData?.items ?? []).filter((item) => item.count > 0)
 
@@ -580,13 +629,6 @@ function NavbarInner({
     }, 0)
   }, [readCustomerNotificationKeys, visibleCustomerNotifications])
 
-  useEffect(() => {
-    if (!notifMenuOpen) return
-    if (!visibleCustomerNotifications.length) return
-    markAllCustomerNotificationsAsRead()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifMenuOpen])
-
   const markCustomerNotificationAsRead = (item: { id: string; title: string; description: string; count: number }) => {
     const readKey = getCustomerNotificationReadKey(item)
 
@@ -602,6 +644,47 @@ function NavbarInner({
       return Array.from(next)
     })
   }
+
+  useEffect(() => {
+    if (!isCustomerSession || isNotificationsLoading) return
+    if (!visibleCustomerNotifications.length || realtimeNotification) return
+
+    const nextUnreadNotification = visibleCustomerNotifications.find((item) => {
+      const readKey = getCustomerNotificationReadKey(item)
+      return !readCustomerNotificationKeys.includes(readKey) && !surfacedCustomerNotificationKeys.includes(readKey)
+    })
+
+    if (!nextUnreadNotification) return
+
+    const timeoutId = window.setTimeout(() => {
+      const readKey = getCustomerNotificationReadKey(nextUnreadNotification)
+      setSurfacedCustomerNotificationKeys((current) => (
+        current.includes(readKey) ? current : [...current, readKey]
+      ))
+      setFreshRealtimeNotificationIds((current) => [
+        nextUnreadNotification.id,
+        ...current.filter((id) => id !== nextUnreadNotification.id),
+      ].slice(0, 5))
+      setRealtimeNotification(nextUnreadNotification)
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [
+    isCustomerSession,
+    isNotificationsLoading,
+    readCustomerNotificationKeys,
+    realtimeNotification,
+    surfacedCustomerNotificationKeys,
+    visibleCustomerNotifications,
+  ])
+
+  useEffect(() => {
+    if (!notifMenuOpen) return
+    if (!visibleCustomerNotifications.length) return
+    const timeoutId = window.setTimeout(markAllCustomerNotificationsAsRead, 0)
+    return () => window.clearTimeout(timeoutId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifMenuOpen])
 
   const open = (label: string) => {
     if (closeTimer.current) clearTimeout(closeTimer.current)
@@ -1000,7 +1083,7 @@ function NavbarInner({
                                         <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{item.description}</p>
                                         {formatCustomerNotificationTime(item.latest_at) && (
                                           <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                                            {formatCustomerNotificationTime(item.latest_at)} PHT
+                                            {formatCustomerNotificationTime(item.latest_at)}
                                           </p>
                                         )}
                                       </div>
