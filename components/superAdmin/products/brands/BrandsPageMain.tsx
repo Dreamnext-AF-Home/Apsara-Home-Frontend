@@ -485,84 +485,95 @@ export default function BrandsPageMain() {
       </div>
 
       {/* Table Card */}
-      <div className="rounded-3xl border border-slate-100 bg-white shadow-sm">
+      <div className="rounded-3xl border border-slate-100 bg-white shadow-sm relative overflow-hidden">
+        <div className="pointer-events-none rounded-3xl bg-gradient-to-r from-teal-500/10 via-sky-500/10 to-emerald-500/10" />
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 dark:border-slate-800 p-5">
-          {/* Search */}
-          <div className="relative flex-1 min-w-50 max-w-xs">
-            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              value={search}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search brands..."
-              className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3.5 text-sm text-slate-700 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
-            />
-            {search && (
-              <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
+        <div className="rounded-3xl border border-slate-100 bg-gradient-to-b from-slate-50/70 to-white p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="relative flex-1 min-w-60 max-w-xs">
+              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search brands..."
+                className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-700 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
+              />
+              {search && (
+                <button
+                  onClick={() => handleSearch('')}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-1 text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-1">
-            {(['all', 'active', 'disabled'] as const).map((opt) => (
-              <button
-                key={opt}
-                onClick={() => handleStatusFilter(opt)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${
-                  statusFilter === opt
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'text-slate-500 hover:bg-slate-100'
-                }`}
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+              {(['all', 'active', 'disabled'] as const).map((opt) => {
+                const selected = statusFilter === opt
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => handleStatusFilter(opt)}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition ${selected ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    {opt}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Sort */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => handleSort(e.target.value as SortOption)}
+                className="appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-3.5 pr-10 text-xs font-semibold text-slate-600 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
               >
-                {opt}
-              </button>
-            ))}
-          </div>
+                <option value="name_asc">Name A → Z</option>
+                <option value="name_desc">Name Z → A</option>
+                <option value="id_asc">ID Ascending</option>
+                <option value="id_desc">ID Descending</option>
+              </select>
+              <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
 
-          {/* Sort */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => handleSort(e.target.value as SortOption)}
-              className="appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-3.5 pr-8 text-xs font-semibold text-slate-600 outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20"
-            >
-              <option value="name_asc">Name A → Z</option>
-              <option value="name_desc">Name Z → A</option>
-              <option value="id_asc">ID Ascending</option>
-              <option value="id_desc">ID Descending</option>
-            </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <div className="ml-auto flex items-center gap-3">
+              <p className="text-xs text-slate-500">
+                {isFetching ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-teal-500" />
+                    Updating...
+                  </span>
+                ) : (
+                  <span>
+                    <span className="font-semibold text-slate-700">{filteredBrands.length}</span> of{' '}
+                    <span className="font-semibold text-slate-700">{totalCount}</span> brand(s)
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
-
-          <p className="ml-auto text-xs text-slate-400">
-            {isFetching ? (
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-300 border-t-teal-500" />
-                Refreshing...
-              </span>
-            ) : (
-              `${filteredBrands.length} of ${totalCount} brand(s)`
-            )}
-          </p>
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60/60">
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Brand</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Image</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-400">Actions</th>
+              <tr className="border-b border-slate-100 bg-slate-50 dark:border-slate-800/70 dark:bg-slate-900/40">
+                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Brand</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Image</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 dark:divide-slate-800/70">

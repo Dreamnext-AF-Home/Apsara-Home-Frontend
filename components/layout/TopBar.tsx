@@ -4,6 +4,7 @@ export type TopBarConfig = {
   phone?: string
   email?: string
   messages?: string[]
+  hideMarquee?: boolean
   facebookLabel?: string
   facebookUrl?: string
   instagramLabel?: string
@@ -50,6 +51,7 @@ export default function TopBar({
   phone = '+63 912 345 6789',
   email = 'hello@afhome.ph',
   messages = defaultMessages,
+  hideMarquee = false,
   facebookLabel = 'Facebook',
   facebookUrl = 'https://www.facebook.com/AFHomePH/',
   instagramLabel = 'Instagram',
@@ -78,8 +80,8 @@ export default function TopBar({
         </div>
 
         <div className="flex-1 overflow-hidden mx-4">
-          <div className="flex w-max animate-marquee whitespace-nowrap">
-            {[...messages, ...messages].map((message, index) => (
+          <div className={`flex w-max whitespace-nowrap ${hideMarquee ? '' : 'animate-marquee'}`}>
+            {(hideMarquee ? [] : [...messages, ...messages]).map((message, index) => (
               <span key={index} className="mx-10">{message}</span>
             ))}
           </div>

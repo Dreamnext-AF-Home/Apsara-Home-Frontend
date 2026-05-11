@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 
-const VideoBackground = () => {
+type VideoBackgroundProps = {
+  videoSrc?: string
+}
+
+const VideoBackground = ({ videoSrc = '/loginpageVideo/home-login.mp4' }: VideoBackgroundProps) => {
   const [isReady, setIsReady] = useState(false)
 
   return (
@@ -21,7 +25,7 @@ const VideoBackground = () => {
           isReady ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <source src="/loginpageVideo/home-login.mp4" type="video/mp4" />
+        <source src={videoSrc} type="video/mp4" />
       </video>
     </div>
   )

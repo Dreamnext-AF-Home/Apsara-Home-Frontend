@@ -23,7 +23,9 @@ export type PartnerStorefrontConfig = {
   notificationEmail: string
   domainLink: string
   enableAiSupport: boolean
+  enableActivateDiscount: boolean
 }
+
 
 const defaultThemeColor = '#0f766e'
 const defaultAccentColor = '#f97316'
@@ -90,8 +92,10 @@ export const getPartnerStorefrontConfig = (item: WebPageItem | undefined): Partn
     notificationEmail: String(fields.notification_email ?? '').trim(),
     domainLink: String(fields.domain_link ?? '').trim(),
     enableAiSupport: toBoolean(fields.enable_ai_support),
+    enableActivateDiscount: toBoolean(fields.activate_discount ?? fields.enable_activate_discount),
   }
 }
+
 
 export const filterPartnerCategories = (categories: Category[], config: PartnerStorefrontConfig | null) => {
   if (!config) return categories

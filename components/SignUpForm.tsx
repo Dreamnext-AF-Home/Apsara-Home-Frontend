@@ -126,6 +126,9 @@ const termsSections = [
 interface SignUpFormProps {
   onSwitchToLogin: () => void
   turnstileSiteKey?: string
+  initialReferralCode?: string
+  partnerSlug?: string
+  otpSenderName?: string
 }
 
 type FieldAvailability = {
@@ -147,7 +150,13 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 
 const isReferralCodeFormatValid = (value: string) => /^[A-Za-z0-9]+$/.test(value)
 
-export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: SignUpFormProps) {
+export default function SignUpForm({
+  onSwitchToLogin,
+  turnstileSiteKey = '',
+  initialReferralCode = '',
+  partnerSlug = '',
+  otpSenderName = '',
+}: SignUpFormProps) {
   const searchParams = useSearchParams()
   const [register, { isLoading }] = useRegisterMutation()
   const turnstileRef = useRef<HTMLDivElement>(null)
@@ -156,7 +165,9 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
   const [checkEmailAvailability] = useLazyCheckEmailAvailabilityQuery()
   const [checkReferralAvailability] = useLazyCheckReferralAvailabilityQuery()
   const [checkUsernameAvailability] = useLazyCheckUsernameAvailabilityQuery()
-  const initialReferral = normalizeReferralCode(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '') || getStoredReferralCode()
+  const initialReferral = normalizeReferralCode(initialReferralCode)
+    || normalizeReferralCode(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '')
+    || getStoredReferralCode()
 
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -399,6 +410,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
       email,
       username,
       referred_by: referral,
+      partner_slug: partnerSlug || undefined,
       password: form.password,
       password_confirmation: form.confirmPassword,
       cf_turnstile_response: turnstileToken || undefined,
@@ -439,6 +451,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
         <OtpVerification
           email={pendingEmail}
           verificationToken={verificationToken}
+          senderName={otpSenderName}
           onSuccess={() => {
             if (typeof window !== 'undefined') {
               window.localStorage.setItem('afhome_new_registration_email', pendingEmail)

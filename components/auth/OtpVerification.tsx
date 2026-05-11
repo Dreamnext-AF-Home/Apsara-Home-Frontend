@@ -13,9 +13,10 @@ interface OtpVerificationProps {
     verificationToken: string;
     onSuccess: () => void;
     onBack: () => void;
+    senderName?: string;
 }
 
-const OtpVerification = ({ email, verificationToken, onSuccess, onBack }: OtpVerificationProps) => {
+const OtpVerification = ({ email, verificationToken, onSuccess, onBack, senderName = '' }: OtpVerificationProps) => {
     const [verifyRegisterOtp, { isLoading: isVerifying }] = useVerifyRegisterOtpMutation();
     const [resendRegistrationOtp, { isLoading: isResending }] = useResendRegisterOtpMutation();
     const [otp, setOtp] = useState('');
@@ -98,6 +99,11 @@ const OtpVerification = ({ email, verificationToken, onSuccess, onBack }: OtpVer
             <h2 className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">Check your Email</h2>
             <p className="mb-1 text-sm text-gray-500 dark:text-white/60">We sent a 4-digit verification code to</p>
             <p className="mb-8 text-sm font-semibold text-sky-600 dark:text-sky-400">{maskedEmail}</p>
+            {senderName ? (
+                <p className="-mt-6 mb-8 text-xs text-gray-500 dark:text-white/55">
+                    Sent by: <span className="font-medium text-gray-700 dark:text-white/80">{senderName}</span>
+                </p>
+            ) : null}
 
             {error && (
                 <div ref={errorRef} className="mb-4 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-left text-sm text-red-600 dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">

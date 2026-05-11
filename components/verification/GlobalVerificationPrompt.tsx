@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMeQuery } from '@/store/api/userApi'
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting'
 
 const modalMotion = {
   hidden: { opacity: 0, scale: 0.96, y: 18 },
@@ -15,6 +16,10 @@ const modalMotion = {
 export default function GlobalVerificationPrompt() {
   const router = useRouter()
   const pathname = usePathname()
+  const partnerSlug = useMemo(() => extractPartnerSlugFromPath(pathname), [pathname])
+  const encashmentHref = partnerSlug
+    ? `/${partnerSlug}/profile?tab=encashment&focus=verification#verification-form`
+    : '/profile?tab=encashment&focus=verification#verification-form'
   const { data: session, status } = useSession()
   const role = String(session?.user?.role ?? '').toLowerCase()
   const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '')
@@ -72,7 +77,7 @@ export default function GlobalVerificationPrompt() {
 
   const handleVerifyNow = () => {
     handleClose()
-    router.push('/profile?tab=encashment&focus=verification#verification-form')
+    router.push(encashmentHref)
   }
 
   const handleSuccessClose = () => {

@@ -12,6 +12,7 @@ interface RegisterPayload {
   username: string
   referred_by: string
   cf_turnstile_response?: string
+  partner_slug?: string
 }
 
 interface RegisterResponse {

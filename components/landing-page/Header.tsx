@@ -10,9 +10,21 @@ import ThemeToggle from '@/components/ui/buttons/ThemeToggle';
 
 interface HeaderProps {
   cartCount: number;
+  hideNavLinks?: boolean;
+  logoUrl?: string;
+  logoAlt?: string;
+  logoHref?: string;
+  shopHref?: string;
 }
 
-export default function Header({ cartCount }: HeaderProps) {
+export default function Header({
+  cartCount,
+  hideNavLinks = false,
+  logoUrl = '/Images/af_home_logo.png',
+  logoAlt = 'AFhome Logo',
+  logoHref = '/',
+  shopHref = '/shop',
+}: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('');
@@ -92,20 +104,20 @@ export default function Header({ cartCount }: HeaderProps) {
         <div className="flex items-center justify-between h-20 px-4">
           {/* Logo */}
           <motion.a
-            href="/"
+            href={logoHref}
             className="flex items-center shrink-0"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             <img
-              src="/Images/af_home_logo.png"
-              alt="AFhome Logo"
+              src={logoUrl}
+              alt={logoAlt}
               className="h-10 w-auto object-contain"
             />
           </motion.a>
 
           {/* Desktop Navigation - Centered */}
-          <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+          <nav className={`${hideNavLinks ? 'hidden' : 'hidden md:flex'} items-center gap-8 absolute left-1/2 -translate-x-1/2`}>
             {navLinks.map((link, index) => {
               const sectionId = link.href.replace(/^\/?#/, '');
               const isActive = link.href === '/'
@@ -160,7 +172,7 @@ export default function Header({ cartCount }: HeaderProps) {
                 whileTap={{ scale: 0.95 }}
                 className={`relative p-2 transition-colors ${(isScrolled || !isHome) ? 'text-black dark:text-white' : 'text-white'}`}
               >
-                <Link href="/shop" aria-label="Browse shop" className="block">
+                <Link href={shopHref} aria-label="Browse shop" className="block">
                   <ShoppingBag size={20} />
                   <AnimatePresence>
                     {cartCount > 0 && (
@@ -202,7 +214,7 @@ export default function Header({ cartCount }: HeaderProps) {
 
       {/* Mobile Menu */}
       <AnimatePresence>
-        {isMobileMenuOpen && (
+        {isMobileMenuOpen && !hideNavLinks && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
