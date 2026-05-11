@@ -257,6 +257,7 @@ const ProductPageClient = ({
                     prodpv: selectedVariant?.prodpv ?? product.prodpv,
                 },
                 quantity,
+                variantId: selectedVariant?.id ?? null,
                 selectedColor: selectedVariant?.color ?? null,
                 selectedStyle: selectedVariant?.style ?? null,
                 selectedSize: selectedVariant?.size ?? null,

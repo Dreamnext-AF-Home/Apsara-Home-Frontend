@@ -57,6 +57,7 @@ export interface CustomerCheckoutLineItem {
 export interface CustomerCheckoutData {
   product: CustomerCheckoutProduct;
   quantity: number;
+  variantId?: number | null;
   selectedColor?: string | null;
   selectedStyle?: string | null;
   selectedSize?: string | null;

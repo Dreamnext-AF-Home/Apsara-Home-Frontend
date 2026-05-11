@@ -87,6 +87,7 @@ export default function CustomerCheckoutOrderSummary({
 
     const updatedCheckoutData = {
       ...checkoutData,
+      variantId: variant.id ?? null,
       selectedColor: variant.color || null,
       selectedStyle: variant.style || null,
       selectedSize: variant.size || null,
@@ -163,7 +164,22 @@ export default function CustomerCheckoutOrderSummary({
               >
                 <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                   {variantOptions.map((variant, index) => {
-                    const isSelected = (checkoutData?.selectedSku ?? '') === (variant.sku ?? '');
+                    const selectedVariantId = Number(checkoutData?.variantId ?? 0);
+                    const variantId = Number(variant.id ?? 0);
+                    const selectedSku = String(checkoutData?.selectedSku ?? '').trim();
+                    const variantSku = String(variant.sku ?? '').trim();
+                    const selectedTypeValue = String(checkoutData?.selectedType ?? '').trim().toLowerCase();
+                    const selectedColorValue = String(checkoutData?.selectedColor ?? '').trim().toLowerCase();
+                    const selectedStyleValue = String(checkoutData?.selectedStyle ?? '').trim().toLowerCase();
+                    const selectedSizeValue = String(checkoutData?.selectedSize ?? '').trim().toLowerCase();
+                    const variantMatchesSelectedDetails =
+                      (!selectedTypeValue || String(variant.name ?? '').trim().toLowerCase() === selectedTypeValue) &&
+                      (!selectedColorValue || String(variant.color ?? '').trim().toLowerCase() === selectedColorValue) &&
+                      (!selectedStyleValue || String(variant.style ?? '').trim().toLowerCase() === selectedStyleValue) &&
+                      (!selectedSizeValue || String(variant.size ?? '').trim().toLowerCase() === selectedSizeValue);
+                    const isSelected = selectedVariantId > 0 && variantId > 0
+                      ? selectedVariantId === variantId
+                      : selectedSku !== '' && variantSku !== '' && selectedSku === variantSku && variantMatchesSelectedDetails;
                     const variantLabel = variant.name?.trim() || variant.size?.trim() || `Variant ${index + 1}`;
                     const variantMeta = [
                       variant.size?.trim() || '',

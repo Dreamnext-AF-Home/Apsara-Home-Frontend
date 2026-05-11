@@ -16,25 +16,43 @@ import OutlineButton from '@/components/ui/buttons/OutlineButton';
 
 type VariantOption = NonNullable<CategoryProduct['variants']>[number];
 
+const getVariantSignature = (variant: VariantOption) => [
+  variant.sku?.trim() ?? '',
+  variant.name?.trim() ?? '',
+  variant.style?.trim() ?? '',
+  variant.size?.trim() ?? '',
+  variant.color?.trim() ?? '',
+  String(variant.priceSrp ?? ''),
+].join('|');
+
 const getVariantIdentity = (variant: VariantOption, index: number) => {
-  const sku = variant.sku?.trim();
-  if (sku) return `sku:${sku}`;
   if (typeof variant.id === 'number') return `id:${variant.id}`;
-  return `row:${index}`;
+  return `variant:${getVariantSignature(variant) || index}`;
 };
 
 const isSameVariant = (left?: VariantOption, right?: VariantOption) => {
   if (!left || !right) return false;
 
-  const leftSku = left.sku?.trim();
-  const rightSku = right.sku?.trim();
-  if (leftSku && rightSku) return leftSku === rightSku;
-
   if (typeof left.id === 'number' && typeof right.id === 'number') {
     return left.id === right.id;
   }
 
+  const leftSignature = getVariantSignature(left);
+  const rightSignature = getVariantSignature(right);
+  if (leftSignature && rightSignature) return leftSignature === rightSignature;
+
+  const leftSku = left.sku?.trim();
+  const rightSku = right.sku?.trim();
+  if (leftSku && rightSku) return leftSku === rightSku;
+
   return left === right;
+};
+
+const getStableVariantKey = (variant?: VariantOption) => {
+  if (!variant) return '';
+  if (typeof variant.id === 'number') return `id:${variant.id}`;
+  const signature = getVariantSignature(variant);
+  return signature ? `variant:${signature}` : '';
 };
 
 interface BuyNowOptionsModalProps {
@@ -73,7 +91,7 @@ const BuyNowOptionsModal = ({
   const { data: publicSettingsData } = useGetPublicGeneralSettingsQuery();
   const [notice, setNotice] = useState('');
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
-  const [modalSelectedVariantSku, setModalSelectedVariantSku] = useState(selectedVariant?.sku ?? '');
+  const [modalSelectedVariantKey, setModalSelectedVariantKey] = useState(getStableVariantKey(selectedVariant));
   const loading = false;
   const router = useRouter();
   const pathname = usePathname();
@@ -97,17 +115,20 @@ const BuyNowOptionsModal = ({
   );
 
   const hasVariantOptions = variantOptions.length > 0;
-  const effectiveVariantSku = variantPickerOpen
-    ? (modalSelectedVariantSku || selectedVariant?.sku || '')
-    : (selectedVariant?.sku || modalSelectedVariantSku || '');
+  const selectedVariantKey = getStableVariantKey(selectedVariant);
+  const effectiveVariantKey = variantPickerOpen
+    ? (modalSelectedVariantKey || selectedVariantKey)
+    : (selectedVariantKey || modalSelectedVariantKey);
 
   const activeVariant = useMemo(() => {
     if (!hasVariantOptions) return undefined;
-    if (effectiveVariantSku) {
-      return variantOptions.find((variant) => (variant.sku ?? '') === effectiveVariantSku) ?? selectedVariant ?? variantOptions[0];
+    if (effectiveVariantKey) {
+      return variantOptions.find((variant) => getStableVariantKey(variant) === effectiveVariantKey)
+        ?? selectedVariant
+        ?? variantOptions[0];
     }
     return selectedVariant ?? variantOptions[0];
-  }, [effectiveVariantSku, hasVariantOptions, selectedVariant, variantOptions]);
+  }, [effectiveVariantKey, hasVariantOptions, selectedVariant, variantOptions]);
 
   const activeSelectedColor = activeVariant?.color ?? selectedColor ?? null;
   const activeSelectedStyle = activeVariant?.style ?? selectedStyle ?? null;
@@ -148,7 +169,7 @@ const BuyNowOptionsModal = ({
   const handleClose = () => {
     setNotice('');
     setVariantPickerOpen(false);
-    setModalSelectedVariantSku('');
+    setModalSelectedVariantKey('');
     onClose();
   };
 
@@ -164,6 +185,7 @@ const BuyNowOptionsModal = ({
         prodpv: activeVariant?.prodpv ?? product.prodpv,
       },
       quantity,
+      variantId: activeVariant?.id ?? null,
       selectedColor: activeSelectedColor,
       selectedStyle: activeSelectedStyle,
       selectedSize: activeSelectedSize,
@@ -221,7 +243,7 @@ const BuyNowOptionsModal = ({
   };
 
   const handleVariantSelect = (variant: VariantOption) => {
-    setModalSelectedVariantSku(variant.sku ?? '');
+    setModalSelectedVariantKey(getStableVariantKey(variant));
     setNotice('');
     onVariantSelect?.(variant);
   };
@@ -382,7 +404,10 @@ const BuyNowOptionsModal = ({
                             </div>
                             <OutlineButton
                               type="button"
-                              onClick={() => setVariantPickerOpen((current) => !current)}
+                              onClick={() => {
+                                setModalSelectedVariantKey(getStableVariantKey(activeVariant ?? selectedVariant));
+                                setVariantPickerOpen((current) => !current);
+                              }}
                               className="!px-3 !py-2 !text-[11px] !rounded-xl"
                             >
                               {variantPickerOpen ? 'Hide Options' : (activeVariant ? 'Change Variant' : 'Select Variant')}
@@ -416,7 +441,18 @@ const BuyNowOptionsModal = ({
                                       </span>
                                       <div className="flex flex-wrap gap-2">
                                         {colorOptions.map((color) => {
-                                          const colorVariant = variantOptions.find((variant) => variant.color === color.name);
+                                          const colorVariant =
+                                            variantOptions.find((variant) =>
+                                              variant.color === color.name &&
+                                              (!activeSelectedType || (variant.name ?? '').trim() === activeSelectedType) &&
+                                              (!activeSelectedStyle || (variant.style ?? '').trim() === activeSelectedStyle) &&
+                                              (!activeSelectedSize || (variant.size ?? '').trim() === activeSelectedSize),
+                                            )
+                                            ?? variantOptions.find((variant) =>
+                                              variant.color === color.name &&
+                                              (!activeSelectedType || (variant.name ?? '').trim() === activeSelectedType),
+                                            )
+                                            ?? variantOptions.find((variant) => variant.color === color.name);
                                           const isActive = activeSelectedColor === color.name;
 
                                           return (

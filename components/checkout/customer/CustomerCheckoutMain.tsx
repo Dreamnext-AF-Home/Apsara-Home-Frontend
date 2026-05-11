@@ -76,6 +76,7 @@ function readCheckoutDraft(): CustomerCheckoutData | null {
 
         const parsed = JSON.parse(raw) as CustomerCheckoutData & {
             product?: CustomerCheckoutData['product'] & { id?: number | string };
+            variantId?: number | string | null;
             items?: Array<DraftCheckoutItem & {
                 id?: number | string;
                 cartItemId?: number | string;
@@ -99,6 +100,7 @@ function readCheckoutDraft(): CustomerCheckoutData | null {
 
         return {
             ...parsed,
+            variantId: toPositiveDraftNumber(parsed.variantId) ?? null,
             product: parsed.product
                 ? {
                     ...parsed.product,
@@ -252,13 +254,20 @@ const CustomerCheckoutMain = ({
         }
 
         const normalizedSku = String(checkoutData.selectedSku ?? '').trim().toLowerCase();
+        const normalizedVariantId = toPositiveNumber(checkoutData.variantId);
         const normalizedColor = String(checkoutData.selectedColor ?? '').trim().toLowerCase();
         const normalizedSize = String(checkoutData.selectedSize ?? '').trim().toLowerCase();
         const normalizedType = String(checkoutData.selectedType ?? '').trim().toLowerCase();
         const variants = fullProductData?.variants ?? [];
 
         const matchedVariant =
-            variants.find((variant) => normalizedSku !== '' && String(variant.sku ?? '').trim().toLowerCase() === normalizedSku)
+            variants.find((variant) => normalizedVariantId > 0 && Number(variant.id ?? 0) === normalizedVariantId)
+            ?? variants.find((variant) =>
+                normalizedSku !== '' &&
+                String(variant.sku ?? '').trim().toLowerCase() === normalizedSku &&
+                (normalizedType === '' || String(variant.name ?? '').trim().toLowerCase() === normalizedType)
+            )
+            ?? variants.find((variant) => normalizedSku !== '' && String(variant.sku ?? '').trim().toLowerCase() === normalizedSku)
             ?? variants.find((variant) => {
                 const vColor = String(variant.color ?? '').trim().toLowerCase();
                 const vSize = String(variant.size ?? '').trim().toLowerCase();
