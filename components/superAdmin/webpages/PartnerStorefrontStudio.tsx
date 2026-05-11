@@ -32,7 +32,9 @@ type DraftState = {
   allowedCategoryIds: number[]
   featuredProductIds: number[]
   enableAiSupport: boolean
+  enableActivateDiscount: boolean
 }
+
 
 const emptyDraft: DraftState = {
   slug: '',
@@ -51,7 +53,9 @@ const emptyDraft: DraftState = {
   allowedCategoryIds: [],
   featuredProductIds: [],
   enableAiSupport: false,
+  enableActivateDiscount: false,
 }
+
 
 const toSlug = (value: string) =>
   value
@@ -81,8 +85,10 @@ const toDraft = (item?: WebPageItem): DraftState => {
     allowedCategoryIds: config.allowedCategoryIds,
     featuredProductIds: config.featuredProductIds,
     enableAiSupport: config.enableAiSupport,
+    enableActivateDiscount: config.enableActivateDiscount,
   }
 }
+
 
 const panelClass =
   'rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-sm shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
@@ -296,9 +302,10 @@ export default function PartnerStorefrontStudio() {
       image_url: nextDraft.logoUrl.trim() || undefined,
       is_active: true,
       payload: {
-        fields: {
+          fields: {
           slug,
           display_name: nextDraft.displayName.trim(),
+
           hero_title: nextDraft.heroTitle.trim(),
           hero_subtitle: nextDraft.heroSubtitle.trim(),
           logo_url: nextDraft.logoUrl.trim(),
@@ -313,6 +320,8 @@ export default function PartnerStorefrontStudio() {
           allowed_category_ids: nextDraft.allowedCategoryIds.join(','),
           featured_product_ids: nextDraft.featuredProductIds.join(','),
           enable_ai_support: nextDraft.enableAiSupport ? '1' : '0',
+          activate_discount: nextDraft.enableActivateDiscount ? '1' : '0',
+
         },
       },
     }
@@ -971,31 +980,78 @@ export default function PartnerStorefrontStudio() {
           <div className="mb-2 px-1">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Your Storefronts</p>
           </div>
+
           <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
             {storefronts.map(({ item, config }) => {
               const active = selectedId === item.id
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => selectStorefront(item)}
-                  className={`w-full rounded-2xl border p-3 text-left transition ${
-                    active
-                      ? 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:border-emerald-700 dark:bg-emerald-500/10'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                <div key={item.id} className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => selectStorefront(item)}
+                    className={`w-full rounded-2xl border p-3 text-left transition ${
+                      active
+                        ? 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:border-emerald-700 dark:bg-emerald-500/10'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                      </div>
+                      {active ? (
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                          Active
+                        </span>
+                      ) : null}
                     </div>
-                    {active ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Active</span> : null}
+                    <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
+                  </button>
+
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 10V7a2 2 0 0 0-2-2h-3" />
+                          <path d="M14 3H8a2 2 0 0 0-2 2v3" />
+                          <path d="M4 14v3a2 2 0 0 0 2 2h3" />
+                          <path d="M10 21h6a2 2 0 0 0 2-2v-3" />
+                          <path d="m8 12 2 2 6-6" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Activate discount</p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Enable this option to activate the discount.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
+                          config.enableActivateDiscount ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                        }`}
+                        aria-hidden
+                      >
+                        <span
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                            config.enableActivateDiscount ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </div>
+                      <span
+                        className={`text-sm font-bold uppercase ${
+                          config.enableActivateDiscount ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {config.enableActivateDiscount ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
-                </button>
+                </div>
               )
             })}
+
 
             {storefronts.length === 0 ? (
               <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
@@ -1304,6 +1360,59 @@ export default function PartnerStorefrontStudio() {
               Open Preview
             </a>
           </div>
+
+            <div className="mt-5 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.20em] text-slate-500 dark:text-slate-400">jujutsu kaisen</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Activate Discount</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Toggle enable/disable activate discount for this storefront.</p>
+                </div>
+
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={draft.enableActivateDiscount}
+                    onChange={(event) => {
+                      const next = event.target.checked
+                      setDraft((current) => ({ ...current, enableActivateDiscount: next }))
+
+                      if (typeof selectedId === 'number') {
+                        if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
+                          showErrorToast('You do not have access to edit this storefront.')
+                          return
+                        }
+
+                        const nextDraft = { ...draft, enableActivateDiscount: next }
+                        const slug = toSlug(nextDraft.slug || nextDraft.displayName)
+                        if (!slug) return
+
+                        const payload = buildStorefrontPayload({ ...nextDraft, slug })
+                        updateItem({ type: 'partner-storefront', id: selectedId, data: payload })
+                          .unwrap()
+                          .then(() => {
+                            refetch()
+                          })
+                          .catch(() => {
+                            showErrorToast('Failed to update activate discount.')
+                          })
+                      }
+                    }}
+                    disabled={saving}
+                  />
+                  <div
+                    className="peer-focus:ring-4 peer-focus:ring-emerald-200 peer h-8 w-14 rounded-full border border-slate-200 bg-white transition peer-checked:bg-emerald-600 peer-checked:border-emerald-600 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                  <div
+                    className="absolute left-1 top-1 h-6 w-6 -translate-x-0 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6 dark:bg-slate-900"
+                  />
+                  <span className="ml-3 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {draft.enableActivateDiscount ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+            </div>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -1548,4 +1657,5 @@ function Field({
     </label>
   )
 }
+
 

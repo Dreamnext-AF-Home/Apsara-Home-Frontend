@@ -25,9 +25,44 @@ function resolveCallbackPath(value: string | null | undefined): string {
 interface LoginPageClientProps {
   turnstileSiteKey?: string;
   signupTurnstileSiteKey?: string;
+  defaultCallbackPath?: string;
+  accountLabel?: string;
+  headerLogoUrl?: string;
+  headerLogoAlt?: string;
+  hideHeaderNavLinks?: boolean;
+  headerLogoHref?: string;
+  headerShopHref?: string;
+  usePartnerFooter?: boolean;
+  partnerFooterName?: string;
+  partnerFooterLogoUrl?: string;
+  partnerFooterLogoAlt?: string;
+  partnerFooterHomeHref?: string;
+  backgroundVideoUrl?: string;
+  signupInitialReferralCode?: string;
+  signupPartnerSlug?: string;
+  otpSenderName?: string;
 }
 
-export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstileSiteKey = '' }: LoginPageClientProps) {
+export default function LoginPageClient({
+  turnstileSiteKey = '',
+  signupTurnstileSiteKey = '',
+  defaultCallbackPath = '/shop',
+  accountLabel = 'AF Home',
+  headerLogoUrl = '/Images/af_home_logo.png',
+  headerLogoAlt = 'AFhome Logo',
+  hideHeaderNavLinks = false,
+  headerLogoHref = '/',
+  headerShopHref = '/shop',
+  usePartnerFooter = false,
+  partnerFooterName = '',
+  partnerFooterLogoUrl = '',
+  partnerFooterLogoAlt = 'Partner logo',
+  partnerFooterHomeHref = '/',
+  backgroundVideoUrl = '/loginpageVideo/home-login.mp4',
+  signupInitialReferralCode = '',
+  signupPartnerSlug = '',
+  otpSenderName = '',
+}: LoginPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, data: session } = useSession();
@@ -36,8 +71,19 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
   const justLoggedOut = searchParams.get('logged_out') === '1';
   const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired);
   const hasReferral = Boolean(searchParams.get('ref') || searchParams.get('referred_by'));
-  const callbackPath = resolveCallbackPath(searchParams.get('callback') || searchParams.get('callbackUrl'));
+  const requestedMode = searchParams.get('mode');
+  const callbackPath = resolveCallbackPath(searchParams.get('callback') || searchParams.get('callbackUrl') || defaultCallbackPath);
   const [manualMode, setManualMode] = useState<'login' | 'signup' | null>(null);
+
+  useEffect(() => {
+    if (requestedMode === 'signup') {
+      setManualMode('signup');
+      return;
+    }
+    if (requestedMode === 'login') {
+      setManualMode('login');
+    }
+  }, [requestedMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -72,11 +118,18 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-x-hidden overflow-y-auto flex flex-col">
-      <VideoBackground />
+      <VideoBackground videoSrc={backgroundVideoUrl} />
       <div className="absolute inset-0 bg-black/25 dark:bg-black/55 backdrop-blur-[2px]" />
 
       <div className="relative z-20">
-        <Header cartCount={0} />
+        <Header
+          cartCount={0}
+          hideNavLinks={hideHeaderNavLinks}
+          logoUrl={headerLogoUrl}
+          logoAlt={headerLogoAlt}
+          logoHref={headerLogoHref}
+          shopHref={headerShopHref}
+        />
       </div>
 
       <div className={`relative z-10 flex justify-center w-full px-4 ${mode === 'signup' ? 'items-start pt-28 pb-10 sm:pt-32' : 'min-h-[100dvh] items-center py-8'}`}>
@@ -100,9 +153,18 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
                   onSwitchToSignUp={() => setManualMode('signup')}
                   onRequirePasswordChange={() => setManualMode('login')}
                   turnstileSiteKey={turnstileSiteKey}
+                  accountLabel={accountLabel}
+                  defaultCallbackPath={defaultCallbackPath}
                 />
               ) : mode === 'signup' ? (
-                <SignUpForm key="signup" onSwitchToLogin={() => setManualMode('login')} turnstileSiteKey={signupTurnstileSiteKey} />
+                <SignUpForm
+                  key="signup"
+                  onSwitchToLogin={() => setManualMode('login')}
+                  turnstileSiteKey={signupTurnstileSiteKey}
+                  initialReferralCode={signupInitialReferralCode}
+                  partnerSlug={signupPartnerSlug}
+                  otpSenderName={otpSenderName}
+                />
               ) : (
                 <ForcedPasswordChangeForm key="force-password-change" />
               )}
@@ -112,7 +174,27 @@ export default function LoginPageClient({ turnstileSiteKey = '', signupTurnstile
       </div>
 
       <div className="relative z-10">
-        <Footer />
+        {usePartnerFooter ? (
+          <footer className="border-t border-slate-200 bg-white/95 backdrop-blur">
+            <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-6 text-sm text-slate-600 sm:flex-row">
+              <div className="flex items-center gap-3">
+                {partnerFooterLogoUrl ? (
+                  <img
+                    src={partnerFooterLogoUrl}
+                    alt={partnerFooterLogoAlt}
+                    className="h-8 w-auto object-contain"
+                  />
+                ) : null}
+                <p className="font-medium text-slate-700">{partnerFooterName || 'Partner Storefront'}</p>
+              </div>
+              <a href={partnerFooterHomeHref} className="text-sky-600 hover:text-sky-500">
+                Back to storefront
+              </a>
+            </div>
+          </footer>
+        ) : (
+          <Footer />
+        )}
       </div>
     </div>
   )

@@ -5,12 +5,15 @@ import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MemberTier } from '@/types/members/types';
 import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/landing-page/Footer';
 import { showErrorToast, showSuccessToast } from '@/libs/toast';
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting';
+import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi';
+import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
 
 const TIER_BADGE_IMAGE: Record<MemberTier, string> = {
   'Home Starter': '/Badge/homeStarter.png',
@@ -487,9 +490,26 @@ const ReferralShareCard = ({
 };
 
 const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfilePageProps) => {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status, update: updateSession } = useSession();
+  const partnerSlug = useMemo(() => extractPartnerSlugFromPath(pathname), [pathname]);
+  const profileBasePath = partnerSlug ? `/${partnerSlug}/profile` : '/profile';
+  const levelUpBasePath = partnerSlug ? `/${partnerSlug}/profile/level-up` : '/profile/level-up';
+  const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
+    skip: !partnerSlug,
+  });
+  const partnerStorefront = useMemo(() => {
+    if (!partnerSlug) return null;
+    const storefrontItems = partnerStorefrontData?.items ?? [];
+    const matched = storefrontItems.find((item) => getPartnerStorefrontConfig(item)?.slug === partnerSlug);
+    return getPartnerStorefrontConfig(matched);
+  }, [partnerSlug, partnerStorefrontData?.items]);
+  const partnerLogoUrl = partnerStorefront?.logoUrl
+    ? `${partnerStorefront.logoUrl}${partnerStorefront.logoUrl.includes('?') ? '&' : '?'}v=${partnerStorefront.logoVersion || '1'}`
+    : undefined;
+  const partnerHomeHref = partnerSlug ? `/shop/${partnerSlug}` : '/shop';
   const role = String(session?.user?.role ?? '').toLowerCase();
   const accessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '');
   const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim();
@@ -717,8 +737,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     if (rankParam) {
       nextParams.set('rank', rankParam);
     }
-    router.replace(`/profile/level-up${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
-  }, [celebrateLevelUp, router, searchParams]);
+    router.replace(`${levelUpBasePath}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }, [celebrateLevelUp, levelUpBasePath, router, searchParams]);
 
   useEffect(() => {
     if (!profileData && !session) return;
@@ -1908,15 +1928,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } else {
       nextParams.delete('focus');
     }
-    router.replace(`/profile?${nextParams.toString()}${options?.focus ? '#verification-form' : ''}`, { scroll: false });
+    router.replace(`${profileBasePath}?${nextParams.toString()}${options?.focus ? '#verification-form' : ''}`, { scroll: false });
   };
 
   const dismissLevelUpCelebration = useCallback(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete('celebrate');
     nextParams.delete('rank');
-    router.replace(`/profile${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
-  }, [router, searchParams]);
+    router.replace(`${profileBasePath}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }, [profileBasePath, router, searchParams]);
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -2187,8 +2207,13 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   return (
     <>
-      <TopBar />
-      <Navbar initialCategories={initialCategories} />
+      <TopBar hideMarquee={Boolean(partnerSlug)} />
+      <Navbar
+        initialCategories={initialCategories}
+        logoSrc={partnerLogoUrl ?? '/Images/af_home_logo.png'}
+        logoAlt={partnerStorefront?.displayName || 'AF Home'}
+        logoHref={partnerHomeHref}
+      />
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -4660,7 +4685,18 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         )}
       </AnimatePresence>
     </motion.section>
-    <Footer />
+    {partnerStorefront ? (
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <p>
+            Orders from <span className="font-semibold text-slate-800">{partnerStorefront.displayName}</span> are still processed through AF Home.
+          </p>
+          {partnerStorefront.notificationEmail ? <p>Partner notifications: {partnerStorefront.notificationEmail}</p> : null}
+        </div>
+      </footer>
+    ) : (
+      <Footer />
+    )}
     </>
   );
 };

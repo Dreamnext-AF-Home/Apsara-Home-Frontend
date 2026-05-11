@@ -5,6 +5,9 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useMeQuery } from '@/store/api/userApi';
+import { useMemo } from 'react';
+import { usePathname } from 'next/navigation';
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting';
 
 const requirementItems = [
   'Valid government-issued ID',
@@ -55,7 +58,7 @@ const STEPS = [
 
 type VerificationStatus = 'verified' | 'pending_review' | 'on_hold' | 'not_verified';
 
-function getStatusInfo(status: VerificationStatus) {
+function getStatusInfo(status: VerificationStatus, profileBasePath: string) {
   switch (status) {
     case 'verified':
       return {
@@ -64,7 +67,7 @@ function getStatusInfo(status: VerificationStatus) {
         badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         label: 'Verified',
         ctaLabel: 'Request Encashment',
-        ctaHref: '/profile?tab=encashment',
+        ctaHref: `${profileBasePath}?tab=encashment`,
         ctaPrimary: true,
       }
     case 'pending_review':
@@ -74,7 +77,7 @@ function getStatusInfo(status: VerificationStatus) {
         badge: 'bg-amber-50 text-amber-700 border-amber-200',
         label: 'Pending review',
         ctaLabel: 'Review My Request',
-        ctaHref: '/profile?tab=encashment&focus=verification#verification-form',
+        ctaHref: `${profileBasePath}?tab=encashment&focus=verification#verification-form`,
         ctaPrimary: false,
       }
     case 'on_hold':
@@ -84,7 +87,7 @@ function getStatusInfo(status: VerificationStatus) {
         badge: 'bg-slate-100 text-slate-600 border-slate-300',
         label: 'On hold',
         ctaLabel: 'View Submission',
-        ctaHref: '/profile?tab=encashment&focus=verification#verification-form',
+        ctaHref: `${profileBasePath}?tab=encashment&focus=verification#verification-form`,
         ctaPrimary: false,
       }
     default:
@@ -94,13 +97,16 @@ function getStatusInfo(status: VerificationStatus) {
         badge: 'bg-orange-50 text-orange-700 border-orange-200',
         label: 'Not verified',
         ctaLabel: 'Continue to Verification & Request',
-        ctaHref: '/profile?tab=encashment&focus=verification#verification-form',
+        ctaHref: `${profileBasePath}?tab=encashment&focus=verification#verification-form`,
         ctaPrimary: true,
       }
   }
 }
 
 export default function VerificationOverviewPage() {
+  const pathname = usePathname();
+  const partnerSlug = useMemo(() => extractPartnerSlugFromPath(pathname), [pathname]);
+  const profileBasePath = partnerSlug ? `/${partnerSlug}/profile` : '/profile';
   const { data: session, status: sessionStatus } = useSession();
   const role = String(session?.user?.role ?? '').toLowerCase();
   const isCustomerSession = sessionStatus === 'authenticated' && (role === 'customer' || role === '');
@@ -113,7 +119,7 @@ export default function VerificationOverviewPage() {
     : rawStatus === 'on_hold' ? 'on_hold'
     : 'not_verified';
 
-  const { text: statusText, dot: statusDot, badge: statusBadge, label: statusLabel, ctaLabel, ctaHref, ctaPrimary } = getStatusInfo(status);
+  const { text: statusText, dot: statusDot, badge: statusBadge, label: statusLabel, ctaLabel, ctaHref, ctaPrimary } = getStatusInfo(status, profileBasePath);
 
   return (
     <section className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.08),_transparent_28%),linear-gradient(180deg,#fffdf9_0%,#f7f2e9_100%)]">
@@ -259,9 +265,9 @@ export default function VerificationOverviewPage() {
               >
                 {ctaLabel}
               </Link>
-              {ctaHref !== '/profile' && (
+              {ctaHref !== profileBasePath && (
                 <Link
-                  href="/profile"
+                  href={profileBasePath}
                   className="inline-flex items-center justify-center rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/5"
                 >
                   Back to Profile

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+
 import { usePathname } from 'next/navigation'
 
 interface PartnerSidebarProps {
@@ -18,7 +19,11 @@ const links = [
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
         <path d="M3 10l2-6h14l2 6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" strokeLinecap="round" />
+        <path
+          d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
         <path d="M9 14h6" strokeLinecap="round" />
       </svg>
     ),
@@ -41,13 +46,35 @@ const links = [
     description: 'Control portal access',
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" strokeLinecap="round" />
+        <path
+          d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+          strokeLinecap="round"
+        />
         <circle cx="9" cy="7" r="4" />
         <path d="M19 8v6M22 11h-6" strokeLinecap="round" />
       </svg>
     ),
   },
+  {
+    href: '/partner/webpages/partner-members',
+    label: 'Members',
+    description: 'Member accounts',
+
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+        <path
+          d="M17 20v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 20v-2a4 4 0 0 0-3-3.87" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ]
+
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: PartnerSidebarProps) {
   const pathname = usePathname()
@@ -71,7 +98,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         ].join(' ')}
       >
         <div className="border-b border-slate-200/80 p-4 dark:border-slate-800">
-          <div className={`rounded-2xl bg-slate-900 text-white transition-all ${isCollapsed ? 'px-2 py-3' : 'px-3 py-3.5'}`}>
+          <div
+            className={`rounded-2xl bg-slate-900 text-white transition-all ${
+              isCollapsed ? 'px-2 py-3' : 'px-3 py-3.5'
+            }`}
+          >
             <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between gap-3'}`}>
               <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-300 text-slate-900 shadow-sm">
@@ -79,7 +110,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 </div>
                 {!isCollapsed ? (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">Partner Portal</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                      Partner Portal
+                    </p>
                     <p className="text-sm font-semibold text-white">Control Panel</p>
                   </div>
                 ) : null}
@@ -131,7 +164,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 ].join(' ')}
                 title={isCollapsed ? link.label : undefined}
               >
-                {isActive ? <span className="absolute left-0 top-2 h-8 w-1 rounded-r-full bg-sky-500 dark:bg-sky-300" /> : null}
+                {isActive ? (
+                  <span className="absolute left-0 top-2 h-8 w-1 rounded-r-full bg-sky-500 dark:bg-sky-300" />
+                ) : null}
                 <span
                   className={[
                     'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
@@ -145,7 +180,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 {!isCollapsed ? (
                   <span className="min-w-0">
                     <span className="block truncate font-semibold">{link.label}</span>
-                    <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">{link.description}</span>
+                    <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">
+                      {link.description}
+                    </span>
                   </span>
                 ) : null}
               </Link>
@@ -156,3 +193,4 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     </>
   )
 }
+

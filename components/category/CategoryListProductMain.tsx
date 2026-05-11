@@ -209,8 +209,9 @@ export default function CategoryListProductMain({
                         logoSrc={partnerLogoSrc}
                         logoAlt={isPartnerStorefrontRoute ? partnerName : 'AF Home'}
                         logoHref={isPartnerStorefrontRoute ? partnerProductHref : '/shop'}
-                        hideSignIn={isPartnerStorefrontRoute}
-                        hideNavLinks={isPartnerStorefrontRoute}
+                        hideSignIn={false}
+                        hideNavLinks={false}
+                        categoryOnlyNav={isPartnerStorefrontRoute}
                         stickToTop={isPartnerStorefrontRoute}
                         showGuestCartWishlist={isPartnerStorefrontRoute}
                     />
@@ -266,8 +267,9 @@ export default function CategoryListProductMain({
                         logoSrc={partnerLogoSrc}
                         logoAlt={isPartnerStorefrontRoute ? partnerName : 'AF Home'}
                         logoHref={isPartnerStorefrontRoute ? partnerProductHref : '/shop'}
-                        hideSignIn={isPartnerStorefrontRoute}
-                        hideNavLinks={isPartnerStorefrontRoute}
+                        hideSignIn={false}
+                        hideNavLinks={false}
+                        categoryOnlyNav={isPartnerStorefrontRoute}
                         stickToTop={isPartnerStorefrontRoute}
                         showGuestCartWishlist={isPartnerStorefrontRoute}
                     />
@@ -492,8 +494,9 @@ export default function CategoryListProductMain({
                 logoSrc={partnerLogoSrc}
                 logoAlt={isPartnerStorefrontRoute ? partnerName : 'AF Home'}
                 logoHref={isPartnerStorefrontRoute ? partnerProductHref : '/shop'}
-                hideSignIn={isPartnerStorefrontRoute}
-                hideNavLinks={isPartnerStorefrontRoute}
+                hideSignIn={false}
+                hideNavLinks={false}
+                categoryOnlyNav={isPartnerStorefrontRoute}
                 stickToTop={isPartnerStorefrontRoute}
                 showGuestCartWishlist={isPartnerStorefrontRoute}
             />
