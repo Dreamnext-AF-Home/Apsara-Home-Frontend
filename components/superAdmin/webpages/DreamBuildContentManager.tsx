@@ -434,6 +434,7 @@ interface CanvasProps {
   items: WebPageItem[]
   selected: WebPageItem | null
   onSelect: (item: WebPageItem) => void
+  onRequestDelete?: (item: WebPageItem) => void
   onAddNew: () => void
   isLoading: boolean
   onFieldFocus?: (item: WebPageItem, fieldKey: string) => void
@@ -1034,7 +1035,7 @@ function ContactCanvas({ items, selected, onSelect, onAddNew, isLoading, onField
   )
 }
 
-function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
+function BlogsCanvas({ items, selected, onSelect, onRequestDelete, onAddNew, isLoading, onFieldFocus, focusedField }: CanvasProps) {
   const displayItems = items
 
   return (
@@ -1075,7 +1076,7 @@ function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFo
         </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
-          <div className="grid grid-cols-[minmax(0,1.6fr)_130px_110px_100px_130px] gap-4 border-b border-stone-100 bg-stone-50 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">
+          <div className="grid grid-cols-[minmax(0,1.6fr)_130px_110px_100px_190px] gap-4 border-b border-stone-100 bg-stone-50 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">
             <span>Article</span>
             <span>Category</span>
             <span>Date</span>
@@ -1093,11 +1094,18 @@ function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFo
             })
 
             return (
-              <button
+              <div
                 key={item.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelect(item)}
-                className={`grid w-full grid-cols-[minmax(0,1.6fr)_130px_110px_100px_130px] items-center gap-4 border-b border-stone-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-stone-50 ${
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSelect(item)
+                  }
+                }}
+                className={`group grid w-full cursor-pointer grid-cols-[minmax(0,1.6fr)_130px_110px_100px_190px] items-center gap-4 border-b border-stone-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-stone-50 ${
                   isThisSelected ? 'bg-cyan-50/50' : ''
                 }`}
               >
@@ -1118,8 +1126,8 @@ function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFo
                 <FieldZone {...fz('read_time', 'Read time')}>
                   <p className="text-xs text-stone-500">{p.read_time || 'No time'}</p>
                 </FieldZone>
-                <div className="flex items-center justify-end gap-2">
-                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                <div className="flex min-w-0 items-center justify-end gap-2">
+                  <span className="shrink-0 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-600">
                     CMS
                   </span>
                   {item.id > 0 && (
@@ -1127,18 +1135,17 @@ function BlogsCanvas({ items, selected, onSelect, onAddNew, isLoading, onFieldFo
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onSelect(item)
-                        // After selecting, user can delete from the edit panel (existing Delete button there)
+                        onRequestDelete?.(item)
                       }}
-                      className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-600 transition hover:bg-red-100"
-                      title="Select this row first, then delete in the editor panel"
+                      className="shrink-0 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3.5 py-1.5 text-[11px] font-bold text-red-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100 hover:shadow-sm"
+                      title="Delete this blog post"
                     >
                       Delete
                     </button>
                   )}
-                  <span className="rounded-full bg-stone-950 px-3 py-1.5 text-[11px] font-bold text-white">Edit</span>
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-stone-950 px-3.5 py-1.5 text-[11px] font-bold text-white transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-sm">Edit</span>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -1977,6 +1984,7 @@ export default function DreamBuildContentManager() {
   const [isResizingPanel, setIsResizingPanel] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<WebPageItem | null>(null)
   const editorShellRef = useRef<HTMLDivElement | null>(null)
 
   const selectedSection = useMemo(
@@ -1990,7 +1998,7 @@ export default function DreamBuildContentManager() {
 
   const [createItem, { isLoading: isCreating }] = useCreateAdminWebPageItemMutation()
   const [updateItem, { isLoading: isUpdating }] = useUpdateAdminWebPageItemMutation()
-  const [deleteItem] = useDeleteAdminWebPageItemMutation()
+  const [deleteItem, { isLoading: isDeleting }] = useDeleteAdminWebPageItemMutation()
 
   const isBusy = isCreating || isUpdating
 
@@ -2037,6 +2045,7 @@ export default function DreamBuildContentManager() {
     setEditTarget(null)
     setPanelOpen(false)
     setFocusedField(null)
+    setDeleteTarget(null)
   }
 
   const handleSectionChange = (type: WebPageType) => {
@@ -2127,13 +2136,21 @@ export default function DreamBuildContentManager() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!editTarget || editTarget.id < 0) return
-    if (!window.confirm(`Delete "${editTarget.title ?? editTarget.key ?? selectedSection.itemLabel}"?`)) return
+  const handleRequestDelete = (item = editTarget) => {
+    if (!item || item.id < 0) return
+    setDeleteTarget(item)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || deleteTarget.id < 0) return
     try {
-      await deleteItem({ type: selectedSection.id, id: editTarget.id }).unwrap()
+      await deleteItem({ type: selectedSection.id, id: deleteTarget.id }).unwrap()
       showSuccessToast(`${selectedSection.itemLabel} deleted.`)
-      resetForm()
+      if (editTarget?.id === deleteTarget.id) {
+        resetForm()
+      } else {
+        setDeleteTarget(null)
+      }
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } }
       showErrorToast(apiErr?.data?.message ?? 'Failed to delete.')
@@ -2210,6 +2227,7 @@ export default function DreamBuildContentManager() {
             items={displayItems}
             selected={editTarget}
             onSelect={handleSelect}
+            onRequestDelete={handleRequestDelete}
             onAddNew={handleAddNew}
             isLoading={isLoading}
             onFieldFocus={handleFieldFocus}
@@ -2251,7 +2269,7 @@ export default function DreamBuildContentManager() {
               editTarget={editTarget}
               isBusy={isBusy}
               onSubmit={handleSubmit}
-              onDelete={handleDelete}
+              onDelete={() => handleRequestDelete()}
               onCancel={resetForm}
               focusedField={focusedField}
               onUploadImage={handleUploadImage}
@@ -2260,6 +2278,16 @@ export default function DreamBuildContentManager() {
           </>
         )}
       </aside>
+
+      {deleteTarget && (
+        <DeleteConfirmModal
+          itemLabel={selectedSection.itemLabel}
+          itemTitle={deleteTarget.title ?? deleteTarget.key ?? selectedSection.itemLabel}
+          isDeleting={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </div>
   )
 }
@@ -2270,6 +2298,67 @@ function ProgressBar() {
   return (
     <div className="mb-4 h-0.5 overflow-hidden rounded-full bg-stone-200">
       <div className="h-full w-1/2 animate-pulse rounded-full bg-stone-400" />
+    </div>
+  )
+}
+
+function DeleteConfirmModal({
+  itemLabel,
+  itemTitle,
+  isDeleting,
+  onCancel,
+  onConfirm,
+}: {
+  itemLabel: string
+  itemTitle: string
+  isDeleting: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex animate-[dreambuildModalFadeIn_160ms_ease-out] items-center justify-center bg-stone-950/50 px-4 backdrop-blur-sm">
+      <style jsx global>{`
+        @keyframes dreambuildModalFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes dreambuildModalPanelIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
+      <div className="w-full max-w-md animate-[dreambuildModalPanelIn_180ms_ease-out] rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-500">Confirm delete</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-tight text-stone-950">Delete this {itemLabel.toLowerCase()}?</h3>
+        <p className="mt-3 text-sm leading-relaxed text-stone-500">
+          This will permanently remove <span className="font-semibold text-stone-900">&ldquo;{itemTitle}&rdquo;</span> from the CMS records.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="inline-flex min-w-24 items-center justify-center whitespace-nowrap rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-stone-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="inline-flex min-w-28 items-center justify-center whitespace-nowrap rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-red-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
