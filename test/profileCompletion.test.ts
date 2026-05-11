@@ -28,8 +28,30 @@ describe('getProfileCompletion', () => {
         occupation: 'Developer',
         work_location: 'local',
         country: 'Philippines',
+        address: '123 Sample Street',
+        barangay: 'Barangay 1',
+        city: 'Quezon City',
+        province: 'Metro Manila',
+        region: 'NCR',
+        zip_code: '1100',
       }),
     ).toEqual({ percentage: 100, complete: true })
+  })
+
+  it('does not mark the profile complete when address details are missing', () => {
+    expect(
+      getProfileCompletion({
+        name: 'Rafa Santos',
+        email: 'rafa@example.com',
+        phone: '09123456789',
+        username: 'rafa1122',
+        birth_date: '2000-01-01',
+        gender: 'male',
+        occupation: 'Developer',
+        work_location: 'local',
+        country: 'Philippines',
+      }),
+    ).toEqual({ percentage: 60, complete: false })
   })
 
   it('infers local work location from Philippines and computes the right percentage', () => {
@@ -44,7 +66,7 @@ describe('getProfileCompletion', () => {
         occupation: 'None',
         country: 'Philippines',
       }),
-    ).toEqual({ percentage: 67, complete: false })
+    ).toEqual({ percentage: 40, complete: false })
   })
 
   it('infers overseas work location from non-local country values', () => {
@@ -58,6 +80,12 @@ describe('getProfileCompletion', () => {
         gender: 'female',
         occupation: 'Designer',
         country: 'Singapore',
+        address: '1 Orchard Road',
+        barangay: 'Central',
+        city: 'Singapore',
+        province: 'Singapore',
+        region: 'Singapore',
+        zip_code: '238823',
       }),
     ).toEqual({ percentage: 100, complete: true })
   })
