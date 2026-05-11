@@ -45,6 +45,8 @@ type CustomerRealtimeNotificationEvent = Partial<CustomerNotificationItem> & {
   description?: string
 }
 
+const REALTIME_NOTIFICATION_DURATION_SECONDS = 10
+
 const navLinks: NavLink[] = [
   { label: 'Home', href: '/shop' },
   {
@@ -193,13 +195,21 @@ function NavbarInner({
   })
   const [readCustomerNotificationKeys, setReadCustomerNotificationKeys] = useState<string[]>([])
   const [realtimeNotification, setRealtimeNotification] = useState<CustomerNotificationItem | null>(null)
+  const [freshRealtimeNotificationIds, setFreshRealtimeNotificationIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!realtimeNotification) return
 
-    const timeoutId = window.setTimeout(() => setRealtimeNotification(null), 6500)
+    const timeoutId = window.setTimeout(() => setRealtimeNotification(null), REALTIME_NOTIFICATION_DURATION_SECONDS * 1000)
     return () => window.clearTimeout(timeoutId)
   }, [realtimeNotification])
+
+  useEffect(() => {
+    if (!freshRealtimeNotificationIds.length) return
+
+    const timeoutId = window.setTimeout(() => setFreshRealtimeNotificationIds([]), 120000)
+    return () => window.clearTimeout(timeoutId)
+  }, [freshRealtimeNotificationIds])
 
   useEffect(() => {
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY
@@ -249,6 +259,7 @@ function NavbarInner({
         }),
       )
       dispatch(baseApi.util.invalidateTags(['Encashment', 'CustomerNotifications']))
+      setFreshRealtimeNotificationIds((current) => [item.id, ...current.filter((id) => id !== item.id)].slice(0, 5))
       setRealtimeNotification(item)
       refetchNotifications()
     }
@@ -513,25 +524,24 @@ function NavbarInner({
   const getCustomerNotificationReadKey = (item: { id: string; title: string; description: string; count: number }) =>
     `${item.id}:${item.title}:${item.description}:${item.count}`
 
+  const normalizeCustomerNotificationTimestamp = (raw: string) => {
+    const trimmed = raw.trim()
+    if (!trimmed) return trimmed
+    const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)
+    if (hasTimezone) return trimmed
+    const isoLike = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+    return `${isoLike}+08:00`
+  }
+
   const getCustomerNotificationTimestamp = (value: string | null | undefined) => {
     if (!value) return 0
-    const timestamp = new Date(value).getTime()
+    const timestamp = new Date(normalizeCustomerNotificationTimestamp(value)).getTime()
     return Number.isNaN(timestamp) ? 0 : timestamp
   }
 
   const formatCustomerNotificationTime = (value: string | null | undefined) => {
     if (!value) return null
-
-    const normalizeTimestamp = (raw: string) => {
-      const trimmed = raw.trim()
-      if (!trimmed) return trimmed
-      const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed)
-      if (hasTimezone) return trimmed
-      const isoLike = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
-      return `${isoLike}Z`
-    }
-
-    const normalized = normalizeTimestamp(value)
+    const normalized = normalizeCustomerNotificationTimestamp(value)
     let date = new Date(normalized)
     if (Number.isNaN(date.getTime())) {
       date = new Date(value)
@@ -927,6 +937,7 @@ function NavbarInner({
                             <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
                               {visibleCustomerNotifications.map((item, idx) => {
                                 const isRead = readCustomerNotificationKeys.includes(getCustomerNotificationReadKey(item))
+                                const isFreshRealtime = freshRealtimeNotificationIds.includes(item.id)
                                 const notifIcon = getNotificationIcon(item.title)
                                 return (
                                   <motion.div
@@ -939,10 +950,13 @@ function NavbarInner({
                                       href={item.href}
                                       onClick={() => {
                                         markCustomerNotificationAsRead(item)
+                                        setFreshRealtimeNotificationIds((current) => current.filter((id) => id !== item.id))
                                         setNotifMenuOpen(false)
                                       }}
                                       className={`group relative flex w-full items-start gap-3.5 py-3.5 text-left transition-all duration-150 ${
-                                        !isRead
+                                        isFreshRealtime
+                                          ? 'border-l-[3px] border-l-emerald-500 bg-emerald-50 pl-[17px] pr-5 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.18)] hover:bg-emerald-100/70 dark:border-l-emerald-400 dark:bg-emerald-500/10 dark:shadow-[inset_0_0_0_1px_rgba(52,211,153,0.18)] dark:hover:bg-emerald-500/[0.16]'
+                                          : !isRead
                                           ? 'border-l-[3px] border-l-violet-500 bg-violet-50 pl-[17px] pr-5 hover:bg-violet-100/60 dark:border-l-violet-400 dark:bg-violet-500/10 dark:hover:bg-violet-500/[0.16]'
                                           : 'border-l-[3px] border-l-transparent pl-[17px] pr-5 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                                       }`}
@@ -955,7 +969,7 @@ function NavbarInner({
                                       <div className="min-w-0 flex-1">
                                         <div className="flex items-start justify-between gap-2">
                                           <p className={`text-sm leading-snug ${
-                                            !isRead
+                                            isFreshRealtime || !isRead
                                               ? 'font-semibold text-slate-900 dark:text-white'
                                               : 'font-medium text-slate-500 dark:text-slate-400'
                                           }`}>
@@ -974,6 +988,11 @@ function NavbarInner({
                                             {!isRead && (
                                               <span className="rounded-full bg-gradient-to-r from-violet-500 to-purple-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white leading-none shadow-sm shadow-violet-500/30">
                                                 NEW
+                                              </span>
+                                            )}
+                                            {isFreshRealtime && (
+                                              <span className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white leading-none shadow-sm shadow-emerald-500/30">
+                                                Just now
                                               </span>
                                             )}
                                           </div>
@@ -1874,7 +1893,15 @@ function NavbarInner({
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 36, scale: 0.96 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed right-3 top-24 z-[130] w-[calc(100vw-1.5rem)] max-w-sm sm:right-5"
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.35}
+            onDragEnd={(_, info) => {
+              if (Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 550) {
+                setRealtimeNotification(null)
+              }
+            }}
+            className="fixed bottom-4 right-3 z-[130] w-[calc(100vw-1.5rem)] max-w-sm sm:bottom-5 sm:right-5"
           >
             <Link
               href={realtimeNotification.href}
@@ -1914,7 +1941,14 @@ function NavbarInner({
                   </svg>
                 </button>
               </div>
-              <div className="h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400" />
+              <div className="h-1 bg-slate-100 dark:bg-slate-800">
+                <motion.div
+                  className="h-full origin-left bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400"
+                  initial={{ scaleX: 1 }}
+                  animate={{ scaleX: 0 }}
+                  transition={{ duration: REALTIME_NOTIFICATION_DURATION_SECONDS, ease: 'linear' }}
+                />
+              </div>
             </Link>
           </motion.div>
         )}
