@@ -1823,6 +1823,9 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       JSON.stringify(dedupeVariantValues(globalPrimaryValues)) !== JSON.stringify(collectVariantNames(initialVariants))
     const globalSizeValuesChanged =
       JSON.stringify(dedupeVariantValues(globalSizeValues)) !== JSON.stringify(collectVariantSizes(initialVariants))
+    const productTypeChanged = Number(form.pd_type) !== Number(initialForm?.pd_type ?? form.pd_type)
+    const variantPayloadChanged =
+      variantsChanged || globalPrimaryValuesChanged || globalSizeValuesChanged || productTypeChanged
     const hasNewImages = imageItems.some((item) => item.kind === 'new')
     const currentExistingImageUrls = imageItems
       .filter((item): item is Extract<ProductImageItem, { kind: 'existing' }> => item.kind === 'existing')
@@ -1907,7 +1910,10 @@ export default function EditProductModal({ product, onClose, onSaved }: EditProd
       pd_salespromo:  form.pd_salespromo,
       pd_verified:    form.pd_verified,
       pd_status:      Number(form.pd_status),
-      pd_variants:        hasVariants ? expandedVariants : [],
+    }
+
+    if (variantPayloadChanged) {
+      payload.pd_variants = hasVariants ? expandedVariants : []
     }
 
     if (imagesChanged) {
