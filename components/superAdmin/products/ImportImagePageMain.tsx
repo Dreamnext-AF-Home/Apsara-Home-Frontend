@@ -73,6 +73,13 @@ export default function ImportImagePageMain() {
   const [images, setImages] = useState<UploadedImage[]>([])
   const [copied, setCopied] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  
+  // Track batch uploads to preserve selection order
+  const batchRef = useRef<Map<string, UploadedImage>>(new Map())
+  const batchOrderRef = useRef<string[]>([])
+  
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   // Description builder state
   const [descHtml, setDescHtml] = useState('')
@@ -172,17 +179,36 @@ export default function ImportImagePageMain() {
       (error, result) => {
         if (error) return
         if (result.event === 'success') {
-          setImages((prev) => [
-            ...prev,
-            {
-              url: result.info.secure_url,
-              filename: result.info.original_filename,
-              bytes: result.info.bytes,
-              publicId: result.info.public_id,
-              width: result.info.width,
-              height: result.info.height,
-            },
-          ])
+          const uploadedImage: UploadedImage = {
+            url: result.info.secure_url,
+            filename: result.info.original_filename,
+            bytes: result.info.bytes,
+            publicId: result.info.public_id,
+            width: result.info.width,
+            height: result.info.height,
+          }
+          // Store in batch map with publicId as key
+          batchRef.current.set(result.info.public_id, uploadedImage)
+          // Track selection order - Cloudinary fires success events in selection order
+          if (!batchOrderRef.current.includes(result.info.public_id)) {
+            batchOrderRef.current.push(result.info.public_id)
+          }
+        } else if (result.event === 'queues-end') {
+          // All uploads in batch complete - add images in selection order
+          const orderedImages = batchOrderRef.current
+            .map((publicId) => batchRef.current.get(publicId))
+            .filter((img): img is UploadedImage => img !== undefined)
+          
+          if (orderedImages.length > 0) {
+            setImages((prev) => [...prev, ...orderedImages])
+          }
+          // Clear batch tracking
+          batchRef.current.clear()
+          batchOrderRef.current = []
+        } else if (result.event === 'abort') {
+          // Widget closed without completing - clear batch
+          batchRef.current.clear()
+          batchOrderRef.current = []
         }
       },
     )
@@ -202,6 +228,30 @@ export default function ImportImagePageMain() {
     setImages([])
     setCopied(false)
     setCopiedIndex(null)
+  }
+
+  // Drag and drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = (dropIndex: number) => {
+    if (draggedIndex === null || draggedIndex === dropIndex) return
+    
+    const newImages = [...images]
+    const [draggedImage] = newImages.splice(draggedIndex, 1)
+    newImages.splice(dropIndex, 0, draggedImage)
+    
+    setImages(newImages)
+    setDraggedIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
   }
 
   const urls = images.map((img) => img.url)
@@ -323,46 +373,65 @@ export default function ImportImagePageMain() {
 
       {/* Image grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {images.map((img) => (
-            <div
-              key={img.publicId}
-              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-            >
-              <div className="relative aspect-square w-full bg-slate-100">
-                <Image
-                  src={img.url}
-                  alt={img.filename}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                />
-                <div className="absolute top-2 right-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
-                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
+        <div>
+          <p className="text-xs text-slate-500 mb-2">
+            Drag images to reorder them. The order shown will be the order in the link.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {images.map((img, index) => (
+              <div
+                key={img.publicId}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(index)}
+                onDragEnd={handleDragEnd}
+                className={`group relative overflow-hidden rounded-2xl border bg-white shadow-sm cursor-move transition-all ${
+                  draggedIndex === index
+                    ? 'border-teal-400 opacity-50 scale-95'
+                    : 'border-slate-200 hover:border-teal-300'
+                }`}
+              >
+                <div className="absolute top-2 left-2 z-10">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-white text-[10px] font-bold shadow">
+                    {index + 1}
                   </span>
                 </div>
+                <div className="relative aspect-square w-full bg-slate-100">
+                  <Image
+                    src={img.url}
+                    alt={img.filename}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  />
+                  <div className="absolute top-2 right-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+                <div className="px-2 py-1.5">
+                  <p className="truncate text-[10px] font-medium text-slate-600">{img.filename}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {(img.bytes / 1024).toFixed(0)} KB · {img.width}×{img.height}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeImage(img.publicId)}
+                  className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow opacity-0 transition-opacity group-hover:opacity-100"
+                  title="Remove"
+                >
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <div className="px-2 py-1.5">
-                <p className="truncate text-[10px] font-medium text-slate-600">{img.filename}</p>
-                <p className="text-[10px] text-slate-400">
-                  {(img.bytes / 1024).toFixed(0)} KB · {img.width}×{img.height}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeImage(img.publicId)}
-                className="absolute top-1.5 left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow opacity-0 transition-opacity group-hover:opacity-100"
-                title="Remove"
-              >
-                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
