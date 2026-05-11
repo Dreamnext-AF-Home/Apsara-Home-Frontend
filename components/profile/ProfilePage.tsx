@@ -615,6 +615,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [avatarZoom, setAvatarZoom] = useState(1);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isSavingAddressDetails, setIsSavingAddressDetails] = useState(false);
   const [revokingTokenId, setRevokingTokenId] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState<AddressFormState>({ address: '', zipCode: '' });
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -622,7 +623,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const referralMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mainContentRef = useRef<HTMLDivElement | null>(null);
   const completeInformationRef = useRef<HTMLDivElement | null>(null);
-  const phAddress = usePhAddress();
+  const phAddress = usePhAddress({ source: 'auto' });
   const profileData = data ?? initialProfile;
   const effectiveAvatarUrl = avatarPreviewUrl || profileData?.avatar_url || '';
   const effectiveAvatarViewUrl = avatarOriginalPreviewUrl || profileData?.avatar_original_url || effectiveAvatarUrl;
@@ -957,6 +958,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       label: 'Address',
       done: Boolean(
         profileData?.address?.trim()
+        && profileData?.barangay?.trim()
         && profileData?.city?.trim()
         && profileData?.province?.trim()
         && profileData?.region?.trim()
@@ -987,6 +989,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     form.username,
     form.work_location,
     profileData?.address,
+    profileData?.barangay,
     profileData?.city,
     profileData?.province,
     profileData?.region,
@@ -1522,7 +1525,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         country: form.country.trim() || undefined,
       }).unwrap();
       profileDraftDirtyRef.current = false;
-      setProfileMsg({ type: 'success', text: 'Profile updated successfully. Your complete information was saved.' });
+      const successMessage = 'Profile updated successfully. Your complete information was saved.';
+      setProfileMsg({ type: 'success', text: successMessage });
+      showSuccessToast(successMessage);
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string } };
       setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to update profile.' });
@@ -1544,31 +1549,39 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     e.preventDefault();
     setProfileMsg(null);
 
+    const payload = {
+      name: form.name.trim(),
+      phone: form.phone.trim() || undefined,
+      middle_name: form.middle_name.trim() || undefined,
+      birth_date: form.birth_date.trim() || undefined,
+      gender: form.gender || undefined,
+      occupation: form.occupation.trim() || undefined,
+      work_location: form.work_location || undefined,
+      country: form.country.trim() || undefined,
+      address: addressForm.address.trim() || undefined,
+      barangay: phAddress.address.barangay || undefined,
+      city: phAddress.address.city || undefined,
+      province: phAddress.noProvince ? (phAddress.address.region || undefined) : (phAddress.address.province || undefined),
+      region: phAddress.address.region || undefined,
+      zip_code: addressForm.zipCode.trim() || undefined,
+    };
+
+    setIsSavingAddressDetails(true);
+    setIsAddressModalOpen(false);
+
     try {
-      await updateProfile({
-        name: form.name.trim(),
-        phone: form.phone.trim() || undefined,
-        middle_name: form.middle_name.trim() || undefined,
-        birth_date: form.birth_date.trim() || undefined,
-        gender: form.gender || undefined,
-        occupation: form.occupation.trim() || undefined,
-        work_location: form.work_location || undefined,
-        country: form.country.trim() || undefined,
-        address: addressForm.address.trim() || undefined,
-        barangay: phAddress.address.barangay || undefined,
-        city: phAddress.address.city || undefined,
-        province: phAddress.noProvince ? (phAddress.address.region || undefined) : (phAddress.address.province || undefined),
-        region: phAddress.address.region || undefined,
-        zip_code: addressForm.zipCode.trim() || undefined,
-      }).unwrap();
+      await updateProfile(payload).unwrap();
 
       profileDraftDirtyRef.current = false;
-      setProfileMsg({ type: 'success', text: 'Address updated successfully. Your profile information was saved too.' });
+      const successMessage = 'Address updated successfully. Your profile information was saved too.';
+      setProfileMsg({ type: 'success', text: successMessage });
+      showSuccessToast(successMessage);
       phAddress.reset();
-      setIsAddressModalOpen(false);
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string } };
       setProfileMsg({ type: 'error', text: apiError?.data?.message || 'Failed to update address.' });
+    } finally {
+      setIsSavingAddressDetails(false);
     }
   };
 
@@ -2184,6 +2197,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     void loadPasskeys();
   }, [activeTab, loadPasskeys]);
 
+  const incompleteProfileItems = completionItems.filter((item) => !item.done);
 
   return (
     <>
@@ -2806,61 +2820,104 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto overscroll-contain">
-            <div className="space-y-5 overflow-x-hidden">
+            <div className={isMobile ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y' : 'overflow-visible'}>
+            <div className="space-y-5 overflow-x-hidden pb-6">
             <AnimatePresence mode="wait">
               {/* --- Profile tab --- */}
               {activeTab === 'profile' && (
                 <motion.div key="profile" {...tabMotionProps} className="space-y-5">
 
-                  <div className="rounded-2xl border border-sky-100 bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 p-5 md:p-6">
+                  <div className={`rounded-2xl border p-5 md:p-6 ${
+                    completion >= 100
+                      ? 'border-sky-100 bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20'
+                      : 'border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20'
+                  }`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600 dark:text-sky-400">Profile completion</p>
-                        <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">Complete the details below</h3>
+                        <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${
+                          completion >= 100 ? 'text-sky-600 dark:text-sky-400' : 'text-amber-700 dark:text-amber-300'
+                        }`}>Profile completion</p>
+                        <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
+                          {completion >= 100 ? 'Your profile is complete' : 'Action needed: complete your profile'}
+                        </h3>
                         <p className="mt-1 text-sm text-slate-600 dark:text-gray-400">
-                          Fill in the information your account uses for login, contact, and delivery.
+                          {completion >= 100
+                            ? 'Your account details are ready for login, contact, and delivery.'
+                            : `${incompleteProfileItems.length} section${incompleteProfileItems.length === 1 ? '' : 's'} still need attention before your profile reaches 100%.`}
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-sky-200 bg-white px-4 py-3 text-center dark:border-sky-800 dark:bg-slate-900/60">
+                      <div className={`rounded-2xl border bg-white px-4 py-3 text-center dark:bg-slate-900/60 ${
+                        completion >= 100 ? 'border-sky-200 dark:border-sky-800' : 'border-amber-200 dark:border-amber-800'
+                      }`}>
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-gray-500">Completion</p>
                         <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{completion}%</p>
                       </div>
                     </div>
 
                     <div className="mt-5 grid gap-3 md:grid-cols-2">
-                      {completionItems.map((item) => (
-                        <button
-                          key={item.label}
-                          type="button"
-                          onClick={() => {
-                            if (item.label === 'Address') setIsAddressModalOpen(true);
-                            if (item.label === 'Username') setActiveTab('change-username');
-                            if (item.label === 'Personal Details') {
-                              completeInformationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                          className={`text-left rounded-xl border px-4 py-3 transition-colors ${
-                            item.done
-                              ? 'border-emerald-200 bg-white text-slate-700 dark:border-emerald-900/40 dark:bg-slate-900/60 dark:text-gray-200'
-                              : 'border-sky-200 bg-white text-slate-800 hover:border-sky-300 dark:border-sky-900/40 dark:bg-slate-900/60 dark:text-white dark:hover:border-sky-700'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold">{item.label}</p>
-                              <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{item.hint}</p>
+                      {completionItems.map((item) => {
+                        const isSavingAddressItem = item.label === 'Address' && isSavingAddressDetails;
+
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            disabled={isSavingAddressItem}
+                            onClick={() => {
+                              if (item.label === 'Address') setIsAddressModalOpen(true);
+                              if (item.label === 'Username') setActiveTab('change-username');
+                              if (item.label === 'Personal Details') {
+                                completeInformationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
+                            }}
+                            className={`text-left rounded-xl border px-4 py-3 transition-colors disabled:cursor-wait ${
+                              isSavingAddressItem
+                                ? 'border-sky-200 bg-sky-50/80 text-slate-900 dark:border-sky-900/50 dark:bg-sky-950/20 dark:text-white'
+                                : item.done
+                                  ? 'border-emerald-200 bg-white text-slate-700 dark:border-emerald-900/40 dark:bg-slate-900/60 dark:text-gray-200'
+                                  : 'border-amber-200 bg-white text-slate-900 shadow-sm shadow-amber-100/60 hover:border-amber-300 hover:bg-amber-50/80 dark:border-amber-900/50 dark:bg-slate-900/60 dark:text-white dark:shadow-none dark:hover:border-amber-700 dark:hover:bg-amber-950/30'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold">{item.label}</p>
+                                  {isSavingAddressItem ? (
+                                    <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                                      Saving
+                                    </span>
+                                  ) : !item.done && (
+                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                      Required
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{item.hint}</p>
+                                {isSavingAddressItem ? (
+                                  <p className="mt-1.5 text-xs font-medium text-sky-700 dark:text-sky-300">
+                                    Saving your address details...
+                                  </p>
+                                ) : !item.done && (
+                                  <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                    Please complete this section to finish your profile.
+                                  </p>
+                                )}
+                              </div>
+                              <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                                isSavingAddressItem
+                                  ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                                  : item.done
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                              }`}>
+                                {isSavingAddressItem ? (
+                                  <Loading size={12} className="border-sky-200 border-t-sky-700 dark:border-sky-800 dark:border-t-sky-300" />
+                                ) : item.done ? '✓' : <Icon.Warning className="h-3.5 w-3.5" />}
+                              </span>
                             </div>
-                            <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-                              item.done
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                                : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
-                            }`}>
-                              {item.done ? '✓' : '•'}
-                            </span>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -4475,7 +4532,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       }}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600 disabled:bg-slate-50 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-500"
                     >
-                      <option value="">Select Region</option>
+                      <option value="">{phAddress.loadingRegions ? 'Loading regions...' : 'Select Region'}</option>
                       {phAddress.regions.map((region) => (
                         <option key={region.code} value={region.code}>{region.name}</option>
                       ))}

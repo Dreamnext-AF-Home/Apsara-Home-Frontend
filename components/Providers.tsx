@@ -7,6 +7,7 @@ import CartDrawer from '@/components/ui/CartDrawer'
 import WishlistDrawer from '@/components/ui/WishlistDrawer'
 import { Provider as ReduxProvider } from 'react-redux'
 import { SessionProvider, signOut, useSession } from 'next-auth/react'
+import { ThemeProvider } from 'next-themes'
 import { store } from '@/store/store'
 import { Toaster } from 'react-hot-toast'
 import { useMeQuery } from '@/store/api/userApi'
@@ -137,7 +138,8 @@ function CustomerDeletedOverlay() {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+      <SessionProvider>
         <ReduxProvider store={store}>
           <CartProvider>
           <WishlistProvider>
@@ -165,6 +167,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           </WishlistProvider>
           </CartProvider>
         </ReduxProvider>
-    </SessionProvider>
+      </SessionProvider>
+    </ThemeProvider>
   )
 }

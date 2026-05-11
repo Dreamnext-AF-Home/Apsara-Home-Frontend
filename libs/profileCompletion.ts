@@ -44,6 +44,12 @@ export const getProfileCompletion = (profile?: Partial<MeResponse> | null) => {
     isFilled(profile.occupation) && String(profile.occupation).trim().toLowerCase() !== 'none',
     isFilled(workLocation),
     isFilled(profile.country),
+    isFilled(profile.address),
+    isFilled(profile.barangay),
+    isFilled(profile.city),
+    isFilled(profile.province),
+    isFilled(profile.region),
+    isFilled(profile.zip_code),
   ]
 
   const percentage = Math.round((checks.filter(Boolean).length / checks.length) * 100)

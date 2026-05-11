@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
+import Pusher from 'pusher-js'
 import { Card } from '@heroui/react/card'
 import { Label } from '@heroui/react/label'
 import { SearchField } from '@heroui/react/search-field'
@@ -18,7 +19,7 @@ import { useSaveSearchHistoryMutation, useGetSearchHistoryQuery, useClearSearchH
 import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi'
 import formatPrice from '@/helpers/FormatPrice'
 import { useMeQuery } from '@/store/api/userApi'
-import { useGetCustomerNotificationsQuery } from '@/store/api/customerNotificationsApi'
+import { customerNotificationsApi, CustomerNotificationItem, useGetCustomerNotificationsQuery } from '@/store/api/customerNotificationsApi'
 import { useGetWishlistQuery } from '@/store/api/wishlistApi'
 import { useWishlist } from '@/context/WishlistContext'
 import { useRouter, usePathname } from 'next/navigation'
@@ -30,12 +31,18 @@ import { buildStorefrontProductPath, extractPartnerSlugFromPath } from '@/libs/s
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton'
 import OutlineButton from '@/components/ui/buttons/OutlineButton'
 import ThemeToggle from '@/components/ui/buttons/ThemeToggle'
+import { getProfileCompletion } from '@/libs/profileCompletion'
 
 type NavLink = {
   label: string;
   href: string;
   dropdown?: string[]
   mega?: Record<string, string[]>
+}
+
+type CustomerRealtimeNotificationEvent = Partial<CustomerNotificationItem> & {
+  created_at?: string
+  description?: string
 }
 
 const navLinks: NavLink[] = [
@@ -185,30 +192,84 @@ function NavbarInner({
     skip: !isLoggedIn || hideSignIn,
   })
   const [readCustomerNotificationKeys, setReadCustomerNotificationKeys] = useState<string[]>([])
+  const [realtimeNotification, setRealtimeNotification] = useState<CustomerNotificationItem | null>(null)
+
+  useEffect(() => {
+    if (!realtimeNotification) return
+
+    const timeoutId = window.setTimeout(() => setRealtimeNotification(null), 6500)
+    return () => window.clearTimeout(timeoutId)
+  }, [realtimeNotification])
+
+  useEffect(() => {
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER
+    const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
+    const accessToken = (session?.user as { accessToken?: string } | undefined)?.accessToken
+    const customerId = meData?.id
+
+    if (!isCustomerSession || !customerId || !accessToken || !pusherKey || !pusherCluster || !apiBaseUrl) {
+      return
+    }
+
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
+      channelAuthorization: {
+        endpoint: `${apiBaseUrl}/api/realtime/pusher/auth`,
+        transport: 'ajax',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      },
+    })
+
+    const channelName = `private-customer-${customerId}`
+    const channel = pusher.subscribe(channelName)
+    const onNotificationCreated = (event: CustomerRealtimeNotificationEvent) => {
+      const item: CustomerNotificationItem = {
+        id: String(event.id ?? `realtime:${Date.now()}`),
+        title: event.title ?? 'New notification',
+        description: event.description ?? '',
+        count: Number(event.count ?? 1),
+        severity: event.severity ?? 'success',
+        href: event.href ?? '/profile?tab=encashment',
+        latest_at: event.latest_at ?? event.created_at ?? new Date().toISOString(),
+      }
+
+      dispatch(
+        customerNotificationsApi.util.updateQueryData('getCustomerNotifications', customerNotificationCacheKey, (draft) => {
+          const existingIndex = draft.items.findIndex((existing) => existing.id === item.id)
+          if (existingIndex >= 0) {
+            draft.items.splice(existingIndex, 1)
+          }
+          draft.items.unshift(item)
+          draft.unread_count = Number(draft.unread_count ?? 0) + item.count
+          draft.generated_at = new Date().toISOString()
+        }),
+      )
+      dispatch(baseApi.util.invalidateTags(['Encashment', 'CustomerNotifications']))
+      setRealtimeNotification(item)
+      refetchNotifications()
+    }
+
+    channel.bind('notification.created', onNotificationCreated)
+
+    return () => {
+      channel.unbind('notification.created', onNotificationCreated)
+      pusher.unsubscribe(channelName)
+      pusher.disconnect()
+    }
+  }, [customerNotificationCacheKey, dispatch, isCustomerSession, meData?.id, refetchNotifications, session?.user])
 
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const notifMenuRef = useRef<HTMLDivElement | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
-  const hasRealPhoneNumber = (value?: string | null) => String(value ?? '').replace(/\D/g, '').length >= 10
   const isProfileComplete = useMemo(() => {
     if (!meData) return false
-
-    const checks = [
-      Boolean(meData.name?.trim()),
-      Boolean(meData.email?.trim()),
-      hasRealPhoneNumber(meData.phone),
-      Boolean(meData.username?.trim()),
-      Boolean(meData.middle_name?.trim()),
-      Boolean(meData.birth_date?.trim()),
-      Boolean(meData.gender?.trim()),
-      Boolean(meData.occupation?.trim()),
-      Boolean(meData.work_location?.trim()),
-      Boolean(meData.country?.trim()),
-    ]
-
-    return checks.every(Boolean)
+    return getProfileCompletion(meData).complete
   }, [meData])
 
   useEffect(() => {
@@ -616,6 +677,45 @@ function NavbarInner({
     }
   }
 
+  const getNotificationIcon = (title: string) => {
+    const t = title.toLowerCase()
+    const iconClass = 'h-4 w-4'
+    if (t.includes('encashment') || t.includes('wallet') || t.includes('payment') || t.includes('earning')) {
+      return {
+        bg: 'bg-amber-100 dark:bg-amber-500/15',
+        icon: <svg className={`${iconClass} text-amber-600 dark:text-amber-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+      }
+    }
+    if (t.includes('verification') || t.includes('kyc') || t.includes('verified') || t.includes('approved')) {
+      return {
+        bg: 'bg-emerald-100 dark:bg-emerald-500/15',
+        icon: <svg className={`${iconClass} text-emerald-600 dark:text-emerald-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+      }
+    }
+    if (t.includes('order') || t.includes('purchase') || t.includes('progress')) {
+      return {
+        bg: 'bg-blue-100 dark:bg-blue-500/15',
+        icon: <svg className={`${iconClass} text-blue-600 dark:text-blue-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>,
+      }
+    }
+    if (t.includes('shipping') || t.includes('delivery') || t.includes('dispatch') || t.includes('track')) {
+      return {
+        bg: 'bg-violet-100 dark:bg-violet-500/15',
+        icon: <svg className={`${iconClass} text-violet-600 dark:text-violet-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>,
+      }
+    }
+    if (t.includes('promo') || t.includes('sale') || t.includes('discount') || t.includes('offer')) {
+      return {
+        bg: 'bg-pink-100 dark:bg-pink-500/15',
+        icon: <svg className={`${iconClass} text-pink-600 dark:text-pink-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>,
+      }
+    }
+    return {
+      bg: 'bg-slate-100 dark:bg-slate-800',
+      icon: <svg className={`${iconClass} text-slate-500 dark:text-slate-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
+    }
+  }
+
   const handleCustomerLogout = async () => {
     if (isLoggingOut) return
 
@@ -737,7 +837,7 @@ function NavbarInner({
                     )}
                   </button>
                 <div className="relative" ref={notifMenuRef}>
-                  {/* Bell button — matches admin style */}
+                  {/* Bell button */}
                   <button
                     onClick={() => {
                       setNotifMenuOpen((prev) => !prev)
@@ -747,124 +847,168 @@ function NavbarInner({
                     className="relative flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition-all hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                     title="Notifications"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
+                    <motion.div
+                      key={unreadNotificationCount}
+                      animate={unreadNotificationCount > 0 ? { rotate: [0, -18, 18, -12, 12, -6, 6, 0] } : {}}
+                      transition={{ duration: 0.6, ease: 'easeInOut' }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                    </motion.div>
                     {unreadNotificationCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
-                        {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                      </span>
+                      <>
+                        <span className="absolute -top-0.5 -right-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                          {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                        </span>
+                        <span className="absolute -top-0.5 -right-0.5 h-5 w-5 animate-ping rounded-full bg-red-400 opacity-60" />
+                      </>
                     )}
                   </button>
 
                   <AnimatePresence>
                     {notifMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 12, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="fixed left-2 right-2 top-16 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/40 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 sm:fixed-none"
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="fixed left-2 right-2 top-16 z-50 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/10 dark:border-slate-700/60 dark:bg-slate-900 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96"
                       >
                         {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">Notifications</span>
-                            {unreadNotificationCount > 0 && (
-                              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-                                {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                              </span>
-                            )}
+                        <div className="relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent dark:from-violet-500/20 dark:via-purple-500/10" />
+                          <div className="relative flex items-center justify-between px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-md shadow-purple-500/25">
+                                <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Notifications</h3>
+                                {unreadNotificationCount > 0 ? (
+                                  <p className="text-xs font-medium text-violet-600 dark:text-violet-400">{unreadNotificationCount} unread</p>
+                                ) : (
+                                  <p className="text-xs text-slate-400 dark:text-slate-500">All caught up</p>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={markAllCustomerNotificationsAsRead}
+                              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-violet-600 transition-colors hover:bg-violet-50 active:bg-violet-100 dark:text-violet-400 dark:hover:bg-violet-500/10"
+                            >
+                              Mark all read
+                            </button>
                           </div>
-                          <button
-                            onClick={markAllCustomerNotificationsAsRead}
-                            className="text-xs font-semibold text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                          >
-                            Mark all read
-                          </button>
+                          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-700" />
                         </div>
 
                         {/* List */}
-                        <div className="max-h-[60vh] overflow-y-auto overscroll-contain sm:max-h-96">
+                        <div className="max-h-[60vh] overflow-y-auto overscroll-contain sm:max-h-[420px]">
                           {isNotificationsLoading ? (
-                            <div className="flex flex-col items-center justify-center gap-3 py-10">
-                              <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-slate-400 dark:border-slate-700 dark:border-t-slate-500" />
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Loading...</p>
+                            <div className="flex flex-col items-center justify-center gap-3 py-12">
+                              <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-violet-500 dark:border-slate-700 dark:border-t-violet-400" />
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Loading notifications...</p>
                             </div>
                           ) : isNotificationsError ? (
-                            <div className="px-4 py-8 text-center">
-                              <p className="text-sm font-medium text-red-500 dark:text-red-400">Failed to load notifications</p>
-                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Please try again later.</p>
-                            </div>
-                          ) : visibleCustomerNotifications.length ? (
-                            visibleCustomerNotifications.map((item) => {
-                              const isRead = readCustomerNotificationKeys.includes(getCustomerNotificationReadKey(item))
-                              return (
-                                <Link
-                                  key={item.id}
-                                  href={item.href}
-                                  onClick={() => {
-                                    markCustomerNotificationAsRead(item)
-                                    setNotifMenuOpen(false)
-                                  }}
-                                  className={`flex w-full items-start gap-3.5 px-5 py-3.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 border-l-2 ${
-                                    !isRead
-                                      ? 'border-l-emerald-500 bg-slate-50 dark:bg-slate-800/30'
-                                      : 'border-l-transparent'
-                                  }`}
-                                >
-                                  {/* Dot */}
-                                  <div className="mt-1 flex h-2.5 w-2.5 shrink-0 items-center justify-center">
-                                    <div className={`h-2.5 w-2.5 rounded-full ${
-                                      !isRead
-                                        ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
-                                        : 'bg-slate-300 dark:bg-slate-600'
-                                    }`} />
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <p className={`text-sm leading-snug ${
-                                        !isRead
-                                          ? 'font-bold text-slate-900 dark:text-white'
-                                          : 'font-medium text-slate-600 dark:text-slate-400'
-                                      }`}>
-                                        {item.title}
-                                      </p>
-                                      {item.count > 1 && (
-                                        <span className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide ${
-                                          !isRead
-                                            ? 'border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                            : 'border border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'
-                                        }`}>
-                                          ×{item.count}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400 line-clamp-2">{item.description}</p>
-                                    {formatCustomerNotificationTime(item.latest_at) && (
-                                      <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                                        {formatCustomerNotificationTime(item.latest_at)} PHT
-                                      </p>
-                                    )}
-                                  </div>
-                                </Link>
-                              )
-                            })
-                          ) : (
-                            <div className="flex flex-col items-center justify-center gap-3 py-10">
-                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800/60">
-                                <svg className="h-5 w-5 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-500/10">
+                                <svg className="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                               </div>
+                              <div>
+                                <p className="text-sm font-semibold text-red-500 dark:text-red-400">Failed to load</p>
+                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Please try again later</p>
+                              </div>
+                            </div>
+                          ) : visibleCustomerNotifications.length ? (
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                              {visibleCustomerNotifications.map((item, idx) => {
+                                const isRead = readCustomerNotificationKeys.includes(getCustomerNotificationReadKey(item))
+                                const notifIcon = getNotificationIcon(item.title)
+                                return (
+                                  <motion.div
+                                    key={item.id}
+                                    initial={{ opacity: 0, x: -6 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: idx * 0.035, duration: 0.2 }}
+                                  >
+                                    <Link
+                                      href={item.href}
+                                      onClick={() => {
+                                        markCustomerNotificationAsRead(item)
+                                        setNotifMenuOpen(false)
+                                      }}
+                                      className={`group relative flex w-full items-start gap-3.5 py-3.5 text-left transition-all duration-150 ${
+                                        !isRead
+                                          ? 'border-l-[3px] border-l-violet-500 bg-violet-50 pl-[17px] pr-5 hover:bg-violet-100/60 dark:border-l-violet-400 dark:bg-violet-500/10 dark:hover:bg-violet-500/[0.16]'
+                                          : 'border-l-[3px] border-l-transparent pl-[17px] pr-5 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                                      }`}
+                                    >
+                                      {/* Type icon */}
+                                      <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${notifIcon.bg}`}>
+                                        {notifIcon.icon}
+                                      </div>
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <p className={`text-sm leading-snug ${
+                                            !isRead
+                                              ? 'font-semibold text-slate-900 dark:text-white'
+                                              : 'font-medium text-slate-500 dark:text-slate-400'
+                                          }`}>
+                                            {item.title}
+                                          </p>
+                                          <div className="flex shrink-0 items-center gap-1.5">
+                                            {item.count > 1 && (
+                                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                                                !isRead
+                                                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300'
+                                                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500'
+                                              }`}>
+                                                ×{item.count}
+                                              </span>
+                                            )}
+                                            {!isRead && (
+                                              <span className="rounded-full bg-gradient-to-r from-violet-500 to-purple-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white leading-none shadow-sm shadow-violet-500/30">
+                                                NEW
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{item.description}</p>
+                                        {formatCustomerNotificationTime(item.latest_at) && (
+                                          <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                                            {formatCustomerNotificationTime(item.latest_at)} PHT
+                                          </p>
+                                        )}
+                                      </div>
+                                    </Link>
+                                  </motion.div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center gap-4 py-12">
+                              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800/60 shadow-inner">
+                                <svg className="h-7 w-7 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                <div className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20 shadow-sm">
+                                  <svg className="h-3 w-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              </div>
                               <div className="text-center">
-                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">All caught up!</p>
-                                <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">No new notifications</p>
+                                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">You&apos;re all caught up!</p>
+                                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">No new notifications right now</p>
                               </div>
                             </div>
                           )}
                         </div>
-
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1721,6 +1865,62 @@ function NavbarInner({
       </AnimatePresence>
 
     </motion.header>
+    {typeof document !== 'undefined' && createPortal(
+      <AnimatePresence>
+        {realtimeNotification && (
+          <motion.div
+            key={realtimeNotification.id}
+            initial={{ opacity: 0, x: 36, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 36, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed right-3 top-24 z-[130] w-[calc(100vw-1.5rem)] max-w-sm sm:right-5"
+          >
+            <Link
+              href={realtimeNotification.href}
+              onClick={() => setRealtimeNotification(null)}
+              className="block overflow-hidden rounded-2xl border border-emerald-200/80 bg-white shadow-2xl shadow-slate-900/15 ring-1 ring-emerald-100/70 transition hover:-translate-y-0.5 hover:shadow-emerald-900/15 dark:border-emerald-800/60 dark:bg-slate-900 dark:ring-emerald-900/30"
+            >
+              <div className="flex items-start gap-3 p-4">
+                <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${getNotificationIcon(realtimeNotification.title).bg}`}>
+                  {getNotificationIcon(realtimeNotification.title).icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{realtimeNotification.title}</p>
+                    <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      New
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    {realtimeNotification.description}
+                  </p>
+                  <p className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    View in notifications
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setRealtimeNotification(null)
+                  }}
+                  className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  aria-label="Dismiss notification"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400" />
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body,
+    )}
     {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
         {searchModalOpen && (
