@@ -18,7 +18,7 @@ type NavItem = {
 // ── Nav Config ─────────────────────────────────────────────────────────────────
 const NAV: NavItem[] = [
   {
-    id: 'pv', label: 'Personal Volume (PV)', icon: TrendingUp,
+    id: 'pv', label: 'Performance Value (PV)', icon: TrendingUp,
     sub: [
       { id: 'pv-intro', label: 'What Is PV' },
       { id: 'pv-distribution', label: 'How PV Is Distributed' },
@@ -541,7 +541,7 @@ export default function CommissionDocs() {
             </div>
             <h1 className="text-3xl font-bold mb-2">Commission & Bonus System</h1>
             <p className="text-amber-100 text-[15px] leading-relaxed max-w-xl">
-              Complete guide to how earnings work — from Personal Volume (PV) to all bonus types. For business stakeholders, administrators, and team members.
+              Complete guide to how earnings work — from Performance Value (PV) to all bonus types. For business stakeholders, administrators, and team members.
             </p>
             <div className="flex flex-wrap gap-2 mt-5">
               {['PV-based', 'Network Earning', 'Activation-gated', 'Compression', 'Milestone Bonuses'].map(tag => (
@@ -555,10 +555,10 @@ export default function CommissionDocs() {
 
           {/* ── PV ───────────────────────────────────────────── */}
           <section id="pv" data-section>
-            <SectionTag icon={<TrendingUp size={11} />}>Personal Volume</SectionTag>
-            <SectionHeading>Personal Volume (PV)</SectionHeading>
+            <SectionTag icon={<TrendingUp size={11} />}>Performance Value</SectionTag>
+            <SectionHeading>Performance Value (PV)</SectionHeading>
             <p className="text-gray-600 text-[15px] leading-relaxed mb-5">
-              <strong>Personal Volume (PV)</strong> is the core unit used to measure a member's purchasing activity. Each product carries a set PV value. PV is only credited <strong>after an order has been delivered</strong> — never on payment alone.
+              <strong>Performance Value (PV)</strong> is the core unit used to measure a member's purchasing activity. Each product carries a set PV value. PV is only credited <strong>after an order has been delivered</strong> — never on payment alone.
             </p>
             <Note type="info">PV is only earned on delivery. This prevents PV from being granted for orders that are cancelled, returned, or never received.</Note>
           </section>
