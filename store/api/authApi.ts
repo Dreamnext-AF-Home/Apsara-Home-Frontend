@@ -25,6 +25,7 @@ interface RegisterResponse {
 interface VerifyRegisterOtpPayload {
   verification_token: string
   otp: string
+  debug_trace_id?: string
 }
 
 interface VerifyRegisterOtpResponse {

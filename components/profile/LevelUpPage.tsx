@@ -124,12 +124,15 @@ export default function LevelUpPage({
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4f1ea] text-slate-950 dark:bg-[#080b10] dark:text-white">
-      <TopBar hideMarquee={Boolean(partnerSlug)} />
+      {!partnerSlug && <TopBar />}
       <Navbar
         initialCategories={initialCategories}
         logoSrc={partnerLogoUrl ?? '/Images/af_home_logo.png'}
         logoAlt={partnerStorefront?.displayName || 'AF Home'}
         logoHref={partnerHomeHref}
+        categoryOnlyNav={Boolean(partnerSlug)}
+        showGuestCartWishlist={Boolean(partnerSlug)}
+        stickToTop={Boolean(partnerSlug)}
       />
 
       <section className="relative px-4 py-8 md:px-6 md:py-12">

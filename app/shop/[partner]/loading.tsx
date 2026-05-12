@@ -17,6 +17,15 @@ const titleCase = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 
+const normalizeLogoUrl = (value: string) => {
+  const raw = value.trim()
+  if (!raw) return raw
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && raw.startsWith('http://')) {
+    return `https://${raw.slice('http://'.length)}`
+  }
+  return raw
+}
+
 export default function PartnerShopLoading() {
   const pathname = usePathname()
   const slug = useMemo(
@@ -26,8 +35,8 @@ export default function PartnerShopLoading() {
   const displayName = useMemo(() => (slug ? titleCase(slug) : 'Shop'), [slug])
   const [logoSrc, setLogoSrc] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
-    const iconHref = document.querySelector('link[rel="icon"]')?.getAttribute('href')?.trim() || ''
-    return iconHref || null
+    const cachedLogo = window.localStorage.getItem(`partner-storefront-icon:${slug}`)
+    return cachedLogo ? normalizeLogoUrl(cachedLogo) : null
   })
 
   // Set favicon/tab icon immediately during loading (before partner page data finishes).
@@ -47,12 +56,10 @@ export default function PartnerShopLoading() {
     const storageKey = `partner-storefront-icon:${slug}`
     const cachedIcon = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
     if (cachedIcon) {
-      setLogoSrc(cachedIcon)
-      setIcon('icon', cachedIcon)
-      setIcon('apple-touch-icon', cachedIcon)
-    } else {
-      const iconHref = document.querySelector('link[rel="icon"]')?.getAttribute('href')?.trim() || ''
-      if (iconHref) setLogoSrc(iconHref)
+      const normalizedCachedIcon = normalizeLogoUrl(cachedIcon)
+      setLogoSrc(normalizedCachedIcon)
+      setIcon('icon', normalizedCachedIcon)
+      setIcon('apple-touch-icon', normalizedCachedIcon)
     }
 
     async function loadAndSetLogo() {
@@ -69,15 +76,16 @@ export default function PartnerShopLoading() {
         const storefront = getPartnerStorefrontConfig(item)
         const resolved = storefront?.tabLogoUrl || storefront?.logoUrl
         if (!resolved) return
+        const normalizedResolved = normalizeLogoUrl(resolved)
 
-        setLogoSrc(resolved)
+        setLogoSrc(normalizedResolved)
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(storageKey, resolved)
+          window.localStorage.setItem(storageKey, normalizedResolved)
         }
 
         // Update the tab icon ASAP.
-        setIcon('icon', `${resolved}${resolved.includes('?') ? '&' : '?'}v=loading`)
-        setIcon('apple-touch-icon', `${resolved}${resolved.includes('?') ? '&' : '?'}v=loading`)
+        setIcon('icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
+        setIcon('apple-touch-icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
       } catch {
         // ignore
       }

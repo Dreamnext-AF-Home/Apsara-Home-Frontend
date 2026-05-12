@@ -1,6 +1,5 @@
 
 'use client'
-import Image from 'next/image'
 
 type LoadingScreenProps = {
   logoSrc?: string | null
@@ -48,13 +47,14 @@ export default function LoadingScreen({
           <div className="animate-logo-enter" style={{ animationDelay: '80ms' }}>
 
             {resolvedLogoSrc ? (
-              <Image
+              <img
                 src={resolvedLogoSrc}
                 alt={logoAlt}
                 width={110}
                 height={110}
-                priority
-                className="object-contain drop-shadow-xl mix-blend-multiply dark:mix-blend-normal dark:drop-shadow-[0_0_32px_rgba(56,189,248,0.22)]"
+                loading="eager"
+                decoding="async"
+                className="h-[110px] w-[110px] object-contain drop-shadow-xl mix-blend-multiply dark:mix-blend-normal dark:drop-shadow-[0_0_32px_rgba(56,189,248,0.22)]"
               />
             ) : (
               <span className="block h-[110px] w-[110px]" />
