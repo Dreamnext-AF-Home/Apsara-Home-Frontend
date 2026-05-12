@@ -989,10 +989,10 @@ export default function PartnerStorefrontStudio() {
                   <button
                     type="button"
                     onClick={() => selectStorefront(item)}
-                    className={`w-full rounded-2xl border p-3 text-left transition ${
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                       active
-                        ? 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:border-emerald-700 dark:bg-emerald-500/10'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
+                        ? 'border-emerald-300 bg-emerald-50/60 shadow-sm dark:border-emerald-700/70 dark:bg-emerald-900/20'
+                        : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-emerald-700/60 dark:hover:bg-emerald-900/15'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -1027,21 +1027,62 @@ export default function PartnerStorefrontStudio() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div
-                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
-                          config.enableActivateDiscount ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
-                        }`}
-                        aria-hidden
-                      >
-                        <span
-                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
-                            config.enableActivateDiscount ? 'translate-x-5' : 'translate-x-1'
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={config.enableActivateDiscount}
+                          onChange={() => {
+                            // Toggling this should not select the storefront.
+                            // Persist immediately.
+                            if (typeof selectedId === 'number') {
+                              // keep local draft in sync
+                              setDraft((current) => ({ ...current, enableActivateDiscount: !current.enableActivateDiscount }))
+                            }
+
+                            const next = !config.enableActivateDiscount
+                            const nextDraft = {
+                              ...draft,
+                              enableActivateDiscount: next,
+                            }
+
+                            if (typeof selectedId === 'number') {
+                              if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
+                                showErrorToast('You do not have access to edit this storefront.')
+                                return
+                              }
+
+                              const slug = toSlug(nextDraft.slug || nextDraft.displayName)
+                              if (!slug) return
+
+                              const payload = buildStorefrontPayload({ ...nextDraft, slug })
+                              updateItem({ type: 'partner-storefront', id: selectedId, data: payload })
+                                .unwrap()
+                                .then(() => {
+                                  refetch()
+                                })
+                                .catch(() => {
+                                  showErrorToast('Failed to update activate discount.')
+                                })
+                            }
+                          }}
+                        />
+                        <div
+                          className={`peer h-8 w-14 rounded-full border transition ${
+                            config.enableActivateDiscount
+                              ? '!border-emerald-500 !bg-emerald-500'
+                              : 'border-slate-200 bg-slate-300'
                           }`}
                         />
-                      </div>
+                        <div
+                          className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900 ${
+                            config.enableActivateDiscount ? 'translate-x-6' : 'translate-x-0'
+                          }`}
+                        />
+                      </label>
                       <span
-                        className={`text-sm font-bold uppercase ${
-                          config.enableActivateDiscount ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-500 dark:text-slate-400'
+                        className={`text-sm font-bold uppercase whitespace-nowrap leading-none ${
+                          config.enableActivateDiscount ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500'
                         }`}
                       >
                         {config.enableActivateDiscount ? 'ON' : 'OFF'}
@@ -1402,7 +1443,11 @@ export default function PartnerStorefrontStudio() {
                     disabled={saving}
                   />
                   <div
-                    className="peer-focus:ring-4 peer-focus:ring-emerald-200 peer h-8 w-14 rounded-full border border-slate-200 bg-white transition peer-checked:bg-emerald-600 peer-checked:border-emerald-600 dark:border-slate-700 dark:bg-slate-800"
+                    className={`peer peer-focus:ring-4 peer-focus:ring-emerald-200 h-8 w-14 rounded-full border transition ${
+                      draft.enableActivateDiscount
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'
+                    }`}
                   />
                   <div
                     className="absolute left-1 top-1 h-6 w-6 -translate-x-0 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6 dark:bg-slate-900"
@@ -1657,5 +1702,8 @@ function Field({
     </label>
   )
 }
+
+
+
 
 

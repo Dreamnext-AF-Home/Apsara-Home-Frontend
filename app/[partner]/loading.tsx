@@ -10,6 +10,15 @@ type PartnerStorefrontApiResponse = {
   items?: WebPageItem[]
 }
 
+const normalizeLogoUrl = (value: string) => {
+  const raw = value.trim()
+  if (!raw) return raw
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && raw.startsWith('http://')) {
+    return `https://${raw.slice('http://'.length)}`
+  }
+  return raw
+}
+
 export default function PartnerLoading() {
   const pathname = usePathname()
   const partnerSlug = useMemo(() => pathname.split('/').filter(Boolean)[0] ?? '', [pathname])
@@ -23,21 +32,29 @@ export default function PartnerLoading() {
   }, [partnerSlug])
   const [logoSrc, setLogoSrc] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
-    const iconHref = document.querySelector('link[rel="icon"]')?.getAttribute('href')?.trim() || ''
-    return iconHref || null
+    const cachedLoadingLogo = window.localStorage.getItem(`partner-storefront-loading-logo:${partnerSlug}`)
+    if (cachedLoadingLogo) return normalizeLogoUrl(cachedLoadingLogo)
+    return null
   })
 
   useEffect(() => {
     if (!partnerSlug) return
-    const storageKey = `partner-storefront-icon:${partnerSlug}`
+    const iconStorageKey = `partner-storefront-icon:${partnerSlug}`
+    const loadingLogoStorageKey = `partner-storefront-loading-logo:${partnerSlug}`
+    const setIcon = (rel: string, href: string) => {
+      let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null
+      if (!link) {
+        link = document.createElement('link')
+        link.rel = rel
+        document.head.appendChild(link)
+      }
+      link.href = href
+    }
 
     if (typeof window !== 'undefined') {
-      const cachedIcon = window.localStorage.getItem(storageKey)
-      if (cachedIcon) {
-        setLogoSrc(cachedIcon)
-      } else {
-        const iconHref = document.querySelector('link[rel="icon"]')?.getAttribute('href')?.trim() || ''
-        if (iconHref) setLogoSrc(iconHref)
+      const cachedLoadingLogo = window.localStorage.getItem(loadingLogoStorageKey)
+      if (cachedLoadingLogo) {
+        setLogoSrc(normalizeLogoUrl(cachedLoadingLogo))
       }
     }
 
@@ -54,12 +71,28 @@ export default function PartnerLoading() {
         const storefront = getPartnerStorefrontConfig(item)
         if (!storefront) return
 
-        const resolvedLogo = storefront.tabLogoUrl || storefront.logoUrl
-        if (!resolvedLogo) return
+        const resolvedLoadingLogo = storefront.logoUrl || storefront.tabLogoUrl
+        const resolvedTabIcon = storefront.tabLogoUrl || storefront.logoUrl
 
-        setLogoSrc(resolvedLogo)
+        if (resolvedLoadingLogo) {
+          const normalizedLoadingLogo = normalizeLogoUrl(resolvedLoadingLogo)
+          setLogoSrc(normalizedLoadingLogo)
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(loadingLogoStorageKey, normalizedLoadingLogo)
+          }
+        }
+
+        if (resolvedTabIcon) {
+          const normalizedTabIcon = normalizeLogoUrl(resolvedTabIcon)
+          setIcon('icon', normalizedTabIcon)
+          setIcon('apple-touch-icon', normalizedTabIcon)
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(iconStorageKey, normalizedTabIcon)
+          }
+        }
+
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(storageKey, resolvedLogo)
+          window.localStorage.setItem(`partner-storefront-name:${partnerSlug}`, brandText)
         }
       } catch {
         // Keep cached logo if fetch fails.
@@ -67,7 +100,7 @@ export default function PartnerLoading() {
     }
 
     loadStorefrontLogo()
-  }, [partnerSlug])
+  }, [brandText, partnerSlug])
 
   return (
     <LoadingScreen

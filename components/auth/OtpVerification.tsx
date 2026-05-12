@@ -22,6 +22,8 @@ const OtpVerification = ({ email, verificationToken, onSuccess, onBack, senderNa
     const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [countdown, setCountdown] = useState(60);
+    const [debugInfo, setDebugInfo] = useState('');
+    const [traceId, setTraceId] = useState('');
     const errorRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -38,16 +40,41 @@ const OtpVerification = ({ email, verificationToken, onSuccess, onBack, senderNa
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setDebugInfo('');
 
         if (!/^\d{4}$/.test(otp)) {
             return showError('Please enter the complete 4-digit code.');
         }
 
-        const result = await verifyRegisterOtp({ verification_token: verificationToken, otp });
+        const requestTraceId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        setTraceId(requestTraceId);
+
+        const result = await verifyRegisterOtp({ verification_token: verificationToken, otp, debug_trace_id: requestTraceId });
 
         if ('error' in result) {
-            const err = (result.error as { data?: { errors?: Record<string, string[]>; message?: string } }).data;
+            const errPayload = result.error as { status?: number | string; data?: { errors?: Record<string, string[]>; message?: string } };
+            const err = errPayload.data;
             const msg = err?.errors ? Object.values(err.errors)[0][0] : err?.message || 'Verification failed. Please try again.';
+            const refFromMessage = /\(Ref:\s*([^)]+)\)/i.exec(String(msg))?.[1] ?? '';
+            const fetchReason = String((result.error as { error?: string } | undefined)?.error ?? '').trim()
+            setDebugInfo(
+                `status=${String(errPayload.status ?? 'unknown')}${refFromMessage ? ` | ref=${refFromMessage}` : ''}${fetchReason ? ` | cause=${fetchReason}` : ''} | trace=${requestTraceId}`,
+            );
+            console.error('OTP verify error payload', result.error);
+
+            // Fallback: account may already be created even if OTP verify endpoint
+            // returns duplicate-user validation after a partial success.
+            const normalizedMsg = String(msg).toLowerCase()
+            const looksLikeAlreadyRegistered =
+                normalizedMsg.includes('already registered') || normalizedMsg.includes('already taken')
+            if (looksLikeAlreadyRegistered) {
+                showSuccessToast('Registration already completed. You can now sign in.')
+                onSuccess()
+                return
+            }
+
             showError(msg);
             showErrorToast(msg);
             return;
@@ -108,6 +135,16 @@ const OtpVerification = ({ email, verificationToken, onSuccess, onBack, senderNa
             {error && (
                 <div ref={errorRef} className="mb-4 w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-left text-sm text-red-600 dark:border-red-400/20 dark:bg-red-500/20 dark:text-red-300">
                     {error}
+                    {debugInfo ? (
+                        <div className="mt-1 text-[11px] font-medium opacity-80">
+                            Debug: {debugInfo}
+                        </div>
+                    ) : null}
+                    {!debugInfo && traceId ? (
+                        <div className="mt-1 text-[11px] font-medium opacity-80">
+                            Trace: {traceId}
+                        </div>
+                    ) : null}
                 </div>
             )}
 

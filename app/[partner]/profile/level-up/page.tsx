@@ -69,12 +69,16 @@ export default async function PartnerLevelUpRoute({ params, searchParams }: Page
 
   const initialProfile = await getInitialProfile();
   const initialCategories = await getNavbarCategories();
+  const allowedCategoryIds = new Set((storefront.allowedCategoryIds ?? []).map((id) => Number(id)));
+  const filteredCategories = allowedCategoryIds.size > 0
+    ? initialCategories.filter((category) => allowedCategoryIds.has(Number(category.id)))
+    : initialCategories;
   const rank = Number(query.rank ?? initialProfile?.rank ?? 1);
 
   return (
     <LevelUpPage
       initialProfile={initialProfile}
-      initialCategories={initialCategories}
+      initialCategories={filteredCategories}
       rank={Number.isFinite(rank) ? rank : 1}
     />
   );

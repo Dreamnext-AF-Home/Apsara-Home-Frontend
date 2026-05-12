@@ -729,10 +729,10 @@ function NavbarInner({
   }, [initialCategories, partnerSlug])
   const displayNavLinks = useMemo<NavLink[]>(() => {
     if (categoryOnlyNav) {
-      return [{ label: 'Shop Category', href: '/category', dropdown: [] }]
+      return shopCategoryItems.map((item) => ({ label: item.label, href: item.href }))
     }
     return navLinks
-  }, [categoryOnlyNav])
+  }, [categoryOnlyNav, shopCategoryItems])
   const { data: publicBrandsData } = useGetPublicProductBrandsQuery()
   const shopBrandItems = useMemo(() => {
     return (publicBrandsData?.brands ?? [])

@@ -24,6 +24,9 @@ type ApiWebPagesResponse = {
 type ApiProductResponse = {
   product?: Product
 }
+type ApiProductsResponse = {
+  products?: Product[]
+}
 
 const REQUEST_TIMEOUT_MS = 12000
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
@@ -145,13 +148,18 @@ async function getPartnerProductPageData(partnerSlug: string) {
   if (!apiUrl) return null
 
   try {
-    const [storefrontsRes, categoriesRes] = await Promise.all([
+    const [storefrontsRes, categoriesRes, productsRes] = await Promise.all([
       fetchWithTimeout(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
       }),
       fetchWithTimeout(`${apiUrl}/api/categories?used_only=1&per_page=300`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      }),
+      fetchWithTimeout(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
@@ -164,7 +172,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
         products: [] as CategoryProduct[],
       }
     }
-    if (!categoriesRes.ok) {
+    if (!categoriesRes.ok || !productsRes.ok) {
       return {
         categories: [] as Category[],
         products: [] as CategoryProduct[],
@@ -173,6 +181,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     const storefrontsJson = (await storefrontsRes.json()) as ApiWebPagesResponse
     const categoriesJson = (await categoriesRes.json()) as ApiCategoriesResponse
+    const productsJson = (await productsRes.json()) as ApiProductsResponse
 
     const storefrontItem = (storefrontsJson.items ?? []).find((item) => {
       const config = getPartnerStorefrontConfig(item)
@@ -184,6 +193,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     const allowedCategories = filterPartnerCategories(categoriesJson.categories ?? [], partner)
     const selectedProductIds = partner.featuredProductIds
+    const allowedCategoryIdSet = new Set(allowedCategories.map((category) => Number(category.id)))
 
     if (allowedCategories.length === 0) {
       return {
@@ -193,15 +203,18 @@ async function getPartnerProductPageData(partnerSlug: string) {
       }
     }
 
+    // Fallback: when no featured list is configured, show all products in allowed categories.
     if (selectedProductIds.length === 0) {
+      const allowedProducts = (productsJson.products ?? []).filter((product) =>
+        allowedCategoryIdSet.has(Number(product.catid)),
+      )
+
       return {
         partner,
         categories: allowedCategories,
-        products: [] as CategoryProduct[],
+        products: allowedProducts.map((product) => mapProductToDisplay(product, apiUrl)),
       }
     }
-
-    const allowedCategoryIdSet = new Set(allowedCategories.map((category) => Number(category.id)))
     const productEntries = await Promise.all(
       selectedProductIds.map(async (productId) => {
         try {

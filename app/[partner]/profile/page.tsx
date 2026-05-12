@@ -6,18 +6,39 @@ import { getServerSession } from 'next-auth'
 import { getNavbarCategories } from '@/libs/serverStorefront'
 import { notFound, redirect } from 'next/navigation'
 import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
+import type { Metadata } from 'next'
 
-export const metadata = buildPageMetadata({
-  title: 'Profile',
-  description: 'Browse the Profile page on AF Home.',
-  path: '/[partner]/profile',
-  noIndex: true,
-})
 export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{ partner: string }>
   searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { partner } = await params
+  const normalizedPartner = partner.trim().toLowerCase()
+  const storefront = await getPartnerStorefrontBySlug(normalizedPartner)
+  const displayName = storefront?.displayName?.trim() || normalizedPartner
+
+  const metadata = buildPageMetadata({
+    title: 'Profile',
+    description: `Browse the Profile page for ${displayName}.`,
+    path: `/${normalizedPartner}/profile`,
+    noIndex: true,
+    siteName: displayName,
+  })
+
+  const iconUrl = storefront?.tabLogoUrl || storefront?.logoUrl
+  if (iconUrl) {
+    metadata.icons = {
+      icon: iconUrl,
+      apple: iconUrl,
+      shortcut: iconUrl,
+    }
+  }
+
+  return metadata
 }
 
 function buildProfileCallback(
@@ -84,6 +105,10 @@ export default async function PartnerProfilePage({ params, searchParams }: PageP
     getInitialProfile(),
     getNavbarCategories(),
   ])
+  const allowedCategoryIds = new Set((storefront.allowedCategoryIds ?? []).map((id) => Number(id)))
+  const filteredCategories = allowedCategoryIds.size > 0
+    ? initialCategories.filter((category) => allowedCategoryIds.has(Number(category.id)))
+    : initialCategories
 
-  return <ProfilePage initialProfile={initialProfile} initialCategories={initialCategories} />
+  return <ProfilePage initialProfile={initialProfile} initialCategories={filteredCategories} />
 }

@@ -1,210 +1,305 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useGetMembersQuery } from '@/store/api/membersApi'
+import { useGetPartnerMembersQuery } from '@/store/api/membersApi'
+import type { Member } from '@/types/members/types'
 
-type SponsorInfo = {
-  username?: string | null
-  name?: string | null
+type ApiError = {
+  status?: number | string
+  data?: { message?: string; error?: string }
+  error?: string
 }
 
-type MemberRecord = {
-  id: number
-  fullname?: string | null
-  name?: string | null
-  email?: string | null
-  contactNumber?: string | null
-  phone?: string | null
-  addressLine?: string | null
-  barangay?: string | null
-  city?: string | null
-  province?: string | null
-  region?: string | null
-  zipCode?: string | null
-  sponsor?: SponsorInfo | null
-  referredByUsername?: string | null
-  referredByName?: string | null
+const PER_PAGE = 25
+
+const extractErrorMessage = (error: unknown): string => {
+  if (!error || typeof error !== 'object') return 'Unknown error.'
+
+  const e = error as ApiError
+  const message = e.data?.message || e.data?.error || e.error
+
+  if (message && String(message).trim() !== '') {
+    if (e.status !== undefined) return `${e.status}: ${String(message)}`
+    return String(message)
+  }
+
+  if (e.status !== undefined) return `${e.status}: Request failed.`
+  return 'Request failed.'
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      {label ? (
-        <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">
-          {label}
-        </span>
-      ) : null}
-      <span className="min-w-0 break-words text-sm font-semibold text-slate-800 dark:text-slate-100">
-        {value}
-      </span>
-    </div>
-  )
+const normalize = (value?: string | null) => String(value ?? '').trim().toLowerCase()
+
+const getInitials = (name?: string | null) => {
+  const cleaned = String(name ?? '').trim()
+  if (!cleaned) return 'U'
+
+  const parts = cleaned.split(/\s+/).filter(Boolean)
+  const first = parts[0]?.[0] ?? ''
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : ''
+  const initials = `${first}${last}`.toUpperCase()
+  return initials || 'U'
+}
+
+const formatJoinedDate = (member: Member) => {
+  const raw = member.joinedAt || member.createdAt || member.created_at || ''
+  if (!raw) return 'N/A'
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return 'N/A'
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const INITIALS_STYLES = [
+  'bg-blue-100 text-blue-700 border-blue-200',
+  'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'bg-amber-100 text-amber-700 border-amber-200',
+  'bg-violet-100 text-violet-700 border-violet-200',
+  'bg-pink-100 text-pink-700 border-pink-200',
+  'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'bg-orange-100 text-orange-700 border-orange-200',
+]
+
+const initialsColorClass = (name?: string | null) => {
+  const base = String(name ?? '').trim().toLowerCase()
+  if (!base) return INITIALS_STYLES[0]
+
+  let hash = 0
+  for (let i = 0; i < base.length; i += 1) {
+    hash = (hash * 31 + base.charCodeAt(i)) >>> 0
+  }
+  return INITIALS_STYLES[hash % INITIALS_STYLES.length]
+}
+
+const sponsorLabel = (member: Member) => {
+  const username = String(member.referredByUsername ?? '').trim()
+  const name = String(member.referredByName ?? '').trim()
+
+  if (username && name) return `${name} (@${username})`
+  if (username) return `@${username}`
+  if (name) return name
+  return 'None'
+}
+
+const sponsorKey = (member: Member) => {
+  const username = normalize(member.referredByUsername)
+  if (username) return `u:${username}`
+
+  const name = normalize(member.referredByName)
+  if (name) return `n:${name}`
+
+  return 'none'
 }
 
 export default function PartnerMembersPage() {
-  const [q, setQ] = useState('')
-  const [sponsorFilter, setSponsorFilter] = useState<'all' | 'sponsored' | 'not_sponsored'>('all')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [sponsorFilter, setSponsorFilter] = useState('all')
 
-  const { data, isLoading, isError, error } = useGetMembersQuery(
-    {
-      page: 1,
-      perPage: 50,
-      search: q.trim() ? q.trim() : undefined,
-    },
-    { refetchOnMountOrArgChange: true },
-  )
+  const { data, isLoading, isFetching, error } = useGetPartnerMembersQuery({
+    page,
+    perPage: PER_PAGE,
+    search: search.trim() ? search.trim() : undefined,
+  })
 
-  const members = useMemo(() => (data?.members ?? []) as MemberRecord[], [data?.members])
+  const members = data?.members ?? []
+  const meta = data?.meta
+
+  const sponsorOptions = useMemo(() => {
+    const map = new Map<string, string>()
+
+    for (const member of members) {
+      const key = sponsorKey(member)
+      if (key === 'none') continue
+      if (!map.has(key)) map.set(key, sponsorLabel(member))
+    }
+
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [members])
 
   const filteredMembers = useMemo(() => {
     if (sponsorFilter === 'all') return members
-
-    return members.filter((m) => {
-      const sponsorUsername = String(m.sponsor?.username ?? m.referredByUsername ?? '').trim()
-      const hasSponsor = sponsorUsername !== ''
-      return sponsorFilter === 'sponsored' ? hasSponsor : !hasSponsor
-    })
+    return members.filter((member) => sponsorKey(member) === sponsorFilter)
   }, [members, sponsorFilter])
 
+  const totalPages = Math.max(1, Number(meta?.last_page ?? 1))
+  const canPrev = page > 1
+  const canNext = page < totalPages
+  const loading = isLoading
+
   return (
-    <section className="space-y-4">
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-teal-50 p-4 shadow-sm dark:border-slate-800 dark:bg-gradient-to-br dark:from-sky-950/20 dark:via-slate-950/40 dark:to-teal-950/20">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-r from-sky-400/15 via-cyan-400/10 to-teal-400/15 dark:from-sky-400/10 dark:via-cyan-400/5 dark:to-teal-400/10" />
+    <section className="space-y-5">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-teal-500/20 via-cyan-500/15 to-emerald-500/20 dark:from-teal-500/10 dark:via-cyan-500/10 dark:to-emerald-500/10" />
+        <div className="relative p-6 sm:p-7">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Members</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Search and filter members by sponsor.</p>
+            </div>
 
-        <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold text-slate-900 dark:text-slate-100">Members</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Search and filter members by sponsor.</p>
-          </div>
-
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <div className="w-full sm:w-[360px]">
-              <label className="sr-only" htmlFor="member-search">
-                Search members
-              </label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 5.5 5.5a7.5 7.5 0 0 0 11.15 11.15Z"
-                    />
-                  </svg>
-                </span>
-                <input
-                  id="member-search"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search..."
-                  className="h-11 w-full rounded-[18px] border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none transition-all duration-200 focus:border-sky-400 focus:ring-0 dark:border-white/15 dark:bg-white/10 dark:text-white"
-                />
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                {filteredMembers.length} shown
               </div>
             </div>
+          </div>
 
-            <div className="w-full sm:w-[240px]">
-              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Sponsor
-              </label>
-              <select
-                value={sponsorFilter}
-                onChange={(e) => setSponsorFilter(e.target.value as any)}
-                className="h-11 w-full rounded-[18px] border border-gray-200 bg-white px-4 text-sm outline-none transition-all duration-200 focus:border-sky-400 focus:ring-0 dark:border-white/15 dark:bg-white/10 dark:text-white"
-              >
-                <option value="all">All</option>
-                <option value="sponsored">Sponsored</option>
-                <option value="not_sponsored">Not sponsored</option>
-              </select>
+          {isFetching && !loading ? (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Refreshing members...</p>
+          ) : null}
+
+          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:col-span-2">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Search</label>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+                placeholder="Search by name, username, or email"
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-teal-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+              />
             </div>
 
-            <div className="flex w-full items-center justify-between rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 sm:w-[160px] dark:border-slate-800 dark:bg-slate-950/40">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Shown</span>
-              <span className="tabular-nums text-sm font-bold text-slate-900 dark:text-slate-100">{filteredMembers.length}</span>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Sponsor</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-teal-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                value={sponsorFilter}
+                onChange={(e) => setSponsorFilter(e.target.value)}
+                disabled={loading}
+              >
+                <option value="all">All sponsors</option>
+                {sponsorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900">Loading members...</div>
-      ) : null}
+      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        {loading ? <div className="p-6 text-sm text-slate-500 dark:text-slate-400">Loading members...</div> : null}
 
-      {isError ? (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 shadow-sm dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
-          Failed to load members.
-          <div className="mt-2 text-xs opacity-90">
-            {String((error as any)?.data?.message || (error as any)?.error || '') || 'Please try again.'}
+        {!loading && error ? (
+          <div className="space-y-1 p-6 text-sm text-rose-600 dark:text-rose-300">
+            <p>Failed to load members.</p>
+            <p className="text-xs">{extractErrorMessage(error)}</p>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {!isLoading && !isError ? (
-        <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          {filteredMembers.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">No members found.</div>
-          ) : (
-            <div className="min-w-[780px]">
-              <div className="grid grid-cols-12 gap-0 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
-                <div className="col-span-3">Member</div>
-                <div className="col-span-3">Contact</div>
-                <div className="col-span-3">Sponsor</div>
-                <div className="col-span-3">Address</div>
-              </div>
+        {!loading && !error && filteredMembers.length === 0 ? (
+          <div className="p-6 text-sm text-slate-500 dark:text-slate-400">No members found.</div>
+        ) : null}
 
-              {filteredMembers.map((m) => {
-                const fullname = String(m.fullname ?? m.name ?? '').trim() || 'N/A'
-                const email = String(m.email ?? '').trim()
-                const contact = String(m.contactNumber ?? m.phone ?? '').trim() || 'N/A'
-                const sponsorUsername = String(m.sponsor?.username ?? m.referredByUsername ?? '').trim()
-                const sponsorName = String(m.referredByName ?? m.sponsor?.name ?? '').trim()
-                const sponsor = sponsorUsername || sponsorName || 'Not assigned'
+        {!loading && !error && filteredMembers.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-separate border-spacing-0">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800/60">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Member</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Sponsor</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Address</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Joined</th>
+                </tr>
+              </thead>
 
-                const address = [m.addressLine, m.barangay, m.city, m.province, m.region, m.zipCode]
-                  .map((x) => (x ? String(x).trim() : ''))
-                  .filter(Boolean)
-                  .join(', ')
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredMembers.map((member) => {
+                  const fullAddress = String(member.fullAddress ?? '').trim() || 'N/A'
+                  const memberUsername = String(member.username ?? '').trim()
+                  const sponsorName = String(member.referredByName ?? '').trim() || 'None'
+                  const sponsorUsername = String(member.referredByUsername ?? '').trim()
+                  const sponsorAvatar = String(member.referredByAvatar ?? '').trim()
+                  const avatar = String(member.avatar ?? '').trim()
+                  const initials = getInitials(member.name)
+                  const initialsClass = initialsColorClass(member.name)
+                  const joinedDate = formatJoinedDate(member)
 
-                return (
-                  <div
-                    key={m.id}
-                    className="grid grid-cols-12 gap-0 px-4 py-4 text-sm even:bg-slate-50/40 dark:even:bg-slate-950/20"
-                  >
-                    <div className="col-span-3 min-w-0">
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700 shadow-sm ring-1 ring-sky-200/70 dark:bg-sky-950/40 dark:text-sky-200 dark:ring-sky-900/40">
-                          👤
-                        </span>
-                        <div className="min-w-0">
-                          <div className="truncate font-bold text-slate-900 dark:text-slate-100">{fullname}</div>
-                          <div className="mt-1 truncate text-slate-500 dark:text-slate-400">{email || '—'}</div>
-                          <div className="mt-1 text-[11px] font-bold text-slate-400">ID #{m.id}</div>
+                  return (
+                    <tr key={member.id} className="align-top transition hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                      <td className="px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <div className={`h-10 w-10 shrink-0 overflow-hidden rounded-full border ${avatar ? 'border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800' : initialsClass}`}>
+                            {avatar ? (
+                              <img src={avatar} alt={member.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold">{initials}</div>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{member.name}</p>
+                            {memberUsername ? <p className="text-xs text-slate-500 dark:text-slate-400">@{memberUsername}</p> : null}
+                            <p className="text-sm text-slate-600 dark:text-slate-300">{member.email}</p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </td>
 
-                    <div className="col-span-3 min-w-0">
-                      <Info label="" value={contact} />
-                    </div>
+                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{member.contactNumber || 'N/A'}</td>
 
-                    <div className="col-span-3 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span aria-hidden className="text-sky-600">🧭</span>
-                        <span className="truncate font-semibold text-slate-800 dark:text-slate-100">{sponsor}</span>
-                      </div>
-                    </div>
+                      <td className="px-4 py-3">
+                        <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                          <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                            {sponsorAvatar ? (
+                              <img src={sponsorAvatar} alt={sponsorName} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-500">S</div>
+                            )}
+                          </div>
 
-                    <div className="col-span-3 min-w-0">
-                      <div className="truncate text-slate-700 dark:text-slate-200">{address || 'N/A'}</div>
-                    </div>
-                  </div>
-                )
-              })}
+                          <div>
+                            <p>{sponsorName}</p>
+                            {sponsorUsername ? <p className="text-xs text-slate-500 dark:text-slate-400">@{sponsorUsername}</p> : null}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{fullAddress}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{joinedDate}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {!loading && !error ? (
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Page {meta?.current_page ?? page} of {totalPages} | {meta?.total ?? filteredMembers.length} total members
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={!canPrev || isFetching}
+              >
+                Previous
+              </button>
+
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={!canNext || isFetching}
+              >
+                Next
+              </button>
             </div>
-          )}
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   )
 }
-

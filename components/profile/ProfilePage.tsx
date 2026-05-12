@@ -645,8 +645,33 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const completeInformationRef = useRef<HTMLDivElement | null>(null);
   const phAddress = usePhAddress({ source: 'auto' });
   const profileData = data ?? initialProfile;
-  const effectiveAvatarUrl = avatarPreviewUrl || profileData?.avatar_url || '';
-  const effectiveAvatarViewUrl = avatarOriginalPreviewUrl || profileData?.avatar_original_url || effectiveAvatarUrl;
+  const normalizeAvatarUrl = useCallback((value?: string | null) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const unquoted = raw.replace(/^['"]|['"]$/g, '');
+    const unescaped = unquoted
+      .replace(/\\\//g, '/')
+      .replace(/&amp;/g, '&')
+      .trim();
+
+    if (!unescaped) return '';
+
+    if (unescaped.startsWith('//')) {
+      return `https:${unescaped}`;
+    }
+
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && unescaped.startsWith('http://')) {
+      return `https://${unescaped.slice('http://'.length)}`;
+    }
+
+    return unescaped;
+  }, []);
+  const sessionAvatarUrl = normalizeAvatarUrl((session?.user as { image?: string | null } | undefined)?.image || '');
+  const snapshotAvatarUrl = normalizeAvatarUrl(accountSnapshot?.profile?.avatar_url || '');
+  const profileAvatarUrl = normalizeAvatarUrl(profileData?.avatar_url || '');
+  const profileAvatarOriginalUrl = normalizeAvatarUrl(profileData?.avatar_original_url || '');
+  const effectiveAvatarUrl = normalizeAvatarUrl(avatarPreviewUrl || profileAvatarUrl || snapshotAvatarUrl || sessionAvatarUrl || '');
+  const effectiveAvatarViewUrl = normalizeAvatarUrl(avatarOriginalPreviewUrl || profileAvatarOriginalUrl || effectiveAvatarUrl);
   const effectiveRank = profileData?.rank ?? accountSnapshot?.loyalty?.rank ?? 0;
   const loyaltyTier: MemberTier = rankToTier(effectiveRank);
   const referralSummary = useMemo(() => {
@@ -902,11 +927,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const runtimeOrigin = (typeof window !== 'undefined' ? window.location.origin : '').trim().replace(/\/+$/, '');
   const siteOrigin = configuredAppUrl || runtimeOrigin || 'http://localhost:3000';
   const referralCode = ((profileData?.username ?? form.username) || '').trim();
+  const encodedReferralCode = encodeURIComponent(referralCode);
   const memberReferralLink = referralCode
-    ? `${siteOrigin}/ref/${encodeURIComponent(referralCode)}`
+    ? (partnerSlug
+      ? `${siteOrigin}/${partnerSlug}/login?mode=signup&ref=${encodedReferralCode}`
+      : `${siteOrigin}/ref/${encodedReferralCode}`)
     : '';
   const shoppingReferralLink = referralCode
-    ? `${siteOrigin}/shop?ref=${encodeURIComponent(referralCode)}`
+    ? (partnerSlug
+      ? `${siteOrigin}/shop/${partnerSlug}?ref=${encodedReferralCode}`
+      : `${siteOrigin}/shop?ref=${encodedReferralCode}`)
     : '';
   const memberReferralQrUrl = useMemo(
     () => (memberReferralLink
@@ -1617,7 +1647,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     e.target.value = '';
   };
 
-  const handleCropConfirm = async (blob: Blob) => {
+  const handleCropConfirm = useCallback(async (blob: Blob) => {
     setCropSrc(null);
     setProfileMsg(null);
     const localPreviewUrl = URL.createObjectURL(blob);
@@ -1629,6 +1659,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     try {
       const formData = new FormData();
       formData.append('file', blob, 'avatar.jpg');
+      if (partnerSlug) {
+        formData.append('require_cloudinary', '1');
+      }
       if (avatarOriginalPreviewUrl?.startsWith('blob:')) {
         const originalResponse = await fetch(avatarOriginalPreviewUrl);
         const originalBlob = await originalResponse.blob();
@@ -1637,11 +1670,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       const uploadResult = await uploadAvatar(formData).unwrap();
       setAvatarPreviewUrl((current) => {
         if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
-        return uploadResult.avatar_url || null;
+        return normalizeAvatarUrl(uploadResult.avatar_url || null) || null;
       });
       setAvatarOriginalPreviewUrl((current) => {
         if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
-        return uploadResult.avatar_original_url || uploadResult.avatar_url || null;
+        return normalizeAvatarUrl(uploadResult.avatar_original_url || uploadResult.avatar_url || null) || null;
       });
       await Promise.allSettled([refetchMe(), refetchAccountSnapshot(), refetchReferralTree()]);
       profileDraftDirtyRef.current = false;
@@ -1661,7 +1694,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } finally {
       setIsUploadingAvatar(false);
     }
-  };
+  }, [avatarOriginalPreviewUrl, normalizeAvatarUrl, refetchAccountSnapshot, refetchMe, refetchReferralTree, uploadAvatar]);
 
   const handleCropCancel = () => {
     if (cropSrc) URL.revokeObjectURL(cropSrc);
@@ -2221,12 +2254,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   return (
     <>
-      <TopBar hideMarquee={Boolean(partnerSlug)} />
+      {!partnerSlug && <TopBar />}
       <Navbar
         initialCategories={initialCategories}
         logoSrc={partnerLogoUrl ?? '/Images/af_home_logo.png'}
         logoAlt={partnerStorefront?.displayName || 'AF Home'}
         logoHref={partnerHomeHref}
+        categoryOnlyNav={Boolean(partnerSlug)}
+        showGuestCartWishlist={Boolean(partnerSlug)}
+        stickToTop={Boolean(partnerSlug)}
       />
       <motion.section
         initial={{ opacity: 0, y: 12 }}
