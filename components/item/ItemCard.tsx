@@ -602,6 +602,7 @@ export default function ItemCard({
       onClose={() => setShareModalOpen(false)}
       product={product}
       brandName={brandName}
+      shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}${href}`}
       forceRealPrice={forceRealPrice}
     />
 

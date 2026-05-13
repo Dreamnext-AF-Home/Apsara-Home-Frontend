@@ -42,7 +42,7 @@ export default function PartnerLoading() {
     const iconStorageKey = `partner-storefront-icon:${partnerSlug}`
     const loadingLogoStorageKey = `partner-storefront-loading-logo:${partnerSlug}`
     const setIcon = (rel: string, href: string) => {
-      let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null
+      let link = document.querySelector(`link[rel~="${rel}"]`) as HTMLLinkElement | null
       if (!link) {
         link = document.createElement('link')
         link.rel = rel
@@ -86,6 +86,7 @@ export default function PartnerLoading() {
           const normalizedTabIcon = normalizeLogoUrl(resolvedTabIcon)
           setIcon('icon', normalizedTabIcon)
           setIcon('apple-touch-icon', normalizedTabIcon)
+          setIcon('shortcut icon', normalizedTabIcon)
           if (typeof window !== 'undefined') {
             window.localStorage.setItem(iconStorageKey, normalizedTabIcon)
           }

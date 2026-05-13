@@ -79,20 +79,35 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    const maxSizeBytes = isPdf ? 20 * 1024 * 1024 : isVideo ? 150 * 1024 * 1024 : 5 * 1024 * 1024
+    // Max sizes:
+    // - Default (existing behavior):
+    //   - images: 5MB, videos: 150MB, pdf: 20MB
+    // - PROJECT GALLERY (folderType === 'project-gallery'):
+    //   - images: 10MB, videos: 15MB
+    const isProjectGallery = folderType === 'project-gallery'
+
+    const maxSizeBytes = isPdf
+      ? 20 * 1024 * 1024
+      : isVideo
+        ? (isProjectGallery ? 15 * 1024 * 1024 : 150 * 1024 * 1024)
+        : (isProjectGallery ? 10 * 1024 * 1024 : 5 * 1024 * 1024)
+
+    // For project-gallery uploads, only enforce max size (not a min size).
+    // Other folders keep the original minimum size rule.
     const minVideoSizeBytes = 5 * 1024 * 1024
-    if (isVideo && file.size < minVideoSizeBytes) {
+    if (isVideo && !isProjectGallery && file.size < minVideoSizeBytes) {
       return NextResponse.json({
         error: 'Video file is too small. Minimum size is 5MB.',
       }, { status: 400 })
     }
+
     if (file.size > maxSizeBytes) {
       return NextResponse.json({
         error: isPdf
           ? 'File too large. Maximum size is 20MB for PDF files.'
           : isVideo
-            ? 'File too large. Maximum size is 150MB for video files.'
-          : 'File too large. Maximum size is 5MB.',
+            ? `File too large. Maximum size is ${isProjectGallery ? '15MB' : '150MB'} for video files.`
+            : `File too large. Maximum size is ${isProjectGallery ? '10MB' : '5MB'}.`,
       }, { status: 400 })
     }
 

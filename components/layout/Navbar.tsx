@@ -857,8 +857,20 @@ function NavbarInner({
         redirect: false,
         callbackUrl: logoutRedirectHref,
       })
+      let safeRedirect = logoutRedirectHref
+      const returnedUrl = result?.url
+      if (returnedUrl && typeof window !== 'undefined') {
+        try {
+          const parsed = new URL(returnedUrl, window.location.origin)
+          safeRedirect = parsed.origin === window.location.origin
+            ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+            : logoutRedirectHref
+        } catch {
+          safeRedirect = logoutRedirectHref
+        }
+      }
 
-      router.replace(result?.url || logoutRedirectHref)
+      router.replace(safeRedirect)
       router.refresh()
     } finally {
       setIsLoggingOut(false)

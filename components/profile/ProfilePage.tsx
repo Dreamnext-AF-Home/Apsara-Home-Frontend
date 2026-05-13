@@ -1814,8 +1814,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   };
 
   const accountStats = [
-    { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push('/orders') },
-    { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
+    { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push(partnerSlug ? `/${partnerSlug}/orders` : '/orders') },
+    { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push(partnerSlug ? `/${partnerSlug}/wishlist` : '/wishlist') },
     { label: 'Reviews', value: String(accountSnapshot?.reviews?.total ?? 0), Icon: Icon.Activity, onClick: () => {} },
     { label: 'Loyalty', value: loyaltyTier, Icon: Icon.Shield, onClick: () => {} },
   ];
@@ -2829,9 +2829,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               </div>
               <div className="space-y-1.5">
                 {[
-                  { label: 'View My Orders', Icon: Icon.Bag, href: '/orders', color: 'group-hover:text-violet-500' },
-                  { label: 'Saved Wishlist', Icon: Icon.Heart, href: '/wishlist', color: 'group-hover:text-rose-500' },
-                  { label: 'Manage Addresses', Icon: Icon.MapPin, href: '#', color: 'group-hover:text-emerald-500' },
+                  { label: 'View My Orders', Icon: Icon.Bag, href: partnerSlug ? `/${partnerSlug}/orders` : '/orders', color: 'group-hover:text-violet-500' },
+                  { label: 'Saved Wishlist', Icon: Icon.Heart, href: partnerSlug ? `/${partnerSlug}/wishlist` : '/wishlist', color: 'group-hover:text-rose-500' },
+                  { label: 'Manage Addresses', Icon: Icon.MapPin, href: partnerSlug ? `/${partnerSlug}/profile` : '/profile', color: 'group-hover:text-emerald-500' },
                 ].map((item) => (
                   <button
                     key={item.label}

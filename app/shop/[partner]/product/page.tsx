@@ -270,6 +270,7 @@ export default async function PartnerProductPage({ params }: PageProps) {
         displayName: payload.partner?.displayName || resolved.partner,
         productHref: `/shop/${resolved.partner}/product`,
         heroVideoUrl: payload.partner?.heroVideoUrl || undefined,
+        enableActivateDiscount: Boolean(payload.partner?.enableActivateDiscount),
       }}
     />
   )

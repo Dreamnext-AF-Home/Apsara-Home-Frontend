@@ -105,6 +105,7 @@ const softCardClass =
 export default function PartnerStorefrontStudio() {
   const [selectedId, setSelectedId] = useState<number | 'new'>('new')
   const [draft, setDraft] = useState<DraftState>(emptyDraft)
+  const [discountToggleByStorefrontId, setDiscountToggleByStorefrontId] = useState<Record<number, boolean>>({})
   const [helperCategoryId, setHelperCategoryId] = useState<number | ''>('')
   const [selectedProductsCategoryFilter, setSelectedProductsCategoryFilter] = useState<number | 'all'>('all')
   const [helperProducts, setHelperProducts] = useState<Product[]>([])
@@ -845,6 +846,7 @@ export default function PartnerStorefrontStudio() {
         const resolvedProducts = results
           .filter((result): result is PromiseFulfilledResult<{ id: number; product: Product }> => result.status === 'fulfilled')
           .map((result) => result.value.product)
+          .filter((product): product is Product => Boolean(product) && typeof product.id === 'number')
 
         if (resolvedProducts.length > 0) {
           setHelperProductById((current) => {
@@ -981,9 +983,10 @@ export default function PartnerStorefrontStudio() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Your Storefronts</p>
           </div>
 
-          <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {storefronts.map(({ item, config }) => {
               const active = selectedId === item.id
+              const isDiscountEnabled = discountToggleByStorefrontId[item.id] ?? config.enableActivateDiscount
               return (
                 <div key={item.id} className="space-y-2">
                   <button
@@ -1031,61 +1034,63 @@ export default function PartnerStorefrontStudio() {
                         <input
                           type="checkbox"
                           className="sr-only peer"
-                          checked={config.enableActivateDiscount}
+                          checked={isDiscountEnabled}
                           onChange={() => {
-                            // Toggling this should not select the storefront.
-                            // Persist immediately.
-                            if (typeof selectedId === 'number') {
-                              // keep local draft in sync
-                              setDraft((current) => ({ ...current, enableActivateDiscount: !current.enableActivateDiscount }))
+                            // Optimistic UI per storefront row.
+                            const next = !isDiscountEnabled
+                            setDiscountToggleByStorefrontId((current) => ({ ...current, [item.id]: next }))
+
+                            if (selectedId === item.id) {
+                              setDraft((current) => ({ ...current, enableActivateDiscount: next }))
                             }
 
-                            const next = !config.enableActivateDiscount
-                            const nextDraft = {
-                              ...draft,
+                            if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(item.id)) {
+                              showErrorToast('You do not have access to edit this storefront.')
+                              setDiscountToggleByStorefrontId((current) => ({ ...current, [item.id]: isDiscountEnabled }))
+                              return
+                            }
+
+                            const baseDraft = toDraft(item)
+                            const payload = buildStorefrontPayload({
+                              ...baseDraft,
                               enableActivateDiscount: next,
-                            }
+                            })
 
-                            if (typeof selectedId === 'number') {
-                              if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
-                                showErrorToast('You do not have access to edit this storefront.')
-                                return
-                              }
-
-                              const slug = toSlug(nextDraft.slug || nextDraft.displayName)
-                              if (!slug) return
-
-                              const payload = buildStorefrontPayload({ ...nextDraft, slug })
-                              updateItem({ type: 'partner-storefront', id: selectedId, data: payload })
-                                .unwrap()
-                                .then(() => {
-                                  refetch()
+                            updateItem({ type: 'partner-storefront', id: item.id, data: payload })
+                              .unwrap()
+                              .then(() => {
+                                setDiscountToggleByStorefrontId((current) => {
+                                  const nextState = { ...current }
+                                  delete nextState[item.id]
+                                  return nextState
                                 })
-                                .catch(() => {
-                                  showErrorToast('Failed to update activate discount.')
-                                })
-                            }
+                                refetch()
+                              })
+                              .catch(() => {
+                                setDiscountToggleByStorefrontId((current) => ({ ...current, [item.id]: isDiscountEnabled }))
+                                showErrorToast('Failed to update activate discount.')
+                              })
                           }}
                         />
                         <div
-                          className={`peer h-8 w-14 rounded-full border transition ${
-                            config.enableActivateDiscount
+                          className={`peer h-6 w-10 rounded-full border transition ${
+                            isDiscountEnabled
                               ? '!border-emerald-500 !bg-emerald-500'
                               : 'border-slate-200 bg-slate-300'
                           }`}
                         />
                         <div
-                          className={`absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900 ${
-                            config.enableActivateDiscount ? 'translate-x-6' : 'translate-x-0'
+                          className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900 ${
+                            isDiscountEnabled ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />
                       </label>
                       <span
-                        className={`text-sm font-bold uppercase whitespace-nowrap leading-none ${
-                          config.enableActivateDiscount ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500'
+                        className={`text-xs font-bold uppercase whitespace-nowrap leading-none ${
+                          isDiscountEnabled ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500'
                         }`}
                       >
-                        {config.enableActivateDiscount ? 'ON' : 'OFF'}
+                        {isDiscountEnabled ? 'ON' : 'OFF'}
                       </span>
                     </div>
                   </div>
@@ -1121,7 +1126,7 @@ export default function PartnerStorefrontStudio() {
                 value={draft.slug}
                 onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
                 onBlur={(event) => setDraft((current) => ({ ...current, slug: toSlug(event.target.value) }))}
-                placeholder="testshop"
+                placeholder="Your Shop name"
                 className={inputClass}
               />
             </Field>
@@ -1129,7 +1134,7 @@ export default function PartnerStorefrontStudio() {
               <input
                 value={draft.displayName}
                 onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))}
-                placeholder="Synergy Shop"
+                placeholder="Your Shop name"
                 className={inputClass}
               />
             </Field>
@@ -1137,7 +1142,7 @@ export default function PartnerStorefrontStudio() {
               <input
                 value={draft.heroTitle}
                 onChange={(event) => setDraft((current) => ({ ...current, heroTitle: event.target.value }))}
-                placeholder="Synergy Shop Furniture Store"
+                placeholder="Shop name Shop Furniture Store"
                 className={inputClass}
               />
             </Field>
@@ -1145,7 +1150,7 @@ export default function PartnerStorefrontStudio() {
               <input
                 value={draft.notificationEmail}
                 onChange={(event) => setDraft((current) => ({ ...current, notificationEmail: event.target.value }))}
-                placeholder="ops@synergy.com"
+                placeholder="youremail@.gmail.com"
                 className={inputClass}
               />
             </Field>
@@ -1208,7 +1213,7 @@ export default function PartnerStorefrontStudio() {
                   <input
                     value={draft.referralLink}
                     onChange={(event) => setDraft((current) => ({ ...current, referralLink: event.target.value }))}
-                    placeholder="https://www.afhome.ph/ref/yourcode"
+                    placeholder="https://www.afhome.ph/ref/username "
                     className="min-w-0 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30"
                   />
                 </div>
@@ -1216,7 +1221,7 @@ export default function PartnerStorefrontStudio() {
                   <input
                     value={draft.domainLink}
                     onChange={(event) => setDraft((current) => ({ ...current, domainLink: event.target.value }))}
-                    placeholder="https://www.afhome.ph/shop/jujutsu-kaisen"
+                    placeholder="https://www.afhome.ph/shop?ref=username"
                     className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30"
                   />
                   <div className="flex flex-wrap items-center gap-2">
@@ -1402,62 +1407,6 @@ export default function PartnerStorefrontStudio() {
             </a>
           </div>
 
-            <div className="mt-5 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.20em] text-slate-500 dark:text-slate-400">jujutsu kaisen</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">Activate Discount</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Toggle enable/disable activate discount for this storefront.</p>
-                </div>
-
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={draft.enableActivateDiscount}
-                    onChange={(event) => {
-                      const next = event.target.checked
-                      setDraft((current) => ({ ...current, enableActivateDiscount: next }))
-
-                      if (typeof selectedId === 'number') {
-                        if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(selectedId)) {
-                          showErrorToast('You do not have access to edit this storefront.')
-                          return
-                        }
-
-                        const nextDraft = { ...draft, enableActivateDiscount: next }
-                        const slug = toSlug(nextDraft.slug || nextDraft.displayName)
-                        if (!slug) return
-
-                        const payload = buildStorefrontPayload({ ...nextDraft, slug })
-                        updateItem({ type: 'partner-storefront', id: selectedId, data: payload })
-                          .unwrap()
-                          .then(() => {
-                            refetch()
-                          })
-                          .catch(() => {
-                            showErrorToast('Failed to update activate discount.')
-                          })
-                      }
-                    }}
-                    disabled={saving}
-                  />
-                  <div
-                    className={`peer peer-focus:ring-4 peer-focus:ring-emerald-200 h-8 w-14 rounded-full border transition ${
-                      draft.enableActivateDiscount
-                        ? 'border-emerald-600 bg-emerald-600'
-                        : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'
-                    }`}
-                  />
-                  <div
-                    className="absolute left-1 top-1 h-6 w-6 -translate-x-0 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-6 dark:bg-slate-900"
-                  />
-                  <span className="ml-3 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    {draft.enableActivateDiscount ? 'Enabled' : 'Disabled'}
-                  </span>
-                </label>
-              </div>
-            </div>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">

@@ -24,6 +24,7 @@ interface CompleteTheLookProps {
     brand?: string;
     manualCheckoutEnabled?: boolean;
   }>;
+  enableActivateDiscount?: boolean;
 }
 
 const CartIcon = () => (
@@ -79,11 +80,11 @@ type BundleItem = {
   manualCheckoutEnabled?: boolean;
 };
 
-const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLabel, currentProductId, presetItems }: CompleteTheLookProps) => {
+const CompleteTheLook = ({ currentCategory, currentCategoryId, currentCategoryLabel, currentProductId, presetItems, enableActivateDiscount = false }: CompleteTheLookProps) => {
   const { addToCart } = useCart();
   const pathname = usePathname();
   const partnerSlug = extractPartnerSlugFromPath(pathname);
-  const forceRealPrice = Boolean(partnerSlug);
+  const forceRealPrice = Boolean(partnerSlug) && !enableActivateDiscount;
   const { title, subtitle } = useMemo(
     () => resolveBundleCopy(currentCategoryLabel, currentCategory),
     [currentCategoryLabel, currentCategory],

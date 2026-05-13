@@ -32,15 +32,30 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const normalizedPartner = partner.trim().toLowerCase()
   const storefront = await getPartnerStorefrontBySlug(normalizedPartner)
   const displayName = storefront?.displayName?.trim() || normalizedPartner
+  const apiBase = (process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
+  const rawIcon = storefront?.tabLogoUrl || storefront?.logoUrl
+  const resolvedIcon = (() => {
+    if (!rawIcon) return null
+    const trimmed = rawIcon.trim()
+    if (!trimmed) return null
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) return trimmed
+    if (trimmed.startsWith('/Images/')) return trimmed
+    if (apiBase) return `${apiBase}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`
+    return trimmed
+  })()
+  const version = storefront?.logoVersion?.trim() || '1'
+  const iconWithVersion = resolvedIcon
+    ? `${resolvedIcon}${resolvedIcon.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`
+    : undefined
 
   return {
     title: `Partner Login | ${displayName}`,
     description: `Login or register for ${displayName}.`,
-    icons: storefront?.tabLogoUrl || storefront?.logoUrl
+    icons: iconWithVersion
       ? {
-        icon: storefront.tabLogoUrl || storefront.logoUrl || undefined,
-        apple: storefront.tabLogoUrl || storefront.logoUrl || undefined,
-        shortcut: storefront.tabLogoUrl || storefront.logoUrl || undefined,
+        icon: iconWithVersion,
+        apple: iconWithVersion,
+        shortcut: iconWithVersion,
       }
       : undefined,
     robots: {

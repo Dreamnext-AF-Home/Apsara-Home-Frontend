@@ -44,7 +44,7 @@ export default function PartnerShopLoading() {
     if (!slug) return
 
     const setIcon = (rel: string, href: string) => {
-      let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null
+      let link = document.querySelector(`link[rel~="${rel}"]`) as HTMLLinkElement | null
       if (!link) {
         link = document.createElement('link')
         link.rel = rel
@@ -60,6 +60,7 @@ export default function PartnerShopLoading() {
       setLogoSrc(normalizedCachedIcon)
       setIcon('icon', normalizedCachedIcon)
       setIcon('apple-touch-icon', normalizedCachedIcon)
+      setIcon('shortcut icon', normalizedCachedIcon)
     }
 
     async function loadAndSetLogo() {
@@ -86,6 +87,7 @@ export default function PartnerShopLoading() {
         // Update the tab icon ASAP.
         setIcon('icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
         setIcon('apple-touch-icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
+        setIcon('shortcut icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
       } catch {
         // ignore
       }

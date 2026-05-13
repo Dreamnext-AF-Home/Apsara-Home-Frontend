@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { clearPartnerSession } from '@/libs/adminSession'
 import { baseApi, clearAccessTokenCache } from '@/store/api/baseApi'
 import { useAppDispatch } from '@/store/hooks'
+
 
 interface PartnerHeaderProps {
   onMenuClick: () => void
@@ -12,17 +14,26 @@ interface PartnerHeaderProps {
 
 export default function Header({ onMenuClick }: PartnerHeaderProps) {
   const dispatch = useAppDispatch()
+  const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
+    if (isLoggingOut) return
+
     setIsLoggingOut(true)
     const loginPath = '/partner/login'
 
     dispatch(baseApi.util.resetApiState())
     clearAccessTokenCache()
     await clearPartnerSession(loginPath)
-    await signOut({ callbackUrl: loginPath, redirect: true })
+
+    // Prevent NextAuth from doing absolute redirects (which can jump to the live domain).
+    await signOut({ redirect: false, callbackUrl: loginPath })
+
+    router.replace(loginPath)
+    router.refresh()
   }
+
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:px-6">
