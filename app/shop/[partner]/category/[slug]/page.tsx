@@ -50,6 +50,15 @@ const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) =
   return `${apiUrl.replace(/\/$/, '')}/${rawImage.replace(/^\/+/, '')}`
 }
 
+const resolveStorefrontAssetUrl = (rawValue: string | null | undefined, apiUrl?: string) => {
+  const value = String(rawValue ?? '').trim()
+  if (!value) return ''
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) return value
+  if (value.startsWith('/Images/')) return value
+  if (!apiUrl) return value.startsWith('/') ? value : `/${value}`
+  return `${apiUrl.replace(/\/$/, '')}/${value.replace(/^\/+/, '')}`
+}
+
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
@@ -101,7 +110,8 @@ export async function generateMetadata({ params }: PageProps) {
 
   const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
   const plainTitle = `${categoryTitle} | ${partnerConfig?.displayName ?? resolved.partner}`
-  const iconUrl = partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl
+  const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
+  const iconUrl = resolveStorefrontAssetUrl(partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl, apiUrl)
 
   return {
     ...metadata,
@@ -158,7 +168,15 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
       return config?.slug === partnerSlug
     })
 
-    const partner = getPartnerStorefrontConfig(storefrontItem)
+    const partnerRaw = getPartnerStorefrontConfig(storefrontItem)
+    const partner = partnerRaw
+      ? {
+          ...partnerRaw,
+          logoUrl: resolveStorefrontAssetUrl(partnerRaw.logoUrl, apiUrl) || null,
+          tabLogoUrl: resolveStorefrontAssetUrl(partnerRaw.tabLogoUrl, apiUrl) || null,
+          heroVideoUrl: resolveStorefrontAssetUrl(partnerRaw.heroVideoUrl, apiUrl) || null,
+        }
+      : null
     if (!partner) return null
 
     const allowedCategories = filterPartnerCategories(categoriesJson.categories ?? [], partner)
