@@ -169,6 +169,8 @@ export default function SignUpForm({
     || normalizeReferralCode(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '')
     || getStoredReferralCode()
 
+  const isReferralLocked = Boolean(initialReferral)
+
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -218,6 +220,7 @@ export default function SignUpForm({
   }
 
   const handleReferralInputChange = (value: string) => {
+    if (isReferralLocked) return
     setForm((prev) => ({
       ...prev,
       referredBy: value,
@@ -540,6 +543,7 @@ export default function SignUpForm({
                 value={form.referredBy}
                 onChange={(e) => handleReferralInputChange(e.target.value)}
                 required
+                disabled={isReferralLocked}
               />
               {referralAvailability.message ? (
                 <p className={`mt-1 text-[11px] ${

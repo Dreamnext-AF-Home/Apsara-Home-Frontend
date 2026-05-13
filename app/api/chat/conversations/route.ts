@@ -1,9 +1,10 @@
 import { getServerSession } from 'next-auth/next'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { authOptions } from '@/libs/auth'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
 
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,7 +21,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const response = await fetch('http://localhost:8000/api/conversations', {
+    const apiBase = (process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
+    if (!apiBase) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    const response = await fetch(`${apiBase}/api/conversations`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiToken}`,

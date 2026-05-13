@@ -1,6 +1,6 @@
-﻿'use client'
+'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
 import {
@@ -28,24 +28,19 @@ const emptyForm: FormState = {
   storefrontIds: [],
 }
 
-
-const panelClass =
-  'rounded-3xl border border-slate-200/80 bg-white/95 p-5 shadow-sm shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
-
-
+const shellCard =
+  'rounded-3xl border border-slate-200/90 bg-white/95 shadow-sm shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900'
 const inputClass =
-  'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/70 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500 dark:focus:ring-cyan-900/30'
+  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100/70 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30'
 
-export default function PartnerUsersPage({
-  showStorefrontFilter = true,
-}: {
-  showStorefrontFilter?: boolean
-}) {
+export default function PartnerUsersPage({ showStorefrontFilter = true }: { showStorefrontFilter?: boolean }) {
   const [search, setSearch] = useState('')
   const [storefrontFilter, setStorefrontFilter] = useState<string>('all')
   const [selected, setSelected] = useState<PartnerUserItem | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [showPassword, setShowPassword] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [deleteModalUser, setDeleteModalUser] = useState<PartnerUserItem | null>(null)
 
   const { data: storefrontData } = useGetAdminWebPageItemsQuery({
     type: 'partner-storefront',
@@ -62,11 +57,7 @@ export default function PartnerUsersPage({
         return {
           id: item.id,
           slug: cfg?.slug || String(item.key ?? '').trim() || `storefront-${item.id}`,
-          name:
-            cfg?.displayName ||
-            String(item.title ?? '').trim() ||
-            String(item.key ?? '').trim() ||
-            `Storefront #${item.id}`,
+          name: cfg?.displayName || String(item.title ?? '').trim() || String(item.key ?? '').trim() || `Storefront #${item.id}`,
         }
       })
       .sort((a, b) => a.name.localeCompare(b.name))
@@ -78,18 +69,8 @@ export default function PartnerUsersPage({
     return map
   }, [storefronts])
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error: loadError,
-    refetch,
-  } = useGetPartnerUsersQuery(
-    {
-      search,
-    },
-    // This page is often visited right after a backend deploy; ensure we don't
-    // get stuck showing a cached error response.
+  const { data, isLoading, isError, error: loadError, refetch } = useGetPartnerUsersQuery(
+    { search },
     { refetchOnMountOrArgChange: true },
   )
 
@@ -101,8 +82,7 @@ export default function PartnerUsersPage({
   const busy = isCreating || isUpdating || isDeleting
 
   const visibleUsers = useMemo(() => {
-    if (!showStorefrontFilter) return users
-    if (storefrontFilter === 'all') return users
+    if (!showStorefrontFilter || storefrontFilter === 'all') return users
     const id = Number(storefrontFilter)
     if (!Number.isFinite(id)) return users
     return users.filter((u) => (u.storefront_ids ?? []).includes(id))
@@ -111,19 +91,12 @@ export default function PartnerUsersPage({
   const resetForm = () => {
     setSelected(null)
     setForm(emptyForm)
+    setShowPassword(false)
   }
 
   const startEdit = (user: PartnerUserItem) => {
+    const normalizedStorefrontIds = (user.storefront_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id))
     setSelected(user)
-
-    // Normalize storefront ids to numbers because API responses may return strings.
-    const normalizedStorefrontIds = (user.storefront_ids ?? [])
-      .map((id) => Number(id))
-      .filter((id) => Number.isFinite(id))
-
-    // When rendered in partner-scoped storefronts mode, we want the checkboxes to
-    // already reflect the stored storefront_ids (no manual clicking required).
-    // Additionally, ensure the list uses numbers so `checked={form.storefrontIds.includes(...)}` works.
     setForm({
       name: user.name,
       username: user.username,
@@ -138,7 +111,7 @@ export default function PartnerUsersPage({
       showErrorToast('Name and username are required.')
       return
     }
-    if ((form.storefrontIds ?? []).length === 0) {
+    if (form.storefrontIds.length === 0) {
       showErrorToast('Select at least one storefront for this account.')
       return
     }
@@ -168,16 +141,12 @@ export default function PartnerUsersPage({
         }).unwrap()
         showSuccessToast('Partner user created.')
       }
-
-      setSelected(null)
-      setForm(emptyForm)
+      resetForm()
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
       showErrorToast(apiErr?.data?.message || 'Failed to save partner user.')
     }
   }
-
-  const [deleteModalUser, setDeleteModalUser] = useState<PartnerUserItem | null>(null)
 
   const handleDelete = async (user: PartnerUserItem) => {
     if (busy) return
@@ -198,73 +167,14 @@ export default function PartnerUsersPage({
     }
   }
 
-  const deleteModalOpen = Boolean(deleteModalUser)
-
-  if (deleteModalOpen) {
-    const user = deleteModalUser
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div
-          className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
-          onClick={() => setDeleteModalUser(null)}
-          role="presentation"
-        />
-        <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Delete partner user</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Are you sure you want to delete <span className="font-semibold">@{user?.username}</span>?
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setDeleteModalUser(null)}
-              className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="mt-5 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setDeleteModalUser(null)}
-              className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              disabled={busy}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => void confirmDelete()}
-              className="flex-1 rounded-2xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-60"
-              disabled={busy}
-            >
-              {busy ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   if (isLoading) {
-
-
-    return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-        Loading partner users...
-      </div>
-    )
+    return <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">Loading partner users...</div>
   }
 
   if (isError) {
-    const apiMessage =
-      (loadError as { data?: { message?: string } } | undefined)?.data?.message ||
-      (loadError as { error?: string } | undefined)?.error ||
-      'Failed to load partner users.'
+    const apiMessage = (loadError as { data?: { message?: string } } | undefined)?.data?.message
+      || (loadError as { error?: string } | undefined)?.error
+      || 'Failed to load partner users.'
 
     return (
       <div className="rounded-3xl border border-red-200 bg-red-50 p-10 text-center shadow-sm dark:border-red-900/40 dark:bg-red-950/30">
@@ -272,7 +182,7 @@ export default function PartnerUsersPage({
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-4 rounded-2xl border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/40"
+          className="mt-4 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/40"
         >
           Retry
         </button>
@@ -281,45 +191,194 @@ export default function PartnerUsersPage({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] dark:bg-slate-950 dark:text-slate-100">
-      <aside className="space-y-4">
-        <div className="rounded-3xl border border-cyan-100 bg-gradient-to-br from-white via-cyan-50 to-sky-50 p-5 shadow-sm dark:border-cyan-900/40 dark:from-slate-900 dark:via-cyan-950/30 dark:to-slate-900">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-400">
-            Partner Users
-          </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Manage Accounts</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Create and manage partner users with storefront-scoped access.
-          </p>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/80 px-3 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-800 dark:bg-slate-900 dark:text-cyan-300">
-            <span className="inline-flex h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_0_3px_rgba(6,182,212,0.12)]" />
-            {visibleUsers.length} user{visibleUsers.length === 1 ? '' : 's'}
+    <>
+      <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className={`${shellCard} p-4`}>
+          <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 text-white">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">Partner Users</p>
+            <h1 className="mt-2 text-3xl font-bold leading-none">Manage Accounts</h1>
+            <p className="mt-2 text-sm text-indigo-100">Create, edit and manage partner user accounts and their access.</p>
           </div>
-        </div>
 
-        <div className={`space-y-4 ${panelClass}`}>
-          <Field label="Assigned Storefront(s)">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-800/80">
-              {storefronts.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">No partner storefronts found yet.</p>
-              ) : (
-                <div className="max-h-44 space-y-2 overflow-auto pr-1">
-                  {storefronts.map((store) => {
-                    const checked = form.storefrontIds.includes(store.id)
-                    return (
-                      <label
-                        key={store.id}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm transition hover:border-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-800"
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate font-semibold text-slate-800">{store.name}</span>
-                          <span className="block truncate text-xs text-slate-400">
-                            ID #{store.id} · {store.slug}
-                          </span>
-                        </span>
+          <div className="mt-4 space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Assigned Storefronts</p>
+            <div className="space-y-2">
+              {storefronts.map((store) => {
+                const count = users.filter((u) => (u.storefront_ids ?? []).includes(store.id)).length
+                return (
+                  <div key={store.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{store.name}</p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">{store.slug}</p>
+                    </div>
+                    <span className="rounded-lg bg-white px-2 py-0.5 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-200">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <Field label="Full Name">
+              <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Enter full name" className={inputClass} />
+            </Field>
+            <Field label="Username">
+              <input
+                name="partner_user_username_input"
+                autoComplete="off"
+                value={form.username}
+                onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
+                placeholder="Enter username"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Email (Optional)">
+              <input
+                type="email"
+                name="partner_user_email_input"
+                autoComplete="off"
+                value={form.email}
+                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="name@example.com"
+                className={inputClass}
+              />
+            </Field>
+            <Field label={selected ? 'Password (Optional)' : 'Password'}>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="partner_user_password_input"
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                  placeholder={selected ? 'Leave blank to keep' : '••••••••'}
+                  className={`${inputClass} pr-14`}
+                />
+                <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700">
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </Field>
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={busy}
+              className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+            >
+              {selected ? 'Update User' : 'Create User'}
+            </button>
+            {selected ? (
+              <button type="button" onClick={resetForm} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                Cancel Edit
+              </button>
+            ) : null}
+          </div>
+        </aside>
+
+        <section className="space-y-4">
+          <div className={`${shellCard} p-4`}>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search name, username, email..."
+                className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800"
+              />
+              {showStorefrontFilter ? (
+                <select value={storefrontFilter} onChange={(event) => setStorefrontFilter(event.target.value)} className="w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800">
+                  <option value="all">All Storefronts</option>
+                  {storefronts.map((store) => (
+                    <option key={store.id} value={String(store.id)}>{store.name}</option>
+                  ))}
+                </select>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+              >
+                Filters
+              </button>
+            </div>
+            {showFilters ? (
+              <div className="mt-3 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-lg bg-slate-100 px-2 py-1 dark:bg-slate-800">{visibleUsers.length} users shown</span>
+                <button type="button" onClick={() => setStorefrontFilter('all')} className="rounded-lg border border-slate-300 px-2 py-1 font-semibold hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">Reset Store Filter</button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className={`${shellCard} p-4`}>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Users <span className="ml-2 rounded-lg bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{visibleUsers.length}</span></h2>
+            </div>
+
+            {visibleUsers.length === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">No partner users found.</p>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_180px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 md:grid dark:border-slate-700 dark:bg-slate-800/60">
+                  <p>User</p>
+                  <p>Store</p>
+                  <p>Status</p>
+                  <p className="text-right">Actions</p>
+                </div>
+
+                {visibleUsers.map((user) => (
+                  <div key={user.id} className="grid gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_140px_180px] dark:border-slate-800">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">@{user.username}</p>
+                      {user.email ? <p className="truncate text-xs text-slate-400 dark:text-slate-500">{user.email}</p> : null}
+                    </div>
+                    <div className="min-w-0">
+                      {(user.storefront_ids ?? []).length > 0 ? (
+                        (user.storefront_ids ?? []).slice(0, 2).map((id) => (
+                          <p key={`${user.id}-${id}`} className="truncate text-sm text-slate-700 dark:text-slate-300">{storefrontNameById.get(id) || `Storefront #${id}`}</p>
+                        ))
+                      ) : (
+                        <p className="text-xs text-amber-600 dark:text-amber-300">No storefront assigned</p>
+                      )}
+                    </div>
+                    <div>
+                      <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">Active</span>
+                    </div>
+                    <div className="flex items-center justify-start gap-2 md:justify-end">
+                      <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">Edit</button>
+                      <button type="button" onClick={() => void handleDelete(user)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {showStorefrontFilter ? (
+            <div className={`${shellCard} p-4`}>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Partner Storefront Access (disabled = no access granted)</p>
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, storefrontIds: storefronts.map((s) => s.id) }))}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-300"
+                >
+                  Select All
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+                {storefronts.map((store) => {
+                  const isEnabled = form.storefrontIds.includes(store.id)
+                  return (
+                    <label key={`toggle-${store.id}`} className="flex cursor-pointer items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{store.name}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{store.slug}</p>
+                      </div>
+                      <span className="relative inline-flex h-6 w-11 items-center">
                         <input
                           type="checkbox"
-                          checked={checked}
+                          checked={isEnabled}
                           onChange={() => {
                             setForm((prev) => {
                               const next = new Set(prev.storefrontIds)
@@ -328,227 +387,69 @@ export default function PartnerUsersPage({
                               return { ...prev, storefrontIds: Array.from(next) }
                             })
                           }}
+                          className="peer sr-only"
                         />
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
-
-              {form.storefrontIds.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {form.storefrontIds
-                    .slice()
-                    .sort((a, b) => a - b)
-                    .map((id) => (
-                      <span
-                        key={id}
-                        className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-300"
-                      >
-                        {storefrontNameById.get(id) || `Storefront #${id}`}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              storefrontIds: prev.storefrontIds.filter((x) => x !== id),
-                            }))
-                          }
-                          className="text-cyan-700/70 hover:text-cyan-800 dark:text-cyan-300/80 dark:hover:text-cyan-200"
-                          aria-label={`Remove storefront ${id}`}
-                        >
-                          ×
-                        </button>
+                        <span className={`h-6 w-11 rounded-full transition ${isEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`} />
+                        <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                       </span>
-                    ))}
-                </div>
-              ) : null}
+                    </label>
+                  )
+                })}
+              </div>
             </div>
-          </Field>
+          ) : null}
+        </section>
+      </div>
 
-          <Field label="Full Name">
-            <input
-              value={form.name}
-              onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-              placeholder="Jane Doe"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Username">
-            <input
-              value={form.username}
-              onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
-              placeholder="janedoe"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Email (optional)">
-            <input
-              type="email"
-              name="partner_user_email"
-              autoComplete="off"
-              value={form.email}
-              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-              placeholder="jane@email.com"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label={selected ? 'New Password (optional)' : 'Password'}>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="partner_user_password"
-                autoComplete="new-password"
-                value={form.password}
-                onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                placeholder={selected ? 'Leave blank to keep' : '********'}
-                className={`${inputClass} pr-12`}
-              />
+      {deleteModalUser ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={() => setDeleteModalUser(null)} role="presentation" />
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Delete partner user</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Are you sure you want to delete <span className="font-semibold">@{deleteModalUser.username}</span>?
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                onClick={() => setDeleteModalUser(null)}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                aria-label="Close"
               >
-                {showPassword ? 'Hide' : 'Show'}
+                ✕
               </button>
             </div>
-          </Field>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void handleSubmit()}
-              disabled={busy}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:opacity-60"
-            >
-              {selected ? 'Update User' : 'Create User'}
-            </button>
-
-            {selected ? (
+            <div className="mt-5 flex items-center gap-3">
               <button
                 type="button"
-                onClick={resetForm}
-                className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                onClick={() => setDeleteModalUser(null)}
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                disabled={busy}
               >
                 Cancel
               </button>
-            ) : null}
-          </div>
-        </div>
-      </aside>
-
-      <section className="space-y-4">
-        <div className={panelClass}>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, username, email..."
-              className={`md:w-80 ${inputClass}`}
-            />
-
-            {showStorefrontFilter ? (
-              <>
-                <select
-                  value={storefrontFilter}
-                  onChange={(e) => setStorefrontFilter(e.target.value)}
-                  className={`w-full md:w-72 ${inputClass}`}
-                  aria-label="Filter by assigned storefront"
-                >
-                  <option value="all">All storefronts</option>
-                  {storefronts.map((s) => (
-                    <option key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-
-                {storefrontFilter !== 'all' ? (
-                  <button
-                    type="button"
-                    onClick={() => setStorefrontFilter('all')}
-                    className="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700 disabled:opacity-60"
-                  >
-                    Reset
-                  </button>
-                ) : null}
-              </>
-            ) : null}
-
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              <span className="inline-flex h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_0_3px_rgba(6,182,212,0.12)]" />
-              {visibleUsers.length} users
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-60"
+                disabled={busy}
+              >
+                {busy ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
-
-        <div className={`${panelClass} p-4`}>
-          {visibleUsers.length === 0 ? (
-            <p className="p-6 text-sm text-slate-500 dark:text-slate-400">No partner users yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {visibleUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-cyan-200 hover:shadow-sm dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-cyan-800"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">@{user.username}</p>
-                    {user.email ? <p className="text-xs text-slate-400 dark:text-slate-500">{user.email}</p> : null}
-
-                    {(user.storefront_ids ?? []).length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {user.storefront_ids.map((id) => (
-                          <span
-                            key={id}
-                            className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-                          >
-                            {storefrontNameById.get(id) || `Storefront #${id}`}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">No storefront assigned</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(user)}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-cyan-300 hover:text-cyan-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-700 dark:hover:text-cyan-300"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete(user)}
-                      className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-300 dark:hover:bg-red-950/30"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
+      ) : null}
+    </>
   )
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-        {label}
-      </span>
+      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{label}</span>
       {children}
     </label>
   )

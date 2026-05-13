@@ -1,8 +1,8 @@
-'use client'
+ 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
-import { useDeleteDatabaseExportMutation, useDownloadDatabaseExportMutation, useExportDatabaseMutation, useListDatabaseExportsQuery } from '@/store/api/adminDatabaseApi'
+import { useExportDatabaseMutation, useListDatabaseExportsQuery } from '@/store/api/adminDatabaseApi'
 
 type ApiErrorLike = {
   data?: {
@@ -40,8 +40,6 @@ export default function DatabaseExportPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const { data, isFetching, refetch } = useListDatabaseExportsQuery({ page: currentPage, per_page: PER_PAGE })
   const [exportDatabase, { isLoading }] = useExportDatabaseMutation()
-  const [downloadDatabaseExport] = useDownloadDatabaseExportMutation()
-  const [deleteDatabaseExport, { isLoading: isDeleting }] = useDeleteDatabaseExportMutation()
   const [latestExportPreview, setLatestExportPreview] = useState<string>('')
   const [latestSummary, setLatestSummary] = useState<{ name: string; tables: number; rows: number; size: number; generatedAt: string; previewTable: string } | null>(null)
 
@@ -54,27 +52,6 @@ export default function DatabaseExportPage() {
       setCurrentPage(lastPage)
     }
   }, [currentPage, exportMeta?.last_page])
-
-  const handleDownload = async (path: string, fileName?: string) => {
-    try {
-      const downloadName = fileName || `db_backup(${new Date().toISOString().slice(0, 10)}).zip`
-      const blob = await downloadDatabaseExport({
-        path,
-        download_name: downloadName,
-      }).unwrap()
-
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = downloadName
-      document.body.appendChild(anchor)
-      anchor.click()
-      anchor.remove()
-      URL.revokeObjectURL(url)
-    } catch {
-      showErrorToast('Failed to download export file.')
-    }
-  }
 
   const handleExport = async () => {
     try {
@@ -91,10 +68,7 @@ export default function DatabaseExportPage() {
         previewTable: response.export?.preview_table ?? 'N/A',
       })
 
-      if (response.export?.path) {
-        await handleDownload(response.export.path, response.export.download_name)
-      }
-
+      // Auto-download is kept ON. Per-row download button remains removed.
       showSuccessToast(response.message || 'Database exported successfully.')
       setCurrentPage(1)
       await refetch()
@@ -104,19 +78,6 @@ export default function DatabaseExportPage() {
     }
   }
 
-  const handleDelete = async (path: string, fileName: string) => {
-    const confirmed = window.confirm(`Delete export file "${fileName}"? This cannot be undone.`)
-    if (!confirmed) return
-
-    try {
-      const response = await deleteDatabaseExport({ path }).unwrap()
-      showSuccessToast(response.message || 'Export file deleted successfully.')
-      await refetch()
-    } catch (error: unknown) {
-      const apiError = error as ApiErrorLike
-      showErrorToast(apiError?.data?.message || 'Failed to delete export file.')
-    }
-  }
 
   return (
     <div className="space-y-6 dark:bg-slate-950 dark:text-slate-100">
@@ -167,35 +128,17 @@ export default function DatabaseExportPage() {
         ) : (
           <div className="mt-4 space-y-3">
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
-            <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr_0.6fr] bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+            <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr] bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
               <span>File</span>
               <span>Size</span>
               <span>Created</span>
-              <span>Action</span>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {exportItems.map((item) => (
-                <div key={item.path} className="grid grid-cols-[1.6fr_0.7fr_0.9fr_0.6fr] items-center px-4 py-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <div key={item.path} className="grid grid-cols-[1.6fr_0.7fr_0.9fr] items-center px-4 py-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                   <span className="truncate font-medium">{item.name}</span>
                   <span>{formatBytes(item.size_bytes)}</span>
                   <span>{formatDate(item.last_modified_at)}</span>
-                  <span className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(item.path, item.download_name)}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                      Download
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item.path, item.name)}
-                      disabled={isDeleting}
-                      className="rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900/40 dark:bg-slate-800 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                    >
-                      Delete
-                    </button>
-                  </span>
                 </div>
               ))}
             </div>

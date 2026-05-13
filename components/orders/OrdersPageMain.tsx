@@ -80,9 +80,16 @@ function OrdersPageSkeleton() {
 
 type OrdersPageMainProps = {
   initialCategories?: Category[];
+  partnerBranding?: {
+    slug: string;
+    displayName: string;
+    logoUrl?: string | null;
+    tabLogoUrl?: string | null;
+    notificationEmail?: string;
+  };
 };
 
-const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
+const OrdersPageMain = ({ initialCategories, partnerBranding }: OrdersPageMainProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const { status: authStatus } = useSession();
@@ -123,10 +130,23 @@ const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
     return counts
   }, [orders])
 
+  const isPartnerStorefrontRoute = Boolean(partnerBranding?.slug);
+  const partnerProductHref = isPartnerStorefrontRoute ? `/shop/${partnerBranding?.slug}/product` : '/shop';
+  const partnerLogoSrc = partnerBranding?.logoUrl || partnerBranding?.tabLogoUrl || '/Images/af_home_logo.png';
+  const partnerName = partnerBranding?.displayName || 'Partner Store';
+
   return (
     <>
-      <TopBar />
-      <Navbar initialCategories={initialCategories} />
+      {!isPartnerStorefrontRoute && <TopBar />}
+      <Navbar
+        initialCategories={initialCategories}
+        logoSrc={isPartnerStorefrontRoute ? partnerLogoSrc : undefined}
+        logoAlt={isPartnerStorefrontRoute ? partnerName : undefined}
+        logoHref={isPartnerStorefrontRoute ? partnerProductHref : undefined}
+        categoryOnlyNav={isPartnerStorefrontRoute}
+        stickToTop={isPartnerStorefrontRoute}
+        showGuestCartWishlist={isPartnerStorefrontRoute}
+      />
       <TrustBar />
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -280,7 +300,18 @@ const OrdersPageMain = ({ initialCategories }: OrdersPageMainProps) => {
       </div>
       <div />
       </motion.div>
-      <Footer />
+      {isPartnerStorefrontRoute ? (
+        <footer className="border-t border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+            <p>
+              Orders from <span className="font-semibold text-slate-800">{partnerName}</span> are still processed through AF Home.
+            </p>
+            {partnerBranding?.notificationEmail ? <p>Partner notifications: {partnerBranding.notificationEmail}</p> : null}
+          </div>
+        </footer>
+      ) : (
+        <Footer />
+      )}
     </>
   )
 }

@@ -179,6 +179,7 @@ export type ShopBuilderSectionsProps = {
   partnerHeroVideoUrl?: string
   allowedCategoryIds?: number[]
   featuredProductIds?: number[]
+  enableActivateDiscount?: boolean
 }
 
 export type ShopBuilderApiResponse = {
@@ -195,7 +196,7 @@ export function normalizeShopBuilderApiResponse(data: ShopBuilderApiResponse | n
   }
 }
 
-export default function ShopBuilderSections({ data = null, partnerSlug, partnerHeroVideoUrl, allowedCategoryIds, featuredProductIds }: ShopBuilderSectionsProps) {
+export default function ShopBuilderSections({ data = null, partnerSlug, partnerHeroVideoUrl, allowedCategoryIds, featuredProductIds, enableActivateDiscount }: ShopBuilderSectionsProps) {
   const { items, categories, products } = normalizeShopBuilderApiResponse(data)
 
   if (!data || items.length === 0) {
@@ -287,6 +288,7 @@ export default function ShopBuilderSections({ data = null, partnerSlug, partnerH
           featuredProducts={featuredProducts}
           categories={categories}
           partnerSlug={partnerSlug}
+          enableActivateDiscount={enableActivateDiscount}
         />
       ) : (
         <FeaturedSections />
@@ -485,11 +487,13 @@ function FeaturedCollectionSection({
   featuredProducts,
   categories,
   partnerSlug,
+  enableActivateDiscount,
 }: {
   section: WebPageItem
   featuredProducts: Product[]
   categories: Category[]
   partnerSlug?: string
+  enableActivateDiscount?: boolean
 }) {
   const sourceCategoryId = Number.parseInt(getField(section, 'source_category_id'), 10)
   const sourceCategory = Number.isFinite(sourceCategoryId) && sourceCategoryId > 0
@@ -499,6 +503,9 @@ function FeaturedCollectionSection({
     ? buildPartnerCategoryLink(partnerSlug, sourceCategory)
     : buildPartnerShopLink('/shop', partnerSlug)
   const buttonText = 'Shop Collection'
+
+  const forceRealPriceForPartner = Boolean(partnerSlug) && !Boolean(enableActivateDiscount)
+  const hideDiscountBadgeForPartner = Boolean(partnerSlug) && !Boolean(enableActivateDiscount)
 
   return (
     <motion.section
@@ -566,8 +573,8 @@ function FeaturedCollectionSection({
                       <ItemCard
                         product={product}
                         brandName={product.brand || ''}
-                        hideDiscountBadge
-                        forceRealPrice
+                        hideDiscountBadge={hideDiscountBadgeForPartner}
+                        forceRealPrice={forceRealPriceForPartner}
                       />
                     </motion.div>
                   ))}

@@ -34,5 +34,16 @@ export default async function PartnerWishlistPage({ params }: PageProps) {
   }
 
   const initialCategories = await getNavbarCategories()
-  return <Wishlist initialCategories={initialCategories} />
+  return (
+    <Wishlist
+      initialCategories={initialCategories}
+      partnerBranding={{
+        slug: storefront.slug,
+        displayName: storefront.displayName,
+        logoUrl: storefront.logoUrl,
+        tabLogoUrl: storefront.tabLogoUrl,
+        notificationEmail: storefront.notificationEmail,
+      }}
+    />
+  )
 }

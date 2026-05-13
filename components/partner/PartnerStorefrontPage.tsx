@@ -128,6 +128,7 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
         partnerHeroVideoUrl={partner.heroVideoUrl || undefined}
         allowedCategoryIds={partner.allowedCategoryIds}
         featuredProductIds={partner.featuredProductIds}
+        enableActivateDiscount={partner.enableActivateDiscount}
       />
 
       <footer className="border-t border-slate-200 bg-white">

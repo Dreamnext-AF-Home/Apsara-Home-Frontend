@@ -34,5 +34,16 @@ export default async function PartnerOrdersPage({ params }: PageProps) {
   }
 
   const initialCategories = await getNavbarCategories()
-  return <OrdersPageMain initialCategories={initialCategories} />
+  return (
+    <OrdersPageMain
+      initialCategories={initialCategories}
+      partnerBranding={{
+        slug: storefront.slug,
+        displayName: storefront.displayName,
+        logoUrl: storefront.logoUrl,
+        tabLogoUrl: storefront.tabLogoUrl,
+        notificationEmail: storefront.notificationEmail,
+      }}
+    />
+  )
 }

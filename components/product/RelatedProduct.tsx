@@ -13,9 +13,10 @@ interface RelatedProductProps {
     products: CategoryProduct[];
     category: string;
     viewAllHref?: string;
+    forceRealPrice?: boolean;
 }
 
-const RelatedProducts = ({ products, category, viewAllHref }: RelatedProductProps) => {
+const RelatedProducts = ({ products, category, viewAllHref, forceRealPrice = false }: RelatedProductProps) => {
     if (products.length === 0) return null;
 
     return (
@@ -46,8 +47,8 @@ const RelatedProducts = ({ products, category, viewAllHref }: RelatedProductProp
                         <ItemCard 
                             product={product} 
                             brandName={product.brand || ''} 
-                            hideDiscountBadge
-                            forceRealPrice
+                            hideDiscountBadge={forceRealPrice}
+                            forceRealPrice={forceRealPrice}
                         />
                     </motion.div>
                 ))}
