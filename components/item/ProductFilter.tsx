@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import type { Category } from '@/store/api/categoriesApi'
 import { ROOM_OPTIONS } from '@/libs/roomConfig'
 import { normalizeCategorySlug } from '@/libs/partnerStorefront'
@@ -46,6 +47,7 @@ interface ProductFilterProps {
 }
 
 export default function ProductFilter({ onFilterChange, className = '', pvRange: propPvRange = [0, 5000], search: propSearch = '', categories = [], currentCategory, maxPrice = 10000, isBrandPage = false, brands = [], currentBrand, isRoomPage = false, currentRoom }: ProductFilterProps) {
+  const router = useRouter()
   const pathname = usePathname()
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice])
   const [sortBy, setSortBy] = useState<'default' | 'asc' | 'desc'>('default')
@@ -290,7 +292,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <button
             onClick={() => {
-              window.location.href = getAllCategoryPath()
+              router.push(getAllCategoryPath())
             }}
             className={`px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
               hasAllCategorySelected && !propSearch
@@ -304,7 +306,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
             <button
               key={category.id}
               onClick={() => {
-                window.location.href = getCategoryPath(category)
+                router.push(getCategoryPath(category))
               }}
               className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                 currentCategory === category.name || propSearch === category.name
@@ -326,7 +328,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <button
             onClick={() => {
-              window.location.href = '/by-room'
+              router.push('/by-room')
             }}
               className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                 !currentRoom
@@ -341,7 +343,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
               key={room.id}
               onClick={() => {
                 const roomUrl = `/by-room/${room.slug}`
-                window.location.href = roomUrl
+                router.push(roomUrl)
               }}
               className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                 currentRoom === room.slug
@@ -381,7 +383,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
               <button
                 onClick={() => {
-                  window.location.href = '/by-brand'
+                  router.push('/by-brand')
                 }}
                 className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                   !currentBrand
@@ -396,7 +398,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
                   key={brand.id}
                   onClick={() => {
                     const brandSlug = toSlug(brand.name)
-                    window.location.href = `/by-brand?brand=${encodeURIComponent(brandSlug)}`
+                    router.push(`/by-brand?brand=${encodeURIComponent(brandSlug)}`)
                   }}
                   className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                     currentBrand === brand.name
