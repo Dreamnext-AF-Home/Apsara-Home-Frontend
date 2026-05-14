@@ -57,6 +57,7 @@ export default function PartnerShopLoading() {
     }
 
     const storageKey = `partner-storefront-icon:${slug}`
+    const apiBase = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').replace(/\/+$/, '')
     const cachedIcon = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
     if (cachedIcon) {
       const normalizedCachedIcon = normalizeLogoUrl(cachedIcon)
@@ -106,7 +107,8 @@ export default function PartnerShopLoading() {
       if (tryReadCachedPayload()) return
 
       try {
-        const response = await fetch('/api/web-pages/partner-storefronts', {
+        const endpoint = apiBase ? `${apiBase}/api/web-pages/partner-storefronts` : '/api/web-pages/partner-storefronts'
+        const response = await fetch(endpoint, {
           headers: { Accept: 'application/json' },
           cache: 'force-cache',
         })

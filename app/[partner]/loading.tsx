@@ -42,6 +42,7 @@ export default function PartnerLoading() {
 
   useEffect(() => {
     if (!partnerSlug) return
+    const apiBase = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').replace(/\/+$/, '')
     const iconStorageKey = `partner-storefront-icon:${partnerSlug}`
     const loadingLogoStorageKey = `partner-storefront-loading-logo:${partnerSlug}`
     const setIcon = (rel: string, href: string) => {
@@ -115,7 +116,8 @@ export default function PartnerLoading() {
       if (tryReadCachedPayload()) return
 
       try {
-        const response = await fetch('/api/web-pages/partner-storefronts', {
+        const endpoint = apiBase ? `${apiBase}/api/web-pages/partner-storefronts` : '/api/web-pages/partner-storefronts'
+        const response = await fetch(endpoint, {
           headers: { Accept: 'application/json' },
           cache: 'force-cache',
         })
