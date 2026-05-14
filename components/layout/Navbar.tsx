@@ -112,16 +112,21 @@ const navLinks: NavLink[] = [
 const toSlug = (value: string) => value.toLowerCase().trim().replace(/\s+/g, '-');
 
 const normalizeCategorySlug = (rawUrl: string | null | undefined, fallbackName: string) => {
-  const source = String(rawUrl ?? '').trim();
+  const source = decodeURIComponent(String(rawUrl ?? '').trim());
   if (!source || source === '0') return toSlug(fallbackName);
 
   const withoutDomain = source.replace(/^https?:\/\/[^/]+/i, '');
-  const cleaned = withoutDomain
+  const withoutQuery = withoutDomain.split(/[?#]/)[0] ?? withoutDomain;
+  const cleaned = withoutQuery
+    .replace(/\\/g, '/')
     .replace(/^\/+/, '')
+    .replace(/^shop\/category\//i, '')
+    .replace(/^shop\//i, '')
     .replace(/^category\//i, '')
     .replace(/\/+$/, '');
 
-  return cleaned || toSlug(fallbackName);
+  const segment = cleaned.split('/').filter(Boolean).pop() ?? cleaned;
+  return toSlug(segment || fallbackName);
 };
 
 const MAX_NAVBAR_BRANDS = 8;

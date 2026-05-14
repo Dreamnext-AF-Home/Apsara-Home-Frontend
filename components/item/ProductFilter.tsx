@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import type { Category } from '@/store/api/categoriesApi'
 import { ROOM_OPTIONS } from '@/libs/roomConfig'
+import { normalizeCategorySlug } from '@/libs/partnerStorefront'
 
 const toSlug = (value: string) =>
   value
@@ -60,10 +61,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
   const partnerSlugFromPath = shopPathMatch?.[1]
   const hasAllCategorySelected = !currentCategory || currentCategory.toLowerCase() === 'all products' || currentCategory.toLowerCase() === 'all category'
 
-  const resolveCategorySlug = (category: Category) =>
-    category.url
-      ? category.url.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+category\//, '').replace(/\/+$/, '')
-      : category.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const resolveCategorySlug = (category: Category) => normalizeCategorySlug(category.url, category.name)
 
   const getAllCategoryPath = () => (
     partnerSlugFromPath ? `/shop/${partnerSlugFromPath}/product` : '/category'

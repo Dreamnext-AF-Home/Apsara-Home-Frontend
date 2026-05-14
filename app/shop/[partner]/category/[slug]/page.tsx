@@ -1,11 +1,10 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import CategoryListProductMain from '@/components/category/CategoryListProductMain'
 import { buildPageMetadata } from '@/app/seo'
-import { filterPartnerCategories, getPartnerStorefrontConfig, normalizeCategorySlug } from '@/libs/partnerStorefront'
+import { filterPartnerCategories, normalizeCategorySlug } from '@/libs/partnerStorefront'
 import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
-import type { WebPageItem } from '@/store/api/webPagesApi'
 
 type PageProps = {
   params: Promise<{
@@ -21,9 +20,8 @@ type ApiCategoriesResponse = {
 type ApiProductsResponse = {
   products?: Product[]
 }
-
-type ApiWebPagesResponse = {
-  items?: WebPageItem[]
+type ApiProductResponse = {
+  product?: Product
 }
 
 type DisplayProduct = {
@@ -41,6 +39,7 @@ type DisplayProduct = {
   stock?: number
 }
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
+const STOREFRONT_REVALIDATE_SECONDS = 120
 
 const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) => {
   if (!rawImage) return '/Images/HeroSection/chairs_stools.jpg'
@@ -145,30 +144,22 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
   if (!apiUrl) return null
 
   try {
-    const [storefrontsRes, categoriesRes] = await Promise.all([
-      fetch(`${apiUrl}/api/web-pages/partner-storefronts`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      }),
+    const [partnerRaw, categoriesRes] = await Promise.all([
+      getPartnerStorefrontBySlug(partnerSlug),
       fetch(`${apiUrl}/api/categories?used_only=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:categories'],
+        },
       }),
     ])
 
-    if (!storefrontsRes.ok || !categoriesRes.ok) return null
+    if (!partnerRaw || !categoriesRes.ok) return null
 
-    const storefrontsJson = (await storefrontsRes.json()) as ApiWebPagesResponse
     const categoriesJson = (await categoriesRes.json()) as ApiCategoriesResponse
 
-    const storefrontItem = (storefrontsJson.items ?? []).find((item) => {
-      const config = getPartnerStorefrontConfig(item)
-      return config?.slug === partnerSlug
-    })
-
-    const partnerRaw = getPartnerStorefrontConfig(storefrontItem)
     const partner = partnerRaw
       ? {
           ...partnerRaw,
@@ -180,11 +171,24 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
     if (!partner) return null
 
     const allowedCategories = filterPartnerCategories(categoriesJson.categories ?? [], partner)
-    const category = allowedCategories.find((item) => normalizeCategorySlug(item.url, item.name) === categorySlug)
-    if (!category) return null
+    const normalizedRequestedCategorySlug = normalizeCategorySlug(categorySlug, categorySlug)
+    const category = allowedCategories.find(
+      (item) => normalizeCategorySlug(item.url, item.name) === normalizedRequestedCategorySlug,
+    )
+    if (!category) return { partner, category: null, categories: allowedCategories, products: [] as DisplayProduct[] }
     const selectedProductIdSet = new Set(partner.featuredProductIds)
+    const allowedCategoryIdSet = new Set(allowedCategories.map((item) => item.id))
 
-    if (selectedProductIdSet.size === 0) {
+    const productsRes = await fetch(`${apiUrl}/api/products?page=1&per_page=200&status=1&cat_id=${category.id}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      next: {
+        revalidate: STOREFRONT_REVALIDATE_SECONDS,
+        tags: ['storefront:products'],
+      },
+    })
+
+    if (!productsRes.ok) {
       return {
         partner,
         category,
@@ -193,23 +197,51 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
       }
     }
 
-    const productsRes = await fetch(`${apiUrl}/api/products?page=1&per_page=200&status=1&cat_id=${category.id}`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    })
-
-    if (!productsRes.ok) return null
-
     const productsJson = (await productsRes.json()) as ApiProductsResponse
+    const categoryProducts = (productsJson.products ?? []).filter((product) => product.catid === category.id)
+
+    // If selected products exist, prefer them, but gracefully fall back to category products
+    // so category pages never look broken when featured IDs are stale/missing.
+    let resolvedProducts: Product[] = categoryProducts
+
+    if (selectedProductIdSet.size > 0) {
+      const selectedProductEntries = await Promise.all(
+        Array.from(selectedProductIdSet).map(async (productId) => {
+          try {
+            const response = await fetch(`${apiUrl}/api/products/${productId}`, {
+              method: 'GET',
+              headers: { Accept: 'application/json' },
+              next: {
+                revalidate: STOREFRONT_REVALIDATE_SECONDS,
+                tags: ['storefront:products'],
+              },
+            })
+            if (!response.ok) return null
+            const json = (await response.json()) as ApiProductResponse
+            const product = json.product
+            if (!product) return null
+            if (!allowedCategoryIdSet.has(product.catid)) return null
+            return product
+          } catch {
+            return null
+          }
+        }),
+      )
+
+      const selectedProductsInCategory = selectedProductEntries
+        .filter((product): product is Product => Boolean(product))
+        .filter((product) => product.catid === category.id)
+
+      if (selectedProductsInCategory.length > 0) {
+        resolvedProducts = selectedProductsInCategory
+      }
+    }
 
     return {
       partner,
       category,
       categories: allowedCategories,
-      products: (productsJson.products ?? [])
-        .filter((product) => product.catid === category.id && selectedProductIdSet.has(product.id))
-        .map((product) => mapProductToDisplay(product, apiUrl)),
+      products: resolvedProducts.map((product) => mapProductToDisplay(product, apiUrl)),
     }
   } catch {
     return null
@@ -222,6 +254,9 @@ export default async function PartnerCategoryPage({ params }: PageProps) {
 
   if (!payload) {
     notFound()
+  }
+  if (!payload.category) {
+    redirect(`/shop/${resolved.partner}/product`)
   }
 
   return (
