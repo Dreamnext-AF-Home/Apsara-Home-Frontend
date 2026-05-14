@@ -14,6 +14,7 @@ interface ApiProductsResponse {
   products?: Product[]
   data?: Product[]
 }
+const MAX_FETCH_RETRIES = 2
 
 export interface ProductPageData {
   product: CategoryProduct
@@ -73,6 +74,29 @@ const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) =
   if (rawImage.startsWith('/')) return rawImage
   if (!apiUrl) return `/${rawImage}`
   return `${apiUrl.replace(/\/$/, '')}/${rawImage.replace(/^\/+/, '')}`
+}
+
+const fetchWithRetry = async (input: string, init?: RequestInit): Promise<Response> => {
+  let lastResponse: Response | null = null
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(input, init)
+      if (response.ok || attempt === MAX_FETCH_RETRIES) {
+        return response
+      }
+      lastResponse = response
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_FETCH_RETRIES) {
+        throw error
+      }
+    }
+  }
+
+  if (lastResponse) return lastResponse
+  throw (lastError instanceof Error ? lastError : new Error('Failed to fetch'))
 }
 
 const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
@@ -287,17 +311,17 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
 
   try {
     const [categoriesRes, productRes, productsRes] = await Promise.allSettled([
-      fetch(`${apiUrl}/api/categories?page=1&per_page=100`, {
+      fetchWithRetry(`${apiUrl}/api/categories?page=1&per_page=100`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
       }),
-      fetch(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
+      fetchWithRetry(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
       }),
-      fetch(`${apiUrl}/api/products?page=1&per_page=300&status=1`, {
+      fetchWithRetry(`${apiUrl}/api/products?page=1&per_page=300&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
@@ -323,7 +347,7 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
 
     if (!target && id) {
       try {
-        const slugResponse = await fetch(`${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
+        const slugResponse = await fetchWithRetry(`${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
           method: 'GET',
           headers: { Accept: 'application/json' },
           cache: 'no-store',
