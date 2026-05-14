@@ -15,6 +15,7 @@ import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
 import { buildPartnerCategoryLink, buildPartnerShopLink } from '@/libs/partnerStorefront'
+import { buildStorefrontProductPath } from '@/libs/storefrontRouting'
 
 type ShopSectionPayload = {
   fields?: Record<string, string>
@@ -39,16 +40,12 @@ const parseIdList = (value: string) =>
     .map((item) => Number.parseInt(item.trim(), 10))
     .filter((item) => Number.isFinite(item) && item > 0)
 
-const slugifyProductName = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-
-const buildProductLink = (product: Pick<Product, 'id' | 'name'>) =>
-  `/product/${slugifyProductName(product.name)}-i${product.id}`
+const buildProductLink = (product: Pick<Product, 'id' | 'name'>, partnerSlug?: string) =>
+  buildStorefrontProductPath(
+    product.name,
+    typeof product.id === 'number' ? product.id : undefined,
+    partnerSlug ? `/shop/${partnerSlug}` : undefined,
+  )
 
 function CampaignBannerSkeleton() {
   return (
@@ -364,7 +361,7 @@ function CampaignBannersSection({
     ? products.find((product) => product.id === linkProductId)
     : undefined
   const link = linkType === 'product' && linkProduct
-    ? buildProductLink(linkProduct)
+    ? buildProductLink(linkProduct, partnerSlug)
     : linkType === 'category' && linkCategory
       ? buildPartnerCategoryLink(partnerSlug, linkCategory)
       : buildPartnerShopLink(getField(section, 'video_link') || '/shop', partnerSlug)
