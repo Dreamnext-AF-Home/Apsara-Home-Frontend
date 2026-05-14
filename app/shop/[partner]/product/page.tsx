@@ -31,6 +31,7 @@ type ApiProductsResponse = {
 const REQUEST_TIMEOUT_MS = 12000
 const MAX_FETCH_RETRIES = 2
 const STOREFRONT_REVALIDATE_SECONDS = 120
+const MAX_FEATURED_PRODUCT_DETAIL_FETCHES = 12
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
@@ -263,8 +264,18 @@ async function getPartnerProductPageData(partnerSlug: string) {
         products: allowedProductsFromListing.map((product) => mapProductToDisplay(product, apiUrl)),
       }
     }
+    const listingProductsById = new Map(allowedProductsFromListing.map((product) => [product.id, product] as const))
+    const selectedProductsFromListing = selectedProductIds
+      .map((productId) => listingProductsById.get(productId) ?? null)
+      .filter((product): product is Product => Boolean(product))
+
+    const missingSelectedIds = selectedProductIds
+      .filter((productId, index, arr) => arr.indexOf(productId) === index)
+      .filter((productId) => !listingProductsById.has(productId))
+      .slice(0, MAX_FEATURED_PRODUCT_DETAIL_FETCHES)
+
     const productEntries = await Promise.all(
-      selectedProductIds.map(async (productId) => {
+      missingSelectedIds.map(async (productId) => {
         try {
           const response = await fetchWithRetry(`${apiUrl}/api/products/${productId}`, {
             method: 'GET',
@@ -286,7 +297,10 @@ async function getPartnerProductPageData(partnerSlug: string) {
       }),
     )
 
-    const selectedProducts = productEntries.filter((item): item is Product => Boolean(item))
+    const selectedProducts = [
+      ...selectedProductsFromListing,
+      ...productEntries.filter((item): item is Product => Boolean(item)),
+    ]
 
     const productsToDisplay = selectedProducts.length > 0 ? selectedProducts : allowedProductsFromListing
 

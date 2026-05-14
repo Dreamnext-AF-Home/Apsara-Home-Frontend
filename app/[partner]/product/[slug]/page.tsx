@@ -15,7 +15,7 @@ import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer';
 import type { CategoryProduct } from '@/libs/CategoryData';
 import type { Product } from '@/store/api/productsApi';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ partner: string; slug: string }>
@@ -137,7 +137,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
           const response = await fetch(`${apiUrl}/api/products/${id}`, {
             method: 'GET',
             headers: { Accept: 'application/json' },
-            cache: 'no-store',
+            next: { revalidate: 60, tags: ['storefront:products'] },
           })
           if (!response.ok) return null
           const json = (await response.json()) as { product?: Product }
