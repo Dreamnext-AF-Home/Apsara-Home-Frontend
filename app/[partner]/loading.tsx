@@ -9,6 +9,9 @@ import type { WebPageItem } from '@/store/api/webPagesApi'
 type PartnerStorefrontApiResponse = {
   items?: WebPageItem[]
 }
+const STOREFRONT_CACHE_KEY = 'partner-storefronts:payload:v1'
+const STOREFRONT_CACHE_TTL_MS = 5 * 60 * 1000
+const STOREFRONT_FETCH_COOLDOWN_MS = 45 * 1000
 
 const normalizeLogoUrl = (value: string) => {
   const raw = value.trim()
@@ -58,43 +61,99 @@ export default function PartnerLoading() {
       }
     }
 
+    const resolveFromPayload = (payload: PartnerStorefrontApiResponse) => {
+      const item = (payload.items ?? []).find((entry) => getPartnerStorefrontConfig(entry)?.slug === partnerSlug)
+      const storefront = getPartnerStorefrontConfig(item)
+      if (!storefront) return false
+
+      const resolvedLoadingLogo = storefront.logoUrl || storefront.tabLogoUrl
+      const resolvedTabIcon = storefront.tabLogoUrl || storefront.logoUrl
+
+      if (resolvedLoadingLogo) {
+        const normalizedLoadingLogo = normalizeLogoUrl(resolvedLoadingLogo)
+        setLogoSrc(normalizedLoadingLogo)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(loadingLogoStorageKey, normalizedLoadingLogo)
+        }
+      }
+
+      if (resolvedTabIcon) {
+        const normalizedTabIcon = normalizeLogoUrl(resolvedTabIcon)
+        setIcon('icon', normalizedTabIcon)
+        setIcon('apple-touch-icon', normalizedTabIcon)
+        setIcon('shortcut icon', normalizedTabIcon)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(iconStorageKey, normalizedTabIcon)
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(`partner-storefront-name:${partnerSlug}`, brandText)
+      }
+      return true
+    }
+
+    const tryReadCachedPayload = () => {
+      if (typeof window === 'undefined') return false
+      const raw = window.localStorage.getItem(STOREFRONT_CACHE_KEY)
+      if (!raw) return false
+      try {
+        const cached = JSON.parse(raw) as { ts?: number; cooldownUntil?: number; payload?: PartnerStorefrontApiResponse }
+        if (typeof cached.cooldownUntil === 'number' && Date.now() < cached.cooldownUntil) {
+          return Boolean(cached.payload && resolveFromPayload(cached.payload))
+        }
+        if (typeof cached.ts === 'number' && Date.now() - cached.ts <= STOREFRONT_CACHE_TTL_MS && cached.payload) {
+          return resolveFromPayload(cached.payload)
+        }
+      } catch {
+        // ignore cache parse issues
+      }
+      return false
+    }
+
     async function loadStorefrontLogo() {
+      if (tryReadCachedPayload()) return
+
       try {
         const response = await fetch('/api/web-pages/partner-storefronts', {
           headers: { Accept: 'application/json' },
-          cache: 'no-store',
+          cache: 'force-cache',
         })
-        if (!response.ok) return
+        if (!response.ok) {
+          if (typeof window !== 'undefined') {
+            const existing = window.localStorage.getItem(STOREFRONT_CACHE_KEY)
+            let parsed: { payload?: PartnerStorefrontApiResponse } = {}
+            if (existing) {
+              try {
+                parsed = JSON.parse(existing) as { payload?: PartnerStorefrontApiResponse }
+              } catch {
+                parsed = {}
+              }
+            }
+            window.localStorage.setItem(
+              STOREFRONT_CACHE_KEY,
+              JSON.stringify({
+                ts: Date.now(),
+                cooldownUntil: Date.now() + STOREFRONT_FETCH_COOLDOWN_MS,
+                payload: parsed.payload,
+              }),
+            )
+          }
+          return
+        }
 
         const payload = (await response.json()) as PartnerStorefrontApiResponse
-        const item = (payload.items ?? []).find((item) => getPartnerStorefrontConfig(item)?.slug === partnerSlug)
-        const storefront = getPartnerStorefrontConfig(item)
-        if (!storefront) return
-
-        const resolvedLoadingLogo = storefront.logoUrl || storefront.tabLogoUrl
-        const resolvedTabIcon = storefront.tabLogoUrl || storefront.logoUrl
-
-        if (resolvedLoadingLogo) {
-          const normalizedLoadingLogo = normalizeLogoUrl(resolvedLoadingLogo)
-          setLogoSrc(normalizedLoadingLogo)
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(loadingLogoStorageKey, normalizedLoadingLogo)
-          }
-        }
-
-        if (resolvedTabIcon) {
-          const normalizedTabIcon = normalizeLogoUrl(resolvedTabIcon)
-          setIcon('icon', normalizedTabIcon)
-          setIcon('apple-touch-icon', normalizedTabIcon)
-          setIcon('shortcut icon', normalizedTabIcon)
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(iconStorageKey, normalizedTabIcon)
-          }
-        }
-
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(`partner-storefront-name:${partnerSlug}`, brandText)
+          window.localStorage.setItem(
+            STOREFRONT_CACHE_KEY,
+            JSON.stringify({
+              ts: Date.now(),
+              cooldownUntil: 0,
+              payload,
+            }),
+          )
         }
+        resolveFromPayload(payload)
       } catch {
         // Keep cached logo if fetch fails.
       }

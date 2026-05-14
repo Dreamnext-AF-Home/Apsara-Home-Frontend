@@ -9,6 +9,9 @@ import type { WebPageItem } from '@/store/api/webPagesApi'
 type PartnerStorefrontApiResponse = {
   items?: WebPageItem[]
 }
+const STOREFRONT_CACHE_KEY = 'partner-storefronts:payload:v1'
+const STOREFRONT_CACHE_TTL_MS = 5 * 60 * 1000
+const STOREFRONT_FETCH_COOLDOWN_MS = 45 * 1000
 
 const titleCase = (value: string) =>
   value
@@ -63,31 +66,86 @@ export default function PartnerShopLoading() {
       setIcon('shortcut icon', normalizedCachedIcon)
     }
 
+    const resolveFromPayload = (payload: PartnerStorefrontApiResponse) => {
+      const item = (payload.items ?? []).find((it) => getPartnerStorefrontConfig(it)?.slug === slug)
+      const storefront = getPartnerStorefrontConfig(item)
+      const resolved = storefront?.tabLogoUrl || storefront?.logoUrl
+      if (!resolved) return false
+      const normalizedResolved = normalizeLogoUrl(resolved)
+
+      setLogoSrc(normalizedResolved)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, normalizedResolved)
+      }
+
+      setIcon('icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
+      setIcon('apple-touch-icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
+      setIcon('shortcut icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
+      return true
+    }
+
+    const tryReadCachedPayload = () => {
+      if (typeof window === 'undefined') return false
+      const raw = window.localStorage.getItem(STOREFRONT_CACHE_KEY)
+      if (!raw) return false
+      try {
+        const cached = JSON.parse(raw) as { ts?: number; cooldownUntil?: number; payload?: PartnerStorefrontApiResponse }
+        if (typeof cached.cooldownUntil === 'number' && Date.now() < cached.cooldownUntil) {
+          return Boolean(cached.payload && resolveFromPayload(cached.payload))
+        }
+        if (typeof cached.ts === 'number' && Date.now() - cached.ts <= STOREFRONT_CACHE_TTL_MS && cached.payload) {
+          return resolveFromPayload(cached.payload)
+        }
+      } catch {
+        // ignore cache parse issues
+      }
+      return false
+    }
+
     async function loadAndSetLogo() {
+      if (tryReadCachedPayload()) return
+
       try {
         const response = await fetch('/api/web-pages/partner-storefronts', {
           headers: { Accept: 'application/json' },
-          cache: 'no-store',
+          cache: 'force-cache',
         })
 
-        if (!response.ok) return
-
-        const payload = (await response.json()) as PartnerStorefrontApiResponse
-        const item = (payload.items ?? []).find((it) => getPartnerStorefrontConfig(it)?.slug === slug)
-        const storefront = getPartnerStorefrontConfig(item)
-        const resolved = storefront?.tabLogoUrl || storefront?.logoUrl
-        if (!resolved) return
-        const normalizedResolved = normalizeLogoUrl(resolved)
-
-        setLogoSrc(normalizedResolved)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(storageKey, normalizedResolved)
+        if (!response.ok) {
+          if (typeof window !== 'undefined') {
+            const existing = window.localStorage.getItem(STOREFRONT_CACHE_KEY)
+            let parsed: { payload?: PartnerStorefrontApiResponse } = {}
+            if (existing) {
+              try {
+                parsed = JSON.parse(existing) as { payload?: PartnerStorefrontApiResponse }
+              } catch {
+                parsed = {}
+              }
+            }
+            window.localStorage.setItem(
+              STOREFRONT_CACHE_KEY,
+              JSON.stringify({
+                ts: Date.now(),
+                cooldownUntil: Date.now() + STOREFRONT_FETCH_COOLDOWN_MS,
+                payload: parsed.payload,
+              }),
+            )
+          }
+          return
         }
 
-        // Update the tab icon ASAP.
-        setIcon('icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
-        setIcon('apple-touch-icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
-        setIcon('shortcut icon', `${normalizedResolved}${normalizedResolved.includes('?') ? '&' : '?'}v=loading`)
+        const payload = (await response.json()) as PartnerStorefrontApiResponse
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            STOREFRONT_CACHE_KEY,
+            JSON.stringify({
+              ts: Date.now(),
+              cooldownUntil: 0,
+              payload,
+            }),
+          )
+        }
+        resolveFromPayload(payload)
       } catch {
         // ignore
       }

@@ -88,11 +88,16 @@ export const webPagesApi = baseApi.injectEndpoints({
     }),
     getPublicWebPageItems: builder.query<PublicWebPageItemsResponse, WebPageType>({
       query: (type) => ({
-        url: `/api/web-pages/${type}`,
+        // Partner storefront data is served from the plural endpoint in other routes.
+        // Keep this alias here so client consumers do not hammer a separately throttled singular route.
+        url: `/api/web-pages/${type === 'partner-storefront' ? 'partner-storefronts' : type}`,
         method: 'GET',
-        cache: 'no-store',
       }),
       providesTags: ['WebPages'],
+      keepUnusedDataFor: 300,
+      refetchOnFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMountOrArgChange: false,
     }),
     getAdminWebPageItems: builder.query<WebPageItemsResponse, { type: WebPageType; page?: number; perPage?: number; search?: string; status?: 'active' | 'inactive' | 'all' }>({
       query: ({ type, page = 1, perPage = 20, search, status = 'all' }) => ({
