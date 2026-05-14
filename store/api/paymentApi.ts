@@ -124,6 +124,10 @@ export interface CustomerOrder {
   shipped_at?: string | null
   created_at: string
   estimated_delivery?: string | null
+  refund_reason?: string | null
+  refund_image_urls?: string[]
+  refund_video_urls?: string[]
+  refund_requested_at?: string | null
 }
 
 export interface CheckoutHistoryResponse {
@@ -197,6 +201,10 @@ export const paymentApi = baseApi.injectEndpoints({
           shipping_address: String(order.shipping_address ?? 'Shipping address not available'),
           tracking_no: order.tracking_no ?? order.tracking_number ?? null,
           tracking_number: order.tracking_number ?? order.tracking_no ?? null,
+          refund_reason: order.refund_reason ?? null,
+          refund_image_urls: Array.isArray(order.refund_image_urls) ? order.refund_image_urls : [],
+          refund_video_urls: Array.isArray(order.refund_video_urls) ? order.refund_video_urls : [],
+          refund_requested_at: order.refund_requested_at ?? null,
           created_at: String(order.created_at ?? ''),
         })) as CustomerOrder[],
       }),
@@ -236,6 +244,29 @@ export const paymentApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ['Orders'],
     }),
+    refundOrder: builder.mutation<{ message: string }, { id: number; reason: string; refundImages?: File[]; refundVideos?: File[] }>({
+      query: ({ id, reason, refundImages, refundVideos }) => {
+        const formData = new FormData()
+        formData.append('reason', reason)
+        if (Array.isArray(refundImages)) {
+          for (const file of refundImages) {
+            formData.append('refund_images[]', file)
+          }
+        }
+        if (Array.isArray(refundVideos)) {
+          for (const file of refundVideos) {
+            formData.append('refund_videos[]', file)
+          }
+        }
+
+        return {
+          url: `/api/orders/${id}/refund`,
+          method: 'POST',
+          body: formData,
+        }
+      },
+      invalidatesTags: ['Orders'],
+    }),
   }),
 })
 
@@ -246,4 +277,5 @@ export const {
   useGetCheckoutHistoryQuery,
   useLazyTrackGuestOrderQuery,
   useConfirmOrderMutation,
+  useRefundOrderMutation,
 } = paymentApi

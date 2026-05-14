@@ -94,6 +94,7 @@ export const TABS = [
   { key: 'processing',      label: 'Processing' },
   { key: 'shipped',         label: 'Shipped' },
   { key: 'delivered',       label: 'Delivered' },
+  { key: 'refunded',        label: 'Refunded' },
   { key: 'cancelled',       label: 'Cancelled' },
 ] as const;
 

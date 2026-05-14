@@ -65,6 +65,10 @@ export interface AdminOrder {
   customer_email?: string | null
   customer_phone?: string | null
   customer_address?: string | null
+  refund_reason?: string | null
+  refund_image_urls?: string[]
+  refund_video_urls?: string[]
+  refund_requested_at?: string | null
   source_label?: string | null
   source_slug?: string | null
   source_host?: string | null

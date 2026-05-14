@@ -439,6 +439,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
   const [sortBy,      setSortBy]      = useState<'default' | 'customer_az' | 'amount_low_high'>('default')
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null)
   const [payloadPreview, setPayloadPreview] = useState<{ checkoutId: string; payload: Record<string, unknown> | Array<unknown> | null } | null>(null)
+  const [refundMediaPreview, setRefundMediaPreview] = useState<{ checkoutId: string; kind: 'image' | 'video'; urls: string[] } | null>(null)
   const [orderDetailPreview, setOrderDetailPreview] = useState<AdminOrderItem | null>(null)
   const [stableData, setStableData] = useState<AdminOrdersResponse | null>(initialData)
   const tableScrollRef = useRef<HTMLDivElement>(null)
@@ -482,7 +483,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
   const effectiveFilter = useMemo(() => {
     const normalized = initialFilter.trim().toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_')
     const aliases: Record<string, string> = {
-      returned: 'refunded', returned_refunded: 'refunded', history: 'order_history',
+      returned: 'refunded', returned_refunded: 'returned_refunded', history: 'order_history',
       deliverd: 'delivered', outfordelivery: 'out_for_delivery',
     }
     const mapped = aliases[normalized] ?? normalized
@@ -1038,11 +1039,22 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                     <th className="min-w-[150px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Checkout</th>
                     <th className="min-w-[150px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Source</th>
                     <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Date</th>
-                          <th className="min-w-[260px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Customer / Delivery</th>
+                    {effectiveFilter !== 'returned_refunded' ? (
+                      <th className="min-w-[260px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Customer / Delivery</th>
+                    ) : null}
                     <th className="min-w-[120px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Amount</th>
-                    <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Approval</th>
-                    <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">SLA</th>
-                    <th className="min-w-[340px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Tracking</th>
+                    {effectiveFilter === 'returned_refunded' ? (
+                      <th className="min-w-[260px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Intent</th>
+                    ) : null}
+                    {effectiveFilter !== 'returned_refunded' ? (
+                      <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Approval</th>
+                    ) : null}
+                    {effectiveFilter !== 'returned_refunded' ? (
+                      <th className="min-w-[140px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">SLA</th>
+                    ) : null}
+                    {effectiveFilter !== 'returned_refunded' ? (
+                      <th className="min-w-[340px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Tracking</th>
+                    ) : null}
                     <th className="min-w-[200px] px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">Actions</th>
                   </tr>
                 </thead>
@@ -1054,6 +1066,10 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                       const isDelivered = order.fulfillment_status === 'delivered'
                       const isCancelled = order.fulfillment_status === 'cancelled'
                       const isRefunded = order.fulfillment_status === 'refunded'
+                      const isRefundQueue = effectiveFilter === 'returned_refunded' || isRefunded
+                      const refundImageUrls = Array.isArray(order.refund_image_urls) ? order.refund_image_urls.filter(Boolean) : []
+                      const refundVideoUrls = Array.isArray(order.refund_video_urls) ? order.refund_video_urls.filter(Boolean) : []
+                      const canReviewRefund = isRefundQueue
                       const canTrackThisOrder   = canTrack && order.approval_status === 'approved' && !isDelivered && !isCancelled && !isRefunded
                       const approval = APPROVAL_CONFIG[order.approval_status] ?? APPROVAL_CONFIG.pending
                       const sla      = order.sla?.state ? SLA_CONFIG[order.sla.state as keyof typeof SLA_CONFIG] : null
@@ -1170,6 +1186,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                           </td>
 
                           {/* Customer */}
+                          {effectiveFilter !== 'returned_refunded' ? (
                           <td className="px-5 py-3.5 align-middle">
                             <div className="flex items-center gap-3">
                               <div className="h-7 w-7 rounded-full bg-linear-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
@@ -1192,24 +1209,39 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                               </div>
                             </div>
                           </td>
+                          ) : null}
 
                           {/* Amount */}
                           <td className="px-5 py-3.5 align-middle">
                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{formatMoney(order.amount)}</p>
+                            {canReviewRefund ? (
+                              <p className="mt-0.5 text-[11px] font-semibold text-amber-600">Pending refund request</p>
+                            ) : null}
                             <p className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
                               {order.payment_method || '-'}
                             </p>
                           </td>
 
+                          {effectiveFilter === 'returned_refunded' ? (
+                            <td className="px-5 py-3.5 align-middle">
+                              <p className="line-clamp-3 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
+                                {order.refund_reason || 'No reason provided.'}
+                              </p>
+                            </td>
+                          ) : null}
+
                           {/* Approval badge */}
+                          {effectiveFilter !== 'returned_refunded' ? (
                           <td className="min-w-[140px] px-5 py-3.5 align-middle">
                             <Chip size="sm" variant="soft" className={`inline-flex min-w-[92px] items-center justify-center whitespace-nowrap border text-[11px] font-semibold ${approval.badge}`}>
                               <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${approval.dot}`} />
                               {approval.label}
                             </Chip>
                           </td>
+                          ) : null}
 
                           {/* SLA */}
+                          {effectiveFilter !== 'returned_refunded' ? (
                           <td className="min-w-[140px] px-5 py-3.5 align-middle">
                             {sla ? (
                               <div className="space-y-1">
@@ -1231,8 +1263,10 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                               <span className="text-[11px] text-slate-300 dark:text-slate-600">—</span>
                             )}
                           </td>
+                          ) : null}
 
                           {/* Tracking select */}
+                          {effectiveFilter !== 'returned_refunded' ? (
                           <td className="px-5 py-3.5 align-middle">
                             <div className="space-y-1.5">
                               {isFulfillmentModeLocked ? (
@@ -1433,6 +1467,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                               )}
                             </div>
                           </td>
+                          ) : null}
 
                           {/* Actions */}
                           <td className="px-5 py-3.5 align-middle">
@@ -1446,7 +1481,52 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                 View Details
                               </Button>
 
-                              {canApproveThisOrder ? (
+                              {canReviewRefund ? (
+                                <div className="flex flex-col gap-1.5 rounded-xl border border-amber-200 bg-amber-50/60 p-2 dark:border-amber-500/30 dark:bg-amber-500/10">
+                                  <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">Refund request</p>
+                                  {order.refund_requested_at ? (
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                      Requested: {formatDateOnly(order.refund_requested_at)} {formatTimeOnly(order.refund_requested_at)} PH
+                                    </p>
+                                  ) : null}
+                                  <div className="grid grid-cols-2 gap-1">
+                                    <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleApprove(order.id)} className="border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                      Approve
+                                    </Button>
+                                    <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleReject(order.id)} className="border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-100">
+                                      Reject
+                                    </Button>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    {refundImageUrls.length > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setRefundMediaPreview({ checkoutId: order.checkout_id, kind: 'image', urls: refundImageUrls })}
+                                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-[#31405f] dark:bg-[#1b2640] dark:text-slate-200 dark:hover:bg-[#22304b]"
+                                      >
+                                        View Image
+                                      </button>
+                                    ) : (
+                                      <span className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-400 dark:border-[#31405f] dark:bg-[#1b2640] dark:text-slate-500">
+                                        No Image
+                                      </span>
+                                    )}
+                                    {refundVideoUrls.length > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setRefundMediaPreview({ checkoutId: order.checkout_id, kind: 'video', urls: refundVideoUrls })}
+                                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-[#31405f] dark:bg-[#1b2640] dark:text-slate-200 dark:hover:bg-[#22304b]"
+                                      >
+                                        View Video
+                                      </button>
+                                    ) : (
+                                      <span className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-400 dark:border-[#31405f] dark:bg-[#1b2640] dark:text-slate-500">
+                                        No Video
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : canApproveThisOrder ? (
                                 <div className="flex flex-col gap-1.5">
                                   <div className="grid grid-cols-2 gap-1">
                                     <Button size="sm" variant="tertiary" isDisabled={isBusy} onPress={() => handleApprove(order.id)} className="border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100">
@@ -1505,7 +1585,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                     })
                   ) : (
                     <tr key="empty" className="bg-white dark:bg-[#121a2b]">
-                      <td colSpan={9}>
+                      <td colSpan={effectiveFilter === 'returned_refunded' ? 7 : 10}>
                         <EmptyOrdersState />
                       </td>
                     </tr>
@@ -1734,6 +1814,51 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
               ) : (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                   No shipment payload has been saved for this order yet. That usually means the courier booking returned no stored payload, or the row has not been refreshed with one yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {refundMediaPreview ? (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Refund {refundMediaPreview.kind === 'image' ? 'Images' : 'Videos'}
+                </p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900">{refundMediaPreview.checkoutId}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRefundMediaPreview(null)}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto p-5">
+              {refundMediaPreview.urls.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {refundMediaPreview.urls.map((url, index) => (
+                    <div key={`${url}-${index}`} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                      {refundMediaPreview.kind === 'image' ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt={`Refund image ${index + 1}`} className="h-64 w-full rounded-xl object-cover" />
+                      ) : (
+                        <video controls className="h-64 w-full rounded-xl bg-black">
+                          <source src={url} />
+                          Your browser does not support video playback.
+                        </video>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  No media uploaded for this refund request.
                 </div>
               )}
             </div>
