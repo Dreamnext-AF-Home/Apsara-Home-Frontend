@@ -297,7 +297,7 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
         headers: { Accept: 'application/json' },
         cache: 'no-store',
       }),
-      fetch(`${apiUrl}/api/products?page=1&per_page=100&status=1`, {
+      fetch(`${apiUrl}/api/products?page=1&per_page=300&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
         cache: 'no-store',
@@ -319,6 +319,22 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
     if (productResponse && productResponse.ok) {
       const productJson = (await productResponse.json()) as { product?: Product }
       target = productJson.product ? toLooseRecord(productJson.product) : null
+    }
+
+    if (!target && id) {
+      try {
+        const slugResponse = await fetch(`${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        })
+        if (slugResponse.ok) {
+          const slugJson = (await slugResponse.json()) as { product?: Product }
+          target = slugJson.product ? toLooseRecord(slugJson.product) : null
+        }
+      } catch {
+        // Keep other fallback paths below.
+      }
     }
 
     if (!target && id && products.length > 0) {
