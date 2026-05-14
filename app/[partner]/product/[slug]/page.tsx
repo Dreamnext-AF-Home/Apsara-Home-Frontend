@@ -115,7 +115,9 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
   if (!storefront) notFound()
 
   const dynamicData = await getProductPageData(slug)
-  if (!dynamicData) return notFound()
+  if (!dynamicData) {
+    redirect(`/shop/${normalizedPartner}/product`)
+  }
   const navbarCategories = await getNavbarCategories()
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
 
