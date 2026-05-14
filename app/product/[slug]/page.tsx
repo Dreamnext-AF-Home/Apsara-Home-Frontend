@@ -16,7 +16,7 @@ import type { Product } from '@/store/api/productsApi';
 import { buildPageMetadata } from '@/app/seo';
 import { getNavbarCategories } from '@/libs/serverStorefront';
 import { buildCanonicalProductSlug, getProductPageData } from '@/libs/productPageData';
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type LooseRecord = Record<string, unknown>;
 const toLooseRecord = (value: unknown): LooseRecord => value as LooseRecord;

@@ -15,6 +15,7 @@ interface ApiProductsResponse {
   data?: Product[]
 }
 const MAX_FETCH_RETRIES = 2
+const PRODUCT_PAGE_REVALIDATE_SECONDS = 60
 
 export interface ProductPageData {
   product: CategoryProduct
@@ -83,7 +84,25 @@ const fetchWithRetry = async (input: string, init?: RequestInit): Promise<Respon
   for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt += 1) {
     try {
       const response = await fetch(input, init)
-      if (response.ok || attempt === MAX_FETCH_RETRIES) {
+      if (response.ok) {
+        return response
+      }
+
+      // Do not hammer the API on client errors; return immediately.
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        return response
+      }
+
+      if (response.status === 429) {
+        const retryAfterRaw = response.headers.get('retry-after')
+        const retryAfterSeconds = retryAfterRaw ? Number.parseInt(retryAfterRaw, 10) : NaN
+        const delayMs = Number.isFinite(retryAfterSeconds)
+          ? Math.max(250, Math.min(2000, retryAfterSeconds * 1000))
+          : 700 * (attempt + 1)
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+
+      if (attempt === MAX_FETCH_RETRIES) {
         return response
       }
       lastResponse = response
@@ -314,17 +333,17 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
       fetchWithRetry(`${apiUrl}/api/categories?page=1&per_page=100`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:categories'] },
       }),
       fetchWithRetry(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
       }),
       fetchWithRetry(`${apiUrl}/api/products?page=1&per_page=300&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
       }),
     ])
 
@@ -350,7 +369,7 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
         const slugResponse = await fetchWithRetry(`${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
           method: 'GET',
           headers: { Accept: 'application/json' },
-          cache: 'no-store',
+          next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
         })
         if (slugResponse.ok) {
           const slugJson = (await slugResponse.json()) as { product?: Product }
@@ -401,7 +420,7 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
         const reviewsRes = await fetch(`${apiUrl}/api/products/${reviewId}/reviews`, {
           method: 'GET',
           headers: { Accept: 'application/json' },
-          cache: 'no-store',
+          next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
         })
         if (reviewsRes.ok) {
           const reviewsJson = (await reviewsRes.json()) as {
