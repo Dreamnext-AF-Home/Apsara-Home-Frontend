@@ -29,6 +29,8 @@ type ApiProductsResponse = {
 }
 
 const REQUEST_TIMEOUT_MS = 12000
+const MAX_FETCH_RETRIES = 2
+const STOREFRONT_REVALIDATE_SECONDS = 120
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
@@ -43,6 +45,26 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
   } finally {
     clearTimeout(timeout)
   }
+}
+
+async function fetchWithRetry(input: string, init?: RequestInit): Promise<Response> {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(input, init)
+      if (response.ok || attempt === MAX_FETCH_RETRIES) {
+        return response
+      }
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_FETCH_RETRIES) {
+        throw error
+      }
+    }
+  }
+
+  throw (lastError instanceof Error ? lastError : new Error('Failed to fetch resource'))
 }
 
 const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) => {
@@ -159,20 +181,29 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
   try {
     const [storefrontsRes, categoriesRes, productsRes] = await Promise.all([
-      fetchWithTimeout(`${apiUrl}/api/web-pages/partner-storefronts`, {
+      fetchWithRetry(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:partner-storefronts'],
+        },
       }),
-      fetchWithTimeout(`${apiUrl}/api/categories?used_only=1&per_page=300`, {
+      fetchWithRetry(`${apiUrl}/api/categories?used_only=1&per_page=300`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:categories'],
+        },
       }),
-      fetchWithTimeout(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
+      fetchWithRetry(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:products'],
+        },
       }),
     ])
 
@@ -212,6 +243,9 @@ async function getPartnerProductPageData(partnerSlug: string) {
     const allowedCategories = filterPartnerCategories(categoriesJson.categories ?? [], partner)
     const selectedProductIds = partner.featuredProductIds
     const allowedCategoryIdSet = new Set(allowedCategories.map((category) => Number(category.id)))
+    const allowedProductsFromListing = (productsJson.products ?? []).filter((product) =>
+      allowedCategoryIdSet.has(Number(product.catid)),
+    )
 
     if (allowedCategories.length === 0) {
       return {
@@ -223,23 +257,22 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     // Fallback: when no featured list is configured, show all products in allowed categories.
     if (selectedProductIds.length === 0) {
-      const allowedProducts = (productsJson.products ?? []).filter((product) =>
-        allowedCategoryIdSet.has(Number(product.catid)),
-      )
-
       return {
         partner,
         categories: allowedCategories,
-        products: allowedProducts.map((product) => mapProductToDisplay(product, apiUrl)),
+        products: allowedProductsFromListing.map((product) => mapProductToDisplay(product, apiUrl)),
       }
     }
     const productEntries = await Promise.all(
       selectedProductIds.map(async (productId) => {
         try {
-          const response = await fetchWithTimeout(`${apiUrl}/api/products/${productId}`, {
+          const response = await fetchWithRetry(`${apiUrl}/api/products/${productId}`, {
             method: 'GET',
             headers: { Accept: 'application/json' },
-            cache: 'no-store',
+            next: {
+              revalidate: STOREFRONT_REVALIDATE_SECONDS,
+              tags: ['storefront:products'],
+            },
           })
           if (!response.ok) return null
           const json = (await response.json()) as ApiProductResponse
@@ -255,10 +288,12 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     const selectedProducts = productEntries.filter((item): item is Product => Boolean(item))
 
+    const productsToDisplay = selectedProducts.length > 0 ? selectedProducts : allowedProductsFromListing
+
     return {
       partner,
       categories: allowedCategories,
-      products: selectedProducts.map((product) => mapProductToDisplay(product, apiUrl)),
+      products: productsToDisplay.map((product) => mapProductToDisplay(product, apiUrl)),
     }
   } catch {
     return {

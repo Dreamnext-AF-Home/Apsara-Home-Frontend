@@ -286,7 +286,7 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
   const { slugOnly, id } = parseSlugAndId(slug)
 
   try {
-    const [categoriesRes, productRes, productsRes] = await Promise.all([
+    const [categoriesRes, productRes, productsRes] = await Promise.allSettled([
       fetch(`${apiUrl}/api/categories?page=1&per_page=100`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
@@ -304,14 +304,36 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
       }),
     ])
 
-    if (!categoriesRes.ok || !productRes.ok || !productsRes.ok) return null
+    const categoriesResponse = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null
+    const productResponse = productRes.status === 'fulfilled' ? productRes.value : null
+    const productsResponse = productsRes.status === 'fulfilled' ? productsRes.value : null
 
-    const categories = extractCategories(await categoriesRes.json())
-    const productJson = (await productRes.json()) as { product?: Product }
-    const target = productJson.product ? toLooseRecord(productJson.product) : null
+    const categories =
+      categoriesResponse && categoriesResponse.ok ? extractCategories(await categoriesResponse.json()) : []
+    const products =
+      productsResponse && productsResponse.ok
+        ? extractProducts(await productsResponse.json()).map((p) => toLooseRecord(p))
+        : []
+
+    let target: LooseRecord | null = null
+    if (productResponse && productResponse.ok) {
+      const productJson = (await productResponse.json()) as { product?: Product }
+      target = productJson.product ? toLooseRecord(productJson.product) : null
+    }
+
+    if (!target && id && products.length > 0) {
+      target =
+        products.find((row) => toNumber(row.id ?? row.pd_id ?? 0) === id) ??
+        null
+    }
+
+    if (!target && products.length > 0) {
+      target =
+        products.find((row) => slugify(String(row.name ?? row.pd_name ?? '')) === slugOnly) ??
+        null
+    }
+
     if (!target) return null
-
-    const products = extractProducts(await productsRes.json()).map((p) => toLooseRecord(p))
 
     const categorySlug = getCategorySlugFromProduct(target, categories)
     const matchedCategory = categories.find((c) => normalizeCategorySlug(c.url, c.name) === categorySlug)
