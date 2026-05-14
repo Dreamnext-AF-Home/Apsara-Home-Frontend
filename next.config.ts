@@ -82,7 +82,9 @@ const nextConfig: NextConfig = {
 export default withSerwist({
   swSrc: "sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.DISABLE_SW === "1" || process.env.NODE_ENV !== "production",
+  // Disable SW by default to avoid navigation no-response regressions in production.
+  // Set ENABLE_SW=1 only when explicitly validating PWA behavior.
+  disable: process.env.ENABLE_SW !== "1",
 })(nextConfig);
 
 

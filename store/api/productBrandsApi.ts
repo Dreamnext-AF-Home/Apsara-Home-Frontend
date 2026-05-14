@@ -29,6 +29,10 @@ export const productBrandsApi = baseApi.injectEndpoints({
         },
       }),
       providesTags: ['Brands'],
+      keepUnusedDataFor: 300,
+      refetchOnFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMountOrArgChange: false,
     }),
     getProductBrands: builder.query<ProductBrandsResponse, { search?: string } | void>({
       query: (params) => ({
