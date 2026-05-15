@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import PartnerStorefrontPage from '@/components/partner/PartnerStorefrontPage'
-import { filterPartnerCategories, filterPartnerProducts, getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
+import { filterPartnerCategories, filterPartnerProducts } from '@/libs/partnerStorefront'
 import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
@@ -28,6 +28,7 @@ type ApiWebPagesResponse = {
   items?: WebPageItem[]
 }
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
+const STOREFRONT_REVALIDATE_SECONDS = 120
 
 export async function generateMetadata({ params }: PageProps) {
   const resolved = await params
@@ -81,46 +82,52 @@ async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?
   if (!apiUrl) return null
 
   try {
-    const [storefrontsRes, webPagesRes, categoriesRes, productsRes] = await Promise.all([
-      fetch(`${apiUrl}/api/web-pages/partner-storefronts`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      }),
+    const partner = await getPartnerStorefrontBySlug(partnerSlug)
+    if (!partner) return null
+
+    const [webPagesRes, categoriesRes, productsRes] = await Promise.allSettled([
       fetch(`${apiUrl}/api/web-pages/shop-builder`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:shop-builder'],
+        },
       }),
       fetch(`${apiUrl}/api/categories?per_page=300`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:categories'],
+        },
       }),
       fetch(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:products'],
+        },
       }),
     ])
-
-    if (!storefrontsRes.ok || !webPagesRes.ok || !categoriesRes.ok || !productsRes.ok) return null
-
-    const storefrontsJson = (await storefrontsRes.json()) as ApiWebPagesResponse
-    const webPagesJson = (await webPagesRes.json()) as ApiWebPagesResponse
-    const categoriesJson = (await categoriesRes.json()) as ApiCategoriesResponse
-    const productsJson = (await productsRes.json()) as ApiProductsResponse
-
-    const storefrontItem = (storefrontsJson.items ?? []).find((item) => {
-      const config = getPartnerStorefrontConfig(item)
-      return config?.slug === partnerSlug
-    })
-  const partner = getPartnerStorefrontConfig(storefrontItem)
-  if (!partner) return null
 
     if (selectedCategoryId && !partner.allowedCategoryIds.includes(selectedCategoryId)) {
       redirect(`/shop/${partner.slug}`)
     }
+
+    const webPagesJson =
+      webPagesRes.status === 'fulfilled' && webPagesRes.value.ok
+        ? ((await webPagesRes.value.json()) as ApiWebPagesResponse)
+        : { items: [] }
+    const categoriesJson =
+      categoriesRes.status === 'fulfilled' && categoriesRes.value.ok
+        ? ((await categoriesRes.value.json()) as ApiCategoriesResponse)
+        : { categories: [] }
+    const productsJson =
+      productsRes.status === 'fulfilled' && productsRes.value.ok
+        ? ((await productsRes.value.json()) as ApiProductsResponse)
+        : { products: [] }
 
     if (partner.allowedCategoryIds.length === 0) {
       const itemsWithoutCategoryGrid = (webPagesJson.items ?? []).filter(
@@ -151,7 +158,10 @@ async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?
             const response = await fetch(`${apiUrl}/api/products/${id}`, {
               method: 'GET',
               headers: { Accept: 'application/json' },
-              cache: 'no-store',
+              next: {
+                revalidate: STOREFRONT_REVALIDATE_SECONDS,
+                tags: ['storefront:products'],
+              },
             })
             if (!response.ok) return null
             const json = (await response.json()) as { product?: Product }

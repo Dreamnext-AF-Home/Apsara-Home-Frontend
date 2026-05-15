@@ -126,6 +126,9 @@ const termsSections = [
 interface SignUpFormProps {
   onSwitchToLogin: () => void
   turnstileSiteKey?: string
+  initialReferralCode?: string
+  partnerSlug?: string
+  otpSenderName?: string
 }
 
 type FieldAvailability = {
@@ -147,7 +150,13 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 
 const isReferralCodeFormatValid = (value: string) => /^[A-Za-z0-9]+$/.test(value)
 
-export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: SignUpFormProps) {
+export default function SignUpForm({
+  onSwitchToLogin,
+  turnstileSiteKey = '',
+  initialReferralCode = '',
+  partnerSlug = '',
+  otpSenderName = '',
+}: SignUpFormProps) {
   const searchParams = useSearchParams()
   const [register, { isLoading }] = useRegisterMutation()
   const turnstileRef = useRef<HTMLDivElement>(null)
@@ -156,7 +165,11 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
   const [checkEmailAvailability] = useLazyCheckEmailAvailabilityQuery()
   const [checkReferralAvailability] = useLazyCheckReferralAvailabilityQuery()
   const [checkUsernameAvailability] = useLazyCheckUsernameAvailabilityQuery()
-  const initialReferral = normalizeReferralCode(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '') || getStoredReferralCode()
+  const initialReferral = normalizeReferralCode(initialReferralCode)
+    || normalizeReferralCode(searchParams.get('ref') ?? searchParams.get('referred_by') ?? '')
+    || getStoredReferralCode()
+
+  const isReferralLocked = Boolean(initialReferral)
 
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -207,6 +220,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
   }
 
   const handleReferralInputChange = (value: string) => {
+    if (isReferralLocked) return
     setForm((prev) => ({
       ...prev,
       referredBy: value,
@@ -399,6 +413,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
       email,
       username,
       referred_by: referral,
+      partner_slug: partnerSlug || undefined,
       password: form.password,
       password_confirmation: form.confirmPassword,
       cf_turnstile_response: turnstileToken || undefined,
@@ -439,6 +454,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
         <OtpVerification
           email={pendingEmail}
           verificationToken={verificationToken}
+          senderName={otpSenderName}
           onSuccess={() => {
             if (typeof window !== 'undefined') {
               window.localStorage.setItem('afhome_new_registration_email', pendingEmail)
@@ -527,6 +543,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
                 value={form.referredBy}
                 onChange={(e) => handleReferralInputChange(e.target.value)}
                 required
+                disabled={isReferralLocked}
               />
               {referralAvailability.message ? (
                 <p className={`mt-1 text-[11px] ${
@@ -645,24 +662,24 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/72 px-4 py-6 backdrop-blur-[2px]"
+                  className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/72 px-3 py-3 backdrop-blur-[2px] sm:px-4 sm:py-6"
                 >
                   <motion.div
                     initial={{ opacity: 0, y: 24, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 16, scale: 0.98 }}
                     transition={{ duration: 0.24, ease: 'easeOut' }}
-                    className="w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900"
+                    className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900 sm:max-h-[calc(100dvh-3rem)]"
                   >
-                <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5 dark:border-white/10">
+                <div className="shrink-0 flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-white/10 sm:px-6 sm:py-5">
                   <div>
                     <img
                       src="/Images/af_home_logo.png"
                       alt="AF Home"
-                      className="h-12 w-auto"
+                      className="h-10 w-auto sm:h-12"
                     />
-                    <h3 className="mt-3 text-xl font-bold text-slate-900 dark:text-white">Terms and Conditions</h3>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-white/60">
+                    <h3 className="mt-3 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">Terms and Conditions</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-white/60">
                       The following are the latest Terms and Conditions of AF Home.
                     </p>
                   </div>
@@ -675,7 +692,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
                   </button>
                 </div>
 
-                <div className="max-h-[65vh] space-y-5 overflow-y-auto px-6 py-5">
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
                   {termsSections.map((section) => (
                     <div key={section.title}>
                       <h4 className="text-sm font-bold text-slate-900 dark:text-white">{section.title}</h4>
@@ -694,11 +711,11 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end dark:border-white/10">
+                <div className="shrink-0 flex flex-col gap-3 border-t border-slate-200 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:flex-row sm:justify-end sm:px-6 sm:py-5 dark:border-white/10">
                   <button
                     type="button"
                     onClick={() => setShowTermsModal(false)}
-                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5"
+                    className="min-h-11 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5"
                   >
                     Not Now
                   </button>
@@ -708,7 +725,7 @@ export default function SignUpForm({ onSwitchToLogin, turnstileSiteKey = '' }: S
                       setAcceptedTerms(true)
                       setShowTermsModal(false)
                     }}
-                    className="rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600"
+                    className="min-h-11 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600"
                   >
                     I Agree
                   </button>

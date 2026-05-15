@@ -23,7 +23,9 @@ export type PartnerStorefrontConfig = {
   notificationEmail: string
   domainLink: string
   enableAiSupport: boolean
+  enableActivateDiscount: boolean
 }
+
 
 const defaultThemeColor = '#0f766e'
 const defaultAccentColor = '#f97316'
@@ -35,16 +37,21 @@ export const slugifyLabel = (value: string) =>
     .replace(/\s+/g, '-')
 
 export const normalizeCategorySlug = (rawUrl: string | null | undefined, fallbackName: string) => {
-  const source = (rawUrl ?? '').trim()
+  const source = decodeURIComponent(String(rawUrl ?? '').trim())
   if (!source || source === '0') return slugifyLabel(fallbackName)
 
   const withoutDomain = source.replace(/^https?:\/\/[^/]+/i, '')
-  const cleaned = withoutDomain
+  const withoutQuery = withoutDomain.split(/[?#]/)[0] ?? withoutDomain
+  const cleaned = withoutQuery
+    .replace(/\\/g, '/')
     .replace(/^\/+/, '')
+    .replace(/^shop\/category\//i, '')
+    .replace(/^shop\//i, '')
     .replace(/^category\//i, '')
     .replace(/\/+$/, '')
 
-  return cleaned || slugifyLabel(fallbackName)
+  const segment = cleaned.split('/').filter(Boolean).pop() ?? cleaned
+  return slugifyLabel(segment || fallbackName)
 }
 
 export const parseIdList = (value: string) =>
@@ -90,8 +97,10 @@ export const getPartnerStorefrontConfig = (item: WebPageItem | undefined): Partn
     notificationEmail: String(fields.notification_email ?? '').trim(),
     domainLink: String(fields.domain_link ?? '').trim(),
     enableAiSupport: toBoolean(fields.enable_ai_support),
+    enableActivateDiscount: toBoolean(fields.activate_discount ?? fields.enable_activate_discount),
   }
 }
+
 
 export const filterPartnerCategories = (categories: Category[], config: PartnerStorefrontConfig | null) => {
   if (!config) return categories

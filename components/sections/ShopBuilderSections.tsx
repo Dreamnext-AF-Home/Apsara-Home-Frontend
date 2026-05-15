@@ -15,6 +15,7 @@ import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
 import { buildPartnerCategoryLink, buildPartnerShopLink } from '@/libs/partnerStorefront'
+import { buildStorefrontProductPath } from '@/libs/storefrontRouting'
 
 type ShopSectionPayload = {
   fields?: Record<string, string>
@@ -39,16 +40,12 @@ const parseIdList = (value: string) =>
     .map((item) => Number.parseInt(item.trim(), 10))
     .filter((item) => Number.isFinite(item) && item > 0)
 
-const slugifyProductName = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-
-const buildProductLink = (product: Pick<Product, 'id' | 'name'>) =>
-  `/product/${slugifyProductName(product.name)}-i${product.id}`
+const buildProductLink = (product: Pick<Product, 'id' | 'name'>, partnerSlug?: string) =>
+  buildStorefrontProductPath(
+    product.name,
+    typeof product.id === 'number' ? product.id : undefined,
+    partnerSlug ? `/shop/${partnerSlug}` : undefined,
+  )
 
 function CampaignBannerSkeleton() {
   return (
@@ -179,6 +176,7 @@ export type ShopBuilderSectionsProps = {
   partnerHeroVideoUrl?: string
   allowedCategoryIds?: number[]
   featuredProductIds?: number[]
+  enableActivateDiscount?: boolean
 }
 
 export type ShopBuilderApiResponse = {
@@ -195,7 +193,7 @@ export function normalizeShopBuilderApiResponse(data: ShopBuilderApiResponse | n
   }
 }
 
-export default function ShopBuilderSections({ data = null, partnerSlug, partnerHeroVideoUrl, allowedCategoryIds, featuredProductIds }: ShopBuilderSectionsProps) {
+export default function ShopBuilderSections({ data = null, partnerSlug, partnerHeroVideoUrl, allowedCategoryIds, featuredProductIds, enableActivateDiscount }: ShopBuilderSectionsProps) {
   const { items, categories, products } = normalizeShopBuilderApiResponse(data)
 
   if (!data || items.length === 0) {
@@ -287,6 +285,7 @@ export default function ShopBuilderSections({ data = null, partnerSlug, partnerH
           featuredProducts={featuredProducts}
           categories={categories}
           partnerSlug={partnerSlug}
+          enableActivateDiscount={enableActivateDiscount}
         />
       ) : (
         <FeaturedSections />
@@ -362,7 +361,7 @@ function CampaignBannersSection({
     ? products.find((product) => product.id === linkProductId)
     : undefined
   const link = linkType === 'product' && linkProduct
-    ? buildProductLink(linkProduct)
+    ? buildProductLink(linkProduct, partnerSlug)
     : linkType === 'category' && linkCategory
       ? buildPartnerCategoryLink(partnerSlug, linkCategory)
       : buildPartnerShopLink(getField(section, 'video_link') || '/shop', partnerSlug)
@@ -485,11 +484,13 @@ function FeaturedCollectionSection({
   featuredProducts,
   categories,
   partnerSlug,
+  enableActivateDiscount,
 }: {
   section: WebPageItem
   featuredProducts: Product[]
   categories: Category[]
   partnerSlug?: string
+  enableActivateDiscount?: boolean
 }) {
   const sourceCategoryId = Number.parseInt(getField(section, 'source_category_id'), 10)
   const sourceCategory = Number.isFinite(sourceCategoryId) && sourceCategoryId > 0
@@ -499,6 +500,9 @@ function FeaturedCollectionSection({
     ? buildPartnerCategoryLink(partnerSlug, sourceCategory)
     : buildPartnerShopLink('/shop', partnerSlug)
   const buttonText = 'Shop Collection'
+
+  const forceRealPriceForPartner = Boolean(partnerSlug) && !Boolean(enableActivateDiscount)
+  const hideDiscountBadgeForPartner = Boolean(partnerSlug) && !Boolean(enableActivateDiscount)
 
   return (
     <motion.section
@@ -566,8 +570,8 @@ function FeaturedCollectionSection({
                       <ItemCard
                         product={product}
                         brandName={product.brand || ''}
-                        hideDiscountBadge
-                        forceRealPrice
+                        hideDiscountBadge={hideDiscountBadgeForPartner}
+                        forceRealPrice={forceRealPriceForPartner}
                       />
                     </motion.div>
                   ))}

@@ -32,7 +32,9 @@ type DraftState = {
   allowedCategoryIds: number[]
   featuredProductIds: number[]
   enableAiSupport: boolean
+  enableActivateDiscount: boolean
 }
+
 
 const emptyDraft: DraftState = {
   slug: '',
@@ -51,7 +53,9 @@ const emptyDraft: DraftState = {
   allowedCategoryIds: [],
   featuredProductIds: [],
   enableAiSupport: false,
+  enableActivateDiscount: false,
 }
+
 
 const toSlug = (value: string) =>
   value
@@ -81,8 +85,10 @@ const toDraft = (item?: WebPageItem): DraftState => {
     allowedCategoryIds: config.allowedCategoryIds,
     featuredProductIds: config.featuredProductIds,
     enableAiSupport: config.enableAiSupport,
+    enableActivateDiscount: config.enableActivateDiscount,
   }
 }
+
 
 const panelClass =
   'rounded-3xl border border-slate-200/80 bg-white/95 p-6 shadow-sm shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900/90 dark:shadow-black/20'
@@ -99,6 +105,7 @@ const softCardClass =
 export default function PartnerStorefrontStudio() {
   const [selectedId, setSelectedId] = useState<number | 'new'>('new')
   const [draft, setDraft] = useState<DraftState>(emptyDraft)
+  const [discountToggleByStorefrontId, setDiscountToggleByStorefrontId] = useState<Record<number, boolean>>({})
   const [helperCategoryId, setHelperCategoryId] = useState<number | ''>('')
   const [selectedProductsCategoryFilter, setSelectedProductsCategoryFilter] = useState<number | 'all'>('all')
   const [helperProducts, setHelperProducts] = useState<Product[]>([])
@@ -296,9 +303,10 @@ export default function PartnerStorefrontStudio() {
       image_url: nextDraft.logoUrl.trim() || undefined,
       is_active: true,
       payload: {
-        fields: {
+          fields: {
           slug,
           display_name: nextDraft.displayName.trim(),
+
           hero_title: nextDraft.heroTitle.trim(),
           hero_subtitle: nextDraft.heroSubtitle.trim(),
           logo_url: nextDraft.logoUrl.trim(),
@@ -313,6 +321,8 @@ export default function PartnerStorefrontStudio() {
           allowed_category_ids: nextDraft.allowedCategoryIds.join(','),
           featured_product_ids: nextDraft.featuredProductIds.join(','),
           enable_ai_support: nextDraft.enableAiSupport ? '1' : '0',
+          activate_discount: nextDraft.enableActivateDiscount ? '1' : '0',
+
         },
       },
     }
@@ -836,6 +846,7 @@ export default function PartnerStorefrontStudio() {
         const resolvedProducts = results
           .filter((result): result is PromiseFulfilledResult<{ id: number; product: Product }> => result.status === 'fulfilled')
           .map((result) => result.value.product)
+          .filter((product): product is Product => Boolean(product) && typeof product.id === 'number')
 
         if (resolvedProducts.length > 0) {
           setHelperProductById((current) => {
@@ -971,31 +982,122 @@ export default function PartnerStorefrontStudio() {
           <div className="mb-2 px-1">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Your Storefronts</p>
           </div>
-          <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
+
+          <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {storefronts.map(({ item, config }) => {
               const active = selectedId === item.id
+              const isDiscountEnabled = discountToggleByStorefrontId[item.id] ?? config.enableActivateDiscount
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => selectStorefront(item)}
-                  className={`w-full rounded-2xl border p-3 text-left transition ${
-                    active
-                      ? 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:border-emerald-700 dark:bg-emerald-500/10'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                <div key={item.id} className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => selectStorefront(item)}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      active
+                        ? 'border-emerald-300 bg-emerald-50/60 shadow-sm dark:border-emerald-700/70 dark:bg-emerald-900/20'
+                        : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:border-emerald-700/60 dark:hover:bg-emerald-900/15'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
+                      </div>
+                      {active ? (
+                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                          Active
+                        </span>
+                      ) : null}
                     </div>
-                    {active ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Active</span> : null}
+                    <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
+                  </button>
+
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 10V7a2 2 0 0 0-2-2h-3" />
+                          <path d="M14 3H8a2 2 0 0 0-2 2v3" />
+                          <path d="M4 14v3a2 2 0 0 0 2 2h3" />
+                          <path d="M10 21h6a2 2 0 0 0 2-2v-3" />
+                          <path d="m8 12 2 2 6-6" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Activate discount</p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Enable this option to activate the discount.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={isDiscountEnabled}
+                          onChange={() => {
+                            // Optimistic UI per storefront row.
+                            const next = !isDiscountEnabled
+                            setDiscountToggleByStorefrontId((current) => ({ ...current, [item.id]: next }))
+
+                            if (selectedId === item.id) {
+                              setDraft((current) => ({ ...current, enableActivateDiscount: next }))
+                            }
+
+                            if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(item.id)) {
+                              showErrorToast('You do not have access to edit this storefront.')
+                              setDiscountToggleByStorefrontId((current) => ({ ...current, [item.id]: isDiscountEnabled }))
+                              return
+                            }
+
+                            const baseDraft = toDraft(item)
+                            const payload = buildStorefrontPayload({
+                              ...baseDraft,
+                              enableActivateDiscount: next,
+                            })
+
+                            updateItem({ type: 'partner-storefront', id: item.id, data: payload })
+                              .unwrap()
+                              .then(() => {
+                                setDiscountToggleByStorefrontId((current) => {
+                                  const nextState = { ...current }
+                                  delete nextState[item.id]
+                                  return nextState
+                                })
+                                refetch()
+                              })
+                              .catch(() => {
+                                setDiscountToggleByStorefrontId((current) => ({ ...current, [item.id]: isDiscountEnabled }))
+                                showErrorToast('Failed to update activate discount.')
+                              })
+                          }}
+                        />
+                        <div
+                          className={`peer h-6 w-10 rounded-full border transition ${
+                            isDiscountEnabled
+                              ? '!border-emerald-500 !bg-emerald-500'
+                              : 'border-slate-200 bg-slate-300'
+                          }`}
+                        />
+                        <div
+                          className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900 ${
+                            isDiscountEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </label>
+                      <span
+                        className={`text-xs font-bold uppercase whitespace-nowrap leading-none ${
+                          isDiscountEnabled ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {isDiscountEnabled ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
-                </button>
+                </div>
               )
             })}
+
 
             {storefronts.length === 0 ? (
               <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
@@ -1024,7 +1126,7 @@ export default function PartnerStorefrontStudio() {
                 value={draft.slug}
                 onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))}
                 onBlur={(event) => setDraft((current) => ({ ...current, slug: toSlug(event.target.value) }))}
-                placeholder="testshop"
+                placeholder="Your Shop name"
                 className={inputClass}
               />
             </Field>
@@ -1032,7 +1134,7 @@ export default function PartnerStorefrontStudio() {
               <input
                 value={draft.displayName}
                 onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))}
-                placeholder="Synergy Shop"
+                placeholder="Your Shop name"
                 className={inputClass}
               />
             </Field>
@@ -1040,7 +1142,7 @@ export default function PartnerStorefrontStudio() {
               <input
                 value={draft.heroTitle}
                 onChange={(event) => setDraft((current) => ({ ...current, heroTitle: event.target.value }))}
-                placeholder="Synergy Shop Furniture Store"
+                placeholder="Shop name Shop Furniture Store"
                 className={inputClass}
               />
             </Field>
@@ -1048,7 +1150,7 @@ export default function PartnerStorefrontStudio() {
               <input
                 value={draft.notificationEmail}
                 onChange={(event) => setDraft((current) => ({ ...current, notificationEmail: event.target.value }))}
-                placeholder="ops@synergy.com"
+                placeholder="youremail@.gmail.com"
                 className={inputClass}
               />
             </Field>
@@ -1111,7 +1213,7 @@ export default function PartnerStorefrontStudio() {
                   <input
                     value={draft.referralLink}
                     onChange={(event) => setDraft((current) => ({ ...current, referralLink: event.target.value }))}
-                    placeholder="https://www.afhome.ph/ref/yourcode"
+                    placeholder="https://www.afhome.ph/ref/username "
                     className="min-w-0 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30"
                   />
                 </div>
@@ -1119,7 +1221,7 @@ export default function PartnerStorefrontStudio() {
                   <input
                     value={draft.domainLink}
                     onChange={(event) => setDraft((current) => ({ ...current, domainLink: event.target.value }))}
-                    placeholder="https://www.afhome.ph/shop/jujutsu-kaisen"
+                    placeholder="https://www.afhome.ph/shop?ref=username"
                     className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/30"
                   />
                   <div className="flex flex-wrap items-center gap-2">
@@ -1304,6 +1406,7 @@ export default function PartnerStorefrontStudio() {
               Open Preview
             </a>
           </div>
+
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -1548,4 +1651,8 @@ function Field({
     </label>
   )
 }
+
+
+
+
 

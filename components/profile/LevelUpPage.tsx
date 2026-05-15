@@ -5,9 +5,13 @@ import Navbar from '@/components/layout/Navbar';
 import TopBar from '@/components/layout/TopBar';
 import type { Category } from '@/store/api/categoriesApi';
 import type { MeResponse } from '@/store/api/userApi';
+import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { usePathname } from 'next/navigation';
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting';
+import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
 
 type MemberTier =
   | 'Home Starter'
@@ -95,6 +99,22 @@ export default function LevelUpPage({
   initialProfile = null,
   rank,
 }: LevelUpPageProps) {
+  const pathname = usePathname();
+  const partnerSlug = useMemo(() => extractPartnerSlugFromPath(pathname), [pathname]);
+  const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
+    skip: !partnerSlug,
+  });
+  const partnerStorefront = useMemo(() => {
+    if (!partnerSlug) return null;
+    const storefrontItems = partnerStorefrontData?.items ?? [];
+    const matched = storefrontItems.find((item) => getPartnerStorefrontConfig(item)?.slug === partnerSlug);
+    return getPartnerStorefrontConfig(matched);
+  }, [partnerSlug, partnerStorefrontData?.items]);
+  const partnerLogoUrl = partnerStorefront?.logoUrl
+    ? `${partnerStorefront.logoUrl}${partnerStorefront.logoUrl.includes('?') ? '&' : '?'}v=${partnerStorefront.logoVersion || '1'}`
+    : undefined;
+  const partnerHomeHref = partnerSlug ? `/shop/${partnerSlug}` : '/shop';
+  const profileBasePath = partnerSlug ? `/${partnerSlug}/profile` : '/profile';
   const effectiveRank = rank ?? initialProfile?.rank ?? 1;
   const tier = useMemo(() => rankToTier(effectiveRank), [effectiveRank]);
   const tierIndex = TIER_ORDER.indexOf(tier);
@@ -104,8 +124,16 @@ export default function LevelUpPage({
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f4f1ea] text-slate-950 dark:bg-[#080b10] dark:text-white">
-      <TopBar />
-      <Navbar initialCategories={initialCategories} />
+      {!partnerSlug && <TopBar />}
+      <Navbar
+        initialCategories={initialCategories}
+        logoSrc={partnerLogoUrl ?? '/Images/af_home_logo.png'}
+        logoAlt={partnerStorefront?.displayName || 'AF Home'}
+        logoHref={partnerHomeHref}
+        categoryOnlyNav={Boolean(partnerSlug)}
+        showGuestCartWishlist={Boolean(partnerSlug)}
+        stickToTop={Boolean(partnerSlug)}
+      />
 
       <section className="relative px-4 py-8 md:px-6 md:py-12">
         <div className="absolute left-1/2 top-20 h-72 w-72 -translate-x-1/2 rounded-full bg-amber-300/20 blur-3xl dark:bg-sky-500/10" />
@@ -241,13 +269,13 @@ export default function LevelUpPage({
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/profile"
+                href={profileBasePath}
                 className="rounded-2xl bg-slate-950 px-5 py-3 text-center text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
               >
                 Back to Profile
               </Link>
               <Link
-                href="/profile?tab=pv"
+                href={`${profileBasePath}?tab=pv`}
                 className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-center text-sm font-bold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-100 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
               >
                 View AF Voucher
@@ -257,7 +285,18 @@ export default function LevelUpPage({
         </div>
       </section>
 
-      <Footer />
+      {partnerStorefront ? (
+        <footer className="border-t border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+            <p>
+              Orders from <span className="font-semibold text-slate-800">{partnerStorefront.displayName}</span> are still processed through AF Home.
+            </p>
+            {partnerStorefront.notificationEmail ? <p>Partner notifications: {partnerStorefront.notificationEmail}</p> : null}
+          </div>
+        </footer>
+      ) : (
+        <Footer />
+      )}
     </main>
   );
 }

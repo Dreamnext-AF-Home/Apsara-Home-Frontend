@@ -24,8 +24,14 @@ type ApiWebPagesResponse = {
 type ApiProductResponse = {
   product?: Product
 }
+type ApiProductsResponse = {
+  products?: Product[]
+}
 
 const REQUEST_TIMEOUT_MS = 12000
+const MAX_FETCH_RETRIES = 2
+const STOREFRONT_REVALIDATE_SECONDS = 120
+const MAX_FEATURED_PRODUCT_DETAIL_FETCHES = 12
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
 async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
@@ -42,12 +48,41 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
   }
 }
 
+async function fetchWithRetry(input: string, init?: RequestInit): Promise<Response> {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(input, init)
+      if (response.ok || attempt === MAX_FETCH_RETRIES) {
+        return response
+      }
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_FETCH_RETRIES) {
+        throw error
+      }
+    }
+  }
+
+  throw (lastError instanceof Error ? lastError : new Error('Failed to fetch resource'))
+}
+
 const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) => {
   if (!rawImage) return '/Images/HeroSection/chairs_stools.jpg'
   if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) return rawImage
   if (rawImage.startsWith('/')) return rawImage
   if (!apiUrl) return `/${rawImage}`
   return `${apiUrl.replace(/\/$/, '')}/${rawImage.replace(/^\/+/, '')}`
+}
+
+const resolveStorefrontAssetUrl = (rawValue: string | null | undefined, apiUrl?: string) => {
+  const value = String(rawValue ?? '').trim()
+  if (!value) return ''
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) return value
+  if (value.startsWith('/Images/')) return value
+  if (!apiUrl) return value.startsWith('/') ? value : `/${value}`
+  return `${apiUrl.replace(/\/$/, '')}/${value.replace(/^\/+/, '')}`
 }
 
 const toStringArray = (value: unknown): string[] => {
@@ -111,7 +146,8 @@ export async function generateMetadata({ params }: PageProps) {
     path: `/shop/${resolved.partner}/product`,
   })
   const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
-  const partnerIcon = partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl
+  const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
+  const partnerIcon = resolveStorefrontAssetUrl(partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl, apiUrl)
 
   return {
     ...metadata,
@@ -145,16 +181,30 @@ async function getPartnerProductPageData(partnerSlug: string) {
   if (!apiUrl) return null
 
   try {
-    const [storefrontsRes, categoriesRes] = await Promise.all([
-      fetchWithTimeout(`${apiUrl}/api/web-pages/partner-storefronts`, {
+    const [storefrontsRes, categoriesRes, productsRes] = await Promise.all([
+      fetchWithRetry(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:partner-storefronts'],
+        },
       }),
-      fetchWithTimeout(`${apiUrl}/api/categories?used_only=1&per_page=300`, {
+      fetchWithRetry(`${apiUrl}/api/categories?used_only=1&per_page=300`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:categories'],
+        },
+      }),
+      fetchWithRetry(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        next: {
+          revalidate: STOREFRONT_REVALIDATE_SECONDS,
+          tags: ['storefront:products'],
+        },
       }),
     ])
 
@@ -164,7 +214,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
         products: [] as CategoryProduct[],
       }
     }
-    if (!categoriesRes.ok) {
+    if (!categoriesRes.ok || !productsRes.ok) {
       return {
         categories: [] as Category[],
         products: [] as CategoryProduct[],
@@ -173,17 +223,30 @@ async function getPartnerProductPageData(partnerSlug: string) {
 
     const storefrontsJson = (await storefrontsRes.json()) as ApiWebPagesResponse
     const categoriesJson = (await categoriesRes.json()) as ApiCategoriesResponse
+    const productsJson = (await productsRes.json()) as ApiProductsResponse
 
     const storefrontItem = (storefrontsJson.items ?? []).find((item) => {
       const config = getPartnerStorefrontConfig(item)
       return config?.slug === partnerSlug
     })
 
-    const partner = getPartnerStorefrontConfig(storefrontItem)
+    const partnerRaw = getPartnerStorefrontConfig(storefrontItem)
+    const partner = partnerRaw
+      ? {
+          ...partnerRaw,
+          logoUrl: resolveStorefrontAssetUrl(partnerRaw.logoUrl, apiUrl) || null,
+          tabLogoUrl: resolveStorefrontAssetUrl(partnerRaw.tabLogoUrl, apiUrl) || null,
+          heroVideoUrl: resolveStorefrontAssetUrl(partnerRaw.heroVideoUrl, apiUrl) || null,
+        }
+      : null
     if (!partner) return null
 
     const allowedCategories = filterPartnerCategories(categoriesJson.categories ?? [], partner)
     const selectedProductIds = partner.featuredProductIds
+    const allowedCategoryIdSet = new Set(allowedCategories.map((category) => Number(category.id)))
+    const allowedProductsFromListing = (productsJson.products ?? []).filter((product) =>
+      allowedCategoryIdSet.has(Number(product.catid)),
+    )
 
     if (allowedCategories.length === 0) {
       return {
@@ -193,22 +256,34 @@ async function getPartnerProductPageData(partnerSlug: string) {
       }
     }
 
+    // Fallback: when no featured list is configured, show all products in allowed categories.
     if (selectedProductIds.length === 0) {
       return {
         partner,
         categories: allowedCategories,
-        products: [] as CategoryProduct[],
+        products: allowedProductsFromListing.map((product) => mapProductToDisplay(product, apiUrl)),
       }
     }
+    const listingProductsById = new Map(allowedProductsFromListing.map((product) => [product.id, product] as const))
+    const selectedProductsFromListing = selectedProductIds
+      .map((productId) => listingProductsById.get(productId) ?? null)
+      .filter((product): product is Product => Boolean(product))
 
-    const allowedCategoryIdSet = new Set(allowedCategories.map((category) => Number(category.id)))
+    const missingSelectedIds = selectedProductIds
+      .filter((productId, index, arr) => arr.indexOf(productId) === index)
+      .filter((productId) => !listingProductsById.has(productId))
+      .slice(0, MAX_FEATURED_PRODUCT_DETAIL_FETCHES)
+
     const productEntries = await Promise.all(
-      selectedProductIds.map(async (productId) => {
+      missingSelectedIds.map(async (productId) => {
         try {
-          const response = await fetchWithTimeout(`${apiUrl}/api/products/${productId}`, {
+          const response = await fetchWithRetry(`${apiUrl}/api/products/${productId}`, {
             method: 'GET',
             headers: { Accept: 'application/json' },
-            cache: 'no-store',
+            next: {
+              revalidate: STOREFRONT_REVALIDATE_SECONDS,
+              tags: ['storefront:products'],
+            },
           })
           if (!response.ok) return null
           const json = (await response.json()) as ApiProductResponse
@@ -222,12 +297,17 @@ async function getPartnerProductPageData(partnerSlug: string) {
       }),
     )
 
-    const selectedProducts = productEntries.filter((item): item is Product => Boolean(item))
+    const selectedProducts = [
+      ...selectedProductsFromListing,
+      ...productEntries.filter((item): item is Product => Boolean(item)),
+    ]
+
+    const productsToDisplay = selectedProducts.length > 0 ? selectedProducts : allowedProductsFromListing
 
     return {
       partner,
       categories: allowedCategories,
-      products: selectedProducts.map((product) => mapProductToDisplay(product, apiUrl)),
+      products: productsToDisplay.map((product) => mapProductToDisplay(product, apiUrl)),
     }
   } catch {
     return {
@@ -257,6 +337,7 @@ export default async function PartnerProductPage({ params }: PageProps) {
         displayName: payload.partner?.displayName || resolved.partner,
         productHref: `/shop/${resolved.partner}/product`,
         heroVideoUrl: payload.partner?.heroVideoUrl || undefined,
+        enableActivateDiscount: Boolean(payload.partner?.enableActivateDiscount),
       }}
     />
   )

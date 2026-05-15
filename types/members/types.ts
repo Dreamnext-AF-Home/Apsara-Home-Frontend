@@ -14,6 +14,7 @@ export interface Member {
   email: string;
   referredByName?: string;
   referredByUsername?: string;
+  referredByAvatar?: string;
   contactNumber?: string;
   avatar?: string;
   verificationStatus?: 'verified' | 'pending_review' | 'on_hold' | 'not_verified' | 'blocked';

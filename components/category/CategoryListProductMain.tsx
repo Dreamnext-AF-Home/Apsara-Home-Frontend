@@ -124,6 +124,7 @@ interface CategoryListProductMainProps {
         displayName?: string;
         productHref?: string;
         heroVideoUrl?: string;
+        enableActivateDiscount?: boolean;
     };
     isRoomPage?: boolean;
     isLoading?: boolean;
@@ -164,6 +165,9 @@ export default function CategoryListProductMain({
     const partnerProductHref = partnerBranding?.productHref || (partnerSlug ? `/shop/${partnerSlug}/product` : '/shop');
     const partnerLogoSrc = partnerBranding?.logoSrc || '/Images/af_home_logo.png';
     const heroVideoSrc = partnerBranding?.heroVideoUrl || '/loginpageVideo/afhome.mp4';
+    const partnerDiscountEnabled = Boolean(partnerBranding?.enableActivateDiscount);
+    const forceRealPriceForPartner = isPartnerStorefrontRoute && !partnerDiscountEnabled;
+    const hideDiscountBadgeForPartner = isPartnerStorefrontRoute && !partnerDiscountEnabled;
     const meta = categoryMeta[slug];
     const staticProducts = categoryProducts[slug];
     const hasDynamicProducts = Array.isArray(initialProducts) && initialProducts.length > 0;
@@ -209,8 +213,9 @@ export default function CategoryListProductMain({
                         logoSrc={partnerLogoSrc}
                         logoAlt={isPartnerStorefrontRoute ? partnerName : 'AF Home'}
                         logoHref={isPartnerStorefrontRoute ? partnerProductHref : '/shop'}
-                        hideSignIn={isPartnerStorefrontRoute}
-                        hideNavLinks={isPartnerStorefrontRoute}
+                        hideSignIn={false}
+                        hideNavLinks={false}
+                        categoryOnlyNav={isPartnerStorefrontRoute}
                         stickToTop={isPartnerStorefrontRoute}
                         showGuestCartWishlist={isPartnerStorefrontRoute}
                     />
@@ -266,8 +271,9 @@ export default function CategoryListProductMain({
                         logoSrc={partnerLogoSrc}
                         logoAlt={isPartnerStorefrontRoute ? partnerName : 'AF Home'}
                         logoHref={isPartnerStorefrontRoute ? partnerProductHref : '/shop'}
-                        hideSignIn={isPartnerStorefrontRoute}
-                        hideNavLinks={isPartnerStorefrontRoute}
+                        hideSignIn={false}
+                        hideNavLinks={false}
+                        categoryOnlyNav={isPartnerStorefrontRoute}
                         stickToTop={isPartnerStorefrontRoute}
                         showGuestCartWishlist={isPartnerStorefrontRoute}
                     />
@@ -492,8 +498,9 @@ export default function CategoryListProductMain({
                 logoSrc={partnerLogoSrc}
                 logoAlt={isPartnerStorefrontRoute ? partnerName : 'AF Home'}
                 logoHref={isPartnerStorefrontRoute ? partnerProductHref : '/shop'}
-                hideSignIn={isPartnerStorefrontRoute}
-                hideNavLinks={isPartnerStorefrontRoute}
+                hideSignIn={false}
+                hideNavLinks={false}
+                categoryOnlyNav={isPartnerStorefrontRoute}
                 stickToTop={isPartnerStorefrontRoute}
                 showGuestCartWishlist={isPartnerStorefrontRoute}
             />
@@ -601,8 +608,8 @@ export default function CategoryListProductMain({
                                                     key={product.id}
                                                     product={product}
                                                     brandName={product.brand || ''}
-                                                    hideDiscountBadge={isPartnerStorefrontRoute}
-                                                    forceRealPrice={isPartnerStorefrontRoute}
+                                                    hideDiscountBadge={hideDiscountBadgeForPartner}
+                                                    forceRealPrice={forceRealPriceForPartner}
                                                     allowGuestAddToCart={isPartnerStorefrontRoute}
                                                     allowGuestWishlist={isPartnerStorefrontRoute}
                                                 />
@@ -611,8 +618,8 @@ export default function CategoryListProductMain({
                                                     key={product.id}
                                                     product={product}
                                                     onShareClick={(p) => { setShareProduct(p); setShareModalOpen(true); }}
-                                                    hideDiscountBadge={isPartnerStorefrontRoute}
-                                                    forceRealPrice={isPartnerStorefrontRoute}
+                                                    hideDiscountBadge={hideDiscountBadgeForPartner}
+                                                    forceRealPrice={forceRealPriceForPartner}
                                                 />
                                             )}
                                         </motion.div>
@@ -707,7 +714,7 @@ export default function CategoryListProductMain({
                 }}
                 brandName={shareProduct.brand || ''}
                 shareUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}${buildStorefrontProductPath(shareProduct.name, shareProduct.id, pathname)}`}
-                forceRealPrice={isPartnerStorefrontRoute}
+                forceRealPrice={forceRealPriceForPartner}
             />
         )}
         </>

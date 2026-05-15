@@ -5,12 +5,15 @@ import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MemberTier } from '@/types/members/types';
 import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/landing-page/Footer';
 import { showErrorToast, showSuccessToast } from '@/libs/toast';
+import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting';
+import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi';
+import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
 
 const TIER_BADGE_IMAGE: Record<MemberTier, string> = {
   'Home Starter': '/Badge/homeStarter.png',
@@ -487,9 +490,26 @@ const ReferralShareCard = ({
 };
 
 const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfilePageProps) => {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status, update: updateSession } = useSession();
+  const partnerSlug = useMemo(() => extractPartnerSlugFromPath(pathname), [pathname]);
+  const profileBasePath = partnerSlug ? `/${partnerSlug}/profile` : '/profile';
+  const levelUpBasePath = partnerSlug ? `/${partnerSlug}/profile/level-up` : '/profile/level-up';
+  const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
+    skip: !partnerSlug,
+  });
+  const partnerStorefront = useMemo(() => {
+    if (!partnerSlug) return null;
+    const storefrontItems = partnerStorefrontData?.items ?? [];
+    const matched = storefrontItems.find((item) => getPartnerStorefrontConfig(item)?.slug === partnerSlug);
+    return getPartnerStorefrontConfig(matched);
+  }, [partnerSlug, partnerStorefrontData?.items]);
+  const partnerLogoUrl = partnerStorefront?.logoUrl
+    ? `${partnerStorefront.logoUrl}${partnerStorefront.logoUrl.includes('?') ? '&' : '?'}v=${partnerStorefront.logoVersion || '1'}`
+    : undefined;
+  const partnerHomeHref = partnerSlug ? `/shop/${partnerSlug}` : '/shop';
   const role = String(session?.user?.role ?? '').toLowerCase();
   const accessToken = String((session?.user as { accessToken?: string } | undefined)?.accessToken ?? '');
   const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim();
@@ -625,8 +645,33 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const completeInformationRef = useRef<HTMLDivElement | null>(null);
   const phAddress = usePhAddress({ source: 'auto' });
   const profileData = data ?? initialProfile;
-  const effectiveAvatarUrl = avatarPreviewUrl || profileData?.avatar_url || '';
-  const effectiveAvatarViewUrl = avatarOriginalPreviewUrl || profileData?.avatar_original_url || effectiveAvatarUrl;
+  const normalizeAvatarUrl = useCallback((value?: string | null) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const unquoted = raw.replace(/^['"]|['"]$/g, '');
+    const unescaped = unquoted
+      .replace(/\\\//g, '/')
+      .replace(/&amp;/g, '&')
+      .trim();
+
+    if (!unescaped) return '';
+
+    if (unescaped.startsWith('//')) {
+      return `https:${unescaped}`;
+    }
+
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && unescaped.startsWith('http://')) {
+      return `https://${unescaped.slice('http://'.length)}`;
+    }
+
+    return unescaped;
+  }, []);
+  const sessionAvatarUrl = normalizeAvatarUrl((session?.user as { image?: string | null } | undefined)?.image || '');
+  const snapshotAvatarUrl = normalizeAvatarUrl(accountSnapshot?.profile?.avatar_url || '');
+  const profileAvatarUrl = normalizeAvatarUrl(profileData?.avatar_url || '');
+  const profileAvatarOriginalUrl = normalizeAvatarUrl(profileData?.avatar_original_url || '');
+  const effectiveAvatarUrl = normalizeAvatarUrl(avatarPreviewUrl || profileAvatarUrl || snapshotAvatarUrl || sessionAvatarUrl || '');
+  const effectiveAvatarViewUrl = normalizeAvatarUrl(avatarOriginalPreviewUrl || profileAvatarOriginalUrl || effectiveAvatarUrl);
   const effectiveRank = profileData?.rank ?? accountSnapshot?.loyalty?.rank ?? 0;
   const loyaltyTier: MemberTier = rankToTier(effectiveRank);
   const referralSummary = useMemo(() => {
@@ -718,8 +763,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     if (rankParam) {
       nextParams.set('rank', rankParam);
     }
-    router.replace(`/profile/level-up${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
-  }, [celebrateLevelUp, router, searchParams]);
+    router.replace(`${levelUpBasePath}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }, [celebrateLevelUp, levelUpBasePath, router, searchParams]);
 
   useEffect(() => {
     if (!profileData && !session) return;
@@ -882,11 +927,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const runtimeOrigin = (typeof window !== 'undefined' ? window.location.origin : '').trim().replace(/\/+$/, '');
   const siteOrigin = configuredAppUrl || runtimeOrigin || 'http://localhost:3000';
   const referralCode = ((profileData?.username ?? form.username) || '').trim();
+  const encodedReferralCode = encodeURIComponent(referralCode);
   const memberReferralLink = referralCode
-    ? `${siteOrigin}/ref/${encodeURIComponent(referralCode)}`
+    ? (partnerSlug
+      ? `${siteOrigin}/${partnerSlug}/login?mode=signup&ref=${encodedReferralCode}`
+      : `${siteOrigin}/ref/${encodedReferralCode}`)
     : '';
   const shoppingReferralLink = referralCode
-    ? `${siteOrigin}/shop?ref=${encodeURIComponent(referralCode)}`
+    ? (partnerSlug
+      ? `${siteOrigin}/shop/${partnerSlug}?ref=${encodedReferralCode}`
+      : `${siteOrigin}/shop?ref=${encodedReferralCode}`)
     : '';
   const memberReferralQrUrl = useMemo(
     () => (memberReferralLink
@@ -1597,7 +1647,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     e.target.value = '';
   };
 
-  const handleCropConfirm = async (blob: Blob) => {
+  const handleCropConfirm = useCallback(async (blob: Blob) => {
     setCropSrc(null);
     setProfileMsg(null);
     const localPreviewUrl = URL.createObjectURL(blob);
@@ -1609,6 +1659,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     try {
       const formData = new FormData();
       formData.append('file', blob, 'avatar.jpg');
+      if (partnerSlug) {
+        formData.append('require_cloudinary', '1');
+      }
       if (avatarOriginalPreviewUrl?.startsWith('blob:')) {
         const originalResponse = await fetch(avatarOriginalPreviewUrl);
         const originalBlob = await originalResponse.blob();
@@ -1617,11 +1670,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       const uploadResult = await uploadAvatar(formData).unwrap();
       setAvatarPreviewUrl((current) => {
         if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
-        return uploadResult.avatar_url || null;
+        return normalizeAvatarUrl(uploadResult.avatar_url || null) || null;
       });
       setAvatarOriginalPreviewUrl((current) => {
         if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
-        return uploadResult.avatar_original_url || uploadResult.avatar_url || null;
+        return normalizeAvatarUrl(uploadResult.avatar_original_url || uploadResult.avatar_url || null) || null;
       });
       await Promise.allSettled([refetchMe(), refetchAccountSnapshot(), refetchReferralTree()]);
       profileDraftDirtyRef.current = false;
@@ -1641,7 +1694,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } finally {
       setIsUploadingAvatar(false);
     }
-  };
+  }, [avatarOriginalPreviewUrl, normalizeAvatarUrl, refetchAccountSnapshot, refetchMe, refetchReferralTree, uploadAvatar]);
 
   const handleCropCancel = () => {
     if (cropSrc) URL.revokeObjectURL(cropSrc);
@@ -1761,8 +1814,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   };
 
   const accountStats = [
-    { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push('/orders') },
-    { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push('/wishlist') },
+    { label: 'Orders', value: String(accountSnapshot?.orders?.total ?? 0), Icon: Icon.Package, onClick: () => router.push(partnerSlug ? `/${partnerSlug}/orders` : '/orders') },
+    { label: 'Wishlist', value: String(accountSnapshot?.wishlist?.total_items ?? 0), Icon: Icon.Heart, onClick: () => router.push(partnerSlug ? `/${partnerSlug}/wishlist` : '/wishlist') },
     { label: 'Reviews', value: String(accountSnapshot?.reviews?.total ?? 0), Icon: Icon.Activity, onClick: () => {} },
     { label: 'Loyalty', value: loyaltyTier, Icon: Icon.Shield, onClick: () => {} },
   ];
@@ -1921,15 +1974,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } else {
       nextParams.delete('focus');
     }
-    router.replace(`/profile?${nextParams.toString()}${options?.focus ? '#verification-form' : ''}`, { scroll: false });
+    router.replace(`${profileBasePath}?${nextParams.toString()}${options?.focus ? '#verification-form' : ''}`, { scroll: false });
   };
 
   const dismissLevelUpCelebration = useCallback(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete('celebrate');
     nextParams.delete('rank');
-    router.replace(`/profile${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
-  }, [router, searchParams]);
+    router.replace(`${profileBasePath}${nextParams.toString() ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+  }, [profileBasePath, router, searchParams]);
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -2201,8 +2254,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   return (
     <>
-      <TopBar />
-      <Navbar initialCategories={initialCategories} />
+      {!partnerSlug && <TopBar />}
+      <Navbar
+        initialCategories={initialCategories}
+        logoSrc={partnerLogoUrl ?? '/Images/af_home_logo.png'}
+        logoAlt={partnerStorefront?.displayName || 'AF Home'}
+        logoHref={partnerHomeHref}
+        categoryOnlyNav={Boolean(partnerSlug)}
+        showGuestCartWishlist={Boolean(partnerSlug)}
+        stickToTop={Boolean(partnerSlug)}
+      />
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2768,9 +2829,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               </div>
               <div className="space-y-1.5">
                 {[
-                  { label: 'View My Orders', Icon: Icon.Bag, href: '/orders', color: 'group-hover:text-violet-500' },
-                  { label: 'Saved Wishlist', Icon: Icon.Heart, href: '/wishlist', color: 'group-hover:text-rose-500' },
-                  { label: 'Manage Addresses', Icon: Icon.MapPin, href: '#', color: 'group-hover:text-emerald-500' },
+                  { label: 'View My Orders', Icon: Icon.Bag, href: partnerSlug ? `/${partnerSlug}/orders` : '/orders', color: 'group-hover:text-violet-500' },
+                  { label: 'Saved Wishlist', Icon: Icon.Heart, href: partnerSlug ? `/${partnerSlug}/wishlist` : '/wishlist', color: 'group-hover:text-rose-500' },
+                  { label: 'Manage Addresses', Icon: Icon.MapPin, href: partnerSlug ? `/${partnerSlug}/profile` : '/profile', color: 'group-hover:text-emerald-500' },
                 ].map((item) => (
                   <button
                     key={item.label}
@@ -4717,7 +4778,18 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         )}
       </AnimatePresence>
     </motion.section>
-    <Footer />
+    {partnerStorefront ? (
+      <footer className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <p>
+            Orders from <span className="font-semibold text-slate-800">{partnerStorefront.displayName}</span> are still processed through AF Home.
+          </p>
+          {partnerStorefront.notificationEmail ? <p>Partner notifications: {partnerStorefront.notificationEmail}</p> : null}
+        </div>
+      </footer>
+    ) : (
+      <Footer />
+    )}
     </>
   );
 };

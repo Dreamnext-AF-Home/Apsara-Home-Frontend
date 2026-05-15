@@ -251,9 +251,17 @@ interface LoginFormProps {
     onSwitchToSignUp: () => void;
     onRequirePasswordChange: () => void;
     turnstileSiteKey?: string;
+    accountLabel?: string;
+    defaultCallbackPath?: string;
 }
 
-const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey = '' }: LoginFormProps) => {
+const LoginForm = ({
+    onSwitchToSignUp,
+    onRequirePasswordChange,
+    turnstileSiteKey = '',
+    accountLabel = 'AF Home',
+    defaultCallbackPath = '/shop',
+}: LoginFormProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { update: updateSession } = useSession();
@@ -274,7 +282,9 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
     })
 
     const blockedFromRedirect = searchParams.get('blocked') === '1'
-    const callbackPath = resolveCallbackPath(searchParams.get('callback') || searchParams.get('callbackUrl'))
+    const callbackPath = resolveCallbackPath(
+        searchParams.get('callback') || searchParams.get('callbackUrl') || defaultCallbackPath,
+    )
     const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim()
     const autoLoginInFlightRef = useRef(false)
     const passkeySupported = typeof window !== 'undefined' && !!window.PublicKeyCredential && !!navigator.credentials
@@ -447,7 +457,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             showErrorToast(message)
             resetTurnstile()
         }
-    }, [callbackPath, form.email, form.password, form.rememberMe, mfaChallengeToken, onRequirePasswordChange, router, turnstileToken, updateSession])
+    }, [callbackPath, defaultCallbackPath, form.email, form.password, form.rememberMe, mfaChallengeToken, onRequirePasswordChange, router, turnstileToken, updateSession])
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -727,7 +737,7 @@ const LoginForm = ({ onSwitchToSignUp, onRequirePasswordChange, turnstileSiteKey
             transition={{ duration: 0.25 }}
         >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back!</h2>
-            <p className="text-gray-500 dark:text-white/70 text-sm mb-7">Sign in to your AF Home account</p>
+            <p className="text-gray-500 dark:text-white/70 text-sm mb-7">Sign in to your {accountLabel} account</p>
 
             <form className="space-y-4" onSubmit={handleSignIn}>
                 {(error || lockoutSeconds > 0) && (

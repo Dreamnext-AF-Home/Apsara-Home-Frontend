@@ -14,6 +14,8 @@ interface ApiProductsResponse {
   products?: Product[]
   data?: Product[]
 }
+const MAX_FETCH_RETRIES = 2
+const PRODUCT_PAGE_REVALIDATE_SECONDS = 60
 
 export interface ProductPageData {
   product: CategoryProduct
@@ -73,6 +75,47 @@ const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) =
   if (rawImage.startsWith('/')) return rawImage
   if (!apiUrl) return `/${rawImage}`
   return `${apiUrl.replace(/\/$/, '')}/${rawImage.replace(/^\/+/, '')}`
+}
+
+const fetchWithRetry = async (input: string, init?: RequestInit): Promise<Response> => {
+  let lastResponse: Response | null = null
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt <= MAX_FETCH_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(input, init)
+      if (response.ok) {
+        return response
+      }
+
+      // Do not hammer the API on client errors; return immediately.
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        return response
+      }
+
+      if (response.status === 429) {
+        const retryAfterRaw = response.headers.get('retry-after')
+        const retryAfterSeconds = retryAfterRaw ? Number.parseInt(retryAfterRaw, 10) : NaN
+        const delayMs = Number.isFinite(retryAfterSeconds)
+          ? Math.max(250, Math.min(2000, retryAfterSeconds * 1000))
+          : 700 * (attempt + 1)
+        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      }
+
+      if (attempt === MAX_FETCH_RETRIES) {
+        return response
+      }
+      lastResponse = response
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_FETCH_RETRIES) {
+        throw error
+      }
+    }
+  }
+
+  if (lastResponse) return lastResponse
+  throw (lastError instanceof Error ? lastError : new Error('Failed to fetch'))
 }
 
 const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
@@ -286,32 +329,70 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
   const { slugOnly, id } = parseSlugAndId(slug)
 
   try {
-    const [categoriesRes, productRes, productsRes] = await Promise.all([
-      fetch(`${apiUrl}/api/categories?page=1&per_page=100`, {
+    const [categoriesRes, productRes, productsRes] = await Promise.allSettled([
+      fetchWithRetry(`${apiUrl}/api/categories?page=1&per_page=100`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:categories'] },
       }),
-      fetch(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
+      fetchWithRetry(id ? `${apiUrl}/api/products/${id}` : `${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
       }),
-      fetch(`${apiUrl}/api/products?page=1&per_page=100&status=1`, {
+      fetchWithRetry(`${apiUrl}/api/products?page=1&per_page=300&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
       }),
     ])
 
-    if (!categoriesRes.ok || !productRes.ok || !productsRes.ok) return null
+    const categoriesResponse = categoriesRes.status === 'fulfilled' ? categoriesRes.value : null
+    const productResponse = productRes.status === 'fulfilled' ? productRes.value : null
+    const productsResponse = productsRes.status === 'fulfilled' ? productsRes.value : null
 
-    const categories = extractCategories(await categoriesRes.json())
-    const productJson = (await productRes.json()) as { product?: Product }
-    const target = productJson.product ? toLooseRecord(productJson.product) : null
+    const categories =
+      categoriesResponse && categoriesResponse.ok ? extractCategories(await categoriesResponse.json()) : []
+    const products =
+      productsResponse && productsResponse.ok
+        ? extractProducts(await productsResponse.json()).map((p) => toLooseRecord(p))
+        : []
+
+    let target: LooseRecord | null = null
+    if (productResponse && productResponse.ok) {
+      const productJson = (await productResponse.json()) as { product?: Product }
+      target = productJson.product ? toLooseRecord(productJson.product) : null
+    }
+
+    if (!target && id) {
+      try {
+        const slugResponse = await fetchWithRetry(`${apiUrl}/api/products/slug/${encodeURIComponent(slugOnly)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
+        })
+        if (slugResponse.ok) {
+          const slugJson = (await slugResponse.json()) as { product?: Product }
+          target = slugJson.product ? toLooseRecord(slugJson.product) : null
+        }
+      } catch {
+        // Keep other fallback paths below.
+      }
+    }
+
+    if (!target && id && products.length > 0) {
+      target =
+        products.find((row) => toNumber(row.id ?? row.pd_id ?? 0) === id) ??
+        null
+    }
+
+    if (!target && products.length > 0) {
+      target =
+        products.find((row) => slugify(String(row.name ?? row.pd_name ?? '')) === slugOnly) ??
+        null
+    }
+
     if (!target) return null
-
-    const products = extractProducts(await productsRes.json()).map((p) => toLooseRecord(p))
 
     const categorySlug = getCategorySlugFromProduct(target, categories)
     const matchedCategory = categories.find((c) => normalizeCategorySlug(c.url, c.name) === categorySlug)
@@ -339,7 +420,7 @@ export async function getProductPageData(slug: string): Promise<ProductPageData 
         const reviewsRes = await fetch(`${apiUrl}/api/products/${reviewId}/reviews`, {
           method: 'GET',
           headers: { Accept: 'application/json' },
-          cache: 'no-store',
+          next: { revalidate: PRODUCT_PAGE_REVALIDATE_SECONDS, tags: ['storefront:products'] },
         })
         if (reviewsRes.ok) {
           const reviewsJson = (await reviewsRes.json()) as {

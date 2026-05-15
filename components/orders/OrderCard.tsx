@@ -7,7 +7,7 @@ import Link from "next/link";
 import { TRACK_STEPS } from "@/types/Data";
 import formatDate from "@/helpers/FormatDate";
 import formatPrice from "@/helpers/FormatPrice";
-import { useConfirmOrderMutation } from "@/store/api/paymentApi";
+import { useConfirmOrderMutation, useRefundOrderMutation } from "@/store/api/paymentApi";
 
 type OrderStatus = 'pending' | 'processing' | 'packed' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'refunded';
 
@@ -36,6 +36,10 @@ type Order = {
     tracking_no?: string | null;
     shipment_status?: string | null;
     shipped_at?: string | null;
+    refund_reason?: string | null;
+    refund_image_urls?: string[];
+    refund_video_urls?: string[];
+    refund_requested_at?: string | null;
     created_at: string;
     estimated_delivery?: string | null;
 };
@@ -94,13 +98,20 @@ interface OrderCardProps {
 const OrderCard = ({ order }: OrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
   const [reviewImages, setReviewImages] = useState<File[]>([]);
   const [reviewVideos, setReviewVideos] = useState<File[]>([]);
   const [isImageDragActive, setIsImageDragActive] = useState(false);
   const [isVideoDragActive, setIsVideoDragActive] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundImages, setRefundImages] = useState<File[]>([]);
+  const [refundVideos, setRefundVideos] = useState<File[]>([]);
+  const [isRefundImageDragActive, setIsRefundImageDragActive] = useState(false);
+  const [isRefundVideoDragActive, setIsRefundVideoDragActive] = useState(false);
   const [confirmOrder, { isLoading: isConfirming }] = useConfirmOrderMutation();
+  const [refundOrder, { isLoading: isRefunding }] = useRefundOrderMutation();
   const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
   const previewItems = order.items.slice(0, 3);
   const extraCount = order.items.length - 3;
@@ -108,6 +119,8 @@ const OrderCard = ({ order }: OrderCardProps) => {
   const hasShipmentInfo = Boolean(order.courier || order.tracking_no || order.shipment_status);
   const isShipmentCancelled = order.shipment_status === 'cancelled';
   const canConfirm = order.status === 'out_for_delivery';
+  const hasPendingRefundRequest = Boolean(order.refund_requested_at || order.refund_reason);
+  const isRefunded = order.status === 'refunded';
 
   const mergeUniqueFiles = (existing: File[], incoming: File[]) => {
     const merged = [...existing];
@@ -130,7 +143,11 @@ const OrderCard = ({ order }: OrderCardProps) => {
   return (
     <motion.div
       layout
-      className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 overflow-hidden hover:border-sky-200 dark:hover:border-sky-700 transition-all duration-200"
+      className={`rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-gray-800 overflow-hidden transition-all duration-200 ${
+        isRefunded
+          ? 'opacity-90 saturate-75'
+          : 'hover:border-sky-200 dark:hover:border-sky-700'
+      }`}
     >
       {/* Card header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-slate-700">
@@ -222,6 +239,9 @@ const OrderCard = ({ order }: OrderCardProps) => {
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{order.items.reduce((s, i) => s + i.quantity, 0)} item(s)</p>
           </div>
           <div className="text-right shrink-0">
+            {isRefunded && (
+              <p className="mb-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">Pending request</p>
+            )}
             <p className="text-sm font-bold text-gray-900 dark:text-white">{formatPrice(order.total)}</p>
             {order.shipping_fee === 0
               ? <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">Free shipping</p>
@@ -237,14 +257,28 @@ const OrderCard = ({ order }: OrderCardProps) => {
               <Icon.RefreshCw className="h-3.5 w-3.5" /> Reorder
             </button>
           )}
-          {canConfirm && (
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 dark:bg-emerald-600 hover:bg-emerald-600 dark:hover:bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white transition-colors"
-            >
-              <Icon.Check className="h-3.5 w-3.5" /> Confirm Order
-            </button>
+          {canConfirm && !hasPendingRefundRequest && (
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 dark:bg-emerald-600 hover:bg-emerald-600 dark:hover:bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white transition-colors"
+              >
+                <Icon.Check className="h-3.5 w-3.5" /> Confirm Order
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefundOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-400 dark:hover:bg-rose-900/40"
+              >
+                <Icon.RefreshCw className="h-3.5 w-3.5" /> Refund
+              </button>
+            </>
+          )}
+          {canConfirm && hasPendingRefundRequest && (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+              Refund request pending
+            </span>
           )}
           <button
             type="button"
@@ -318,13 +352,19 @@ const OrderCard = ({ order }: OrderCardProps) => {
                       Estimated delivery: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatDate(order.estimated_delivery)}</span>
                     </p>
                   )}
-                  {order.status === 'out_for_delivery' && (
+                  {order.status === 'out_for_delivery' && !hasPendingRefundRequest && (
                     <button
                       type="button"
+                      onClick={() => setConfirmOpen(true)}
                       className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-500 dark:bg-emerald-600 hover:bg-emerald-600 dark:hover:bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white transition-colors"
                     >
                       Confirm Order
                     </button>
+                  )}
+                  {order.status === 'out_for_delivery' && hasPendingRefundRequest && (
+                    <p className="mt-3 inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                      Pending refund request
+                    </p>
                   )}
                 </div>
               )}
@@ -683,6 +723,130 @@ const OrderCard = ({ order }: OrderCardProps) => {
                 className="rounded-full bg-sky-500 dark:bg-sky-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-600 dark:hover:bg-sky-700 disabled:opacity-60"
               >
                 {isConfirming ? 'Submitting...' : 'Order Completed'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {refundOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="absolute inset-0" onClick={() => setRefundOpen(false)} />
+          <div className="relative z-[71] w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-rose-600 dark:text-rose-400">Refund Request</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900 dark:text-white">Request a refund</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Tell us the reason and attach proof images/videos.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRefundOpen(false)}
+                className="rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-gray-400"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-slate-600 dark:text-gray-400">Reason</p>
+              <textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                rows={4}
+                placeholder="Explain why you are requesting a refund..."
+                className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-slate-700 dark:text-gray-100"
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-600 dark:text-gray-400">Images (optional)</p>
+                <label
+                  className={`mt-2 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed px-3 py-4 text-center text-xs transition ${
+                    isRefundImageDragActive
+                      ? 'border-rose-400 bg-rose-50 text-rose-700 dark:border-rose-600 dark:bg-rose-900/20 dark:text-rose-300'
+                      : 'border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setIsRefundImageDragActive(true); }}
+                  onDragLeave={() => setIsRefundImageDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsRefundImageDragActive(false);
+                    const dropped = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('image/'));
+                    if (dropped.length > 0) setRefundImages((current) => mergeUniqueFiles(current, dropped));
+                  }}
+                >
+                  Drag/drop images or click
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(e) => setRefundImages((current) => mergeUniqueFiles(current, Array.from(e.target.files ?? [])))}
+                    className="hidden"
+                  />
+                </label>
+                {refundImages.length > 0 ? <p className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">{refundImages.length} image(s) selected</p> : null}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-600 dark:text-gray-400">Videos (optional)</p>
+                <label
+                  className={`mt-2 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed px-3 py-4 text-center text-xs transition ${
+                    isRefundVideoDragActive
+                      ? 'border-rose-400 bg-rose-50 text-rose-700 dark:border-rose-600 dark:bg-rose-900/20 dark:text-rose-300'
+                      : 'border-slate-300 bg-white text-slate-600 dark:border-slate-600 dark:bg-gray-700 dark:text-gray-200'
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setIsRefundVideoDragActive(true); }}
+                  onDragLeave={() => setIsRefundVideoDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsRefundVideoDragActive(false);
+                    const dropped = Array.from(e.dataTransfer.files).filter((file) => file.type.startsWith('video/'));
+                    if (dropped.length > 0) setRefundVideos((current) => mergeUniqueFiles(current, dropped));
+                  }}
+                >
+                  Drag/drop videos or click
+                  <input
+                    type="file"
+                    multiple
+                    accept="video/mp4,video/quicktime,video/webm"
+                    onChange={(e) => setRefundVideos((current) => mergeUniqueFiles(current, Array.from(e.target.files ?? [])))}
+                    className="hidden"
+                  />
+                </label>
+                {refundVideos.length > 0 ? <p className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">{refundVideos.length} video(s) selected</p> : null}
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setRefundOpen(false)}
+                className="rounded-full border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={refundReason.trim().length < 3 || isRefunding}
+                onClick={async () => {
+                  try {
+                    await refundOrder({
+                      id: order.id,
+                      reason: refundReason.trim(),
+                      refundImages,
+                      refundVideos,
+                    }).unwrap();
+                    setRefundOpen(false);
+                    setRefundReason('');
+                    setRefundImages([]);
+                    setRefundVideos([]);
+                  } catch {
+                    return;
+                  }
+                }}
+                className="rounded-full bg-rose-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-rose-600 disabled:opacity-60"
+              >
+                {isRefunding ? 'Submitting...' : 'Submit Refund'}
               </button>
             </div>
           </div>

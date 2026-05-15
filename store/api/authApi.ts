@@ -12,6 +12,7 @@ interface RegisterPayload {
   username: string
   referred_by: string
   cf_turnstile_response?: string
+  partner_slug?: string
 }
 
 interface RegisterResponse {
@@ -24,6 +25,7 @@ interface RegisterResponse {
 interface VerifyRegisterOtpPayload {
   verification_token: string
   otp: string
+  debug_trace_id?: string
 }
 
 interface VerifyRegisterOtpResponse {

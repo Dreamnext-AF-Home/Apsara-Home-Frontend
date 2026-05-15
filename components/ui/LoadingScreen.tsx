@@ -1,12 +1,12 @@
-'use client'
 
-import Image from 'next/image'
+'use client'
 
 type LoadingScreenProps = {
   logoSrc?: string | null
   logoAlt?: string
   brandText?: string
   tagline?: string
+  useDefaultLogoFallback?: boolean
 }
 
 export default function LoadingScreen({
@@ -14,10 +14,12 @@ export default function LoadingScreen({
   logoAlt = 'AF Home Logo',
   brandText = 'AF HOME',
   tagline = 'Your Trusted Home Partner',
+  useDefaultLogoFallback = true,
 }: LoadingScreenProps) {
-  const resolvedLogoSrc = logoSrc === null ? '' : (logoSrc ?? '/Images/af_home_logo.png')
+  const resolvedLogoSrc = logoSrc || (useDefaultLogoFallback ? '/Images/af_home_logo.png' : '')
   const [firstWord, ...rest] = brandText.trim().split(/\s+/)
   const highlightWord = rest.join(' ')
+
 
   return (
     <div
@@ -41,21 +43,26 @@ export default function LoadingScreen({
 
         <span className="absolute h-32 w-32 rounded-full bg-[#2c5f4f]/10 blur-md dark:bg-sky-400/15" />
 
-        <div className="relative z-10 animate-logo-enter">
-          {resolvedLogoSrc ? (
-            <Image
-              src={resolvedLogoSrc}
-              alt={logoAlt}
-              width={110}
-              height={110}
-              priority
-              className="object-contain drop-shadow-xl mix-blend-multiply dark:mix-blend-normal dark:drop-shadow-[0_0_32px_rgba(56,189,248,0.22)]"
-            />
-          ) : (
-            <span className="block h-[110px] w-[110px]" />
-          )}
+        <div className="relative z-10">
+          <div className="animate-logo-enter" style={{ animationDelay: '80ms' }}>
+
+            {resolvedLogoSrc ? (
+              <img
+                src={resolvedLogoSrc}
+                alt={logoAlt}
+                width={110}
+                height={110}
+                loading="eager"
+                decoding="async"
+                className="h-[110px] w-[110px] object-contain drop-shadow-xl mix-blend-multiply dark:mix-blend-normal dark:drop-shadow-[0_0_32px_rgba(56,189,248,0.22)]"
+              />
+            ) : (
+              <span className="block h-[110px] w-[110px]" />
+            )}
+          </div>
         </div>
       </div>
+
 
       <div className="mb-10 flex flex-col items-center gap-1.5 animate-fade-up-in" style={{ animationDelay: '0.4s', opacity: 0 }}>
         <p className="font-display text-2xl font-semibold tracking-[0.18em] text-[#1a1a1a] dark:text-slate-100">

@@ -15,7 +15,7 @@ import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer';
 import type { CategoryProduct } from '@/libs/CategoryData';
 import type { Product } from '@/store/api/productsApi';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ partner: string; slug: string }>
@@ -115,7 +115,9 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
   if (!storefront) notFound()
 
   const dynamicData = await getProductPageData(slug)
-  if (!dynamicData) return notFound()
+  if (!dynamicData) {
+    redirect(`/shop/${normalizedPartner}/product`)
+  }
   const navbarCategories = await getNavbarCategories()
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
 
@@ -125,6 +127,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
   }
 
   const selectedProductIds = storefront.featuredProductIds.filter((id) => id !== dynamicData.product.id)
+  const forceRealPrice = !Boolean(storefront.enableActivateDiscount)
   let storefrontSelectedProducts: CategoryProduct[] = []
 
   if (apiUrl && selectedProductIds.length > 0) {
@@ -134,7 +137,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
           const response = await fetch(`${apiUrl}/api/products/${id}`, {
             method: 'GET',
             headers: { Accept: 'application/json' },
-            cache: 'no-store',
+            next: { revalidate: 60, tags: ['storefront:products'] },
           })
           if (!response.ok) return null
           const json = (await response.json()) as { product?: Product }
@@ -187,7 +190,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
             product={dynamicData.product}
             categoryLabel={dynamicData.categoryLabel}
             reviewSummary={dynamicData.reviewSummary}
-            forceRealPrice
+            forceRealPrice={forceRealPrice}
             allowGuestWishlist
           />
           <div className="border-t border-gray-200 dark:border-gray-700 pt-10 mt-10">
@@ -202,6 +205,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
               products={relatedProducts}
               category={dynamicData.categorySlug}
               viewAllHref={`/shop/${normalizedPartner}/product`}
+              forceRealPrice={forceRealPrice}
             />
           </div>
           <div className="border-t border-gray-200 dark:border-gray-700 pt-10 mt-10">
@@ -214,6 +218,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
               currentCategoryLabel={dynamicData.categoryLabel}
               currentProductId={dynamicData.product.id}
               presetItems={storefrontSelectedProducts}
+              enableActivateDiscount={Boolean(storefront.enableActivateDiscount)}
             />
           </div>
         </div>

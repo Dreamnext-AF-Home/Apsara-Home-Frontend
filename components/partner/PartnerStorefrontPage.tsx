@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import ShopBuilderSections, { type ShopBuilderApiResponse } from '@/components/sections/ShopBuilderSections'
 import type { PartnerStorefrontConfig } from '@/libs/partnerStorefront'
 
@@ -11,6 +12,7 @@ type Props = {
 }
 
 export default function PartnerStorefrontPage({ partner, data }: Props) {
+  const { status, data: session } = useSession()
   const titleColor = partner.themeColor
   const displayName = partner.displayName.trim()
   const pageTitle = displayName.toLowerCase().endsWith('shop') ? displayName : `${displayName} Shop`
@@ -38,6 +40,11 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
   const tabLogoUrlWithVersion = partner.tabLogoUrl
     ? `${partner.tabLogoUrl}${partner.tabLogoUrl.includes('?') ? '&' : '?'}v=${partner.logoVersion || '1'}`
     : logoUrlWithVersion
+  const partnerShopPath = `/shop/${partner.slug}`
+  const partnerProductPath = `/shop/${partner.slug}/product`
+  const loginHref = `/${partner.slug}/login?switch=1&callback=${encodeURIComponent(partnerProductPath)}`
+  const role = String(session?.user?.role ?? '').toLowerCase()
+  const isCustomerSession = status === 'authenticated' && (role === 'customer' || role === '')
 
   useEffect(() => {
     const setIcon = (rel: string, href: string) => {
@@ -95,15 +102,17 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {!isCustomerSession ? (
+                <Link
+                  href={loginHref}
+                  className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
+                  style={{ backgroundColor: partner.themeColor }}
+                >
+                  Login
+                </Link>
+              ) : null}
               <Link
-                href={`/shop/${partner.slug}`}
-                className="inline-flex items-center rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
-                style={{ backgroundColor: partner.themeColor }}
-              >
-                Login
-              </Link>
-              <Link
-                href={`/shop/${partner.slug}/product`}
+                href={`${partnerShopPath}/product`}
                 className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700"
               >
                 {partner.displayName} Products
@@ -119,6 +128,7 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
         partnerHeroVideoUrl={partner.heroVideoUrl || undefined}
         allowedCategoryIds={partner.allowedCategoryIds}
         featuredProductIds={partner.featuredProductIds}
+        enableActivateDiscount={partner.enableActivateDiscount}
       />
 
       <footer className="border-t border-slate-200 bg-white">

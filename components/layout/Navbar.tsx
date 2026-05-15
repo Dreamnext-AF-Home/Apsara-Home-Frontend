@@ -112,16 +112,21 @@ const navLinks: NavLink[] = [
 const toSlug = (value: string) => value.toLowerCase().trim().replace(/\s+/g, '-');
 
 const normalizeCategorySlug = (rawUrl: string | null | undefined, fallbackName: string) => {
-  const source = String(rawUrl ?? '').trim();
+  const source = decodeURIComponent(String(rawUrl ?? '').trim());
   if (!source || source === '0') return toSlug(fallbackName);
 
   const withoutDomain = source.replace(/^https?:\/\/[^/]+/i, '');
-  const cleaned = withoutDomain
+  const withoutQuery = withoutDomain.split(/[?#]/)[0] ?? withoutDomain;
+  const cleaned = withoutQuery
+    .replace(/\\/g, '/')
     .replace(/^\/+/, '')
+    .replace(/^shop\/category\//i, '')
+    .replace(/^shop\//i, '')
     .replace(/^category\//i, '')
     .replace(/\/+$/, '');
 
-  return cleaned || toSlug(fallbackName);
+  const segment = cleaned.split('/').filter(Boolean).pop() ?? cleaned;
+  return toSlug(segment || fallbackName);
 };
 
 const MAX_NAVBAR_BRANDS = 8;
@@ -172,6 +177,7 @@ type NavbarProps = {
   logoHref?: string
   hideSignIn?: boolean
   hideNavLinks?: boolean
+  categoryOnlyNav?: boolean
   stickToTop?: boolean
   showGuestCartWishlist?: boolean
   noBorder?: boolean
@@ -184,6 +190,7 @@ function NavbarInner({
   logoHref = '/shop',
   hideSignIn = false,
   hideNavLinks = false,
+  categoryOnlyNav = false,
   stickToTop = false,
   showGuestCartWishlist = false,
   noBorder = false,
@@ -347,7 +354,16 @@ function NavbarInner({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(activeSearchQuery)
   const [isSubmittingSearch, setIsSubmittingSearch] = useState(false)
   const partnerSlug = useMemo(() => extractPartnerSlugFromPath(pathname), [pathname])
+  const signInHref = partnerSlug
+    ? `/${partnerSlug}/login?switch=1`
+    : '/login'
+  const logoutRedirectHref = partnerSlug
+    ? `/${partnerSlug}/login?switch=1&logged_out=1`
+    : '/login?logged_out=1'
   const trackOrderHref = partnerSlug ? `/${partnerSlug}/track-order` : '/track-order'
+  const profileHref = partnerSlug ? `/${partnerSlug}/profile` : '/profile'
+  const ordersHref = partnerSlug ? `/${partnerSlug}/orders` : '/orders'
+  const wishlistHref = partnerSlug ? `/${partnerSlug}/wishlist` : '/wishlist'
   const isPartnerSearchScoped = showGuestCartWishlist && Boolean(partnerSlug)
 
   useEffect(() => {
@@ -699,13 +715,29 @@ function NavbarInner({
     }, 150)
   }
 
-  const activeLink = navLinks.find((l) => l.label === activeDropdown)
+  const activeLink = useMemo(() => {
+    const links = categoryOnlyNav
+      ? [{ label: 'Shop Category', href: '/category', dropdown: [] as string[] }]
+      : navLinks
+    return links.find((l) => l.label === activeDropdown)
+  }, [activeDropdown, categoryOnlyNav])
   const shopCategoryItems = useMemo(() => {
-    return initialCategories.map((category) => {
+    const scopedItems = initialCategories.map((category) => {
       const urlPart = normalizeCategorySlug(category.url, category.name)
-      return { label: category.name, href: `/category/${urlPart}` }
+      const href = partnerSlug ? `/shop/${partnerSlug}/category/${urlPart}` : `/category/${urlPart}`
+      return { label: category.name, href }
     })
-  }, [initialCategories])
+    if (partnerSlug) {
+      return [{ label: 'All Category', href: `/shop/${partnerSlug}/product` }, ...scopedItems]
+    }
+    return scopedItems
+  }, [initialCategories, partnerSlug])
+  const displayNavLinks = useMemo<NavLink[]>(() => {
+    if (categoryOnlyNav) {
+      return shopCategoryItems.map((item) => ({ label: item.label, href: item.href }))
+    }
+    return navLinks
+  }, [categoryOnlyNav, shopCategoryItems])
   const { data: publicBrandsData } = useGetPublicProductBrandsQuery()
   const shopBrandItems = useMemo(() => {
     return (publicBrandsData?.brands ?? [])
@@ -828,10 +860,22 @@ function NavbarInner({
 
       const result = await signOut({
         redirect: false,
-        callbackUrl: '/login?logged_out=1',
+        callbackUrl: logoutRedirectHref,
       })
+      let safeRedirect = logoutRedirectHref
+      const returnedUrl = result?.url
+      if (returnedUrl && typeof window !== 'undefined') {
+        try {
+          const parsed = new URL(returnedUrl, window.location.origin)
+          safeRedirect = parsed.origin === window.location.origin
+            ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+            : logoutRedirectHref
+        } catch {
+          safeRedirect = logoutRedirectHref
+        }
+      }
 
-      router.replace(result?.url || '/login?logged_out=1')
+      router.replace(safeRedirect)
       router.refresh()
     } finally {
       setIsLoggingOut(false)
@@ -858,13 +902,13 @@ function NavbarInner({
             <div className="container mx-auto flex min-h-11 items-center justify-between gap-4 px-4 py-2">
               <p className="flex-1 font-medium leading-snug">
                 Your profile is incomplete.{' '}
-                <Link href="/profile" className="font-semibold text-sky-600 underline underline-offset-4 transition hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200">
+                <Link href={profileHref} className="font-semibold text-sky-600 underline underline-offset-4 transition hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200">
                   Complete your profile
                 </Link>
                 {' '}to unlock all features and get the best shopping experience.
               </p>
               <Link
-                href="/profile"
+                href={profileHref}
                 className="shrink-0 rounded-full bg-sky-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-600 dark:hover:bg-sky-700"
               >
                 Update Now
@@ -1210,21 +1254,21 @@ function NavbarInner({
                         {/* Menu items */}
                         <div className="py-1.5">
                           <Link
-                            href="/profile"
+                            href={profileHref}
                             onClick={() => setProfileMenuOpen(false)}
                             className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors group ${
-                              pathname === '/profile'
+                              pathname.endsWith('/profile')
                                 ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400'
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                           >
                             <span className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors shrink-0 ${
-                              pathname === '/profile'
+                              pathname.endsWith('/profile')
                                 ? 'bg-sky-100 dark:bg-sky-900/40'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-sky-100 dark:group-hover:bg-sky-900/30'
                             }`}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-colors ${
-                                pathname === '/profile'
+                                pathname.endsWith('/profile')
                                   ? 'text-sky-600 dark:text-sky-400'
                                   : 'text-gray-500 dark:text-gray-400 group-hover:text-sky-600'
                               }`}>
@@ -1235,7 +1279,7 @@ function NavbarInner({
                             <div>
                               <p className="font-medium">My Profile</p>
                               <p className={`text-xs ${
-                                pathname === '/profile'
+                                pathname.endsWith('/profile')
                                   ? 'text-sky-600 dark:text-sky-500'
                                   : 'text-gray-400 dark:text-gray-500'
                               }`}>View & edit your info</p>
@@ -1243,21 +1287,21 @@ function NavbarInner({
                           </Link>
 
                           <Link
-                            href="/orders"
+                            href={ordersHref}
                             onClick={() => setProfileMenuOpen(false)}
                             className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors group ${
-                              pathname === '/orders'
+                              pathname.endsWith('/orders')
                                 ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400'
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                           >
                             <span className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors shrink-0 ${
-                              pathname === '/orders'
+                              pathname.endsWith('/orders')
                                 ? 'bg-sky-100 dark:bg-sky-900/40'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-sky-100 dark:group-hover:bg-sky-900/30'
                             }`}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-colors ${
-                                pathname === '/orders'
+                                pathname.endsWith('/orders')
                                   ? 'text-sky-600 dark:text-sky-400'
                                   : 'text-gray-500 dark:text-gray-400 group-hover:text-sky-600'
                               }`}>
@@ -1269,7 +1313,7 @@ function NavbarInner({
                             <div>
                               <p className="font-medium">My Orders</p>
                               <p className={`text-xs ${
-                                pathname === '/orders'
+                                pathname.endsWith('/orders')
                                   ? 'text-sky-600 dark:text-sky-500'
                                   : 'text-gray-400 dark:text-gray-500'
                               }`}>Track your purchases</p>
@@ -1277,21 +1321,21 @@ function NavbarInner({
                           </Link>
 
                           <Link
-                            href="/wishlist"
+                            href={wishlistHref}
                             onClick={() => setProfileMenuOpen(false)}
                             className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors group ${
-                              pathname === '/wishlist'
+                              pathname.endsWith('/wishlist')
                                 ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400'
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                           >
                             <span className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors shrink-0 ${
-                              pathname === '/wishlist'
+                              pathname.endsWith('/wishlist')
                                 ? 'bg-sky-100 dark:bg-sky-900/40'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-sky-100 dark:group-hover:bg-sky-900/30'
                             }`}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-colors ${
-                                pathname === '/wishlist'
+                                pathname.endsWith('/wishlist')
                                   ? 'text-sky-600 dark:text-sky-400'
                                   : 'text-gray-500 dark:text-gray-400 group-hover:text-sky-600'
                               }`}>
@@ -1301,7 +1345,7 @@ function NavbarInner({
                             <div>
                               <p className="font-medium">Wishlist</p>
                               <p className={`text-xs ${
-                                pathname === '/wishlist'
+                                pathname.endsWith('/wishlist')
                                   ? 'text-sky-600 dark:text-sky-500'
                                   : 'text-gray-400 dark:text-gray-500'
                               }`}>Your saved items</p>
@@ -1383,7 +1427,7 @@ function NavbarInner({
 
                 {!hideSignIn && (
                   <motion.div whileTap={{ scale: 0.96 }} transition={{ duration: 0.12 }}>
-                    <PrimaryButton href="/login" className="!px-5 !py-2 !text-sm !rounded-full h-10">
+                    <PrimaryButton href={signInHref} className="!px-5 !py-2 !text-sm !rounded-full h-10">
                       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                         <circle cx="12" cy="7" r="4" />
@@ -1437,7 +1481,7 @@ function NavbarInner({
           <div className="hidden md:block border-t border-gray-100 dark:border-gray-800">
             <div className="container mx-auto px-4">
               <nav className="flex items-center h-11">
-                {navLinks.map((link, index) => {
+                {displayNavLinks.map((link, index) => {
                   const hasDropdown = link.dropdown || link.mega
                   return (
                     <div
@@ -1692,9 +1736,9 @@ function NavbarInner({
                     {/* Quick action links */}
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       {[
-                        { href: '/profile', label: 'My Profile', sub: 'View & edit info', icon: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
-                        { href: '/orders', label: 'My Orders', sub: 'Track purchases', icon: <><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></> },
-                        { href: '/wishlist', label: 'Wishlist', sub: 'Saved items', icon: <path d="m12 21-1.45-1.32C5.4 15.36 2 12.28 2 8.5A4.5 4.5 0 0 1 6.5 4 5 5 0 0 1 12 6.09 5 5 0 0 1 17.5 4 4.5 4.5 0 0 1 22 8.5c0 3.78-3.4 6.86-8.55 11.18z"/> },
+                        { href: profileHref, label: 'My Profile', sub: 'View & edit info', icon: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
+                        { href: ordersHref, label: 'My Orders', sub: 'Track purchases', icon: <><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></> },
+                        { href: wishlistHref, label: 'Wishlist', sub: 'Saved items', icon: <path d="m12 21-1.45-1.32C5.4 15.36 2 12.28 2 8.5A4.5 4.5 0 0 1 6.5 4 5 5 0 0 1 12 6.09 5 5 0 0 1 17.5 4 4.5 4.5 0 0 1 22 8.5c0 3.78-3.4 6.86-8.55 11.18z"/> },
                         { href: trackOrderHref, label: 'Track Order', sub: 'Order status', icon: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></> },
                       ].map((item) => (
                         <Link
@@ -1756,7 +1800,7 @@ function NavbarInner({
                     {!hideSignIn && (
                       <motion.div whileTap={{ scale: 0.97 }} transition={{ duration: 0.12 }} className="flex-1">
                         <PrimaryButton
-                        href="/login"
+                        href={signInHref}
                           onClick={() => setMobileOpen(false)}
                           className="!w-full !px-4 !py-2.5 !text-sm !rounded-[18px]"
                         >
@@ -1778,7 +1822,7 @@ function NavbarInner({
                   </div>
                 </div>
               )}
-              {!hideNavLinks && navLinks.map((link) => {
+              {!hideNavLinks && displayNavLinks.map((link) => {
                 const hasChildren = link.dropdown || link.mega
                 const isExpanded = mobileExpanded === link.label
 
@@ -2402,6 +2446,7 @@ export default function Navbar({
   logoHref = '/shop',
   hideSignIn = false,
   hideNavLinks = false,
+  categoryOnlyNav = false,
   stickToTop = false,
   showGuestCartWishlist = false,
 }: NavbarProps) {
@@ -2413,6 +2458,7 @@ export default function Navbar({
       logoHref={logoHref}
       hideSignIn={hideSignIn}
       hideNavLinks={hideNavLinks}
+      categoryOnlyNav={categoryOnlyNav}
       stickToTop={stickToTop}
       showGuestCartWishlist={showGuestCartWishlist}
     />

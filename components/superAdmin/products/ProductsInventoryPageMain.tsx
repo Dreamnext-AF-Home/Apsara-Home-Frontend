@@ -1,7 +1,23 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, PackagePlus, Search, X } from 'lucide-react'
+import {
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  PackagePlus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+  X,
+  Box,
+  Users,
+  AlertTriangle,
+  Archive,
+} from 'lucide-react'
+
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { Product, useGetProductsQuery, useLazyGetProductsQuery, useUpdateProductMutation } from '@/store/api/productsApi'
 
@@ -9,7 +25,7 @@ type StockFilter = 'all' | 'in-stock' | 'low-stock' | 'out-of-stock'
 type StockModalMode = 'adjust' | 'restock'
 
 const LOW_STOCK_THRESHOLD = 10
-const PAGE_SIZE = 15
+const PAGE_SIZE = 16
 const withTimeout = async <T,>(promise: Promise<T>, ms: number): Promise<T> => {
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined
   try {
@@ -36,6 +52,36 @@ const toQuantity = (product: Product) => {
   const qty = Number(product.qty ?? 0)
   return Number.isFinite(qty) ? Math.max(0, qty) : 0
 }
+
+const normalizeImageUrl = (url?: unknown) => {
+  const value = typeof url === 'string' ? url.trim() : ''
+  if (!value) return ''
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) return value
+  if (value.toLowerCase().startsWith('null')) return ''
+
+  if (value.startsWith('/')) return value
+  return `/${value}`
+}
+
+const getProductThumbnail = (product: Product) => {
+  const fallback = '/Images/af_home_logo.png'
+
+  // 1) product.images[0]
+  const productImages = Array.isArray((product as any).images) ? ((product as any).images as unknown[]) : []
+  const firstProductImage = normalizeImageUrl(productImages[0])
+  if (firstProductImage) return firstProductImage
+
+  // 2) first active variant.images[0]
+  const variants = Array.isArray((product as any).variants) ? ((product as any).variants as any[]) : []
+  const firstActive = variants.find((v) => Number(v?.status ?? 1) === 1)
+  const variantImages = Array.isArray(firstActive?.images) ? firstActive.images : []
+  const firstVariantImage = normalizeImageUrl(variantImages[0])
+  if (firstVariantImage) return firstVariantImage
+
+  // 3) fallback
+  return fallback
+}
+
 
 const getStockStatus = (quantity: number): StockFilter => {
   if (quantity <= 0) return 'out-of-stock'
@@ -364,14 +410,21 @@ export default function ProductsInventoryPageMain() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Inventory</h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Track stock health and identify restocking priorities.
-            </p>
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-sky-500/15 via-emerald-500/10 to-amber-500/10 blur-2xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm dark:bg-orange-500">
+              <Activity size={18} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Inventory</h1>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                Track stock health and identify restocking priorities.
+              </p>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -399,47 +452,60 @@ export default function ProductsInventoryPageMain() {
           value={formatNumber(metrics.totalProducts)}
           subtitle={`${formatNumber(metrics.categoryCount)} categories`}
           accent="bg-sky-500"
+          icon={<Archive size={16} className="text-sky-800 dark:text-sky-200" />}
         />
         <MetricCard
           title="Total stock"
           value={formatNumber(metrics.totalStock)}
           subtitle="units on hand"
           accent="bg-emerald-500"
+          icon={<Box size={16} className="text-emerald-800 dark:text-emerald-200" />}
         />
         <MetricCard
           title="Low stock"
           value={isSummaryLoading && !summaryMetrics ? '...' : formatNumber(metrics.lowStock)}
           subtitle={`at or below ${LOW_STOCK_THRESHOLD}`}
           accent="bg-amber-500"
+          icon={<AlertTriangle size={16} className="text-amber-800 dark:text-amber-200" />}
         />
         <MetricCard
           title="Out of stock"
           value={isSummaryLoading && !summaryMetrics ? '...' : formatNumber(metrics.outOfStock)}
           subtitle="needs restocking"
           accent="bg-rose-500"
+          icon={<Users size={16} className="text-rose-800 dark:text-rose-200" />}
         />
       </div>
 
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {(['all', 'in-stock', 'low-stock', 'out-of-stock'] as StockFilter[]).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setFilter(value)
-              }}
-              className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition ${
-                filter === value
-                  ? 'border-slate-900 bg-slate-900 text-white dark:border-orange-500 dark:bg-orange-500'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {stockLabel[value]}
-            </button>
-          ))}
-          <div className="relative ml-auto w-full max-w-sm">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+          <div className="flex flex-wrap items-center gap-2">
+            {(['all', 'in-stock', 'low-stock', 'out-of-stock'] as StockFilter[]).map((value) => {
+              const active = filter === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFilter(value)}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-semibold transition-all ${
+                    active
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-orange-500 dark:bg-orange-500'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {stockLabel[value]}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="relative w-full md:w-[320px]">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <input
               value={search}
               onChange={(event) => {
@@ -447,10 +513,24 @@ export default function ProductsInventoryPageMain() {
                 setCurrentPage(1)
               }}
               placeholder="Search product or SKU..."
-              className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-800 outline-none transition-colors focus:border-slate-400 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-orange-500 dark:focus:ring-orange-400/20"
             />
+            {search.trim() ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('')
+                  setCurrentPage(1)
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            ) : null}
           </div>
         </div>
+
 
         {isProductsLoading || isProductsFetching ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
@@ -465,73 +545,98 @@ export default function ProductsInventoryPageMain() {
             No products match this inventory filter.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-              <thead className="bg-slate-50 dark:bg-slate-800/70">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">SKU</th>
-                  <th className="px-4 py-3">Current stock</th>
-                  <th className="px-4 py-3">Threshold</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Last updated</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white text-sm dark:divide-slate-800 dark:bg-slate-900">
-                {filteredProducts.map((product) => {
-                  const quantity = toQuantity(product)
-                  const status = getStockStatus(quantity)
-                  const statusStyle =
-                    status === 'in-stock'
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                      : status === 'low-stock'
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                        : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredProducts.map((product) => {
+                const quantity = toQuantity(product)
+                const status = getStockStatus(quantity)
 
-                  return (
-                    <tr key={product.id}>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-800 dark:text-slate-100">{product.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">#{product.id}</div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{product.sku || '—'}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-24 overflow-hidden rounded bg-slate-200 dark:bg-slate-700">
-                            <div
-                              className={`h-full ${
-                                status === 'in-stock' ? 'bg-emerald-500' : status === 'low-stock' ? 'bg-amber-500' : 'bg-rose-500'
-                              }`}
-                              style={{ width: `${Math.min(100, (quantity / Math.max(LOW_STOCK_THRESHOLD * 2, 1)) * 100)}%` }}
-                            />
+                const statusStyle =
+                  status === 'in-stock'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : status === 'low-stock'
+                      ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+
+                const accentBar =
+                  status === 'in-stock'
+                    ? 'bg-emerald-600'
+                    : status === 'low-stock'
+                      ? 'bg-amber-600'
+                      : 'bg-rose-600'
+
+                const barWidth = `${Math.min(100, (quantity / Math.max(LOW_STOCK_THRESHOLD * 2, 1)) * 100)}%`
+                const thumbnail = getProductThumbnail(product)
+
+                return (
+                  <div
+                    key={product.id}
+                    className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800/70">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={thumbnail} alt={product.name} className="h-full w-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-40" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
+                              {product.name}
+                            </div>
+                            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">SKU: {product.sku || '—'}</div>
+                            <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">#{product.id}</div>
                           </div>
-                          <span className="font-semibold text-slate-800 dark:text-slate-100">{formatNumber(quantity)}</span>
+
+                          <span className={`mt-0.5 inline-flex items-center justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusStyle}`}>
+                            {stockLabel[status]}
+                          </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatNumber(quantity)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyle}`}>
-                          {stockLabel[status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatDate(product.updatedAt ?? product.createdAt)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => (status === 'in-stock' ? openAdjustModal(product) : openRestockModal(product))}
-                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                        >
-                          {status === 'in-stock' ? 'Adjust' : 'Restock'}
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="h-1.5 w-full overflow-hidden rounded bg-slate-200 dark:bg-slate-700">
+                            <div className={`h-full ${accentBar}`} style={{ width: barWidth }} />
+                          </div>
+                          <div className="w-[52px] text-right text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {formatNumber(quantity)}
+                          </div>
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                            <ShieldCheck size={14} className="text-slate-400" />
+                            {formatDate(product.updatedAt ?? product.createdAt)}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => (status === 'in-stock' ? openAdjustModal(product) : openRestockModal(product))}
+                            className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors border border-slate-300 dark:border-slate-700 ${
+                              status === 'in-stock'
+                                ? 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
+                                : 'text-slate-700 hover:bg-amber-50 dark:text-slate-200 dark:hover:bg-amber-900/10'
+                            }`}
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              {status === 'in-stock' ? <Sparkles size={14} /> : <Truck size={14} />}
+                              {status === 'in-stock' ? 'Adjust' : 'Restock'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pointer-events-none absolute -right-12 -top-12 h-24 w-24 rounded-full bg-slate-900/5 blur-2xl dark:bg-white/5" />
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
+
+
         {filteredProducts.length > 0 ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -656,20 +761,43 @@ function MetricCard({
   value,
   subtitle,
   accent,
+  icon,
+  trend,
 }: {
   title: string
   value: string
   subtitle: string
   accent: string
+  icon: React.ReactNode
+  trend?: string
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{title}</p>
-      <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{value}</p>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{subtitle}</p>
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded bg-slate-200 dark:bg-slate-700">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+      <div className="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-gradient-to-br from-slate-500/10 via-transparent to-transparent opacity-70 blur-2xl" />
+
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <span className={`inline-flex h-7 w-7 items-center justify-center rounded-xl border bg-white/60 ${accent}`}>
+              {icon}
+            </span>
+            {title}
+          </p>
+          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{value}</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{subtitle}</p>
+        </div>
+
+        {trend ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-200">
+            {trend}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800/70">
         <div className={`h-full w-2/3 ${accent}`} />
       </div>
     </div>
   )
 }
+

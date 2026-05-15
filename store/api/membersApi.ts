@@ -128,6 +128,13 @@ interface MembersQueryParams {
   sort?: 'default' | 'newest_registered' | 'oldest_registered' | 'earnings_low_high' | 'earnings_high_low' | 'referrals_high_low'
 }
 
+interface PartnerMembersQueryParams {
+  page?: number
+  perPage?: number
+  search?: string
+  storefrontId?: number
+}
+
 interface TopEarnersQueryParams {
   search?: string
   tier?: MemberTier | 'All Tiers'
@@ -235,6 +242,20 @@ export const membersApi = baseApi.injectEndpoints({
         },
       }),
       keepUnusedDataFor: 300,
+      providesTags: ['Members'],
+    }),
+    getPartnerMembers: builder.query<MembersResponse, PartnerMembersQueryParams | void>({
+      query: (params) => ({
+        url: '/api/admin/partner-members',
+        method: 'GET',
+        params: {
+          page: params?.page ?? 1,
+          per_page: params?.perPage ?? 50,
+          q: params?.search,
+          storefront_id: params?.storefrontId,
+        },
+      }),
+      keepUnusedDataFor: 120,
       providesTags: ['Members'],
     }),
     getMembersStats: builder.query<MembersStatsResponse, { period?: MembersStatsPeriod } | void>({
@@ -345,6 +366,7 @@ export const membersApi = baseApi.injectEndpoints({
 
 export const {
   useGetMembersQuery,
+  useGetPartnerMembersQuery,
   useLazyGetMembersQuery,
   useGetMembersStatsQuery,
   useLazyGetMemberStatDetailsQuery,
