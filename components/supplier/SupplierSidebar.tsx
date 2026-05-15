@@ -11,8 +11,10 @@ import {
   ChevronDown,
   ClipboardList,
   FileText,
+  Home,
   LogOut,
   Package,
+  Smartphone,
   Users,
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
@@ -27,6 +29,12 @@ const mainItems = [
 const reportItems = [
   { label: 'Order Report', href: '/supplier/reports/orders', icon: ClipboardList },
   { label: 'Delivered Orders', href: '/supplier/reports/delivered', icon: FileText },
+]
+
+const mobileAdsItems = [
+  { label: 'Home', href: '/supplier/mobile-ads', icon: Home },
+  { label: 'Products', href: '/supplier/mobile-ads/products', icon: Package },
+  { label: 'Categories', href: '/supplier/mobile-ads/categories', icon: Box },
 ]
 
 const settingsItems = [
@@ -99,11 +107,13 @@ export default function SupplierSidebar({
   const pathname = usePathname()
   const router = useRouter()
   const [reportsOpen, setReportsOpen] = useState(pathname?.startsWith('/supplier/reports') ?? false)
+  const [mobileAdsOpen, setMobileAdsOpen] = useState(pathname?.startsWith('/supplier/mobile-ads') ?? false)
   const { data: session } = useSession()
   const supplierName = session?.user?.supplierName || session?.user?.name || 'Supplier'
   const isMainSupplier = Boolean(session?.user?.isMainSupplier)
   const userEmail = session?.user?.email || ''
   const reportsActive = pathname?.startsWith('/supplier/reports') ?? false
+  const mobileAdsActive = pathname?.startsWith('/supplier/mobile-ads') ?? false
 
   const navigate = (href: string) => {
     router.push(href)
@@ -193,6 +203,76 @@ export default function SupplierSidebar({
               >
                 <div className="space-y-1.5 pl-3">
                   {reportItems.map((item) => {
+                    const active = pathname === item.href
+                    const Icon = item.icon
+
+                    return (
+                      <button
+                        key={item.href}
+                        type="button"
+                        onClick={() => navigate(item.href)}
+                        className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-[13px] font-semibold transition ${
+                          active
+                            ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200'
+                            : 'text-slate-500 hover:bg-white/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white'
+                        }`}
+                      >
+                        <span
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border ${
+                            active
+                              ? 'border-cyan-200 bg-white text-cyan-700 dark:border-cyan-400/20 dark:bg-white/10 dark:text-cyan-200'
+                              : 'border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+
+        <div>
+          <SectionLabel>Mobile</SectionLabel>
+          <button
+            type="button"
+            onClick={() => setMobileAdsOpen((prev) => !prev)}
+            className={`group flex w-full items-center justify-between rounded-2xl px-3.5 py-3 text-sm font-semibold transition ${
+              mobileAdsActive
+                ? 'bg-[linear-gradient(135deg,rgba(6,182,212,0.18),rgba(37,99,235,0.12))] text-cyan-700 dark:bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(99,102,241,0.16))] dark:text-cyan-200'
+                : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white'
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <span
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition ${
+                  mobileAdsActive
+                    ? 'border-cyan-200 bg-white text-cyan-700 dark:border-cyan-400/20 dark:bg-white/10 dark:text-cyan-200'
+                    : 'border-slate-200 bg-white text-slate-500 group-hover:border-cyan-200 group-hover:text-cyan-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400 dark:group-hover:border-cyan-400/20 dark:group-hover:text-cyan-200'
+                }`}
+              >
+                <Smartphone className="h-4 w-4" />
+              </span>
+              Mobile Management
+            </span>
+            <ChevronDown className={`h-4 w-4 transition ${mobileAdsOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {mobileAdsOpen ? (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="mt-2 overflow-hidden"
+              >
+                <div className="space-y-1.5 pl-3">
+                  {mobileAdsItems.map((item) => {
                     const active = pathname === item.href
                     const Icon = item.icon
 
