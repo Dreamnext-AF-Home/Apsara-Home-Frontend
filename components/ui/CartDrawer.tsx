@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useCart, type CartItem } from '@/context/CartContext'
 import { usePathname, useRouter } from 'next/navigation'
 import type { CustomerCheckoutLineItem } from '@/types/CustomerCheckout/types'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton'
 import { resolveCheckoutSource } from '@/libs/checkoutSource'
 import { buildStorefrontProductPath, extractPartnerSlugFromPath } from '@/libs/storefrontRouting'
@@ -59,12 +59,65 @@ export default function CartDrawer() {
     manualCheckoutEnabled: item.manualCheckoutEnabled ?? undefined,
   }))
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem('guest_checkout')
+      if (!raw) return
+      const draft = JSON.parse(raw) as {
+        items?: CustomerCheckoutLineItem[]
+        handlingFee?: number
+        product?: Record<string, unknown>
+      }
+      if (!Array.isArray(draft.items) || draft.items.length === 0) return
+      if (checkoutItems.length === 0) return
+
+      const firstItem = checkoutItems[0]
+      const subtotal = checkoutItems.reduce((sum, item) => sum + (Number(item.price ?? 0) * Math.max(1, Number(item.quantity ?? 1))), 0)
+      const totalQuantity = checkoutItems.reduce((sum, item) => sum + Math.max(1, Number(item.quantity ?? 1)), 0)
+      const handlingFee = Number(draft.handlingFee ?? 0)
+      const totalPv = checkoutItems.length === 1
+        ? (firstItem.prodpv ?? 0)
+        : checkoutItems.reduce((sum, item) => sum + ((item.prodpv ?? 0) * Math.max(1, Number(item.quantity ?? 1))), 0)
+
+      const nextDraft = {
+        ...draft,
+        product: {
+          ...(draft.product ?? {}),
+          id: firstItem.productId ?? firstItem.id,
+          name: checkoutItems.length === 1 ? firstItem.name : `${checkoutItems.length} selected items from AF Home`,
+          image: firstItem.image,
+          price: subtotal,
+          prodpv: totalPv,
+          sku: checkoutItems.length === 1 ? (firstItem.selectedSku ?? undefined) : undefined,
+          manualCheckoutEnabled: checkoutItems.every((item) => item.manualCheckoutEnabled === true),
+        },
+        quantity: totalQuantity,
+        variantId: checkoutItems.length === 1 ? (firstItem.variantId ?? null) : null,
+        selectedColor: checkoutItems.length === 1 ? (firstItem.selectedColor ?? null) : null,
+        selectedStyle: checkoutItems.length === 1 ? (firstItem.selectedStyle ?? null) : null,
+        selectedSize: checkoutItems.length === 1 ? (firstItem.selectedSize ?? null) : null,
+        selectedType: checkoutItems.length === 1 ? (firstItem.selectedType ?? null) : null,
+        selectedSku: checkoutItems.length === 1 ? (firstItem.selectedSku ?? null) : null,
+        items: checkoutItems,
+        subtotal,
+        total: subtotal + handlingFee,
+      }
+
+      window.localStorage.setItem('guest_checkout', JSON.stringify(nextDraft))
+      window.dispatchEvent(new CustomEvent('checkout-cart-updated'))
+    } catch {
+      // Ignore local storage sync errors.
+    }
+  }, [checkoutItems])
+
   const handleCustomerCheckout = () => {
     if (checkoutItems.length === 0) return
 
     const handlingFee = 0
     const firstItem = checkoutItems[0]
     const firstProductId = Number(firstItem.productId ?? firstItem.id)
+    const totalSelectedQuantity = checkoutItems.reduce((sum, item) => sum + Math.max(1, Number(item.quantity ?? 1)), 0)
     const checkoutSource = resolveCheckoutSource()
 
     localStorage.setItem('guest_checkout', JSON.stringify({
@@ -77,7 +130,7 @@ export default function CartDrawer() {
         sku: checkoutItems.length === 1 ? (firstItem.selectedSku ?? undefined) : undefined,
         manualCheckoutEnabled: checkoutItems.every((item) => item.manualCheckoutEnabled === true),
       },
-      quantity: selectedCount,
+      quantity: totalSelectedQuantity,
       variantId: checkoutItems.length === 1 ? (firstItem.variantId ?? null) : null,
       selectedColor: checkoutItems.length === 1 ? (firstItem.selectedColor ?? null) : null,
       selectedStyle: checkoutItems.length === 1 ? (firstItem.selectedStyle ?? null) : null,

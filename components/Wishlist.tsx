@@ -266,7 +266,7 @@ export default function Wishlist({ initialCategories, partnerBranding }: Wishlis
                   Clear Search
                 </button>
               )}
-              <Link href="/shop" className="rounded-2xl bg-sky-500 dark:bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 dark:hover:bg-sky-700 transition-colors">
+              <Link href={partnerProductHref} className="rounded-2xl bg-sky-500 dark:bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 dark:hover:bg-sky-700 transition-colors">
                 Browse Shop
               </Link>
             </div>

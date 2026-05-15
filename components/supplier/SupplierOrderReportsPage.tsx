@@ -157,7 +157,7 @@ export default function SupplierOrderReportsPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-30 lg:pt-32">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>

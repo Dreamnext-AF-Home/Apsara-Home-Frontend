@@ -43,12 +43,7 @@ const builderCards: ContentCard[] = [
     badge: 'B2B',
     wcKey: 'wc:partner-storefronts',
   },
-  {
-    title: 'Bulk Edit',
-    description: 'Update multiple web content entries in one place with faster batch adjustments.',
-    href: '/admin/webpages/bulk-edit',
-    badge: 'Quick Actions',
-  },
+
   {
     title: 'Adds Content',
     description: 'Manage advertising placements, promos, and sponsored content blocks.',

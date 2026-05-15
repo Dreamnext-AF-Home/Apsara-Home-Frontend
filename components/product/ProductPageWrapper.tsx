@@ -13,6 +13,7 @@ interface ProductPageWrapperProps {
   logoHref?: string
   hideSignIn?: boolean
   hideNavLinks?: boolean
+  categoryOnlyNav?: boolean
   stickToTop?: boolean
   showGuestCartWishlist?: boolean
 }
@@ -26,6 +27,7 @@ export default function ProductPageWrapper({
   logoHref = '/shop',
   hideSignIn = false,
   hideNavLinks = false,
+  categoryOnlyNav = false,
   stickToTop = false,
   showGuestCartWishlist = false,
 }: ProductPageWrapperProps) {
@@ -40,6 +42,7 @@ export default function ProductPageWrapper({
           logoHref={logoHref}
           hideSignIn={hideSignIn}
           hideNavLinks={hideNavLinks}
+          categoryOnlyNav={categoryOnlyNav}
           stickToTop={stickToTop}
           showGuestCartWishlist={showGuestCartWishlist}
         />

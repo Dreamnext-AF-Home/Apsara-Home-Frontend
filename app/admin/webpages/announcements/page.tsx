@@ -1,5 +1,6 @@
 import { buildPageMetadata } from '@/app/seo'
-import WebPageItemsManager from '@/components/superAdmin/webpages/WebPageItemsManager'
+
+import AnnouncementsClient from './AnnouncementsClient'
 
 export const metadata = buildPageMetadata({
   title: 'Admin Web Pages Announcements',
@@ -9,12 +10,6 @@ export const metadata = buildPageMetadata({
 })
 
 export default function AdminWebPagesAnnouncementsPage() {
-  return (
-    <WebPageItemsManager
-      type="announcements"
-      title="Web Pages / Announcements"
-      description="Manage announcement bars, notices, and schedule."
-    />
-  )
+  return <AnnouncementsClient />
 }
 
