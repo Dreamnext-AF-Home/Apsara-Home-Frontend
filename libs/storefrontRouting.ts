@@ -13,9 +13,43 @@ export const extractPartnerSlugFromPath = (pathname?: string | null): string | n
   if (shopMatch?.[1]) return shopMatch[1].trim().toLowerCase()
 
   const directMatch = path.match(
-    /^\/([^/?#]+)\/(product|category|checkout|track-order|profile|orders|wishlist|login)(?=\/|$)/i,
+    /^\/([^/?#]+)\/(product|category|interior-services|checkout|track-order|profile|orders|wishlist|login)(?=\/|$)/i,
   )
   if (directMatch?.[1]) return directMatch[1].trim().toLowerCase()
+
+  // Support direct partner storefront category paths such as:
+  // /{partner}/{category-slug}
+  const genericTwoSegmentMatch = path.match(/^\/([^/?#]+)\/([^/?#]+)(?=\/|$)/i)
+  if (genericTwoSegmentMatch?.[1]) {
+    const firstSegment = genericTwoSegmentMatch[1].trim().toLowerCase()
+    const reservedRootSegments = new Set([
+      'shop',
+      'admin',
+      'api',
+      'category',
+      'product',
+      'profile',
+      'orders',
+      'wishlist',
+      'login',
+      'supplier',
+      'partner',
+      'verification',
+      'interior-services',
+      'media',
+      'blog',
+      'community',
+      'search',
+      'assembly',
+      'by-room',
+      'by-brand',
+      'checkout',
+    ])
+
+    if (!reservedRootSegments.has(firstSegment)) {
+      return firstSegment
+    }
+  }
 
   return null
 }

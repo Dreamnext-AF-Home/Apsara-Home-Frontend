@@ -108,7 +108,7 @@ export async function generateMetadata({ params }: PageProps) {
   })
 
   const partnerConfig = await getPartnerStorefrontBySlug(resolved.partner)
-  const plainTitle = `${categoryTitle} | ${partnerConfig?.displayName ?? resolved.partner}`
+  const plainTitle = `${partnerConfig?.displayName ?? resolved.partner} | ${categoryTitle}`
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
   const iconUrl = resolveStorefrontAssetUrl(partnerConfig?.tabLogoUrl || partnerConfig?.logoUrl, apiUrl)
 
@@ -251,19 +251,20 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
 export default async function PartnerCategoryPage({ params }: PageProps) {
   const resolved = await params
   const payload = await getPartnerCategoryPageData(resolved.partner, resolved.slug)
+  const normalizedSlug = normalizeCategorySlug(resolved.slug, resolved.slug)
 
   if (!payload) {
     notFound()
   }
-  if (!payload.category) {
+  if (!payload.category && normalizedSlug !== 'interior-services') {
     redirect(`/shop/${resolved.partner}/product`)
   }
 
   return (
     <CategoryListProductMain
       slug={resolved.slug}
-      initialCategoryLabel={payload.category.name}
-      initialProducts={payload.products}
+      initialCategoryLabel={payload.category?.name ?? 'Interior Services'}
+      initialProducts={payload.category ? payload.products : []}
       initialCategories={payload.categories}
       partnerBranding={{
         logoSrc: payload.partner.logoUrl || payload.partner.tabLogoUrl || '/Images/af_home_logo.png',

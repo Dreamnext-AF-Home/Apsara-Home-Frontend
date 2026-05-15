@@ -166,8 +166,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
       logoSrc={storefront.logoUrl || storefront.tabLogoUrl || '/Images/af_home_logo.png'}
       logoAlt={storefront.displayName}
       logoHref={`/shop/${normalizedPartner}/product`}
-      hideSignIn
-      hideNavLinks
+      categoryOnlyNav
       stickToTop
       showGuestCartWishlist
     >

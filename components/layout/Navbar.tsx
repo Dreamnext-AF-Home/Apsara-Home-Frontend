@@ -724,11 +724,16 @@ function NavbarInner({
   const shopCategoryItems = useMemo(() => {
     const scopedItems = initialCategories.map((category) => {
       const urlPart = normalizeCategorySlug(category.url, category.name)
-      const href = partnerSlug ? `/shop/${partnerSlug}/category/${urlPart}` : `/category/${urlPart}`
+      const href = partnerSlug ? `/${partnerSlug}/${urlPart}` : `/category/${urlPart}`
       return { label: category.name, href }
     })
     if (partnerSlug) {
-      return [{ label: 'All Category', href: `/shop/${partnerSlug}/product` }, ...scopedItems]
+      const interiorLabel = 'Interior Services'
+      const interiorSlug = normalizeCategorySlug(undefined, interiorLabel)
+      const interiorHref = `/${partnerSlug}/${interiorSlug}`
+      const nonInteriorItems = scopedItems.filter((item) => item.label.trim().toLowerCase() !== interiorLabel.toLowerCase())
+      const orderedScopedItems = [...nonInteriorItems, { label: interiorLabel, href: interiorHref }]
+      return [{ label: 'All Category', href: `/${partnerSlug}/product` }, ...orderedScopedItems]
     }
     return scopedItems
   }, [initialCategories, partnerSlug])

@@ -28,26 +28,26 @@ const formatCourierLabel = (courier?: string | null) => {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; badge: string; dot: string; step: number }> = {
-  pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-400', step: 1 },
-  processing: { label: 'Processing', badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', step: 2 },
-  packed: { label: 'Packed', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', step: 2 },
-  for_pickup: { label: 'For Pickup', badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', step: 3 },
-  picked_up: { label: 'Picked Up', badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', step: 3 },
-  shipped: { label: 'Shipped', badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', step: 3 },
-  in_transit: { label: 'In Transit', badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', step: 3 },
-  out_for_delivery: { label: 'Out for Delivery', badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500', step: 4 },
-  delivered: { label: 'Delivered', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', step: 5 },
-  cancelled: { label: 'Cancelled', badge: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500', step: 0 },
-  failed_delivery: { label: 'Failed Delivery', badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', step: 0 },
-  returned_to_sender: { label: 'Returned to Sender', badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500', step: 0 },
-  refunded: { label: 'Refunded', badge: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-500', step: 0 },
+  pending: { label: 'Pending', badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30', dot: 'bg-amber-400', step: 1 },
+  processing: { label: 'Processing', badge: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30', dot: 'bg-blue-500', step: 2 },
+  packed: { label: 'Packed', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/30', dot: 'bg-indigo-500', step: 2 },
+  for_pickup: { label: 'For Pickup', badge: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30', dot: 'bg-violet-500', step: 3 },
+  picked_up: { label: 'Picked Up', badge: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30', dot: 'bg-violet-500', step: 3 },
+  shipped: { label: 'Shipped', badge: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30', dot: 'bg-violet-500', step: 3 },
+  in_transit: { label: 'In Transit', badge: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30', dot: 'bg-violet-500', step: 3 },
+  out_for_delivery: { label: 'Out for Delivery', badge: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30', dot: 'bg-orange-500', step: 4 },
+  delivered: { label: 'Delivered', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30', dot: 'bg-emerald-500', step: 5 },
+  cancelled: { label: 'Cancelled', badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30', dot: 'bg-red-500', step: 0 },
+  failed_delivery: { label: 'Failed Delivery', badge: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30', dot: 'bg-rose-500', step: 0 },
+  returned_to_sender: { label: 'Returned to Sender', badge: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/30', dot: 'bg-slate-500', step: 0 },
+  refunded: { label: 'Refunded', badge: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/30', dot: 'bg-slate-500', step: 0 },
 };
 
 const getStatusConfig = (status: string) => {
   const normalized = status.toLowerCase();
   return STATUS_CONFIG[normalized] ?? {
     label: normalized.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
-    badge: 'bg-slate-100 text-slate-700 border-slate-200',
+    badge: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/30',
     dot: 'bg-slate-500',
     step: 0,
   };
@@ -73,9 +73,9 @@ type PartnerShellConfig = {
 
 function PartnerTrackOrderFooter({ partnerName }: { partnerName: string }) {
   return (
-    <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm text-slate-500 sm:px-6 lg:px-8">
-        Orders from <span className="font-semibold text-slate-800">{partnerName}</span> are still processed through AF Home.
+    <footer className="border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
+        Orders from <span className="font-semibold text-slate-800 dark:text-slate-200">{partnerName}</span> are still processed through AF Home.
       </div>
     </footer>
   );
@@ -165,24 +165,9 @@ export default function GuestTrackOrderPage({ initialCategories = [], partnerShe
 
   const content = (
     <>
-      <div 
-        className="fixed inset-0 -z-50 track-order-background"
-        style={{ 
-          backgroundColor: '#faf8f5',
-          background: '#faf8f5'
-        } as React.CSSProperties}
-      />
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          html.dark .track-order-background {
-            background-color: #030712 !important;
-            background: #030712 !important;
-          }
-        `
-      }} />
-      <div className="relative min-h-screen text-slate-900 dark:text-white">
+      <div className="relative min-h-screen bg-[#faf8f5] text-slate-900 dark:bg-[#030712] dark:text-white">
       <main>
-        <section className="relative overflow-hidden border-b border-gray-200 dark:border-gray-700">
+        <section className="relative overflow-hidden border-b border-gray-200 dark:border-gray-700 dark:bg-slate-950/35">
           <div className="container mx-auto px-4 py-12 md:py-16">
             <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div>
@@ -612,12 +597,12 @@ export default function GuestTrackOrderPage({ initialCategories = [], partnerShe
                     className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition ${
                       active
                         ? 'bg-sky-500/15 text-sky-600'
-                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                     }`}
                   >
                     <svg
                       viewBox="0 0 24 24"
-                      className={`h-5 w-5 transition-colors ${active ? 'text-sky-600' : 'text-slate-300 group-hover:text-sky-400'}`}
+                      className={`h-5 w-5 transition-colors ${active ? 'text-sky-600 dark:text-sky-400' : 'text-slate-300 group-hover:text-sky-400 dark:text-slate-500'}`}
                       fill="currentColor"
                       aria-hidden
                     >
@@ -881,7 +866,9 @@ export default function GuestTrackOrderPage({ initialCategories = [], partnerShe
         logoSrc={partnerLogoSrc}
         logoAlt={partnerShell.displayName}
         logoHref={`/shop/${partnerShell.partnerSlug}/product`}
-        hideSignIn
+        // show Sign in button on guest track order pages
+        hideSignIn={false}
+
         hideNavLinks
         stickToTop
         showGuestCartWishlist

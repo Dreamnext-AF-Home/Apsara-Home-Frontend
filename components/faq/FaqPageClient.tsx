@@ -93,15 +93,15 @@ export default function FaqPageClient() {
     <>
       <TopBar />
       <Navbar />
-      <main className="min-h-screen bg-white dark:bg-gradient-to-b dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+  <main className="min-h-screen bg-blue-50 dark:bg-gradient-to-b dark:from-blue-900 dark:via-blue-900 dark:to-blue-800">
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className="container mx-auto px-4 pt-8 pb-8"
         >
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-8 md:px-10 md:py-10">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <div className="rounded-2xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 px-6 py-8 md:px-10 md:py-10">
+            <h1 className="text-3xl font-bold text-blue-900 dark:text-white">
               Frequently Asked Questions
             </h1>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -123,17 +123,17 @@ export default function FaqPageClient() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.28, delay: index * 0.03 }}
-                className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden"
+                className="rounded-xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 overflow-hidden"
               >
                 <button
                   type="button"
                   onClick={() => toggleFaq(index)}
                   className="flex w-full items-center justify-between px-5 py-4 text-left"
                 >
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <span className="text-sm font-semibold text-blue-900 dark:text-white">
                     {faq.question}
                   </span>
-                  <span className="ml-3 flex-shrink-0 text-sky-500 dark:text-sky-400">
+                    <span className="ml-3 flex-shrink-0 text-blue-500 dark:text-blue-400">
                     <ChevronIcon isOpen={openIndex === index} />
                   </span>
                 </button>
