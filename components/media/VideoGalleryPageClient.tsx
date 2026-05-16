@@ -174,7 +174,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
           >
             <div
               aria-hidden
-              className="absolute -inset-3 -z-10 rounded-3xl bg-gradient-to-br from-blue-100 via-sky-50 to-white blur-2xl"
+              className="absolute -inset-3 -z-10 rounded-3xl bg-gradient-to-br from-blue-100 via-sky-50 to-white blur-2xl dark:from-gray-800 dark:via-gray-900 dark:to-gray-900"
             />
             <div
               aria-hidden
@@ -183,7 +183,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
             <div aria-hidden className="absolute -left-24 top-6 h-24 w-24 -z-10 rounded-full bg-blue-200/25 blur-3xl" />
             <div aria-hidden className="absolute -right-24 bottom-6 h-24 w-24 -z-10 rounded-full bg-amber-200/25 blur-3xl" />
 
-            <div className="rounded-3xl border border-blue-200/70 bg-white/80 p-6 shadow-[0_0_0_1px_rgba(59,130,246,0.06)] backdrop-blur md:p-8">
+            <div className="rounded-3xl border border-blue-200/70 bg-white/80 p-6 shadow-[0_0_0_1px_rgba(59,130,246,0.06)] backdrop-blur md:p-8 dark:border-white/10 dark:bg-gray-900/60">
               <div className="flex items-start justify-between gap-6 flex-wrap">
                 <div className="flex items-start gap-4">
                   <div className="mt-1 flex h-12 w-12 items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 text-orange-700">
@@ -244,7 +244,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/60 to-white p-2 overflow-hidden"
+            className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/60 to-white p-2 overflow-hidden dark:border-orange-900/40 dark:from-orange-900/20 dark:to-gray-900 dark:text-white"
                 >
                   <Skeleton className="aspect-video rounded-xl" />
                   <div className="px-3 py-3 space-y-2">
@@ -259,7 +259,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="rounded-2xl border border-orange-200/70 bg-white/70 px-8 py-16 text-center shadow-sm"
+              className="rounded-2xl border border-orange-200/70 bg-white/70 px-8 py-16 text-center shadow-sm dark:border-orange-900/40 dark:bg-gray-900/60"
             >
               <div className="flex justify-center mb-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 text-orange-700">
@@ -322,13 +322,13 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
                       {/* overlay */}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors duration-300" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg shadow-orange-200/40 transform transition-transform duration-300 group-hover:scale-110">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg shadow-orange-200/40 transform transition-transform duration-300 group-hover:scale-110 dark:bg-white/10 dark:shadow-none">
                           <PlayIcon className="h-7 w-7 text-orange-600" />
                         </div>
                       </div>
 
                       <div className="absolute left-3 top-3">
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-orange-700 border border-orange-200">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-orange-700 border border-orange-200 dark:bg-white/10 dark:text-orange-200 dark:border-orange-900/40">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="14"
@@ -404,7 +404,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
                     <CloseIcon className="h-5 w-5" />
                   </button>
 
-                  <div className="rounded-2xl overflow-hidden border border-white/10 bg-black">
+                  <div className="rounded-2xl overflow-hidden border border-white/10 bg-white dark:bg-gray-900/90 dark:border-white/10">
                     {isYoutubeUrl(selectedVideo) ? (
                       <iframe
                         width="100%"
@@ -424,7 +424,7 @@ export default function VideoGalleryPageClient({ initialCategories }: VideoGalle
                     <div className="mt-4 px-2">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h2 className="text-xl font-bold text-white">{selectedItem.title}</h2>
+<h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedItem.title}</h2>
                           {selectedItem.subtitle ? (
                             <p className="mt-1 text-sm text-white/70">{selectedItem.subtitle}</p>
                           ) : null}
