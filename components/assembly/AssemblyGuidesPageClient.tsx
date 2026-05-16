@@ -9,6 +9,12 @@ import TopBar from '@/components/layout/TopBar'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/landing-page/Footer'
 
+// NOTE: Dark mode in this app is driven by `next-themes` which sets a `.dark` class.
+// This page uses many `dark:` Tailwind utilities, so ensure the `.dark` class is present
+// on the root element (handled by Providers). If you ever see mismatched colors,
+// this comment helps identify theme-class issues first.
+
+
 type LocalAssemblyGuide = {
   id: string
   title: string
@@ -132,7 +138,8 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-2xl border border-blue-200/70 bg-white/80 px-6 py-8 shadow-[0_0_0_1px_rgba(37,99,235,0.08)] backdrop-blur"
+            className="relative overflow-hidden rounded-2xl border border-blue-200/70 bg-white/80 px-6 py-8 shadow-[0_0_0_1px_rgba(37,99,235,0.08)] backdrop-blur dark:bg-gray-900/60 dark:border-gray-800"
+
           >
             <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(37,99,235,0.18),transparent_55%)]" />
             <div aria-hidden className="absolute inset-0 animate-pulse bg-[radial-gradient(ellipse_at_bottom_right,rgba(56,189,248,0.14),transparent_50%)]" />
@@ -187,8 +194,9 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: 0.12 }}
-            className="mb-6 rounded-2xl border border-blue-200/70 bg-white/80 p-4 shadow-[0_0_0_1px_rgba(37,99,235,0.06)] backdrop-blur"
+            className="mb-6 rounded-2xl border border-blue-200/70 bg-white/80 p-4 shadow-[0_0_0_1px_rgba(37,99,235,0.06)] backdrop-blur dark:bg-gray-900/60 dark:border-gray-800"
           >
+
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
               <div className="relative flex-1">
                 <svg
@@ -290,7 +298,8 @@ export default function AssemblyGuidesPageClient({ localGuides = [], initialCate
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.12) }}
-                      className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300"
+                      className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 dark:bg-slate-900/70 dark:border-slate-800"
+
                     >
                       <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.14),transparent_55%)] opacity-0 transition-opacity group-hover:opacity-100" />
                       <div className="relative flex flex-col p-5">

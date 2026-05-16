@@ -272,6 +272,9 @@ type PasskeyListItem = {
   sign_count: number;
   last_used_at?: string | null;
   created_at?: string | null;
+  authenticator_type?: string | null;
+  authenticator_attachment?: string | null;
+  transports?: string[] | null;
 };
 
 type PasskeyCredentialDescriptor = {
@@ -597,6 +600,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(false);
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
   const [removingPasskeyId, setRemovingPasskeyId] = useState<number | null>(null);
+  const [passkeyToRemove, setPasskeyToRemove] = useState<{ id: number; name: string } | null>(null);
 
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [totpStep, setTotpStep] = useState<'idle' | 'confirm-disable'>('idle');
@@ -628,6 +632,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const ACTIVITY_PAGE_SIZE = 6;
   const [activityPage, setActivityPage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
+  const [clockNow, setClockNow] = useState<number>(() => Date.now());
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [avatarOriginalPreviewUrl, setAvatarOriginalPreviewUrl] = useState<string | null>(null);
@@ -1819,6 +1824,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     { label: 'Reviews', value: String(accountSnapshot?.reviews?.total ?? 0), Icon: Icon.Activity, onClick: () => {} },
     { label: 'Loyalty', value: loyaltyTier, Icon: Icon.Shield, onClick: () => {} },
   ];
+  const normalizeLocationLabel = (value?: string | null) => {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+    return text.toLowerCase() === 'national capital region' ? 'Metro Manila' : text;
+  };
 
   const addresses = useMemo(() => {
     const fullAddress = [
@@ -1826,7 +1836,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       profileData?.barangay,
       profileData?.city,
       profileData?.province,
-      profileData?.region,
+      normalizeLocationLabel(profileData?.region),
       profileData?.zip_code,
     ]
       .filter(Boolean)
@@ -1850,7 +1860,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     if (!value) return 'Unknown time';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Unknown time';
-    const diffMs = Date.now() - date.getTime();
+    const diffMs = clockNow - date.getTime();
     const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
     if (diffMinutes < 60) return `${diffMinutes} min ago`;
     const diffHours = Math.floor(diffMinutes / 60);
@@ -1859,9 +1869,23 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
     return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
   };
+  const formatOnlineDuration = (value?: string | null) => {
+    if (!value) return 'Unknown';
+    const start = new Date(value);
+    if (Number.isNaN(start.getTime())) return 'Unknown';
+    const diffMs = Math.max(0, clockNow - start.getTime());
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    if (totalMinutes < 1) return 'just now';
+    if (totalMinutes < 60) return `${totalMinutes} min`;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours < 24) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+  };
 
-  const recentActivity = (activityData?.items ?? [])
-    .filter((item) => String(item.activity_type ?? '').toLowerCase() === 'login')
+  const recentActivity = [...(activityData?.items ?? [])]
     .sort((a, b) => {
       const ta = new Date(a.created_at ?? 0).getTime();
       const tb = new Date(b.created_at ?? 0).getTime();
@@ -1869,7 +1893,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     })
     .slice(0, 5)
     .map((item) => ({
-      title: item.title || 'Account activity',
+      title: item.title || item.description || 'Account activity',
       time: formatRelativeTime(item.created_at ?? null),
       rawTime: item.created_at ?? null,
     }));
@@ -1887,7 +1911,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     device: 'Current Device',
     platform: 'Unknown OS',
     browser: 'Unknown Browser',
-    location: 'Current location',
+    location: '',
     ip_address: '',
     user_agent: '',
     created_at: new Date().toISOString(),
@@ -1895,6 +1919,203 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     is_current: true,
   };
   const sessionItems = sortedSessionItems.length > 0 ? sortedSessionItems : [fallbackCurrentSession];
+  const fallbackProfileLocation = [profileData?.city, profileData?.province, normalizeLocationLabel(profileData?.region), profileData?.country]
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .join(', ');
+  const parseUserAgentInfo = (ua: string) => {
+    const source = ua.toLowerCase();
+    let platform = 'Unknown OS';
+    let browser = 'Unknown Browser';
+
+    if (source.includes('windows')) platform = 'Windows';
+    else if (source.includes('mac os x') || source.includes('macintosh')) platform = 'macOS';
+    else if (source.includes('android')) platform = 'Android';
+    else if (source.includes('iphone') || source.includes('ipad') || source.includes('ios')) platform = 'iOS';
+    else if (source.includes('linux')) platform = 'Linux';
+
+    if (source.includes('edg/')) browser = 'Edge';
+    else if (source.includes('opr/') || source.includes('opera')) browser = 'Opera';
+    else if (source.includes('chrome/') && !source.includes('edg/')) browser = 'Chrome';
+    else if (source.includes('safari/') && !source.includes('chrome/')) browser = 'Safari';
+    else if (source.includes('firefox/')) browser = 'Firefox';
+
+    return { platform, browser };
+  };
+  const resolvePlatformBrowser = (session: { platform?: string; browser?: string; user_agent?: string; is_current?: boolean }) => {
+    const platformRaw = String(session.platform ?? '').trim();
+    const browserRaw = String(session.browser ?? '').trim();
+
+    const platformUnknown = !platformRaw || platformRaw.toLowerCase() === 'unknown os';
+    const browserUnknown = !browserRaw || browserRaw.toLowerCase() === 'unknown browser';
+    if (!platformUnknown && !browserUnknown) {
+      return { platform: platformRaw, browser: browserRaw };
+    }
+
+    const sessionUa = String(session.user_agent ?? '').trim();
+    if (sessionUa) {
+      const parsed = parseUserAgentInfo(sessionUa);
+      return {
+        platform: platformUnknown ? parsed.platform : platformRaw,
+        browser: browserUnknown ? parsed.browser : browserRaw,
+      };
+    }
+
+    if (session.is_current && typeof window !== 'undefined') {
+      const parsed = parseUserAgentInfo(window.navigator.userAgent || '');
+      return {
+        platform: platformUnknown ? parsed.platform : platformRaw,
+        browser: browserUnknown ? parsed.browser : browserRaw,
+      };
+    }
+
+    return {
+      platform: platformUnknown ? 'Unknown OS' : platformRaw,
+      browser: browserUnknown ? 'Unknown Browser' : browserRaw,
+    };
+  };
+  const resolveSessionDeviceType = (session: { device?: string; user_agent?: string; is_current?: boolean }) => {
+    const rawDevice = String(session.device ?? '').trim();
+    const normalizedRaw = rawDevice.toLowerCase();
+    const isGenericDeviceLabel =
+      normalizedRaw === 'current device' ||
+      normalizedRaw === 'unknown device' ||
+      normalizedRaw === 'device';
+    if (rawDevice && normalizedRaw !== 'desktop' && !isGenericDeviceLabel) {
+      return rawDevice;
+    }
+
+    const ua = String(session.user_agent ?? '').toLowerCase();
+    if (ua) {
+      if (ua.includes('ipad') || ua.includes('tablet')) return 'Tablet';
+      if (ua.includes('mobi') || ua.includes('android') || ua.includes('iphone')) return 'Mobile';
+      return 'Desktop';
+    }
+
+    if (session.is_current && typeof window !== 'undefined') {
+      const navUa = (window.navigator.userAgent || '').toLowerCase();
+      if (navUa.includes('ipad') || navUa.includes('tablet')) return 'Tablet';
+      if (navUa.includes('mobi') || navUa.includes('android') || navUa.includes('iphone')) return 'Mobile';
+      return 'Desktop';
+    }
+
+    return isGenericDeviceLabel ? 'Desktop' : (rawDevice || 'Desktop');
+  };
+  const resolveSessionLocation = (session: { location?: string; ip_address?: string }) => {
+    const rawLocation = String(session.location ?? '').trim();
+    if (rawLocation && rawLocation.toLowerCase() !== 'current location') {
+      const cleanedParts = rawLocation
+        .split(',')
+        .map((part) => normalizeLocationLabel(part))
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      const seen = new Set<string>();
+      const uniqueParts = cleanedParts.filter((part) => {
+        const key = part.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      return uniqueParts.join(', ');
+    }
+    if (fallbackProfileLocation) {
+      return fallbackProfileLocation;
+    }
+    const ipAddress = String(session.ip_address ?? '').trim();
+    if (ipAddress) {
+      return `IP ${ipAddress}`;
+    }
+    return 'Location unavailable';
+  };
+  const resolvePasskeyMethod = (item: PasskeyListItem): 'fingerprint' | 'faceid' | 'pin' | 'key' => {
+    const extraMetadata = Object.entries(item as Record<string, unknown>)
+      .filter(([key]) =>
+        key !== 'id'
+        && key !== 'sign_count'
+        && key !== 'created_at'
+        && key !== 'last_used_at'
+        && key !== 'transports'
+      )
+      .map(([, value]) => {
+        if (Array.isArray(value)) return value.join(' ');
+        if (value && typeof value === 'object') return JSON.stringify(value);
+        return String(value ?? '');
+      })
+      .join(' ');
+
+    const combined = [
+      item.name,
+      item.authenticator_type,
+      item.authenticator_attachment,
+      Array.isArray(item.transports) ? item.transports.join(' ') : '',
+      extraMetadata,
+    ]
+      .map((value) => String(value ?? '').toLowerCase())
+      .join(' ');
+
+    if (
+      combined.includes('face') ||
+      combined.includes('face id') ||
+      combined.includes('facial')
+    ) {
+      return 'faceid';
+    }
+    if (
+      combined.includes('finger') ||
+      combined.includes('touch id') ||
+      combined.includes('touchid') ||
+      combined.includes('biometric') ||
+      combined.includes('windows hello fingerprint')
+    ) {
+      return 'fingerprint';
+    }
+    if (
+      combined.includes('pin') ||
+      combined.includes('passcode') ||
+      combined.includes('passwordless') ||
+      combined.includes('security key pin') ||
+      combined.includes('windows hello') ||
+      combined.includes('platform')
+    ) {
+      return 'pin';
+    }
+    return 'key';
+  };
+  const PasskeyMethodIcon = ({ method }: { method: 'fingerprint' | 'faceid' | 'pin' | 'key' }) => {
+    if (method === 'faceid') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+          <path d="M8 3H6a3 3 0 0 0-3 3v2M16 3h2a3 3 0 0 1 3 3v2M3 16v2a3 3 0 0 0 3 3h2M21 16v2a3 3 0 0 1-3 3h-2" />
+          <circle cx="9" cy="10" r="1" />
+          <circle cx="15" cy="10" r="1" />
+          <path d="M8.5 14c.8.8 1.9 1.2 3.5 1.2s2.7-.4 3.5-1.2" />
+        </svg>
+      );
+    }
+    if (method === 'fingerprint') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+          <path d="M12 3a6 6 0 0 0-6 6v2" />
+          <path d="M18 11V9a6 6 0 1 0-12 0v1" />
+          <path d="M6 13v1a6 6 0 0 0 6 6" />
+          <path d="M12 8a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2" />
+          <path d="M15 10v4a3 3 0 0 1-3 3" />
+        </svg>
+      );
+    }
+    if (method === 'pin') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+          <circle cx="8" cy="15" r="3" />
+          <path d="M10.5 13.5l4-4a2.5 2.5 0 1 1 3.5 3.5l-4 4" />
+          <path d="M14 7l3 3" />
+        </svg>
+      );
+    }
+    return <span className="text-sm leading-none" aria-hidden="true">🔑</span>;
+  };
   const activityTotalPages = 1;
   const sessionTotalPages = Math.max(1, Math.ceil(sessionItems.length / ACTIVITY_PAGE_SIZE));
   const paginatedRecentActivity = recentActivity;
@@ -1906,6 +2127,13 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   useEffect(() => {
     setActivityPage(1);
   }, [recentActivity.length]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setClockNow(Date.now());
+    }, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     setSessionPage((prev) => Math.min(prev, sessionTotalPages));
@@ -1993,6 +2221,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   };
 
   const handleRevokeSession = async (tokenId: number, isCurrent: boolean) => {
+    if (isCurrent && !tokenId) {
+      await signOut({ callbackUrl: '/login' });
+      return;
+    }
     if (!tokenId) return;
     setRevokingTokenId(tokenId);
     try {
@@ -2222,7 +2454,6 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       setPasskeyError('Your session token is missing. Please sign in again.');
       return;
     }
-    if (!window.confirm('Remove this passkey from your account?')) return;
     setRemovingPasskeyId(id);
     try {
       const response = await fetch(`${apiBaseUrl}/api/auth/passkeys/${id}`, {
@@ -2242,6 +2473,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       setPasskeyError(err instanceof Error ? err.message : 'Failed to remove passkey.');
     } finally {
       setRemovingPasskeyId(null);
+      setPasskeyToRemove(null);
     }
   };
 
@@ -2332,12 +2564,25 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   onClick={() => handleTabChange(key)}
                   className={`shrink-0 inline-flex flex-col items-center gap-1 rounded-xl px-3.5 py-2 text-[10px] font-semibold transition-all ${
                     activeTab === key
-                      ? 'bg-sky-500 dark:bg-sky-600 text-white shadow-sm shadow-sky-200/60 dark:shadow-sky-900/40'
-                      : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:text-gray-700 dark:hover:text-gray-300'
+                      ? 'bg-gradient-to-br from-sky-500 to-cyan-500 text-white shadow-sm shadow-sky-200/60 dark:shadow-sky-900/40 ring-1 ring-white/25'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-gray-800 dark:hover:text-gray-200'
                   }`}
                 >
-                  <TabIcon className={`h-4 w-4 ${activeTab === key ? 'text-white' : 'text-gray-400 dark:text-gray-500'}`} />
-                  {shortLabel[key]}
+                  <span
+                    className={`relative grid place-items-center h-8 w-8 rounded-xl transition-all ${
+                      activeTab === key
+                        ? 'bg-white/20 backdrop-blur ring-1 ring-white/30'
+                        : 'bg-white/60 dark:bg-gray-800/60 ring-1 ring-slate-200/70 dark:ring-slate-700/60 group-hover:ring-sky-200/70 dark:group-hover:ring-sky-700/60'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <TabIcon
+                      className={`h-4 w-4 transition-colors ${
+                        activeTab === key ? 'text-white' : 'text-slate-500 dark:text-gray-400 group-hover:text-sky-600 dark:group-hover:text-sky-400'
+                      }`}
+                    />
+                  </span>
+                  <span className="leading-tight">{shortLabel[key]}</span>
                 </button>
               ));
             })()}
@@ -3258,12 +3503,17 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
               {/* --- Security tab --- */}
               {activeTab === 'security' && (
-                <motion.div key="security" {...tabMotionProps} className="space-y-5">
+                <motion.div key="security" {...tabMotionProps} className="space-y-4">
 
-                  <form onSubmit={handleChangePassword} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
-                    <div className="mb-5">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Change Password</h3>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Use a strong, unique password for your account.</p>
+                  <form onSubmit={handleChangePassword} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6 shadow-sm">
+                    <div className="mb-5 flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-sky-900/30 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <Icon.Shield className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Change Password</h3>
+                        <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Use a strong, unique password for your account.</p>
+                      </div>
                       {(passwordChangeRequired || passwordChangeRequiredFromQuery) && (
                         <div className="mt-3 rounded-2xl border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/30 px-4 py-3 text-sm text-sky-800 dark:text-sky-300">
                           Your account was signed in using a legacy password. Change it now to continue to the shop page.
@@ -3298,14 +3548,14 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Current Password</label>
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Current Password</label>
                         <PasswordInput
                           value={security.currentPassword}
                           onChange={(e) => setSecurity((p) => ({ ...p, currentPassword: e.target.value }))}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">New Password</label>
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">New Password</label>
                         <PasswordInput
                           value={security.newPassword}
                           onChange={(e) => setSecurity((p) => ({ ...p, newPassword: e.target.value }))}
@@ -3322,15 +3572,14 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                 transition={{ duration: 0.3 }}
                               />
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-gray-400">
-                              Strength: <span className="font-semibold text-slate-700 dark:text-gray-300">{pwStrength.label}</span>
-                              {' - '}Use uppercase, numbers &amp; symbols for a stronger password.
+                            <p className="text-[11px] text-slate-500 dark:text-gray-400 text-right">
+                              Password strength: <span className="font-semibold text-slate-700 dark:text-gray-300">{pwStrength.label}</span>
                             </p>
                           </div>
                         )}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Confirm New Password</label>
+                        <label className="text-xs font-semibold text-slate-600 dark:text-gray-400">Confirm New Password</label>
                         <PasswordInput
                           value={security.confirmPassword}
                           onChange={(e) => setSecurity((p) => ({ ...p, confirmPassword: e.target.value }))}
@@ -3345,7 +3594,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       <button
                         type="submit"
                         disabled={!security.currentPassword || !security.newPassword || !security.confirmPassword || isChangingPassword}
-                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-sky-200"
+                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-blue-200"
                       >
                         {isChangingPassword ? 'Updating Password...' : 'Update Password'}
                       </button>
@@ -3353,9 +3602,19 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   </form>
 
                   {/* 2FA */}
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">Two-Factor Authentication</h3>
-                    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 px-4 py-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-sky-900/30 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                          <Icon.Shield className="h-4 w-4" />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Two-Factor Authentication</h3>
+                      </div>
+                      <span className="rounded-full border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-2.5 py-1 text-[10px] font-semibold text-sky-600 dark:text-sky-400">
+                        Recommended
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-gray-800 px-4 py-3.5">
                       <div className="flex items-start gap-3">
                         <div className={`mt-0.5 h-9 w-9 rounded-xl flex items-center justify-center ${prefs.twoFactorEnabled ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-gray-700 text-slate-400 dark:text-gray-500'}`}>
                           <Icon.Shield className="h-4 w-4" />
@@ -3377,9 +3636,12 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                   </div>
 
                   {/* Authenticator App (TOTP) */}
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6 shadow-sm">
                     <div className="mb-4">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-sky-900/30 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                          <Icon.Activity className="h-4 w-4" />
+                        </div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-white">Authenticator App (TOTP)</h3>
                         {/* Info icon inline next to label */}
                         <div className="relative group">
@@ -3440,7 +3702,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         type="button"
                         onClick={handleInitiateTotpSetup}
                         disabled={totpLoading}
-                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-sky-200"
+                        className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-5 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {totpLoading ? (
                           <>
@@ -3450,7 +3712,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             </svg>
                             Setting up...
                           </>
-                        ) : 'Set Up Authenticator App'}
+                        ) : (
+                          <>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4" aria-hidden="true">
+                              <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
+                              <path d="M15 14h2v2h-2zM19 14h1v1h-1zM19 17h1v1h-1zM17 16h1v1h-1zM15 18h1v1h-1zM16 19h2v1h-2zM18 20h2v-2h-1" />
+                            </svg>
+                            Set Up Authenticator App
+                          </>
+                        )}
                       </button>
                     )}
 
@@ -3669,12 +3939,21 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     )}
                   </AnimatePresence>
 
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
-                    <div className="mb-4">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Passkeys</h3>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6 shadow-sm">
+                    <div className="mb-4 flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-sky-900/30 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                          <circle cx="8" cy="15" r="3" />
+                          <path d="M10.5 13.5l4-4a2.5 2.5 0 1 1 3.5 3.5l-4 4" />
+                          <path d="M14 7l3 3" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Passkeys</h3>
                       <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
                         Add a passkey to sign in with Face ID, fingerprint, or device PIN.
                       </p>
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -3683,13 +3962,13 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         value={passkeyName}
                         onChange={(event) => setPasskeyName(event.target.value)}
                         placeholder="Passkey name (optional, e.g. My iPhone)"
-                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600"
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-sky-800/50 focus:border-blue-300 dark:focus:border-sky-600"
                       />
                       <button
                         type="button"
                         onClick={handleRegisterPasskey}
                         disabled={isRegisteringPasskey}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="inline-flex w-full sm:w-auto sm:min-w-[132px] whitespace-nowrap items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {isRegisteringPasskey ? 'Adding...' : 'Add Passkey'}
                       </button>
@@ -3702,28 +3981,122 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       {isLoadingPasskeys ? (
                         <p className="text-sm text-slate-500 dark:text-gray-400">Loading passkeys...</p>
                       ) : passkeys.length > 0 ? (
-                        passkeys.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 px-4 py-3">
-                            <div className="min-w-0">
+                        passkeys.map((item) => {
+                          const method = resolvePasskeyMethod(item);
+                          const methodLabel = method === 'faceid'
+                            ? 'Face ID'
+                            : method === 'fingerprint'
+                              ? 'Fingerprint'
+                              : method === 'pin'
+                                ? 'PIN'
+                                : 'Passkey';
+                          return (
+                          <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-gray-800 px-4 py-3">
+                            <div className="min-w-0 flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                                <PasskeyMethodIcon method={method} />
+                              </div>
+                              <div className="min-w-0">
                               <p className="text-sm font-semibold text-slate-800 dark:text-gray-200 truncate">{item.name || 'My Passkey'}</p>
                               <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
-                                Last used: {item.last_used_at ? formatRelativeTime(item.last_used_at) : 'Never'}
+                                {methodLabel} · Last used: {item.last_used_at ? formatRelativeTime(item.last_used_at) : 'Never'}
                               </p>
+                              </div>
                             </div>
                             <button
                               type="button"
-                              onClick={() => handleRemovePasskey(item.id)}
+                              onClick={() => setPasskeyToRemove({ id: item.id, name: item.name || 'My Passkey' })}
                               disabled={removingPasskeyId === item.id}
-                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-700 hover:text-white transition-colors disabled:opacity-50"
+                              aria-label={`Remove passkey ${item.name || 'My Passkey'}`}
+                              title="Remove passkey"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                             >
-                              {removingPasskeyId === item.id ? 'Removing...' : 'Remove'}
+                              {removingPasskeyId === item.id ? (
+                                <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v3a5 5 0 0 0-5 5H4z" />
+                                </svg>
+                              ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4" aria-hidden="true">
+                                  <path d="M3 6h18" />
+                                  <path d="M8 6V4h8v2" />
+                                  <path d="M19 6l-1 14H6L5 6" />
+                                  <path d="M10 11v6M14 11v6" />
+                                </svg>
+                              )}
                             </button>
                           </div>
-                        ))
+                        )})
                       ) : (
                         <p className="text-sm text-slate-500 dark:text-gray-400">No passkeys registered yet.</p>
                       )}
                     </div>
+                    <AnimatePresence>
+                      {passkeyToRemove && (
+                        <motion.div
+                          key="passkey-remove-modal"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 p-4"
+                          onClick={() => {
+                            if (!removingPasskeyId) setPasskeyToRemove(null);
+                          }}
+                        >
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                            transition={{ duration: 0.18 }}
+                            className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-900 p-5 shadow-2xl"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 h-9 w-9 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4" aria-hidden="true">
+                                  <path d="M3 6h18" />
+                                  <path d="M8 6V4h8v2" />
+                                  <path d="M19 6l-1 14H6L5 6" />
+                                  <path d="M10 11v6M14 11v6" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-base font-bold text-slate-900 dark:text-white">Remove passkey?</h4>
+                                <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+                                  This will remove <span className="font-semibold text-slate-800 dark:text-gray-100">{passkeyToRemove.name}</span> from your account.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-5 flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPasskeyToRemove(null)}
+                                disabled={Boolean(removingPasskeyId)}
+                                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePasskey(passkeyToRemove.id)}
+                                disabled={Boolean(removingPasskeyId)}
+                                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                              >
+                                {removingPasskeyId === passkeyToRemove.id ? (
+                                  <>
+                                    <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v3a5 5 0 0 0-5 5H4z" />
+                                    </svg>
+                                    Removing...
+                                  </>
+                                ) : 'Remove'}
+                              </button>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Connected Accounts */}
@@ -3905,22 +4278,78 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               {activeTab === 'preferences' && (
                 <motion.div key="preferences" {...tabMotionProps} className="space-y-5">
 
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
-                    <div className="mb-5">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Notifications</h3>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Choose how you&apos;d like to be updated.</p>
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6 shadow-sm">
+                    <div className="mb-5 flex items-start gap-3">
+                      <div className="h-11 w-11 rounded-xl bg-blue-50 dark:bg-sky-900/30 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} className="h-5 w-5" aria-hidden="true">
+                          <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 0 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+                          <path d="M10 17a2 2 0 0 0 4 0" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-2lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">Notifications</h3>
+                        <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">Choose how you&apos;d like to be updated.</p>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       {[
-                        { key: 'orderUpdates' as const, label: 'Order Status Updates', desc: 'Get notified when your order ships, arrives, or has issues.' },
-                        { key: 'marketingEmails' as const, label: 'Marketing Emails', desc: 'Receive newsletters, promotions, and product highlights.' },
-                        { key: 'smsUpdates' as const, label: 'SMS Notifications', desc: 'Get text messages for urgent updates and delivery alerts.' },
-                        { key: 'pushNotifications' as const, label: 'Push Notifications', desc: 'Browser notifications for real-time activity.' },
+                        {
+                          key: 'orderUpdates' as const,
+                          label: 'Order Status Updates',
+                          desc: 'Get notified when your order ships, arrives, or has issues.',
+                          icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden="true">
+                              <path d="M3 8l9-5 9 5-9 5-9-5z" />
+                              <path d="M3 8v8l9 5 9-5V8" />
+                              <path d="M12 13v8" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          key: 'marketingEmails' as const,
+                          label: 'Marketing Emails',
+                          desc: 'Receive newsletters, promotions, and product highlights.',
+                          icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden="true">
+                              <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                              <path d="M3 8l9 6 9-6" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          key: 'smsUpdates' as const,
+                          label: 'SMS Notifications',
+                          desc: 'Get text messages for urgent updates and delivery alerts.',
+                          icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden="true">
+                              <path d="M20 12a8 8 0 0 1-8 8H7l-3 3v-6a8 8 0 1 1 16-5z" />
+                              <circle cx="9" cy="12" r="1" />
+                              <circle cx="12" cy="12" r="1" />
+                              <circle cx="15" cy="12" r="1" />
+                            </svg>
+                          ),
+                        },
+                        {
+                          key: 'pushNotifications' as const,
+                          label: 'Push Notifications',
+                          desc: 'Browser notifications for real-time activity.',
+                          icon: (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} className="h-5 w-5" aria-hidden="true">
+                              <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 0 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
+                              <path d="M10 17a2 2 0 0 0 4 0" />
+                            </svg>
+                          ),
+                        },
                       ].map((item) => (
-                        <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 px-4 py-3">
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-slate-800 dark:text-gray-200">{item.label}</p>
-                            <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{item.desc}</p>
+                        <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-4 py-3.5">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-gray-700 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                              {item.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-l font-semibold leading-none tracking-tight text-slate-900 dark:text-gray-100">{item.label}</p>
+                              <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">{item.desc}</p>
+                            </div>
                           </div>
                           <Toggle checked={prefs[item.key]} onChange={() => togglePref(item.key)} />
                         </div>
@@ -3928,41 +4357,67 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6">
-                    <div className="mb-5">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Display & Regional</h3>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Customize your language and currency experience.</p>
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-5 md:p-6 shadow-sm">
+                    <div className="mb-5 flex items-start gap-3">
+                      <div className="h-11 w-11 rounded-xl bg-blue-50 dark:bg-sky-900/30 text-blue-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">Display & Regional</h3>
+                        <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">Customize your language and currency experience.</p>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Language</label>
-                        <select
-                          value={prefs.language}
-                          onChange={(e) => setPrefs((p) => ({ ...p, language: e.target.value as 'en' | 'fil' }))}
-                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600"
-                        >
-                          <option value="en">English</option>
-                          <option value="fil">Filipino</option>
-                        </select>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Language</label>
+                        <div className="relative">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                          </svg>
+                          <select
+                            value={prefs.language}
+                            onChange={(e) => setPrefs((p) => ({ ...p, language: e.target.value as 'en' | 'fil' }))}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 pl-10 pr-9 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-sky-800/50 focus:border-blue-300 dark:focus:border-sky-600"
+                          >
+                            <option value="en">English</option>
+                            <option value="fil">Filipino</option>
+                          </select>
+                        </div>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Currency</label>
-                        <select
-                          value={prefs.currency}
-                          onChange={(e) => setPrefs((p) => ({ ...p, currency: e.target.value as 'PHP' | 'USD' }))}
-                          className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-800/50 focus:border-sky-300 dark:focus:border-sky-600"
-                        >
-                          <option value="PHP">Philippine Peso (PHP)</option>
-                          <option value="USD">$ US Dollar (USD)</option>
-                        </select>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-gray-300">Currency</label>
+                        <div className="relative">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-500" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9" />
+                            <path d="M12 6v12" />
+                          </svg>
+                          <select
+                            value={prefs.currency}
+                            onChange={(e) => setPrefs((p) => ({ ...p, currency: e.target.value as 'PHP' | 'USD' }))}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 pl-10 pr-9 py-2.5 text-sm text-slate-800 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-sky-800/50 focus:border-blue-300 dark:focus:border-sky-600"
+                          >
+                            <option value="PHP">₱ Philippine Peso (PHP)</option>
+                            <option value="USD">$ US Dollar (USD)</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
                     <div className="mt-5 flex justify-end">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 dark:hover:bg-sky-700 transition-colors shadow-sm shadow-sky-200 dark:shadow-sky-900/30"
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 dark:shadow-sky-900/30"
                       >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} className="h-4 w-4" aria-hidden="true">
+                          <path d="M5 4h11l3 3v13H5z" />
+                          <path d="M8 4v6h8V4" />
+                          <path d="M9 17h6" />
+                        </svg>
                         Save Preferences
                       </button>
                     </div>
@@ -4304,21 +4759,26 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           ))}
                         </div>
                       ) : sessionItems.length > 0 ? (
-                        paginatedSessionItems.map((session) => (
-                          <div key={session.id} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 px-4 py-3.5 flex items-center justify-between gap-4">
+                        paginatedSessionItems.map((session) => {
+                          const resolved = resolvePlatformBrowser(session);
+                          const deviceType = resolveSessionDeviceType(session);
+                          return (
+                          <div key={session.token_id || session.id} className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-gray-800 px-4 py-3.5 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3 min-w-0">
                               <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${session.is_current ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-500 dark:text-sky-400'}`}>
                                 <Icon.Shield className="h-4 w-4" />
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-slate-800 dark:text-gray-200 truncate">
-                                  {session.is_current ? 'Current Device' : session.device}
+                                  {session.is_current ? `This device (${deviceType})` : `Other device (${deviceType})`}
                                 </p>
                                 <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
-                                  {session.platform} - {session.browser} - {session.location}
+                                  {resolved.platform} - {resolved.browser} - {resolveSessionLocation(session)}
                                 </p>
                                 <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-0.5">
-                                  Last active: {formatRelativeTime(session.last_active_at ?? session.created_at ?? null)}
+                                  {session.is_current
+                                    ? `Online: ${formatOnlineDuration(session.created_at ?? null)}`
+                                    : `Last active: ${formatRelativeTime(session.last_active_at ?? session.created_at ?? null)}`}
                                 </p>
                               </div>
                             </div>
@@ -4332,7 +4792,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                               <button
                                 type="button"
                                 onClick={() => handleRevokeSession(session.token_id, session.is_current)}
-                                disabled={session.token_id <= 0 || (isRevokingSession && revokingTokenId === session.token_id)}
+                                disabled={(!session.is_current && session.token_id <= 0) || (isRevokingSession && revokingTokenId === session.token_id)}
                                 className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <Icon.LogOut className="h-3.5 w-3.5" />
@@ -4340,7 +4800,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                               </button>
                             </div>
                           </div>
-                        ))
+                        )})
                       ) : (
                         <p className="text-sm text-slate-500 dark:text-gray-400">No active sessions found.</p>
                       )}
