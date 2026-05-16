@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Store, Palette, Package, Bell, LayoutDashboard,
+  Store, Palette, Package, Bell,
   BadgeDollarSign, ArrowRight, Sparkles, ShoppingBag,
   CheckCircle2, Zap, Users, TrendingUp, ChevronRight,
   ArrowRightLeft, Tag, Layers,
@@ -83,11 +83,12 @@ const EARNINGS_FEED = [
   { store: 'NestHaus', product: 'Geometric Rug', amount: '₱350', time: '12 min ago' },
 ];
 
-const SCENES = ['intro', 'problem', 'concept', 'showcase', 'earnings', 'benefits', 'howItWorks', 'cta'] as const;
+const SCENES = ['intro', 'problem', 'highlight', 'concept', 'showcase', 'earnings', 'benefits', 'howItWorks', 'cta'] as const;
 type Scene = typeof SCENES[number];
 const DURATIONS: Record<Scene, number> = {
   intro: 3500,
   problem: 4500,
+  highlight: 6000,
   concept: 7000,
   showcase: 12000,
   earnings: 8000,
@@ -95,6 +96,143 @@ const DURATIONS: Record<Scene, number> = {
   howItWorks: 11000,
   cta: 99999,
 };
+
+/* ─── Highlight Scene ───────────────────────────────────────── */
+const HIGHLIGHT_CARDS = [
+  {
+    rotate: -8, x: -320, y: -80, delay: 0.3,
+    content: (
+      <div className="bg-[#111115] border border-white/10 rounded-2xl p-4 w-48 shadow-2xl">
+        <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">New Order</p>
+        <p className="text-white font-bold text-sm">Minimalist Sofa</p>
+        <p className="text-emerald-400 font-black text-xl mt-1">+₱624</p>
+        <p className="text-white/25 text-[10px] mt-1">LivingCo Store · Just now</p>
+      </div>
+    ),
+  },
+  {
+    rotate: 6, x: 300, y: -100, delay: 0.5,
+    content: (
+      <div className="bg-[#111115] border border-white/10 rounded-2xl p-4 w-44 shadow-2xl">
+        <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">This Month</p>
+        <p className="text-emerald-400 font-black text-2xl">₱48,200</p>
+        <p className="text-white/25 text-[10px] mt-1">Commission earned</p>
+        <div className="mt-2 h-1 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-full w-3/4 bg-emerald-400 rounded-full" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    rotate: -5, x: -280, y: 100, delay: 0.7,
+    content: (
+      <div className="bg-[#111115] border border-white/10 rounded-2xl p-4 w-44 shadow-2xl">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-teal-500 flex items-center justify-center text-[10px] font-bold text-white">LC</div>
+          <div>
+            <p className="text-white text-xs font-semibold">LivingCo</p>
+            <p className="text-white/30 text-[9px]">Your Storefront</p>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          {['Sofa', 'Table', 'Curtains'].map(p => (
+            <div key={p} className="flex items-center gap-2 bg-white/5 rounded-lg px-2 py-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+              <span className="text-white/50 text-[10px]">{p}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    rotate: 7, x: 290, y: 90, delay: 0.9,
+    content: (
+      <div className="bg-[#111115] border border-white/10 rounded-2xl p-4 w-44 shadow-2xl">
+        <p className="text-white/40 text-[10px] uppercase tracking-widest mb-2">Active Stores</p>
+        <div className="flex gap-1.5 flex-wrap">
+          {['LC', 'NH', 'CB', 'FG', 'NK'].map((s, i) => (
+            <div key={s} className="w-8 h-8 rounded-lg flex items-center justify-center text-[9px] font-bold text-white"
+              style={{ backgroundColor: ['#0d9488','#7c3aed','#be123c','#ca8a04','#0891b2'][i] }}>
+              {s}
+            </div>
+          ))}
+        </div>
+        <p className="text-white/25 text-[10px] mt-2">5 storefronts live</p>
+      </div>
+    ),
+  },
+];
+
+function HighlightScene() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.7 }}
+      className="relative flex items-center justify-center w-full max-w-4xl min-h-[500px]"
+    >
+      {/* Floating cards */}
+      {HIGHLIGHT_CARDS.map((card, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, scale: 0.8, x: card.x * 0.5, y: card.y * 0.5 }}
+          animate={{ opacity: 1, scale: 1, x: card.x, y: card.y, rotate: card.rotate }}
+          transition={{ delay: card.delay, duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+          style={{ position: 'absolute' }}
+        >
+          <motion.div
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 3 + i * 0.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 }}
+          >
+            {card.content}
+          </motion.div>
+        </motion.div>
+      ))}
+
+      {/* Center typography */}
+      <div className="relative z-10 text-center">
+        <motion.p
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="text-amber-400 text-xs font-semibold tracking-[0.2em] uppercase mb-5"
+        >
+          Partner Storefront
+        </motion.p>
+
+        <div className="overflow-hidden">
+          <motion.h1
+            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="text-6xl font-black leading-none bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent"
+          >
+            No inventory.
+          </motion.h1>
+        </div>
+        <div className="overflow-hidden">
+          <motion.h1
+            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.45, duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="text-6xl font-black leading-none bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent"
+          >
+            No warehouse.
+          </motion.h1>
+        </div>
+        <div className="overflow-hidden mt-1">
+          <motion.h1
+            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7, duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="text-6xl font-black leading-none text-amber-400"
+          >
+            Just your brand.
+          </motion.h1>
+        </div>
+
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}
+          className="text-white/30 text-base mt-5 max-w-xs mx-auto leading-relaxed"
+        >
+          Sell thousands of AF Homes products under your own brand — zero logistics, zero stock.
+        </motion.p>
+      </div>
+    </motion.div>
+  );
+}
 
 /* ─── Orbs ──────────────────────────────────────────────────── */
 function Orbs({ color }: { color: string }) {
@@ -423,6 +561,15 @@ export default function StorefrontDemo() {
     setPlaying(true);
   };
 
+  // Spacebar to pause/play
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space') { e.preventDefault(); setPlaying(p => !p); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   useEffect(() => {
     if (!playing) return;
     timer.current = setTimeout(() => {
@@ -450,10 +597,15 @@ export default function StorefrontDemo() {
 
       <SceneNav scene={scene} goTo={goTo} />
 
-      <button onClick={() => setPlaying(p => !p)}
-        className="fixed top-6 right-6 z-50 text-[11px] text-white/40 hover:text-white/70 bg-white/5 backdrop-blur px-3 py-1.5 rounded-full border border-white/10 transition">
-        {playing ? '⏸ Pause' : '▶ Play'}
-      </button>
+      {!playing && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="fixed top-6 right-6 z-50 text-[11px] text-white/40 bg-white/5 backdrop-blur px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1.5"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          Paused — press Space
+        </motion.div>
+      )}
 
       <div className="relative z-10 min-h-screen flex items-center justify-center px-6 py-24">
         <AnimatePresence mode="wait">
@@ -516,6 +668,9 @@ export default function StorefrontDemo() {
               </motion.div>
             </motion.div>
           )}
+
+          {/* Highlight */}
+          {scene === 'highlight' && <HighlightScene key="highlight" />}
 
           {/* Concept */}
           {scene === 'concept' && <ConceptScene key="concept" />}
@@ -788,6 +943,7 @@ export default function StorefrontDemo() {
           <span className="text-white/15 text-[10px] tracking-[0.2em] uppercase">
             {scene === 'intro' && 'Introduction'}
             {scene === 'problem' && 'The Challenge'}
+            {scene === 'highlight' && 'No Inventory. No Hassle.'}
             {scene === 'concept' && 'The Concept'}
             {scene === 'showcase' && 'Live Showcase'}
             {scene === 'earnings' && 'Partner Earnings'}
