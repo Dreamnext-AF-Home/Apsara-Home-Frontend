@@ -81,6 +81,73 @@ const SUPPLIER_ALLOWED_PREFIXES = [
   "/supplier/company",
 ];
 
+const PARTNER_STOREFRONT_CACHE_TTL_MS = 0;
+let partnerStorefrontCache: { expiresAt: number; slugToId: Map<string, number> } | null = null;
+
+const getLaravelApiUrl = (): string => {
+  return String(process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_LARAVEL_API_URL || '').trim();
+};
+
+const resolveStorefrontSlugToIdMap = async (originFallback: string): Promise<Map<string, number>> => {
+  const now = Date.now();
+  if (partnerStorefrontCache && partnerStorefrontCache.expiresAt > now) {
+    return partnerStorefrontCache.slugToId;
+  }
+
+  const apiUrl = getLaravelApiUrl();
+  const endpoint = apiUrl
+    ? `${apiUrl}/api/web-pages/partner-storefronts`
+    : `${originFallback}/api/web-pages/partner-storefronts`;
+
+  try {
+    const response = await fetch(endpoint, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) return new Map<string, number>();
+    const data = await response.json().catch(() => null) as { items?: Array<Record<string, unknown>> } | null;
+    const map = new Map<string, number>();
+    for (const item of data?.items ?? []) {
+      const id = Number(item?.id ?? 0);
+      if (!Number.isFinite(id) || id <= 0) continue;
+      const keySlug = String(item?.key ?? '').trim().toLowerCase();
+      const payload = (item?.payload ?? {}) as { fields?: Record<string, unknown> };
+      const fields = payload?.fields ?? {};
+      const fieldSlug = String(fields?.slug ?? '').trim().toLowerCase();
+      const slug = fieldSlug || keySlug;
+      if (slug) map.set(slug, id);
+    }
+    partnerStorefrontCache = { expiresAt: now + PARTNER_STOREFRONT_CACHE_TTL_MS, slugToId: map };
+    return map;
+  } catch {
+    return new Map<string, number>();
+  }
+};
+
+const fetchLivePartnerStorefrontIds = async (accessToken: string): Promise<number[] | null> => {
+  const apiUrl = getLaravelApiUrl();
+  if (!apiUrl || !accessToken) return null;
+  try {
+    const response = await fetch(`${apiUrl}/api/admin/auth/me`, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const data = await response.json().catch(() => null) as { storefront_ids?: unknown } | null;
+    const ids = Array.isArray(data?.storefront_ids)
+      ? data!.storefront_ids
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      : [];
+    return ids;
+  } catch {
+    return null;
+  }
+};
+
 const getAdminRedirectPath = (role: string): string => {
   switch (role) {
     case "accounting":
@@ -123,6 +190,16 @@ const canAccessWebContentPath = (permissions: string[], pathname: string): boole
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isUnauthorizedPage = pathname === "/unauthorized";
+
+  const redirectUnauthorized = (storeName?: string) => {
+    if (isUnauthorizedPage) return NextResponse.next();
+    const unauthorizedUrl = new URL("/unauthorized", req.url);
+    if (storeName && storeName.trim()) {
+      unauthorizedUrl.searchParams.set("store", storeName.trim());
+    }
+    return NextResponse.redirect(unauthorizedUrl);
+  };
 
   // Block mobile devices from admin/super_admin routes
   if (
@@ -169,14 +246,15 @@ export async function proxy(req: NextRequest) {
   });
   const passwordChangeRequired = Boolean((token as { passwordChangeRequired?: boolean } | null)?.passwordChangeRequired);
 
-  const isAdminLoginPage = pathname === "/admin/login";
-  const isPartnerLoginPage = pathname === "/partner/login";
+  const isAdminLoginPage = pathname === "/admin/login" || pathname.startsWith("/admin/login/");
+  const isPartnerLoginPage = pathname === "/partner/login" || pathname.startsWith("/partner/login/");
   const isSupplierPublicPage =
     pathname === "/supplier/login" ||
     pathname === "/supplier/forgot-password" ||
     pathname === "/supplier/reset-password";
   const isAdminRoute = pathname.startsWith("/admin");
   const isPartnerRoute = pathname.startsWith("/partner");
+  const isShopRoute = pathname.startsWith("/shop/");
   const isSupplierRoute = pathname.startsWith("/supplier");
   const isAuthRequiredRoute = AUTH_REQUIRED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isLoginPage = pathname === "/login";
@@ -209,6 +287,16 @@ export async function proxy(req: NextRequest) {
     const role = String((partnerToken as { role?: string } | null)?.role ?? "").toLowerCase();
     const userLevelId = Number((partnerToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
     const isWebContent = role === "web_content" || userLevelId === 4;
+    const storefrontIds = Array.isArray((partnerToken as { storefrontIds?: number[] } | null)?.storefrontIds)
+      ? ((partnerToken as { storefrontIds?: number[] } | null)?.storefrontIds ?? [])
+      : [];
+    const hasStorefrontAccess = storefrontIds.length > 0;
+
+    // Allow opening login page even if current partner session has disabled access,
+    // so the user can switch to another account.
+    if (partnerToken && isWebContent && !hasStorefrontAccess) {
+      return NextResponse.next();
+    }
 
     if (partnerToken && isWebContent) {
       return NextResponse.redirect(new URL("/partner/webpages/partner-storefronts", req.url));
@@ -312,6 +400,10 @@ export async function proxy(req: NextRequest) {
   }
 
   if (isPartnerRoute) {
+    if (isPartnerLoginPage) {
+      return NextResponse.next();
+    }
+
     if (!partnerToken) {
       const loginUrl = new URL("/partner/login", req.url);
       loginUrl.searchParams.set("callback", pathname);
@@ -321,11 +413,22 @@ export async function proxy(req: NextRequest) {
     const role = String((partnerToken as { role?: string } | null)?.role ?? "").toLowerCase();
     const userLevelId = Number((partnerToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
     const isWebContent = role === "web_content" || userLevelId === 4;
+    const tokenStorefrontIds = Array.isArray((partnerToken as { storefrontIds?: number[] } | null)?.storefrontIds)
+      ? ((partnerToken as { storefrontIds?: number[] } | null)?.storefrontIds ?? [])
+      : [];
+    const partnerAccessToken = String((partnerToken as { accessToken?: string } | null)?.accessToken ?? '');
+    const liveStorefrontIds = partnerAccessToken ? await fetchLivePartnerStorefrontIds(partnerAccessToken) : null;
+    const storefrontIds = liveStorefrontIds ?? (partnerAccessToken ? [] : tokenStorefrontIds);
+    const hasStorefrontAccess = storefrontIds.length > 0;
     const rawPartnerPermissions = ((partnerToken as { adminPermissions?: string[] } | null)?.adminPermissions ?? [])
       .filter((permission): permission is string => typeof permission === "string");
 
     if (!isWebContent) {
       return NextResponse.redirect(new URL(getAdminRedirectPath(role), req.url));
+    }
+
+    if (!hasStorefrontAccess) {
+      return redirectUnauthorized();
     }
 
     const allowed =
@@ -337,6 +440,40 @@ export async function proxy(req: NextRequest) {
 
     if (!canAccessWebContentPath(rawPartnerPermissions, pathname)) {
       return NextResponse.redirect(new URL("/admin/webpages", req.url));
+    }
+  }
+
+  if (isShopRoute && partnerToken) {
+    const role = String((partnerToken as { role?: string } | null)?.role ?? "").toLowerCase();
+    const userLevelId = Number((partnerToken as { userLevelId?: number } | null)?.userLevelId ?? 0);
+    const isWebContent = role === "web_content" || userLevelId === 4;
+    const tokenStorefrontIds = Array.isArray((partnerToken as { storefrontIds?: number[] } | null)?.storefrontIds)
+      ? ((partnerToken as { storefrontIds?: number[] } | null)?.storefrontIds ?? [])
+      : [];
+    const partnerAccessToken = String((partnerToken as { accessToken?: string } | null)?.accessToken ?? '');
+    const liveStorefrontIds = partnerAccessToken ? await fetchLivePartnerStorefrontIds(partnerAccessToken) : null;
+    const storefrontIds = liveStorefrontIds ?? (partnerAccessToken ? [] : tokenStorefrontIds);
+    const hasStorefrontAccess = storefrontIds.length > 0;
+
+    if (isWebContent && !hasStorefrontAccess) {
+      return redirectUnauthorized();
+    }
+
+    if (isWebContent && hasStorefrontAccess) {
+      const segments = pathname.split('/').filter(Boolean);
+      const partnerSlug = String(segments[1] ?? '').trim().toLowerCase();
+      if (partnerSlug) {
+        const slugToId = await resolveStorefrontSlugToIdMap(req.nextUrl.origin);
+        const targetStorefrontId = Number(slugToId.get(partnerSlug) ?? 0);
+        if (targetStorefrontId > 0 && !storefrontIds.includes(targetStorefrontId)) {
+          const partnerStoreName = partnerSlug
+            .split('-')
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+          return redirectUnauthorized(partnerStoreName || "Partner Store");
+        }
+      }
     }
   }
 
