@@ -1,13 +1,15 @@
-import { getPartnerStorefrontConfig, type PartnerStorefrontConfig } from '@/libs/partnerStorefront'
+﻿import { getPartnerStorefrontConfig, type PartnerStorefrontConfig } from '@/libs/partnerStorefront'
 import type { WebPageItem } from '@/store/api/webPagesApi'
 
 type PublicWebPageItemsResponse = {
   items?: WebPageItem[]
 }
+
 export type PartnerStorefrontRecord = {
   id: number
   config: PartnerStorefrontConfig
 }
+
 type StorefrontFetchOptions = {
   fresh?: boolean
 }
@@ -30,8 +32,14 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
   }
 }
 
-export async function getPartnerStorefrontBySlug(partnerSlug: string): Promise<PartnerStorefrontConfig | null> {
-  const record = await getPartnerStorefrontRecordBySlug(partnerSlug)
+export async function getPartnerStorefrontBySlug(
+  partnerSlug: string,
+  options: StorefrontFetchOptions = {},
+): Promise<PartnerStorefrontConfig | null> {
+  const record = await getPartnerStorefrontRecordBySlug(partnerSlug, {
+    fresh: options.fresh ?? true,
+  })
+
   return record?.config ?? null
 }
 
@@ -50,9 +58,8 @@ export async function getPartnerStorefrontRecordBySlug(
       const response = await fetchWithTimeout(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        cache: options.fresh === false ? 'force-cache' : 'no-store',
-        ...(options.fresh === false
-          ? {}
+        ...(options.fresh
+          ? { cache: 'no-store' as const }
           : {
               next: {
                 revalidate: STOREFRONT_REVALIDATE_SECONDS,
@@ -69,6 +76,7 @@ export async function getPartnerStorefrontRecordBySlug(
       })
       const config = getPartnerStorefrontConfig(storefrontItem)
       if (!config || !storefrontItem) return null
+
       return {
         id: storefrontItem.id,
         config,

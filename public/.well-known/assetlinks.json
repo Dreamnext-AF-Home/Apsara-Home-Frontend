@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.afhome.mobile",
+      "sha256_cert_fingerprints": [
+        "9A56F85421D57624DC257311825235E17A6B76C7C515B24577575E306AE342F0F24"
+      ]
+    }
+  }
+]

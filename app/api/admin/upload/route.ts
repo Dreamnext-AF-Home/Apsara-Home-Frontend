@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
+import type { UploadApiOptions, UploadApiResponse } from 'cloudinary'
 import { getServerSession } from 'next-auth'
 import { adminAuthOptions } from '@/libs/adminAuth'
 import { authOptions } from '@/libs/auth'
@@ -20,6 +21,29 @@ cloudinary.config({
   api_key: cloudinaryApiKey,
   api_secret: cloudinaryApiSecret,
 })
+
+function uploadBuffer(
+  buffer: Buffer,
+  options: UploadApiOptions,
+) {
+  return new Promise<UploadApiResponse>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      if (!result) {
+        reject(new Error('Upload failed.'))
+        return
+      }
+
+      resolve(result)
+    })
+
+    stream.end(buffer)
+  })
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -113,7 +137,6 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    const base64 = `data:${file.type};base64,${buffer.toString('base64')}`
 
     const folderMap: Record<string, string> = {
       products: 'apsara/products',
@@ -127,27 +150,31 @@ export async function POST(req: NextRequest) {
     }
     const folder = folderMap[folderType] ?? folderMap.products
 
+    const pdfUploadOptions: UploadApiOptions = {
+      folder,
+      resource_type: 'raw',
+      use_filename: true,
+      unique_filename: true,
+    }
+    const videoUploadOptions: UploadApiOptions = {
+      folder,
+      resource_type: 'video',
+      use_filename: true,
+      unique_filename: true,
+    }
+    const imageUploadOptions: UploadApiOptions = {
+      folder,
+      transformation: [
+        { width: 1200, height: 1200, crop: 'limit' },
+        { quality: 'auto', fetch_format: 'auto' },
+      ],
+    }
+
     const result = isPdf
-      ? await cloudinary.uploader.upload(base64, {
-          folder,
-          resource_type: 'raw',
-          use_filename: true,
-          unique_filename: true,
-        })
+      ? await uploadBuffer(buffer, pdfUploadOptions)
       : isVideo
-        ? await cloudinary.uploader.upload(base64, {
-            folder,
-            resource_type: 'video',
-            use_filename: true,
-            unique_filename: true,
-          })
-      : await cloudinary.uploader.upload(base64, {
-          folder,
-          transformation: [
-            { width: 1200, height: 1200, crop: 'limit' },
-            { quality: 'auto', fetch_format: 'auto' },
-          ],
-        })
+        ? await uploadBuffer(buffer, videoUploadOptions)
+      : await uploadBuffer(buffer, imageUploadOptions)
 
     return NextResponse.json({ url: result.secure_url, public_id: result.public_id })
   } catch (err: unknown) {

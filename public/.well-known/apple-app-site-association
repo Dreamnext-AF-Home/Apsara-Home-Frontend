@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "REPLACE_WITH_TEAM_ID.com.afhome.mobile",
+        "paths": [
+          "/ref/*",
+          "/shop*",
+          "/payment/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "REPLACE_WITH_TEAM_ID.com.afhome.mobile"
+    ]
+  }
+}

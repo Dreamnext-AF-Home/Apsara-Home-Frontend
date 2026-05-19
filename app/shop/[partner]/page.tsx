@@ -14,6 +14,7 @@ type PageProps = {
   }>
   searchParams?: Promise<{
     category?: string
+    preview?: string
   }>
 }
 
@@ -77,12 +78,12 @@ export async function generateMetadata({ params }: PageProps) {
   return metadata
 }
 
-async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?: number) {
+async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?: number, fresh = false) {
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
   if (!apiUrl) return null
 
   try {
-    const partner = await getPartnerStorefrontBySlug(partnerSlug)
+    const partner = await getPartnerStorefrontBySlug(partnerSlug, { fresh })
     if (!partner) return null
 
     const [webPagesRes, categoriesRes, productsRes] = await Promise.allSettled([
@@ -190,6 +191,7 @@ export default async function PartnerShopPage({ params, searchParams }: PageProp
   const payload = await getPartnerStorefrontData(
     resolved.partner,
     Number.isFinite(selectedCategoryId) && selectedCategoryId > 0 ? selectedCategoryId : undefined,
+    Boolean(resolvedSearchParams?.preview),
   )
 
   if (!payload) {
