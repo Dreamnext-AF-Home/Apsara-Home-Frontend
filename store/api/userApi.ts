@@ -202,6 +202,38 @@ export interface SubmitUsernameChangeResponse {
     request: UsernameChangeRequest;
 }
 
+export interface SubmitWebstoreRequestPayload {
+    full_name: string;
+    username: string;
+    email: string;
+    slug_name: string;
+    display_name: string;
+    accepted_terms: boolean;
+}
+
+export interface SubmitWebstoreRequestResponse {
+    message: string;
+    request: {
+        id: number;
+        submitted_at: string;
+    };
+}
+
+export interface WebstoreRequest {
+    id: number;
+    reference_no: string;
+    status: 'pending_review' | 'approved' | 'rejected';
+    full_name?: string | null;
+    username?: string | null;
+    email?: string | null;
+    slug_name?: string | null;
+    display_name?: string | null;
+    reviewed_at?: string | null;
+    created_at?: string | null;
+    can_sync_account?: boolean;
+    partner_sync_status?: 'synced' | 'not_synced';
+}
+
 export interface LinkedAccount {
     provider: string;
     linked_at: string;
@@ -392,11 +424,37 @@ export const userApi = baseApi.injectEndpoints({
             invalidatesTags: ['User'],
         }),
 
+        submitWebstoreRequest: builder.mutation<SubmitWebstoreRequestResponse, SubmitWebstoreRequestPayload>({
+            query: (body) => ({
+                url: '/api/webstore-requests',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['User'],
+        }),
+
         usernameChangeLatest: builder.query<{ request: UsernameChangeRequest | null }, void>({
             query: () => ({
                 url: '/api/auth/username-change/latest',
                 method: 'GET',
             }),
+            providesTags: ['User'],
+        }),
+
+        webstoreRequestLatest: builder.query<{ request: WebstoreRequest | null }, void>({
+            query: () => ({
+                url: '/api/webstore-requests/latest',
+                method: 'GET',
+            }),
+            providesTags: ['User'],
+        }),
+
+        syncWebstorePartnerAccount: builder.mutation<{ message: string; partner?: { id: number; username: string; storefront_ids: number[] } }, void>({
+            query: () => ({
+                url: '/api/webstore-requests/sync-account',
+                method: 'POST',
+            }),
+            invalidatesTags: ['User'],
         }),
 
         memberActivity: builder.query<{ items: MemberActivityItem[] }, void>({
@@ -503,7 +561,10 @@ export const {
     useChangePasswordMutation,
     useSendUsernameChangeOtpMutation,
     useSubmitUsernameChangeRequestMutation,
+    useSubmitWebstoreRequestMutation,
     useUsernameChangeLatestQuery,
+    useWebstoreRequestLatestQuery,
+    useSyncWebstorePartnerAccountMutation,
     useReferralTreeQuery,
     useMemberActivityQuery,
     useMemberSessionsQuery,

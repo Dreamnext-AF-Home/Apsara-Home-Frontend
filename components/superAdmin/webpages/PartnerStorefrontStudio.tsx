@@ -104,6 +104,19 @@ const selectClass =
 const softCardClass =
   'rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 dark:border-slate-700 dark:bg-slate-800/70'
 
+const broadcastStorefrontUpdate = (slug: string) => {
+  if (typeof window === 'undefined') return
+  const normalizedSlug = String(slug ?? '').trim().toLowerCase()
+  if (!normalizedSlug) return
+  const payload = { slug: normalizedSlug, ts: Date.now() }
+  window.localStorage.setItem('afhome:partner-storefront-updated', JSON.stringify(payload))
+  if ('BroadcastChannel' in window) {
+    const channel = new BroadcastChannel('afhome:partner-storefront')
+    channel.postMessage(payload)
+    channel.close()
+  }
+}
+
 export default function PartnerStorefrontStudio() {
   const [selectedId, setSelectedId] = useState<number | 'new'>('new')
   const [draft, setDraft] = useState<DraftState>(emptyDraft)
@@ -295,6 +308,7 @@ export default function PartnerStorefrontStudio() {
       updateItem({ type: 'partner-storefront', id: selectedId, data: payload })
         .unwrap()
         .then(() => {
+          broadcastStorefrontUpdate(nextDraft.slug)
           refetch()
         })
         .catch(() => {
@@ -355,6 +369,7 @@ export default function PartnerStorefrontStudio() {
         updateItem({ type: 'partner-storefront', id: selectedId, data: payload })
           .unwrap()
           .then(() => {
+            broadcastStorefrontUpdate(nextDraft.slug)
             refetch()
           })
           .catch(() => {
@@ -746,6 +761,7 @@ export default function PartnerStorefrontStudio() {
 
       setDraft((current) => ({ ...current, slug }))
       showSuccessToast('Partner storefront saved.')
+      broadcastStorefrontUpdate(slug)
       refetch()
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
@@ -781,6 +797,7 @@ export default function PartnerStorefrontStudio() {
     try {
       await updateItem({ type: 'partner-storefront', id: draft.id, data: buildStorefrontPayload(draft) }).unwrap()
       showSuccessToast('Referral link saved successfully.')
+      broadcastStorefrontUpdate(draft.slug || draft.displayName)
       refetch()
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
@@ -818,6 +835,7 @@ export default function PartnerStorefrontStudio() {
     try {
       await updateItem({ type: 'partner-storefront', id: nextDraft.id, data: buildStorefrontPayload(nextDraft) }).unwrap()
       showSuccessToast('Referral link removed.')
+      broadcastStorefrontUpdate(nextDraft.slug || nextDraft.displayName)
       refetch()
     } catch (error) {
       setDraft((current) => ({ ...current, referralLink: previousReferral }))
@@ -1176,6 +1194,7 @@ export default function PartnerStorefrontStudio() {
                                   delete nextState[item.id]
                                   return nextState
                                 })
+                                broadcastStorefrontUpdate(baseDraft.slug || baseDraft.displayName)
                                 refetch()
                               })
                               .catch(() => {

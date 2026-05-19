@@ -85,11 +85,11 @@ export default function UnauthorizedPage() {
                   If you need assistance, please contact our support team.
                 </p>
                 <a
-                  href="mailto:support@example.com"
+                  href="mailto:mgmt.afhomebiz@gmail.com"
                   className="mt-2 inline-flex items-center gap-2 text-base font-semibold text-[#1f66ff] hover:underline sm:text-lg"
                 >
                   <Mail className="h-5 w-5" />
-                  support@example.com
+                  mgmt.afhomebiz@gmail.com
                 </a>
               </div>
             </div>

@@ -4,6 +4,13 @@ import type { WebPageItem } from '@/store/api/webPagesApi'
 type PublicWebPageItemsResponse = {
   items?: WebPageItem[]
 }
+export type PartnerStorefrontRecord = {
+  id: number
+  config: PartnerStorefrontConfig
+}
+type StorefrontFetchOptions = {
+  fresh?: boolean
+}
 
 const REQUEST_TIMEOUT_MS = 10000
 const MAX_RETRIES = 2
@@ -24,6 +31,14 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
 }
 
 export async function getPartnerStorefrontBySlug(partnerSlug: string): Promise<PartnerStorefrontConfig | null> {
+  const record = await getPartnerStorefrontRecordBySlug(partnerSlug)
+  return record?.config ?? null
+}
+
+export async function getPartnerStorefrontRecordBySlug(
+  partnerSlug: string,
+  options: StorefrontFetchOptions = { fresh: true },
+): Promise<PartnerStorefrontRecord | null> {
   const normalized = String(partnerSlug ?? '').trim().toLowerCase()
   if (!normalized) return null
 
@@ -35,10 +50,15 @@ export async function getPartnerStorefrontBySlug(partnerSlug: string): Promise<P
       const response = await fetchWithTimeout(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:partner-storefronts'],
-        },
+        cache: options.fresh === false ? 'force-cache' : 'no-store',
+        ...(options.fresh === false
+          ? {}
+          : {
+              next: {
+                revalidate: STOREFRONT_REVALIDATE_SECONDS,
+                tags: ['storefront:partner-storefronts'],
+              },
+            }),
       })
       if (!response.ok) continue
 
@@ -47,7 +67,12 @@ export async function getPartnerStorefrontBySlug(partnerSlug: string): Promise<P
         const config = getPartnerStorefrontConfig(item)
         return config?.slug === normalized
       })
-      return getPartnerStorefrontConfig(storefrontItem)
+      const config = getPartnerStorefrontConfig(storefrontItem)
+      if (!config || !storefrontItem) return null
+      return {
+        id: storefrontItem.id,
+        config,
+      }
     } catch {
       // Retry transient network/timeout failures before treating as unavailable.
     }
