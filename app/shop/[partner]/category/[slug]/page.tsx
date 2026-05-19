@@ -5,6 +5,7 @@ import { filterPartnerCategories, normalizeCategorySlug } from '@/libs/partnerSt
 import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
+export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{
@@ -39,7 +40,6 @@ type DisplayProduct = {
   stock?: number
 }
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
-const STOREFRONT_REVALIDATE_SECONDS = 120
 
 const resolveImageUrl = (rawImage: string | null | undefined, apiUrl?: string) => {
   if (!rawImage) return '/Images/HeroSection/chairs_stools.jpg'
@@ -149,10 +149,7 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
       fetch(`${apiUrl}/api/categories?used_only=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:categories'],
-        },
+        cache: 'no-store',
       }),
     ])
 
@@ -182,10 +179,7 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
     const productsRes = await fetch(`${apiUrl}/api/products?page=1&per_page=200&status=1&cat_id=${category.id}`, {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      next: {
-        revalidate: STOREFRONT_REVALIDATE_SECONDS,
-        tags: ['storefront:products'],
-      },
+      cache: 'no-store',
     })
 
     if (!productsRes.ok) {
@@ -211,10 +205,7 @@ async function getPartnerCategoryPageData(partnerSlug: string, categorySlug: str
             const response = await fetch(`${apiUrl}/api/products/${productId}`, {
               method: 'GET',
               headers: { Accept: 'application/json' },
-              next: {
-                revalidate: STOREFRONT_REVALIDATE_SECONDS,
-                tags: ['storefront:products'],
-              },
+              cache: 'no-store',
             })
             if (!response.ok) return null
             const json = (await response.json()) as ApiProductResponse

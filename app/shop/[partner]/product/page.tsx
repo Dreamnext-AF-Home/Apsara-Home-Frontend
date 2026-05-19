@@ -7,6 +7,7 @@ import type { CategoryProduct } from '@/libs/CategoryData'
 import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
+export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{
@@ -30,7 +31,6 @@ type ApiProductsResponse = {
 
 const REQUEST_TIMEOUT_MS = 12000
 const MAX_FETCH_RETRIES = 2
-const STOREFRONT_REVALIDATE_SECONDS = 120
 const MAX_FEATURED_PRODUCT_DETAIL_FETCHES = 12
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
 
@@ -185,26 +185,17 @@ async function getPartnerProductPageData(partnerSlug: string) {
       fetchWithRetry(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:partner-storefronts'],
-        },
+        cache: 'no-store',
       }),
       fetchWithRetry(`${apiUrl}/api/categories?used_only=1&per_page=300`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:categories'],
-        },
+        cache: 'no-store',
       }),
       fetchWithRetry(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:products'],
-        },
+        cache: 'no-store',
       }),
     ])
 
@@ -280,10 +271,7 @@ async function getPartnerProductPageData(partnerSlug: string) {
           const response = await fetchWithRetry(`${apiUrl}/api/products/${productId}`, {
             method: 'GET',
             headers: { Accept: 'application/json' },
-            next: {
-              revalidate: STOREFRONT_REVALIDATE_SECONDS,
-              tags: ['storefront:products'],
-            },
+            cache: 'no-store',
           })
           if (!response.ok) return null
           const json = (await response.json()) as ApiProductResponse

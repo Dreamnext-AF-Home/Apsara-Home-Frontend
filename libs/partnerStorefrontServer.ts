@@ -1,8 +1,17 @@
-import { getPartnerStorefrontConfig, type PartnerStorefrontConfig } from '@/libs/partnerStorefront'
+﻿import { getPartnerStorefrontConfig, type PartnerStorefrontConfig } from '@/libs/partnerStorefront'
 import type { WebPageItem } from '@/store/api/webPagesApi'
 
 type PublicWebPageItemsResponse = {
   items?: WebPageItem[]
+}
+
+export type PartnerStorefrontRecord = {
+  id: number
+  config: PartnerStorefrontConfig
+}
+
+type StorefrontFetchOptions = {
+  fresh?: boolean
 }
 
 const REQUEST_TIMEOUT_MS = 10000
@@ -25,8 +34,19 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
 
 export async function getPartnerStorefrontBySlug(
   partnerSlug: string,
-  options: { fresh?: boolean } = {},
+  options: StorefrontFetchOptions = {},
 ): Promise<PartnerStorefrontConfig | null> {
+  const record = await getPartnerStorefrontRecordBySlug(partnerSlug, {
+    fresh: options.fresh ?? true,
+  })
+
+  return record?.config ?? null
+}
+
+export async function getPartnerStorefrontRecordBySlug(
+  partnerSlug: string,
+  options: StorefrontFetchOptions = { fresh: true },
+): Promise<PartnerStorefrontRecord | null> {
   const normalized = String(partnerSlug ?? '').trim().toLowerCase()
   if (!normalized) return null
 
@@ -54,7 +74,13 @@ export async function getPartnerStorefrontBySlug(
         const config = getPartnerStorefrontConfig(item)
         return config?.slug === normalized
       })
-      return getPartnerStorefrontConfig(storefrontItem)
+      const config = getPartnerStorefrontConfig(storefrontItem)
+      if (!config || !storefrontItem) return null
+
+      return {
+        id: storefrontItem.id,
+        config,
+      }
     } catch {
       // Retry transient network/timeout failures before treating as unavailable.
     }

@@ -1,7 +1,7 @@
-import UsernameChangeRequestsPage from '@/components/superAdmin/inquiry/UsernameChangeRequestsPage';
+import AdminInquiryPage from '@/components/superAdmin/inquiry/AdminInquiryPage';
 
 export const dynamic = 'force-dynamic';
 
 export default function InquiryPage() {
-  return <UsernameChangeRequestsPage />;
+  return <AdminInquiryPage />;
 }

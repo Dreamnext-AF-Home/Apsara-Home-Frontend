@@ -22,9 +22,19 @@ const normalizeLogoUrl = (value: string) => {
   return raw
 }
 
+const normalizeSlug = (value: string) => {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  try {
+    return decodeURIComponent(raw).trim().toLowerCase()
+  } catch {
+    return raw.toLowerCase()
+  }
+}
+
 export default function PartnerLoading() {
   const pathname = usePathname()
-  const partnerSlug = useMemo(() => pathname.split('/').filter(Boolean)[0] ?? '', [pathname])
+  const partnerSlug = useMemo(() => normalizeSlug(pathname.split('/').filter(Boolean)[0] ?? ''), [pathname])
   const brandText = useMemo(() => {
     if (!partnerSlug) return 'PARTNER STOREFRONT'
     return partnerSlug
@@ -33,12 +43,7 @@ export default function PartnerLoading() {
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ')
   }, [partnerSlug])
-  const [logoSrc, setLogoSrc] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    const cachedLoadingLogo = window.localStorage.getItem(`partner-storefront-loading-logo:${partnerSlug}`)
-    if (cachedLoadingLogo) return normalizeLogoUrl(cachedLoadingLogo)
-    return null
-  })
+  const [logoSrc, setLogoSrc] = useState<string | null>(null)
 
   useEffect(() => {
     if (!partnerSlug) return
@@ -58,7 +63,11 @@ export default function PartnerLoading() {
     if (typeof window !== 'undefined') {
       const cachedLoadingLogo = window.localStorage.getItem(loadingLogoStorageKey)
       if (cachedLoadingLogo) {
-        setLogoSrc(normalizeLogoUrl(cachedLoadingLogo))
+        const normalizedCachedLoadingLogo = normalizeLogoUrl(cachedLoadingLogo)
+        const isDefaultAfHome = normalizedCachedLoadingLogo.includes('/Images/af_home_logo.png')
+        if (!isDefaultAfHome) {
+          setLogoSrc(normalizedCachedLoadingLogo)
+        }
       }
     }
 

@@ -20,6 +20,16 @@ const titleCase = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 
+const normalizeSlug = (value: string) => {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  try {
+    return decodeURIComponent(raw).trim().toLowerCase()
+  } catch {
+    return raw.toLowerCase()
+  }
+}
+
 const normalizeLogoUrl = (value: string) => {
   const raw = value.trim()
   if (!raw) return raw
@@ -32,15 +42,11 @@ const normalizeLogoUrl = (value: string) => {
 export default function PartnerShopLoading() {
   const pathname = usePathname()
   const slug = useMemo(
-    () => pathname.replace(/^\/shop\//, '').split('/')[0]?.toLowerCase() || '',
+    () => normalizeSlug(pathname.replace(/^\/shop\//, '').split('/')[0] ?? ''),
     [pathname],
   )
   const displayName = useMemo(() => (slug ? titleCase(slug) : 'Shop'), [slug])
-  const [logoSrc, setLogoSrc] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    const cachedLogo = window.localStorage.getItem(`partner-storefront-icon:${slug}`)
-    return cachedLogo ? normalizeLogoUrl(cachedLogo) : null
-  })
+  const [logoSrc, setLogoSrc] = useState<string | null>(null)
 
   // Set favicon/tab icon immediately during loading (before partner page data finishes).
   useEffect(() => {
@@ -61,10 +67,13 @@ export default function PartnerShopLoading() {
     const cachedIcon = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
     if (cachedIcon) {
       const normalizedCachedIcon = normalizeLogoUrl(cachedIcon)
-      setLogoSrc(normalizedCachedIcon)
-      setIcon('icon', normalizedCachedIcon)
-      setIcon('apple-touch-icon', normalizedCachedIcon)
-      setIcon('shortcut icon', normalizedCachedIcon)
+      const isDefaultAfHome = normalizedCachedIcon.includes('/Images/af_home_logo.png')
+      if (!isDefaultAfHome) {
+        setLogoSrc(normalizedCachedIcon)
+        setIcon('icon', normalizedCachedIcon)
+        setIcon('apple-touch-icon', normalizedCachedIcon)
+        setIcon('shortcut icon', normalizedCachedIcon)
+      }
     }
 
     const resolveFromPayload = (payload: PartnerStorefrontApiResponse) => {

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import ShopBuilderSections, { type ShopBuilderApiResponse } from '@/components/sections/ShopBuilderSections'
 import type { PartnerStorefrontConfig } from '@/libs/partnerStorefront'
 
@@ -13,6 +14,7 @@ type Props = {
 
 export default function PartnerStorefrontPage({ partner, data }: Props) {
   const { status, data: session } = useSession()
+  const router = useRouter()
   const titleColor = partner.themeColor
   const displayName = partner.displayName.trim()
   const pageTitle = displayName.toLowerCase().endsWith('shop') ? displayName : `${displayName} Shop`
@@ -66,6 +68,45 @@ export default function PartnerStorefrontPage({ partner, data }: Props) {
       document.title = pageTitle
     }
   }, [displayName, pageTitle, tabLogoUrlWithVersion])
+
+  useEffect(() => {
+    const key = 'afhome:partner-storefront-updated'
+    const channelName = 'afhome:partner-storefront'
+
+    const handlePayload = (payload: unknown) => {
+      if (!payload || typeof payload !== 'object') return
+      const data = payload as { slug?: string }
+      if (String(data.slug ?? '').trim().toLowerCase() === partner.slug.toLowerCase()) {
+        router.refresh()
+      }
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== key || !event.newValue) return
+      try {
+        handlePayload(JSON.parse(event.newValue))
+      } catch {
+        // ignore malformed payload
+      }
+    }
+
+    let channel: BroadcastChannel | null = null
+    const onChannelMessage = (event: MessageEvent) => handlePayload(event.data)
+
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      channel = new BroadcastChannel(channelName)
+      channel.addEventListener('message', onChannelMessage)
+    }
+
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      if (channel) {
+        channel.removeEventListener('message', onChannelMessage)
+        channel.close()
+      }
+    }
+  }, [partner.slug, router])
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
