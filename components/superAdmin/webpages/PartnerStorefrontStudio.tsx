@@ -5,7 +5,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { getPartnerStorefrontConfig, parseIdList } from '@/libs/partnerStorefront'
-import { Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { type Product, useLazyGetProductsQuery, useLazyGetPublicProductQuery } from '@/store/api/productsApi'
 import {
@@ -425,7 +425,7 @@ export default function PartnerStorefrontStudio() {
 
       const nextLogoUrl = result.url ?? ''
       const nextVersion = Date.now()
-    const nextDraft = { ...draft, logoUrl: nextLogoUrl, logoVersion: String(nextVersion) }
+      const nextDraft = { ...draft, logoUrl: nextLogoUrl, logoVersion: String(nextVersion) }
       const targetId = typeof selectedId === 'number' ? selectedId : nextDraft.id
 
       setDraft((current) => ({
@@ -434,7 +434,6 @@ export default function PartnerStorefrontStudio() {
         logoVersion: String(nextVersion),
       }))
       setLogoVersion(nextVersion)
-      showSuccessToast('Logo uploaded successfully.')
 
       if (targetId) {
         if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(targetId)) {
@@ -459,7 +458,7 @@ export default function PartnerStorefrontStudio() {
           showErrorToast(apiErr?.data?.message || 'Failed to save logo.')
         }
       } else {
-        showErrorToast('Logo uploaded. Click "Save Storefront" to apply it.')
+        showSuccessToast('Logo uploaded successfully.')
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to upload logo.'
@@ -542,7 +541,6 @@ export default function PartnerStorefrontStudio() {
         logoVersion: String(nextVersion),
       }))
       setLogoVersion(nextVersion)
-      showSuccessToast('Tab logo uploaded successfully.')
 
       if (targetId) {
         if (isPartnerScoped && !allowedStorefrontIds.includes(targetId)) {
@@ -567,7 +565,7 @@ export default function PartnerStorefrontStudio() {
           showErrorToast(apiErr?.data?.message || 'Failed to save tab logo.')
         }
       } else {
-        showErrorToast('Tab logo uploaded. Click "Save Storefront" to apply it.')
+        showSuccessToast('Tab logo uploaded successfully.')
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to upload tab logo.'
@@ -647,7 +645,6 @@ export default function PartnerStorefrontStudio() {
         ...current,
         heroVideoUrl: nextVideoUrl || current.heroVideoUrl,
       }))
-      showSuccessToast('Hero video uploaded successfully.')
 
       if (targetId) {
         if (hasSpecificStorefrontIds && !allowedStorefrontIds.includes(targetId)) {
@@ -671,7 +668,7 @@ export default function PartnerStorefrontStudio() {
           showErrorToast(apiErr?.data?.message || 'Failed to save hero video.')
         }
       } else {
-        showErrorToast('Hero video uploaded. Click "Save Storefront" to apply it.')
+        showSuccessToast('Hero video uploaded successfully.')
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to upload hero video.'
@@ -1294,9 +1291,10 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => logoInputRef.current?.click()}
                       disabled={isUploadingLogo}
-                      className="min-w-[140px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="inline-flex min-w-[140px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
-                      {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                      {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                      <span>Upload Logo</span>
                     </button>
                   </div>
                 </div>
@@ -1341,9 +1339,10 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => void handleApplyReferralLink()}
                       disabled={isUploadingReferralLink || saving}
-                    className="min-w-[116px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="inline-flex min-w-[116px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
-                      {isUploadingReferralLink ? 'Saving...' : 'Save Link'}
+                      {isUploadingReferralLink ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                      <span>Save Link</span>
                     </button>
                     {draft.referralLink.trim() ? (
                       <button
@@ -1389,9 +1388,10 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => tabLogoInputRef.current?.click()}
                       disabled={isUploadingTabLogo}
-                      className="min-w-[140px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="inline-flex min-w-[140px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
-                      {isUploadingTabLogo ? 'Uploading...' : 'Upload Tab Logo'}
+                      {isUploadingTabLogo ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                      <span>Upload Tab Logo</span>
                     </button>
                   </div>
                 </div>
@@ -1437,9 +1437,10 @@ export default function PartnerStorefrontStudio() {
                       type="button"
                       onClick={() => heroVideoInputRef.current?.click()}
                       disabled={isUploadingHeroVideo}
-                      className="min-w-[164px] whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      className="inline-flex min-w-[164px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold leading-tight text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
-                      {isUploadingHeroVideo ? 'Uploading...' : 'Upload Hero Video'}
+                      {isUploadingHeroVideo ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                      <span>Upload Hero Video</span>
                     </button>
                   </div>
                 </div>
@@ -1501,9 +1502,10 @@ export default function PartnerStorefrontStudio() {
               type="button"
               onClick={() => void saveStorefront()}
               disabled={saving}
-              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-60"
+              className="inline-flex min-w-[148px] items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-900/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? 'Saving...' : 'Save Storefront'}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              <span>Save Storefront</span>
             </button>
             <a
               href={draft.slug ? `/shop/${draft.slug}` : '#'}
