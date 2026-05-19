@@ -23,7 +23,10 @@ async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Resp
   }
 }
 
-export async function getPartnerStorefrontBySlug(partnerSlug: string): Promise<PartnerStorefrontConfig | null> {
+export async function getPartnerStorefrontBySlug(
+  partnerSlug: string,
+  options: { fresh?: boolean } = {},
+): Promise<PartnerStorefrontConfig | null> {
   const normalized = String(partnerSlug ?? '').trim().toLowerCase()
   if (!normalized) return null
 
@@ -35,10 +38,14 @@ export async function getPartnerStorefrontBySlug(partnerSlug: string): Promise<P
       const response = await fetchWithTimeout(`${apiUrl}/api/web-pages/partner-storefronts`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:partner-storefronts'],
-        },
+        ...(options.fresh
+          ? { cache: 'no-store' as const }
+          : {
+              next: {
+                revalidate: STOREFRONT_REVALIDATE_SECONDS,
+                tags: ['storefront:partner-storefronts'],
+              },
+            }),
       })
       if (!response.ok) continue
 

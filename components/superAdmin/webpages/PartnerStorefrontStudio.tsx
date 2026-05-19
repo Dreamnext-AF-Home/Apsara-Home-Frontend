@@ -114,6 +114,7 @@ export default function PartnerStorefrontStudio() {
   const [helperProductById, setHelperProductById] = useState<Record<number, Product>>({})
   const [isLoadingHelperProducts, setIsLoadingHelperProducts] = useState(false)
   const [logoVersion, setLogoVersion] = useState(0)
+  const [previewRefreshKey, setPreviewRefreshKey] = useState('')
   const missingSelectedProductRequestIdsRef = useRef<Set<number>>(new Set())
   const { data: session } = useSession()
 
@@ -735,13 +736,19 @@ export default function PartnerStorefrontStudio() {
     const payload = buildStorefrontPayload(draft)
 
     try {
+      let savedItem: WebPageItem
+
       if (draft.id) {
-        await updateItem({ type: 'partner-storefront', id: draft.id, data: payload }).unwrap()
+        const result = await updateItem({ type: 'partner-storefront', id: draft.id, data: payload }).unwrap()
+        savedItem = result.item
       } else {
-        await createItem({ type: 'partner-storefront', data: payload }).unwrap()
+        const result = await createItem({ type: 'partner-storefront', data: payload }).unwrap()
+        savedItem = result.item
       }
 
-      setDraft((current) => ({ ...current, slug }))
+      setDraft(toDraft(savedItem))
+      setSelectedId(savedItem.id)
+      setPreviewRefreshKey(String(savedItem.updated_at ?? savedItem.id))
       showSuccessToast('Partner storefront saved.')
       refetch()
     } catch (error) {
@@ -1508,7 +1515,7 @@ export default function PartnerStorefrontStudio() {
               <span>Save Storefront</span>
             </button>
             <a
-              href={draft.slug ? `/shop/${draft.slug}` : '#'}
+              href={draft.slug ? `/shop/${draft.slug}${previewRefreshKey ? `?preview=${previewRefreshKey}` : ''}` : '#'}
               target="_blank"
               rel="noreferrer"
               className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition ${
