@@ -5,6 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useMeQuery } from '@/store/api/userApi';
 import { setStoredReferralCode } from '@/libs/referral';
+import AppPromoBar from '@/components/layout/AppPromoBar';
 
 type ReferralLandingPageProps = {
   referralCode: string;
@@ -25,8 +26,32 @@ const ReferralLandingPage = ({ referralCode }: ReferralLandingPageProps) => {
     setStoredReferralCode(normalizedCode);
   }, [isLoggedIn, normalizedCode]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
+    const appScheme = `apsarahome://ref/${encodeURIComponent(normalizedCode)}`;
+
+    // Set a timeout to fallback to web if app doesn't open
+    const appOpenTimeout = setTimeout(() => {
+      console.log('[ReferralLandingPage] App not detected on mobile, staying on web');
+    }, 1000);
+
+    // Try to open the app
+    console.log('[ReferralLandingPage] Attempting to open app with scheme:', appScheme);
+    window.location.href = appScheme;
+
+    // Cleanup timeout
+    return () => clearTimeout(appOpenTimeout);
+  }, [normalizedCode]);
+
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fffdf8_0%,#f7f1e7_100%)] px-6 py-20 text-slate-900">
+    <>
+      <AppPromoBar />
+      <main className="min-h-screen bg-[linear-gradient(180deg,#fffdf8_0%,#f7f1e7_100%)] px-6 py-20 text-slate-900">
       <div className="mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-[#e6d9c4] bg-white shadow-[0_20px_80px_rgba(56,39,17,0.08)]">
         <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
           <section className="px-8 py-12 md:px-12 md:py-16">
@@ -142,6 +167,7 @@ const ReferralLandingPage = ({ referralCode }: ReferralLandingPageProps) => {
         </div>
       </div>
     </main>
+    </>
   );
 };
 

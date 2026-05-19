@@ -2,12 +2,7 @@ import { buildPageMetadata } from '@/app/seo';
 
 export const metadata = buildPageMetadata({ title: 'Shop', description: 'Browse the Shop page on AF Home.', path: '/shop' });
 
-import Footer from "@/components/landing-page/Footer"
-import ScrollToTop from "@/components/landing-page/ScrollToTop"
-import Navbar from "@/components/layout/Navbar"
-import TopBar from "@/components/layout/TopBar"
-import TrustBar from "@/components/layout/TrustBar"
-import AdsPopup from "@/components/shop/AdsPopup"
+import ShopPageClient from "@/components/shop/ShopPageClient"
 import ShopBuilderSections, { type ShopBuilderApiResponse } from "@/components/sections/ShopBuilderSections"
 import { getNavbarCategories } from '@/libs/serverStorefront'
 import type { TopBarConfig } from '@/components/layout/TopBar'
@@ -128,15 +123,12 @@ const ShopPage = async () => {
   const shopHeader = getShopHeaderConfig(shopBuilderData?.items ?? [])
 
   return (
-    <div>
-      <TopBar {...shopHeader.topBar} />
-      <Navbar initialCategories={navbarCategories} />
-      <TrustBar {...shopHeader.trustBar} />
-      <AdsPopup />
-      <ShopBuilderSections data={shopBuilderData} />
-      <Footer />
-      <ScrollToTop />
-    </div>
+    <ShopPageClient
+      shopData={shopBuilderData}
+      navbarCategories={navbarCategories}
+      topBarConfig={shopHeader.topBar}
+      trustBarConfig={shopHeader.trustBar}
+    />
   )
 }
 
