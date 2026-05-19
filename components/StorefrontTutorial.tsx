@@ -1172,6 +1172,7 @@ export default function StorefrontTutorial() {
   const [stepRestartKey, setStepRestartKey] = useState(0);
   const [urlBar, setUrlBar] = useState('admin.afhome.ph/partner-storefronts');
   const [scale, setScale] = useState(1);
+  const [viewportWidth, setViewportWidth] = useState(BEZEL_W + 16);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -1226,6 +1227,7 @@ export default function StorefrontTutorial() {
 
   useEffect(() => {
     const update = () => {
+      setViewportWidth(window.innerWidth);
       const sw = (window.innerWidth - 24) / BEZEL_W;
       const sh = (window.innerHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
       setScale(Math.min(1, sw, sh));
@@ -1554,7 +1556,7 @@ export default function StorefrontTutorial() {
       </div>{/* end scale wrapper */}
 
       {/* ── Controls bar — native size, NOT inside scale transform ── */}
-      <div style={{ width: Math.min(BEZEL_W * scale, window.innerWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box' }}>
+      <div style={{ width: Math.min(BEZEL_W * scale, viewportWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           background: 'rgba(255,255,255,0.07)',
