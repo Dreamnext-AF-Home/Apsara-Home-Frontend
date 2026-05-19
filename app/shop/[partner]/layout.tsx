@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
-import { getPartnerStorefrontBySlug } from '@/libs/partnerStorefrontServer'
+import { getPartnerStorefrontBySlug, getPartnerStorefrontRecordBySlug } from '@/libs/partnerStorefrontServer'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import { partnerAuthOptions } from '@/libs/partnerAuth'
+import { adminAuthOptions } from '@/libs/adminAuth'
 
 type LayoutProps = {
   children: React.ReactNode
@@ -31,6 +35,35 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   }
 }
 
-export default function PartnerShopLayout({ children }: LayoutProps) {
+export default async function PartnerShopLayout({ children, params }: LayoutProps) {
+  const { partner } = await params
+  const normalizedPartner = String(partner ?? '').trim().toLowerCase()
+  const adminSession = await getServerSession(adminAuthOptions)
+  if (adminSession?.user) {
+    return children
+  }
+
+  const session = await getServerSession(partnerAuthOptions)
+  const user = session?.user
+
+  if (user) {
+    const record = await getPartnerStorefrontRecordBySlug(normalizedPartner, { fresh: true })
+    if (record) {
+      const assignedStorefrontIds = (user.storefrontIds ?? [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id))
+      const disabledStorefrontIds = (user.disabledStorefrontIds ?? [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id))
+
+      const isAssigned = assignedStorefrontIds.includes(record.id)
+      const isDisabled = disabledStorefrontIds.includes(record.id)
+
+      if (!isAssigned || isDisabled) {
+        redirect(`/unauthorized?store=${encodeURIComponent(record.config.displayName)}`)
+      }
+    }
+  }
+
   return children
 }

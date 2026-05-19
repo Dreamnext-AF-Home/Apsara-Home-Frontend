@@ -6,6 +6,7 @@ import type { Category } from '@/store/api/categoriesApi'
 import type { Product } from '@/store/api/productsApi'
 import type { WebPageItem } from '@/store/api/webPagesApi'
 import type { Metadata } from 'next'
+export const dynamic = 'force-dynamic'
 
 type PageProps = {
   params: Promise<{
@@ -29,7 +30,6 @@ type ApiWebPagesResponse = {
   items?: WebPageItem[]
 }
 const BLANK_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
-const STOREFRONT_REVALIDATE_SECONDS = 120
 
 export async function generateMetadata({ params }: PageProps) {
   const resolved = await params
@@ -90,26 +90,17 @@ async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?
       fetch(`${apiUrl}/api/web-pages/shop-builder`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:shop-builder'],
-        },
+        cache: 'no-store',
       }),
       fetch(`${apiUrl}/api/categories?per_page=300`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:categories'],
-        },
+        cache: 'no-store',
       }),
       fetch(`${apiUrl}/api/products?page=1&per_page=200&status=1`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        next: {
-          revalidate: STOREFRONT_REVALIDATE_SECONDS,
-          tags: ['storefront:products'],
-        },
+        cache: 'no-store',
       }),
     ])
 
@@ -159,10 +150,7 @@ async function getPartnerStorefrontData(partnerSlug: string, selectedCategoryId?
             const response = await fetch(`${apiUrl}/api/products/${id}`, {
               method: 'GET',
               headers: { Accept: 'application/json' },
-              next: {
-                revalidate: STOREFRONT_REVALIDATE_SECONDS,
-                tags: ['storefront:products'],
-              },
+              cache: 'no-store',
             })
             if (!response.ok) return null
             const json = (await response.json()) as { product?: Product }

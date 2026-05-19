@@ -102,6 +102,13 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
     )
   }, [users, accessTargetUserId])
 
+  useEffect(() => {
+    if (selected) return
+    if (storefronts.length === 0) return
+    if (form.storefrontIds.length > 0) return
+    setForm((prev) => ({ ...prev, storefrontIds: storefronts.map((s) => s.id) }))
+  }, [selected, storefronts, form.storefrontIds.length])
+
   const visibleUsers = useMemo(() => {
     if (!showStorefrontFilter) return users
     if (storefrontFilter === 'all') {
@@ -357,22 +364,6 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
             </Field>
             <Field label="Assign Storefronts">
               <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, storefrontIds: storefronts.map((s) => s.id) }))}
-                    className="rounded-md border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300"
-                  >
-                    Select all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, storefrontIds: [] }))}
-                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                  >
-                    Clear
-                  </button>
-                </div>
                 <div className="max-h-36 overflow-auto rounded-lg border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-900">
                   {storefronts.map((store) => {
                     const checked = form.storefrontIds.includes(store.id)

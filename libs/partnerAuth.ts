@@ -8,6 +8,7 @@ type TokenUser = {
   userLevelId?: number;
   adminPermissions?: string[];
   storefrontIds?: number[];
+  disabledStorefrontIds?: number[];
   supplierId?: number | null;
   image?: string | null;
   picture?: string | null;
@@ -89,6 +90,7 @@ export const partnerAuthOptions: NextAuthOptions = {
             userLevelId: data.user.user_level_id,
             adminPermissions: data.user.admin_permissions ?? [],
             storefrontIds: Array.isArray(data.user.storefront_ids) ? data.user.storefront_ids : [],
+            disabledStorefrontIds: Array.isArray(data.user.disabled_storefront_ids) ? data.user.disabled_storefront_ids : [],
             supplierId: data.user.supplier_id ?? null,
             image: data.user.avatar_url ?? null,
             isBanned: data.user.is_banned ?? false,
@@ -152,6 +154,7 @@ export const partnerAuthOptions: NextAuthOptions = {
         token.userLevelId = authUser.userLevelId;
         token.adminPermissions = authUser.adminPermissions;
         token.storefrontIds = authUser.storefrontIds;
+        token.disabledStorefrontIds = authUser.disabledStorefrontIds;
         token.supplierId = authUser.supplierId;
         token.picture = authUser.image ?? null;
         token.isBanned = authUser.isBanned ?? false;
@@ -166,6 +169,7 @@ export const partnerAuthOptions: NextAuthOptions = {
           userLevelId?: number;
           adminPermissions?: string[];
           storefrontIds?: number[];
+          disabledStorefrontIds?: number[];
           supplierId?: number | null;
           image?: string | null;
         };
@@ -180,6 +184,9 @@ export const partnerAuthOptions: NextAuthOptions = {
         }
         if (Array.isArray(nextSession.storefrontIds)) {
           token.storefrontIds = nextSession.storefrontIds;
+        }
+        if (Array.isArray(nextSession.disabledStorefrontIds)) {
+          token.disabledStorefrontIds = nextSession.disabledStorefrontIds;
         }
         if (typeof nextSession.supplierId !== 'undefined') {
           token.supplierId = nextSession.supplierId;
@@ -200,6 +207,7 @@ export const partnerAuthOptions: NextAuthOptions = {
         sessionUser.userLevelId = authToken.userLevelId;
         sessionUser.adminPermissions = authToken.adminPermissions;
         sessionUser.storefrontIds = authToken.storefrontIds;
+        sessionUser.disabledStorefrontIds = authToken.disabledStorefrontIds;
         sessionUser.supplierId = authToken.supplierId;
         sessionUser.image = typeof authToken.picture === 'string' ? authToken.picture : null;
         sessionUser.isBanned = typeof authToken.isBanned === 'boolean' ? authToken.isBanned : false;

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useSubmitWebstoreRequestMutation, useUsernameChangeLatestQuery, useWebstoreRequestLatestQuery, useSyncWebstorePartnerAccountMutation, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -296,6 +296,14 @@ type ProfileFormState = {
   country: string;
 };
 
+type WebstoreRequestFormState = {
+  fullName: string;
+  username: string;
+  email: string;
+  slugName: string;
+  displayName: string;
+};
+
 type AddressFormState = {
   address: string;
   zipCode: string;
@@ -311,7 +319,7 @@ type PreferencesState = {
   currency: 'PHP' | 'USD';
 };
 
-type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'pv' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'referrals' | 'levels';
+type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'pv' | 'encashment' | 'interior-requests' | 'activity' | 'change-username' | 'webstore' | 'referrals' | 'levels';
 
 type AlertMsg = { type: 'success' | 'error'; text: string };
 type TreeStatusFilter = 'all' | 'verified' | 'pending_review' | 'not_verified' | 'blocked';
@@ -533,6 +541,17 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   });
   const { data: usernameChangeLatest, refetch: refetchUsernameChangeLatest } = useUsernameChangeLatestQuery(undefined, {
     skip: !isCustomerSession,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+    pollingInterval: 10000,
+  });
+  const { data: webstoreRequestLatest, refetch: refetchWebstoreRequestLatest } = useWebstoreRequestLatestQuery(undefined, {
+    skip: !isCustomerSession,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+    pollingInterval: 5000,
   });
   const { data: activityData, isLoading: isActivityLoading } = useMemberActivityQuery(undefined, {
     skip: !isCustomerSession,
@@ -545,6 +564,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [sendUsernameChangeOtp, { isLoading: isSendingUsernameOtp }] = useSendUsernameChangeOtpMutation();
   const [submitUsernameChangeRequest, { isLoading: isSubmittingUsernameChange }] = useSubmitUsernameChangeRequestMutation();
+  const [submitWebstoreRequest, { isLoading: isSubmittingWebstoreRequest }] = useSubmitWebstoreRequestMutation();
+  const [syncWebstorePartnerAccount, { isLoading: isSyncingWebstoreAccount }] = useSyncWebstorePartnerAccountMutation();
   const [revokeMemberSession, { isLoading: isRevokingSession }] = useRevokeMemberSessionMutation();
   const { data: linkedAccountsData, refetch: refetchLinkedAccounts } = useLinkedAccountsQuery(undefined, {
     skip: !isCustomerSession,
@@ -591,6 +612,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [usernameOtpSentTo, setUsernameOtpSentTo] = useState<string | null>(null);
   const [isUsernamePendingLocal, setIsUsernamePendingLocal] = useState(false);
   const [bio, setBio] = useState('');
+  const [webstoreForm, setWebstoreForm] = useState<WebstoreRequestFormState>({
+    fullName: '',
+    username: '',
+    email: '',
+    slugName: '',
+    displayName: '',
+  });
+  const [webstoreAcceptedTerms, setWebstoreAcceptedTerms] = useState(false);
+  const [webstoreTermsOpen, setWebstoreTermsOpen] = useState(false);
+  const [webstoreMsg, setWebstoreMsg] = useState<AlertMsg | null>(null);
 
   const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwError, setPwError] = useState<string | null>(null);
@@ -761,6 +792,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   }), [profileData, session]);
 
   useEffect(() => {
+    setWebstoreForm((prev) => ({
+      ...prev,
+      fullName: prev.fullName || (profileData?.name ?? session?.user?.name ?? ''),
+      username: prev.username || (profileData?.username ?? ''),
+      email: prev.email || (profileData?.email ?? session?.user?.email ?? ''),
+    }));
+  }, [profileData?.name, profileData?.username, profileData?.email, session?.user?.name, session?.user?.email]);
+
+  useEffect(() => {
     if (!celebrateLevelUp) return;
 
     const rankParam = searchParams.get('rank');
@@ -833,7 +873,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
-    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'referrals', 'levels'];
+    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'webstore', 'referrals', 'levels'];
 
     if (requestedTab && allowedTabs.includes(requestedTab as Tab)) {
       setActiveTab(requestedTab as Tab);
@@ -1749,6 +1789,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   };
 
   const latestUsernameRequest = usernameChangeLatest?.request ?? null;
+  const latestWebstoreRequest = webstoreRequestLatest?.request ?? null;
   const hasPendingUsernameRequest = isUsernamePendingLocal || latestUsernameRequest?.status === 'pending_review';
   const pendingRequestedUsername = latestUsernameRequest?.requested_username || usernameRequest.trim();
 
@@ -1815,6 +1856,56 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     } catch (err: unknown) {
       const apiError = err as { data?: { message?: string } };
       setUsernameMsg({ type: 'error', text: apiError?.data?.message || 'Failed to submit request.' });
+    }
+  };
+
+  const handleSubmitWebstoreRequest = async (e: FormEvent) => {
+    e.preventDefault();
+    setWebstoreMsg(null);
+
+    if (!webstoreForm.fullName.trim() || !webstoreForm.username.trim() || !webstoreForm.email.trim() || !webstoreForm.slugName.trim() || !webstoreForm.displayName.trim()) {
+      setWebstoreMsg({ type: 'error', text: 'Please complete all required fields.' });
+      return;
+    }
+
+    if (!webstoreAcceptedTerms) {
+      setWebstoreMsg({ type: 'error', text: 'You must accept the Terms and Conditions before submitting.' });
+      setWebstoreTermsOpen(true);
+      return;
+    }
+
+    try {
+      const response = await submitWebstoreRequest({
+        full_name: webstoreForm.fullName.trim(),
+        username: webstoreForm.username.trim(),
+        email: webstoreForm.email.trim(),
+        slug_name: webstoreForm.slugName.trim(),
+        display_name: webstoreForm.displayName.trim(),
+        accepted_terms: webstoreAcceptedTerms,
+      }).unwrap();
+
+      const submittedAtLabel = response?.request?.submitted_at
+        ? new Date(response.request.submitted_at).toLocaleString()
+        : 'just now';
+      setWebstoreMsg({ type: 'success', text: `Webstore request submitted successfully on ${submittedAtLabel}.` });
+      showSuccessToast('Webstore request submitted.');
+      refetchWebstoreRequestLatest();
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      setWebstoreMsg({ type: 'error', text: apiErr?.data?.message || 'Failed to submit webstore request.' });
+    }
+  };
+
+  const handleSyncWebstoreAccount = async () => {
+    setWebstoreMsg(null);
+    try {
+      const response = await syncWebstorePartnerAccount().unwrap();
+      setWebstoreMsg({ type: 'success', text: response?.message || 'Partner account synced successfully.' });
+      showSuccessToast('Partner account synced.');
+      refetchWebstoreRequestLatest();
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      setWebstoreMsg({ type: 'error', text: apiErr?.data?.message || 'Failed to sync partner account.' });
     }
   };
 
@@ -2149,6 +2240,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     { key: 'interior-requests', label: 'Interior Requests', Icon: Icon.Package },
     { key: 'activity', label: 'Activity', Icon: Icon.Activity },
     { key: 'change-username', label: 'Change Username', Icon: Icon.Edit },
+    { key: 'webstore', label: 'Webstore', Icon: Icon.Package },
     { key: 'referrals', label: 'Referrals', Icon: Icon.Network },
     { key: 'levels', label: 'My Level', Icon: Icon.Trophy },
   ];
@@ -2554,6 +2646,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 'interior-requests': 'Requests',
                 activity: 'Activity',
                 'change-username': 'Username',
+                webstore: 'Webstore',
                 referrals: 'Referrals',
                 levels: 'My Level',
               };
@@ -4289,7 +4382,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       <div>
                         <h3 className="text-2lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">Notifications</h3>
                         <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">Choose how you&apos;d like to be updated.</p>
-                      </div>
+                      </div>m
                     </div>
                     <div className="space-y-3">
                       {[
@@ -4980,6 +5073,233 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 </motion.div>
               )}
 
+              {activeTab === 'webstore' && (
+                <motion.div key="webstore" {...tabMotionProps} className="space-y-5">
+                  <div className="overflow-hidden rounded-3xl border border-[#dfe8fb] bg-white shadow-[0_16px_45px_rgba(30,64,175,0.08)]">
+                    <div className="relative border-b border-[#e6edfb] bg-gradient-to-r from-[#f8fbff] to-[#f4f8ff] px-6 py-6 md:px-8">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7ed7f7] to-[#3b82f6] shadow-sm">
+                            <Icon.Package className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-bold tracking-tight text-[#0f1f44]">Launch Your Partner Webstore</h3>
+                            <p className="mt-1 text-lg text-[#60739b]">Create and manage your branded online storefront.</p>
+                          </div>
+                        </div>
+                        <div className="relative hidden h-24 w-44 md:block">
+                          <div className="absolute inset-0 rounded-[22px] bg-gradient-to-br from-[#e7efff] to-[#f3f7ff]" />
+                          <div className="absolute -left-3 bottom-1 h-10 w-10 rounded-full bg-[#d9e7ff]" />
+                          <div className="absolute left-2 bottom-3 h-7 w-5 rounded-t-full bg-gradient-to-b from-[#5fd0c6] to-[#7be2d8]" />
+                          <div className="absolute left-5 bottom-3 h-10 w-6 rounded-t-full bg-gradient-to-b from-[#4ac1b7] to-[#70d9cf]" />
+                          <div className="absolute right-5 top-4 h-16 w-24 rounded-xl border border-[#d9e6ff] bg-white shadow-[0_8px_18px_rgba(80,120,220,0.16)]">
+                            <div className="flex h-5 items-center gap-1.5 rounded-t-xl bg-[#cfdcff] px-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#f38cab]" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#8db5ff]" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#b7cbff]" />
+                            </div>
+                            <div className="px-2 py-1.5">
+                              <div className="mb-1.5 flex items-end justify-between">
+                                <div className="h-2.5 w-10 rounded bg-[#eef3ff]" />
+                                <div className="h-2.5 w-3.5 rounded bg-[#e3ecff]" />
+                              </div>
+                              <div className="h-5 rounded-md bg-gradient-to-r from-[#4f86ff] to-[#79a5ff]" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-6 py-6 md:px-8">
+
+                    {webstoreMsg && (
+                      <div className={`mb-4 rounded-xl px-3.5 py-2.5 text-xs font-semibold ${webstoreMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-700' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-700'}`}>
+                        {webstoreMsg.text}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmitWebstoreRequest} className="space-y-5">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-semibold text-[#1f3763]">Full Name</label>
+                          <input
+                            type="text"
+                            value={webstoreForm.fullName}
+                            onChange={(e) => setWebstoreForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            placeholder="Enter full name"
+                            readOnly
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-semibold text-[#1f3763]">Username</label>
+                          <input
+                            type="text"
+                            value={webstoreForm.username}
+                            onChange={(e) => setWebstoreForm((prev) => ({ ...prev, username: e.target.value }))}
+                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            placeholder="Enter username"
+                            readOnly
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-semibold text-[#1f3763]">Email</label>
+                          <input
+                            type="email"
+                            value={webstoreForm.email}
+                            onChange={(e) => setWebstoreForm((prev) => ({ ...prev, email: e.target.value }))}
+                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            placeholder="Enter email"
+                            readOnly
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-semibold text-[#1f3763]">Slug Name</label>
+                          <input
+                            type="text"
+                            value={webstoreForm.slugName}
+                            onChange={(e) => setWebstoreForm((prev) => ({ ...prev, slugName: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))}
+                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            placeholder="your-store-slug"
+                          />
+                          <p className="text-xs font-medium text-[#7d8fb0]">This will be your store&apos;s unique URL.</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-[#1f3763]">Display Name</label>
+                        <input
+                          type="text"
+                          value={webstoreForm.displayName}
+                          onChange={(e) => setWebstoreForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                          className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                          placeholder="Storefront display name"
+                        />
+                      </div>
+
+                      <div className="rounded-xl border border-[#d5def1] bg-[#f8faff] px-4 py-3">
+                        <label className="inline-flex items-start gap-2 text-sm text-[#334b76]">
+                          <input
+                            type="checkbox"
+                            checked={webstoreAcceptedTerms}
+                            onChange={(e) => {
+                              const nextChecked = e.target.checked;
+                              setWebstoreAcceptedTerms(nextChecked);
+                              if (nextChecked) {
+                                setWebstoreTermsOpen(true);
+                              }
+                            }}
+                            className="mt-0.5 h-4 w-4 accent-blue-600"
+                          />
+                          <span>
+                            I agree to the{' '}
+                            <button
+                              type="button"
+                              onClick={() => setWebstoreTermsOpen(true)}
+                              className="font-semibold text-sky-600 dark:text-sky-400 hover:underline"
+                            >
+                              Terms and Conditions
+                            </button>
+                            . <span className="text-rose-500">(Required)</span>
+                          </span>
+                        </label>
+                      </div>
+
+                      <div className="mt-2 flex flex-col gap-4 border-t border-[#e6edfb] pt-5 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100">
+                            <Icon.Shield className="h-6 w-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[#1f3763]">Secure &amp; Verified</p>
+                            <p className="text-xs text-[#6e7fa3]">Your information is safe with us and will never be shared.</p>
+                          </div>
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingWebstoreRequest}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_25px_rgba(37,99,235,0.35)] transition hover:from-[#1d4ed8] hover:to-[#1e40af]"
+                        >
+                          <Icon.Package className="h-5 w-5" />
+                          {isSubmittingWebstoreRequest ? 'Submitting...' : 'Submit Webstore Request'}
+                          <span aria-hidden>→</span>
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className="mt-6 rounded-2xl border border-[#dfe8fb] bg-[#f8fbff] p-4 md:p-5">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h4 className="text-base font-bold text-[#0f1f44]">Your Webstore Request</h4>
+                        {latestWebstoreRequest?.status ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                              latestWebstoreRequest.status === 'approved'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : latestWebstoreRequest.status === 'rejected'
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {latestWebstoreRequest.status === 'pending_review'
+                              ? 'Pending Review'
+                              : latestWebstoreRequest.status === 'approved'
+                                ? 'Approved'
+                                : 'Rejected'}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {latestWebstoreRequest ? (
+                        <div className="grid grid-cols-1 gap-3 text-sm text-[#334b76] md:grid-cols-2">
+                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Reference</p>
+                            <p className="mt-1 font-semibold">{latestWebstoreRequest.reference_no || '-'}</p>
+                          </div>
+                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Submitted</p>
+                            <p className="mt-1 font-semibold">
+                              {latestWebstoreRequest.created_at ? new Date(latestWebstoreRequest.created_at).toLocaleString() : '-'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Slug Name</p>
+                            <p className="mt-1 font-semibold">{latestWebstoreRequest.slug_name || '-'}</p>
+                          </div>
+                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Display Name</p>
+                            <p className="mt-1 font-semibold">{latestWebstoreRequest.display_name || '-'}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#6e7fa3]">No webstore request submitted yet.</p>
+                      )}
+
+                      {latestWebstoreRequest?.status === 'approved' ? (
+                        <div className="mt-4 border-t border-[#dce6fb] pt-4">
+                          {latestWebstoreRequest.partner_sync_status === 'synced' ? (
+                            <p className="text-sm font-semibold text-emerald-700">Partner login account already synced.</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleSyncWebstoreAccount}
+                              disabled={isSyncingWebstoreAccount || latestWebstoreRequest.can_sync_account === false}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(37,99,235,0.35)] transition hover:from-[#1d4ed8] hover:to-[#1e40af] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Icon.Check className="h-4 w-4" />
+                              {isSyncingWebstoreAccount ? 'Syncing account...' : 'Sync Your Account'}
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  </div>
+                </motion.div>
+              )}
+
               {activeTab === 'levels' && (
                 <motion.div
                   key="levels"
@@ -5000,6 +5320,179 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       </div>
 
       <AnimatePresence>
+        {webstoreTermsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[65] bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setWebstoreTermsOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.18 }}
+              className="mx-auto mt-6 max-w-5xl overflow-hidden rounded-3xl border border-[#d8e2f6] bg-white shadow-[0_24px_50px_rgba(30,64,175,0.18)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-[#e3eaf8] px-5 py-5 md:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#e6efff] to-[#dbe8ff]">
+                      <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#3b82f6]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                        <path d="M14 2v5h5" />
+                        <path d="m9 13 2 2 4-4" />
+                        <circle cx="18" cy="18" r="3" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-4xl font-bold tracking-tight text-[#0f1f44]">Webstore Terms and Conditions</h3>
+                      <p className="mt-1 text-lg text-[#60739b]">By submitting a Partner Webstore Request, you agree to the following terms and conditions:</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWebstoreTermsOpen(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d6e0f5] text-[#5e6f93] hover:bg-[#f6f9ff]"
+                    aria-label="Close terms modal"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-5 py-4 md:px-6">
+                <div className="overflow-hidden rounded-2xl border border-[#dbe4f6]">
+                  {[
+                    {
+                      text: 'All information provided must be accurate, complete, and up to date.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <path d="M9 12h6M9 16h6M9 8h3" strokeLinecap="round" />
+                          <rect x="5" y="3" width="14" height="18" rx="2" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'Your requested store name, username, and slug must not infringe on any trademarks, copyrights, or third-party rights.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
+                          <path d="m9.5 12 2 2 3-3.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'The platform reserves the right to review, approve, reject, or suspend any webstore request that violates platform policies or contains inappropriate content.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <path d="m14 4 6 6-9 9H5v-6z" />
+                          <path d="m13 5 6 6" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'Approved webstore details and partner login access will be sent to your email.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <rect x="3" y="5" width="18" height="14" rx="2" />
+                          <path d="m4 7 8 6 8-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'You are responsible for maintaining the confidentiality and security of your account credentials.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <rect x="5" y="11" width="14" height="10" rx="2" />
+                          <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'Any fraudulent activity, misleading information, or abuse of the platform may result in account suspension or permanent removal.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <path d="M12 2 4 6v6c0 5 3 8 8 10 5-2 8-5 8-10V6z" />
+                          <path d="M9.5 9.5h.01M14.5 14.5h.01M15 9l-6 6" strokeLinecap="round" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'Your webstore must comply with all applicable laws, regulations, and platform guidelines.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <path d="M12 3v18M5 7h14M7 7l5-4 5 4M7 17h10M6 21h12" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'The platform may update, modify, or discontinue services and features at any time without prior notice.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <path d="M21 12a9 9 0 0 1-15.5 6.2M3 12A9 9 0 0 1 18.5 5.8" />
+                          <path d="M3 16v-4h4M21 8v4h-4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'Submitted requests are subject to manual review and approval before activation.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <circle cx="11" cy="11" r="7" />
+                          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      text: 'By continuing, you acknowledge that you have read, understood, and agreed to these Terms and Conditions.',
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="m8.5 12 2.5 2.5L15.5 10" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ),
+                    },
+                  ].map((item, index) => (
+                    <div key={`webstore-term-${index + 1}`} className="flex items-start gap-4 border-b border-[#e5ecf9] bg-white px-4 py-3 last:border-b-0">
+                      <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#edf3ff] px-2 text-xs font-bold text-[#2e63d6]">
+                        {index + 1}
+                      </span>
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[#4d7ff0]">
+                        {item.icon}
+                      </span>
+                      <p className="text-base leading-relaxed text-[#42557e]">{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-[#e3eaf8] bg-[#fbfdff] px-5 py-4 md:px-6">
+                <button
+                  type="button"
+                  onClick={() => setWebstoreTermsOpen(false)}
+                  className="rounded-xl border border-[#d6e0f5] bg-white px-6 py-2.5 text-base font-semibold text-[#2f3f62] hover:bg-[#f7faff]"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWebstoreAcceptedTerms(true);
+                    setWebstoreTermsOpen(false);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-2.5 text-base font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] hover:from-[#1d4ed8] hover:to-[#1e40af]"
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/60 text-xs">✓</span>
+                  I Agree
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {isAddressModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
