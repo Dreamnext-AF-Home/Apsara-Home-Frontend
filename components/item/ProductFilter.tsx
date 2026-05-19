@@ -99,23 +99,33 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
     { label: 'Over 2000 PV', min: 2000, max: 5000 },
   ]
 
+  // Keep maxPrice in sync with parent-provided maxPrice, but do NOT override user typing.
   useEffect(() => {
     setPriceRange((previous) => {
+      // if user already changed min away from 0, do not touch max.
       if (previous[0] !== 0) return previous
-      if (previous[1] === maxPrice) return previous
-      if (previous[1] !== 10000) return previous
-      const next: [number, number] = [0, maxPrice]
-      onFilterChange({
-        priceRange: next,
-        sortBy,
-        inStock: inStockOnly,
-        discountOnly,
-        minDiscount,
-        pvRange,
-        search: propSearch,
-        hasPvOnly,
-      })
-      return next
+
+      const currentMax = previous[1]
+      if (currentMax === maxPrice) return previous
+
+      // only clamp if user max is out of bounds
+      if (currentMax > maxPrice) {
+        const next: [number, number] = [0, maxPrice]
+        onFilterChange({
+          priceRange: next,
+          sortBy,
+          inStock: inStockOnly,
+          discountOnly,
+          minDiscount,
+          pvRange,
+          search: propSearch,
+          hasPvOnly,
+        })
+        return next
+      }
+
+      // if currentMax is within bounds but differs, keep user value
+      return previous
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxPrice])
@@ -203,8 +213,12 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
     const newMin = type === 'min' ? value : priceRange[0]
     const newMax = type === 'max' ? value : priceRange[1]
 
-    if (newMin <= newMax) {
-      handlePriceChange(newMin, newMax)
+    // keep inside dynamic boundaries
+    const clampedMin = Math.max(0, newMin)
+    const clampedMax = Math.min(maxPrice, newMax)
+
+    if (clampedMin <= clampedMax) {
+      handlePriceChange(clampedMin, clampedMax)
     }
   }
 
@@ -615,7 +629,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
       {/* Clear Filters Button */}
       <button
         onClick={() => {
-          setPriceRange([0, 10000])
+          setPriceRange([0, maxPrice])
           setSortBy('default')
           setInStockOnly(false)
           setDiscountOnly(false)
@@ -623,7 +637,7 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
           setPvRange(propPvRange)
           setHasPvOnly(false)
           onFilterChange({
-            priceRange: [0, 10000],
+            priceRange: [0, maxPrice],
             sortBy: 'default',
             inStock: false,
             discountOnly: false,

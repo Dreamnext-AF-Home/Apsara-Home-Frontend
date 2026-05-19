@@ -23,7 +23,7 @@ const ADMIN_PAGES: Page[] = [
   { title: 'Inquiry', href: '/admin/inquiry', breadcrumbs: ['Admin', 'Inquiry'] },
   { title: 'Project', href: '/admin/project', breadcrumbs: ['Admin', 'Project'] },
   { title: 'Shop Builder', href: '/admin/webpages/shop-builder', breadcrumbs: ['Admin', 'Web Content', 'Shop Builder'] },
-  { title: 'Bulk Edit', href: '/admin/webpages/bulk-edit', breadcrumbs: ['Admin', 'Web Content', 'Bulk Edit'] },
+
   { title: 'All Expenses', href: '/admin/expenses', breadcrumbs: ['Admin', 'Expenses'] },
   { title: 'General Settings', href: '/admin/settings/general', breadcrumbs: ['Admin', 'Settings', 'General'] },
   { title: 'Profile', href: '/admin/profile', breadcrumbs: ['Admin', 'Profile'] },

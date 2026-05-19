@@ -684,7 +684,7 @@ const ProductInfo = ({
 
     const baseSrp = toPositiveNumber(product.originalPrice) ?? toPositiveNumber(product.price) ?? 0;
     const variantSrp = toPositiveNumber(selectedVariant?.priceSrp) ?? baseSrp;
-    const variantMember = toPositiveNumber(product.priceMember) ?? toPositiveNumber(selectedVariant?.priceMember) ?? 0;
+    const variantMember = toPositiveNumber(selectedVariant?.priceMember) ?? toPositiveNumber(product.priceMember) ?? 0;
     const hasMemberPrice = variantMember > 0 && variantMember < variantSrp;
     const shouldDisplayMemberPrice = hasMemberPrice && !forceRealPrice;
     const displayPrice = shouldDisplayMemberPrice ? variantMember : variantSrp;

@@ -626,66 +626,74 @@ export default function CategoryListProductMain({
                                     ))}
                                 </div>
                             )}
-                            {/* Pagination */}
+{/* Pagination */}
                             {filteredProducts.length > 0 && (
-                                <div className="mt-8 flex items-center justify-between gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <span>Show</span>
-                                        <select
-                                            value={showCount >= safeProducts.length ? 'all' : showCount}
-                                            onChange={(event) => handleShowNumberChange(event.target.value === 'all' ? 'all' : Number(event.target.value))}
-                                            className="h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-sm font-semibold text-slate-700 transition-all hover:border-sky-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                                        >
-                                            {['all', 12, 16, 24, 48, 96].map((option) => (
-                                                <option key={option} value={option}>
-                                                    {option === 'all' ? 'All' : option}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <span>per page</span>
-                                    </div>
-
-                                    {totalPages > 1 && (
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                                disabled={boundedCurrentPage === 1}
-                                                className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:border-sky-400 hover:text-sky-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-sky-400"
+                                <div className="mt-8 border-t border-gray-100 pt-5 dark:border-gray-800">
+                                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+                                        <div className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                            <span>Show</span>
+                                            <select
+                                                value={showCount >= safeProducts.length ? safeProducts.length : showCount}
+                                                onChange={(event) => handleShowNumberChange(Number(event.target.value))}
+                                                className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-all hover:border-sky-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                                             >
-                                                ‹ Prev
-                                            </button>
-                                            {visiblePages.map((page, index) => {
-                                                if (page === 'ellipsis') {
-                                                    return (
-                                                        <span key={`ellipsis-${index}`} className="inline-flex h-9 w-8 items-center justify-center text-sm text-gray-400 dark:text-gray-500">
-                                                            …
-                                                        </span>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <button
-                                                        key={page}
-                                                        onClick={() => setCurrentPage(page)}
-                                                        className={`h-9 w-9 rounded-lg border text-sm font-medium transition-colors ${
-                                                            page === boundedCurrentPage
-                                                                ? 'border-sky-500 bg-sky-500 text-white shadow-sm'
-                                                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:border-sky-400 hover:text-sky-500 dark:hover:border-sky-400'
-                                                        }`}
-                                                    >
-                                                        {page}
-                                                    </button>
-                                                );
-                                            })}
-                                            <button
-                                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                                disabled={boundedCurrentPage === totalPages}
-                                                className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:border-sky-400 hover:text-sky-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-sky-400"
-                                            >
-                                                Next ›
-                                            </button>
+                                                {[12, 16, 24, 48, 96].map((option) => (
+                                                    <option key={option} value={option}>
+                                                        {option}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
-                                    )}
+
+                                        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                                            {totalPages > 1 && (
+                                                <>
+                                                    <button
+                                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                        disabled={boundedCurrentPage === 1}
+                                                        className="h-9 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:border-sky-400 hover:text-sky-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-sky-400"
+                                                    >
+                                                        Prev
+                                                    </button>
+
+                                                    {visiblePages.map((page, index) => {
+                                                        if (page === 'ellipsis') {
+                                                            return (
+                                                                <span
+                                                                    key={`ellipsis-${index}`}
+                                                                    className="inline-flex h-9 w-8 shrink-0 items-center justify-center text-sm text-gray-400 dark:text-gray-500"
+                                                                >
+                                                                    ...
+                                                                </span>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <button
+                                                                key={page}
+                                                                onClick={() => setCurrentPage(page)}
+                                                                className={`h-9 w-9 shrink-0 rounded-lg border text-sm font-medium transition-colors ${
+                                                                    page === boundedCurrentPage
+                                                                        ? 'border-sky-500 bg-sky-500 text-white shadow-sm'
+                                                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:border-sky-400 hover:text-sky-500 dark:hover:border-sky-400'
+                                                                }`}
+                                                            >
+                                                                {page}
+                                                            </button>
+                                                        );
+                                                    })}
+
+                                                    <button
+                                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                                        disabled={boundedCurrentPage === totalPages}
+                                                        className="h-9 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:border-sky-400 hover:text-sky-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-sky-400"
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -869,3 +877,5 @@ function ListViewProduct({ product, onShareClick, hideDiscountBadge = false, for
         </Link>
     )
 }
+
+

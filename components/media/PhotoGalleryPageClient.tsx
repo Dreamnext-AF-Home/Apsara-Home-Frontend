@@ -185,7 +185,8 @@ export default function PhotoGalleryPageClient({ initialCategories }: PhotoGalle
             <div aria-hidden className="absolute -left-24 top-6 h-24 w-24 -z-10 rounded-full bg-blue-200/25 blur-3xl" />
             <div aria-hidden className="absolute -right-24 bottom-6 h-24 w-24 -z-10 rounded-full bg-sky-200/25 blur-3xl" />
 
-            <div className="rounded-3xl border border-blue-200/70 bg-white/80 p-6 shadow-[0_0_0_1px_rgba(37,99,235,0.06)] backdrop-blur">
+            <div className="rounded-3xl border border-blue-200/70 bg-white/80 p-6 shadow-[0_0_0_1px_rgba(37,99,235,0.06)] backdrop-blur dark:bg-gray-900/60 dark:border-gray-800">
+
               <div className="flex items-center justify-between gap-6 flex-wrap">
                 <div className="flex items-start gap-4">
                   <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 text-blue-700">

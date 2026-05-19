@@ -5,10 +5,12 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { getPartnerStorefrontConfig, parseIdList } from '@/libs/partnerStorefront'
+import { Trash2 } from 'lucide-react'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { type Product, useLazyGetProductsQuery, useLazyGetPublicProductQuery } from '@/store/api/productsApi'
 import {
   useCreateAdminWebPageItemMutation,
+  useDeleteAdminWebPageItemMutation,
   useGetAdminWebPageItemsQuery,
   useUpdateAdminWebPageItemMutation,
   type WebPageItem,
@@ -114,6 +116,13 @@ export default function PartnerStorefrontStudio() {
   const [logoVersion, setLogoVersion] = useState(0)
   const missingSelectedProductRequestIdsRef = useRef<Set<number>>(new Set())
   const { data: session } = useSession()
+
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean
+    item?: WebPageItem
+    displayName?: string
+  }>({ open: false })
+
   const sessionRole = String(session?.user?.role ?? '').toLowerCase()
   const sessionUserLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
   const storefrontIds = (session?.user as { storefrontIds?: number[] } | undefined)?.storefrontIds ?? []
@@ -151,6 +160,7 @@ export default function PartnerStorefrontStudio() {
   const [fetchPublicProduct] = useLazyGetPublicProductQuery()
   const [createItem, { isLoading: isCreating }] = useCreateAdminWebPageItemMutation()
   const [updateItem, { isLoading: isUpdating }] = useUpdateAdminWebPageItemMutation()
+  const [deleteItem, { isLoading: isDeleting }] = useDeleteAdminWebPageItemMutation()
 
   const storefronts = useMemo(() => {
     const items = (data?.items ?? [])
@@ -355,6 +365,41 @@ export default function PartnerStorefrontStudio() {
       return nextDraft
     })
   }
+
+  const handleDeleteStorefront = async (item: WebPageItem, displayName: string) => {
+    if (isPartnerScoped) {
+      showErrorToast('Only admin users can delete partner storefronts.')
+      return
+    }
+
+    setDeleteModal({ open: true, item, displayName })
+  }
+
+  const confirmDeleteStorefrontNow = async () => {
+    if (!deleteModal.item) return
+
+    const item = deleteModal.item
+    const displayName = deleteModal.displayName ?? ''
+
+    try {
+      await deleteItem({ type: 'partner-storefront', id: item.id }).unwrap()
+      showSuccessToast(displayName ? `Partner storefront "${displayName}" deleted.` : 'Partner storefront deleted.')
+
+      if (selectedId === item.id) {
+        setSelectedId('new')
+        setDraft(emptyDraft)
+      }
+
+      setDeleteModal({ open: false })
+      await refetch()
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to delete partner storefront.')
+      setDeleteModal({ open: false })
+    }
+  }
+
+
 
   const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -946,10 +991,53 @@ export default function PartnerStorefrontStudio() {
     return <div className="rounded-3xl border border-red-200 bg-red-50 p-12 text-center text-sm font-semibold text-red-600 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">Failed to load partner storefronts.</div>
   }
 
-  const saving = isCreating || isUpdating
+  const saving = isCreating || isUpdating || isDeleting
 
   return (
     <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)] text-slate-900 dark:text-slate-100">
+      {deleteModal.open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete storefront confirmation"
+        >
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="Close delete confirmation"
+            onClick={() => setDeleteModal({ open: false })}
+          />
+
+          <div className="relative z-[51] w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-950">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-500">Confirm Delete</p>
+            <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Delete storefront?</h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              This will remove access to <span className="font-semibold text-slate-900 dark:text-slate-100">{deleteModal.displayName ?? 'this storefront'}</span>. This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200 dark:hover:bg-slate-800"
+                onClick={() => setDeleteModal({ open: false })}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-900/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-400"
+                onClick={() => void confirmDeleteStorefrontNow()}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <aside className="space-y-4">
         <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50 to-cyan-50 p-5 shadow-sm dark:border-emerald-900/50 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 dark:shadow-black/20">
           <div className="flex items-start justify-between gap-3">
@@ -1003,11 +1091,35 @@ export default function PartnerStorefrontStudio() {
                         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{config.displayName}</p>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">/{config.slug}</p>
                       </div>
-                      {active ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                          Active
-                        </span>
-                      ) : null}
+                      <div className="flex items-center gap-2">
+                        {active ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Active
+                          </span>
+                        ) : null}
+                        {!isPartnerScoped ? (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void handleDeleteStorefront(item, config.displayName)
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                void handleDeleteStorefront(item, config.displayName)
+                              }
+                            }}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                            aria-label={`Delete ${config.displayName}`}
+                            title={`Delete ${config.displayName}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{config.allowedCategoryIds.length} selected categories</p>
                   </button>

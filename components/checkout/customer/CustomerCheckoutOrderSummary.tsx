@@ -60,10 +60,13 @@ export default function CustomerCheckoutOrderSummary({
 
   const { product, quantity, selectedColor, selectedStyle, selectedSize, selectedType, selectedSku, items = [], subtotal, handlingFee, total } = checkoutData;
   const hasSelectedItems = items.length > 0;
+  const effectiveQuantity = hasSelectedItems
+    ? items.reduce((sum, item) => sum + Math.max(1, Number(item.quantity ?? 1)), 0)
+    : Math.max(1, Number(quantity ?? 1));
   const unitPv = hasSelectedItems
     ? items.reduce((sum, item) => sum + (Number(item.prodpv ?? 0) * item.quantity), 0)
     : Number(product.prodpv ?? 0);
-  const totalPv = hasSelectedItems ? unitPv : unitPv * quantity;
+  const totalPv = hasSelectedItems ? unitPv : unitPv * effectiveQuantity;
   const displayUnitPrice = typeof unitPriceOverride === 'number' ? unitPriceOverride : product.price;
   const displaySubtotal = typeof subtotalOverride === 'number' ? subtotalOverride : subtotal;
   const voucherDiscount = Math.max(0, Number(voucher?.discount ?? 0));
@@ -122,7 +125,7 @@ export default function CustomerCheckoutOrderSummary({
             <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug line-clamp-2">{product.name}</p>
             <p className="text-sky-500 font-extrabold text-sm mt-1">PHP {displayUnitPrice.toLocaleString()}</p>
             <div className="flex flex-wrap gap-1 mt-1.5">
-              <span className="px-2 py-0.5 bg-sky-100 text-sky-600 text-[10px] font-bold rounded-full">Qty: {quantity}</span>
+              <span className="px-2 py-0.5 bg-sky-100 text-sky-600 text-[10px] font-bold rounded-full">Qty: {effectiveQuantity}</span>
               {selectedColor && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedColor}</span>}
               {selectedStyle && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedStyle}</span>}
               {selectedSize && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-full">{selectedSize}</span>}
@@ -251,7 +254,7 @@ export default function CustomerCheckoutOrderSummary({
         {/* Breakdown */}
         <div className="space-y-2.5 text-sm border-t border-slate-200 dark:border-slate-700 pt-3">
           <div className="flex justify-between text-slate-500 dark:text-slate-400">
-            <span>Subtotal ({quantity}x)</span>
+            <span>Subtotal ({effectiveQuantity}x)</span>
             <span className="font-semibold text-slate-700 dark:text-slate-300">PHP {displaySubtotal.toLocaleString()}</span>
           </div>
           {voucherDiscount > 0 ? (

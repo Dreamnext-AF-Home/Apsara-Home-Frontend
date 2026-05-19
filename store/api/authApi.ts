@@ -102,6 +102,7 @@ export interface AdminMeResponse {
   supplier_id?: number | null
   admin_permissions?: string[]
   storefront_ids?: number[]
+  disabled_storefront_ids?: number[]
   avatar_url?: string
 }
 

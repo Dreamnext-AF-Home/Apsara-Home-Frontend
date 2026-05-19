@@ -7,6 +7,7 @@ export interface PartnerUserItem {
   email: string
   user_level_id: number
   storefront_ids: number[]
+  disabled_storefront_ids?: number[]
   is_banned?: boolean
 }
 
@@ -44,6 +45,7 @@ export interface UpdatePartnerUserPayload {
   email?: string
   password?: string
   storefront_ids?: number[]
+  disabled_storefront_ids?: number[]
 }
 
 export const partnerUsersApi = baseApi.injectEndpoints({

@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
+import { Pencil, Trash2 } from 'lucide-react'
 import {
   useCreatePartnerUserMutation,
   useDeletePartnerUserMutation,
@@ -41,6 +42,8 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
   const [showPassword, setShowPassword] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [deleteModalUser, setDeleteModalUser] = useState<PartnerUserItem | null>(null)
+  const [accessStorefrontIds, setAccessStorefrontIds] = useState<number[]>([])
+  const [accessTargetUserId, setAccessTargetUserId] = useState<number | null>(null)
 
   const { data: storefrontData } = useGetAdminWebPageItemsQuery({
     type: 'partner-storefront',
@@ -77,12 +80,34 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
   const [createUser, { isLoading: isCreating }] = useCreatePartnerUserMutation()
   const [updateUser, { isLoading: isUpdating }] = useUpdatePartnerUserMutation()
   const [deleteUser, { isLoading: isDeleting }] = useDeletePartnerUserMutation()
+  const [isSavingStorefrontAccess, setIsSavingStorefrontAccess] = useState(false)
 
   const users = useMemo(() => data?.users ?? [], [data?.users])
   const busy = isCreating || isUpdating || isDeleting
 
+  useEffect(() => {
+    if (users.length === 0) {
+      setAccessTargetUserId(null)
+      setAccessStorefrontIds([])
+      return
+    }
+    if (accessTargetUserId !== null) return
+    const firstUser = users[0]
+    if (!firstUser) return
+    setAccessTargetUserId(firstUser.id)
+    setAccessStorefrontIds(
+      (firstUser.disabled_storefront_ids ?? [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id)),
+    )
+  }, [users, accessTargetUserId])
+
   const visibleUsers = useMemo(() => {
-    if (!showStorefrontFilter || storefrontFilter === 'all') return users
+    if (!showStorefrontFilter) return users
+    if (storefrontFilter === 'all') {
+      // Show only users that are connected to at least one storefront by default.
+      return users.filter((u) => (u.storefront_ids ?? []).length > 0)
+    }
     const id = Number(storefrontFilter)
     if (!Number.isFinite(id)) return users
     return users.filter((u) => (u.storefront_ids ?? []).includes(id))
@@ -146,6 +171,77 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
       const apiErr = error as { data?: { message?: string } }
       showErrorToast(apiErr?.data?.message || 'Failed to save partner user.')
     }
+  }
+
+  const targetAccessUser = useMemo(() => {
+    if (accessTargetUserId !== null) {
+      return users.find((u) => u.id === accessTargetUserId) ?? null
+    }
+    return null
+  }, [accessTargetUserId, users])
+
+  const currentAccessIds = useMemo(() => {
+    if (!targetAccessUser) return []
+    if (accessTargetUserId === targetAccessUser.id) {
+      return accessStorefrontIds
+    }
+    return (targetAccessUser.disabled_storefront_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id))
+  }, [targetAccessUser, accessTargetUserId, accessStorefrontIds])
+
+  const currentAssignedAccessIds = useMemo(() => {
+    if (!targetAccessUser) return []
+    return (targetAccessUser.storefront_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id))
+  }, [targetAccessUser])
+
+  const saveStorefrontAccess = async (targetUser: PartnerUserItem, nextDisabledIds: number[]) => {
+    setIsSavingStorefrontAccess(true)
+    try {
+      await updateUser({
+        id: targetUser.id,
+        name: targetUser.name.trim(),
+        username: targetUser.username.trim(),
+        email: (targetUser.email ?? '').trim(),
+        disabled_storefront_ids: nextDisabledIds,
+      }).unwrap()
+      setAccessStorefrontIds(nextDisabledIds)
+      await refetch()
+      showSuccessToast('Storefront access updated.')
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string } }
+      showErrorToast(apiErr?.data?.message || 'Failed to update storefront access.')
+      const fallbackIds = (targetUser.disabled_storefront_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      setAccessStorefrontIds(fallbackIds)
+    } finally {
+      setIsSavingStorefrontAccess(false)
+    }
+  }
+
+  const toggleStorefrontAccess = async (storefrontId: number) => {
+    const targetUser = targetAccessUser
+    if (!targetUser) {
+      showErrorToast('No partner user available to update.')
+      return
+    }
+    const assignedIds = (targetUser.storefront_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id))
+    if (!assignedIds.includes(storefrontId)) {
+      showErrorToast('This storefront is not assigned to the selected user.')
+      return
+    }
+
+    const currentDisabledIds = accessTargetUserId === targetUser.id
+      ? accessStorefrontIds
+      : (targetUser.disabled_storefront_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id))
+    // In this section, a toggled ON switch means "disable access".
+    // Stored IDs here are disabled IDs, so ON adds the storefront ID.
+    const next = new Set(currentDisabledIds)
+    const isCurrentlyDisabled = next.has(storefrontId)
+    if (isCurrentlyDisabled) next.delete(storefrontId)
+    else next.add(storefrontId)
+    const nextDisabledIds = Array.from(next)
+
+    setAccessTargetUserId(targetUser.id)
+    setAccessStorefrontIds(nextDisabledIds)
+    await saveStorefrontAccess(targetUser, nextDisabledIds)
   }
 
   const handleDelete = async (user: PartnerUserItem) => {
@@ -259,6 +355,52 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
                 </button>
               </div>
             </Field>
+            <Field label="Assign Storefronts">
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, storefrontIds: storefronts.map((s) => s.id) }))}
+                    className="rounded-md border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:bg-slate-900 dark:text-indigo-300"
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, storefrontIds: [] }))}
+                    className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="max-h-36 overflow-auto rounded-lg border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-900">
+                  {storefronts.map((store) => {
+                    const checked = form.storefrontIds.includes(store.id)
+                    return (
+                      <label key={`assign-${store.id}`} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setForm((prev) => {
+                              const next = new Set(prev.storefrontIds)
+                              if (next.has(store.id)) next.delete(store.id)
+                              else next.add(store.id)
+                              return { ...prev, storefrontIds: Array.from(next) }
+                            })
+                          }
+                        />
+                        <span className="truncate">{store.name}</span>
+                        <span className="text-[10px] text-slate-400">({store.slug})</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Selected: <span className="font-semibold">{form.storefrontIds.length}</span>
+                </p>
+              </div>
+            </Field>
             <button
               type="button"
               onClick={() => void handleSubmit()}
@@ -344,8 +486,24 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
                       <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">Active</span>
                     </div>
                     <div className="flex items-center justify-start gap-2 md:justify-end">
-                      <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">Edit</button>
-                      <button type="button" onClick={() => void handleDelete(user)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">Delete</button>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(user)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+                        title="Edit user"
+                        aria-label="Edit user"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(user)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
+                        title="Delete user"
+                        aria-label="Delete user"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -356,41 +514,52 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
           {showStorefrontFilter ? (
             <div className={`${shellCard} p-4`}>
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Partner Storefront Access (disabled = no access granted)</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Partner Storefront Access (toggle ON = access disabled)</p>
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, storefrontIds: storefronts.map((s) => s.id) }))}
+                  onClick={() => {
+                    if (!targetAccessUser) return
+                    const nextIds: number[] = []
+                    setAccessTargetUserId(targetAccessUser.id)
+                    setAccessStorefrontIds(nextIds)
+                    void saveStorefrontAccess(targetAccessUser, nextIds)
+                  }}
                   className="text-xs font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-300"
+                  disabled={!targetAccessUser || isSavingStorefrontAccess}
                 >
-                  Select All
+                  Enable All Access
                 </button>
               </div>
+              <p className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300">
+                {targetAccessUser
+                  ? <>Managing access for <span className="font-semibold">@{targetAccessUser.username}</span>.</>
+                  : <>No user selected: click <span className="font-semibold">Edit</span> on a user first.</>}
+              </p>
+
 
               <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
                 {storefronts.map((store) => {
-                  const isEnabled = form.storefrontIds.includes(store.id)
+                  const isAssigned = currentAssignedAccessIds.includes(store.id)
+                  const isDisabled = currentAccessIds.includes(store.id)
                   return (
                     <label key={`toggle-${store.id}`} className="flex cursor-pointer items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{store.name}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{store.slug}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {store.slug}
+                          {!isAssigned ? ' • Not assigned' : ''}
+                        </p>
                       </div>
                       <span className="relative inline-flex h-6 w-11 items-center">
                         <input
                           type="checkbox"
-                          checked={isEnabled}
-                          onChange={() => {
-                            setForm((prev) => {
-                              const next = new Set(prev.storefrontIds)
-                              if (next.has(store.id)) next.delete(store.id)
-                              else next.add(store.id)
-                              return { ...prev, storefrontIds: Array.from(next) }
-                            })
-                          }}
+                          checked={isDisabled}
+                          onChange={() => void toggleStorefrontAccess(store.id)}
+                          disabled={isSavingStorefrontAccess || !targetAccessUser || !isAssigned}
                           className="peer sr-only"
                         />
-                        <span className={`h-6 w-11 rounded-full transition ${isEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`} />
-                        <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                        <span className={`h-6 w-11 rounded-full transition ${isDisabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'} ${(isSavingStorefrontAccess || !targetAccessUser || !isAssigned) ? 'opacity-50' : ''}`} />
+                        <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isDisabled ? 'translate-x-5' : 'translate-x-0'}`} />
                       </span>
                     </label>
                   )
@@ -448,9 +617,9 @@ export default function PartnerUsersPage({ showStorefrontFilter = true }: { show
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{label}</span>
       {children}
-    </label>
+    </div>
   )
 }

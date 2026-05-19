@@ -179,7 +179,11 @@ const CustomerCheckoutMain = ({
         };
 
         window.addEventListener('checkout-variant-changed', handleVariantChange);
-        return () => window.removeEventListener('checkout-variant-changed', handleVariantChange);
+        window.addEventListener('checkout-cart-updated', handleVariantChange);
+        return () => {
+            window.removeEventListener('checkout-variant-changed', handleVariantChange);
+            window.removeEventListener('checkout-cart-updated', handleVariantChange);
+        };
     }, []);
 
     const [formOverrides, setFormOverrides] = useState<Partial<GuestForm>>({});
@@ -355,9 +359,22 @@ const CustomerCheckoutMain = ({
             try {
                 setVoucherError(null);
                 const res = await validateVoucher({ code, subtotal: effectiveSubtotal }).unwrap();
+                const voucherAmount = Number(res.voucher.amount ?? 0);
+                const requiredSubtotal = Math.max(0, voucherAmount * 2);
+                const stillNeeded = Math.max(0, requiredSubtotal - effectiveSubtotal);
+
+                if (stillNeeded > 0) {
+                    setVoucherInfo(null);
+                    setVoucherError(
+                        `Minimum purchase for this voucher is PHP ${requiredSubtotal.toLocaleString()}. ` +
+                        `You still need PHP ${stillNeeded.toLocaleString()}.`,
+                    );
+                    return;
+                }
+
                 setVoucherInfo({
                     code: res.voucher.code,
-                    amount: res.voucher.amount,
+                    amount: voucherAmount,
                     discount: res.discount,
                 });
                 setVoucherError(null);

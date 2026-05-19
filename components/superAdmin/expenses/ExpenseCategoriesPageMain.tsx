@@ -109,17 +109,26 @@ export default function ExpenseCategoriesPageMain() {
     }
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<ExpenseCategory | null>(null)
+
+  const closeDeleteModal = () => setDeleteTarget(null)
+
   const handleDelete = async (category: ExpenseCategory) => {
-    const shouldDelete = window.confirm(`Delete "${category.name}" expense category?`)
-    if (!shouldDelete) return
+    setDeleteTarget(category)
+  }
+
+  const confirmDeleteNow = async () => {
+    if (!deleteTarget) return
 
     try {
-      const response = await deleteCategory(category.id).unwrap()
+      const response = await deleteCategory(deleteTarget.id).unwrap()
       showSuccessToast(response.message || 'Expense category deleted.')
+      closeDeleteModal()
     } catch (error) {
       showErrorToast(getApiMessage(error, 'Failed to delete expense category.'))
     }
   }
+
 
   return (
     <div className="space-y-6">
@@ -195,8 +204,26 @@ export default function ExpenseCategoriesPageMain() {
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {categories.map((category) => (
-              <article key={category.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <div className="flex items-start justify-between gap-3">
+              <article
+                key={category.id}
+                className={
+                  "group relative overflow-hidden rounded-2xl border p-4 " +
+                  (category.status === 1
+                    ? 'border-emerald-200/80 bg-emerald-50/40'
+                    : 'border-amber-200/80 bg-amber-50/40')
+                }
+              >
+                <div
+                  aria-hidden="true"
+                  className={
+                    "pointer-events-none absolute -left-20 -top-20 h-40 w-40 rounded-full blur-2xl transition-transform duration-300 " +
+                    (category.status === 1
+                      ? 'bg-emerald-200/60 group-hover:translate-x-6 group-hover:translate-y-4'
+                      : 'bg-amber-200/60 group-hover:translate-x-6 group-hover:translate-y-4')
+                  }
+                />
+
+                <div className="relative flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">{category.name}</h3>
                     <p className="mt-1 text-xs text-slate-500">ID #{category.id}</p>
@@ -210,25 +237,57 @@ export default function ExpenseCategoriesPageMain() {
                   </span>
                 </div>
 
-                <p className="mt-3 min-h-12 text-sm text-slate-600">
+                <p className="relative mt-3 min-h-12 text-sm text-slate-600">
                   {category.description || 'No description provided.'}
                 </p>
 
-                <div className="mt-4 flex items-center gap-2">
+                <div className="relative mt-4 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => openEditModal(category)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    title="Edit expense category"
+                    aria-label="Edit expense category"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white/70 text-slate-700 shadow-sm transition hover:bg-white group-hover:border-slate-400"
                   >
-                    Edit
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                    </svg>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => handleDelete(category)}
                     disabled={isDeleting}
-                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                    title="Delete expense category"
+                    aria-label="Delete expense category"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-white/70 text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-60"
                   >
-                    Delete
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
                   </button>
                 </div>
               </article>
@@ -304,6 +363,36 @@ export default function ExpenseCategoriesPageMain() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-red-100 bg-white p-6 shadow-xl dark:border-red-500/20 dark:bg-slate-950">
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-red-500">Confirm Delete</p>
+            <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Remove expense category?</h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              This will permanently remove <span className="font-semibold text-slate-900 dark:text-slate-100">{deleteTarget.name}</span>.
+            </p>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteNow()}
+                disabled={isDeleting}
+                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-60"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

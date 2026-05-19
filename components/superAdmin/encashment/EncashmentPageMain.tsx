@@ -283,6 +283,9 @@ function ActionModal({ action, busy, uploading, notes, proofUrl, proofFileName, 
   onNotes: (v: string) => void; onFileChange: (f: File) => void; onConfirm: () => void; onClose: () => void
 }) {
   const meta = ACTION_META[action]
+  const noteLabel = action === 'reject' ? 'Reject Reason' : action === 'release' ? 'Release Note' : 'Approval Note'
+  const noteRequired = action !== 'approve'
+  const noteHint = action === 'reject' ? 'Reason is required to notify the member.' : action === 'release' ? 'Note required for audit trail.' : 'Optional note for audit trail.'
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -302,7 +305,7 @@ function ActionModal({ action, busy, uploading, notes, proofUrl, proofFileName, 
           </div>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">{meta.title}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Note required for audit trail.</p>
+            <p className="text-xs text-slate-400 mt-0.5">{noteHint}</p>
           </div>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -312,11 +315,11 @@ function ActionModal({ action, busy, uploading, notes, proofUrl, proofFileName, 
         <div className="px-6 py-5 space-y-4">
           <div>
             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
-              Approval Note <span className="text-red-400">*</span>
+              {noteLabel} {noteRequired ? <span className="text-red-400">*</span> : null}
             </label>
             <textarea
               value={notes} onChange={e => onNotes(e.target.value)} rows={4}
-              placeholder="Write clear reason / details (min 5 characters)..."
+              placeholder={action === 'approve' ? 'Optional note for this approval...' : 'Write clear reason / details (min 5 characters)...'}
               className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-sky-400 dark:focus:border-sky-500 focus:ring-1 focus:ring-sky-400/30 resize-none transition-all"
             />
           </div>
@@ -380,7 +383,7 @@ interface Props { initialFilter?: string }
 export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
   const { data: session } = useSession()
   const role       = (session?.user?.role ?? '').toLowerCase()
-  const canApprove = role === 'accounting'
+  const canApprove = role === 'accounting' || role === 'super_admin'
   const canRelease = role === 'finance_officer' || role === 'super_admin'
 
   const [search,      setSearch]      = useState('')
@@ -440,19 +443,20 @@ export default function EncashmentPageMain({ initialFilter = 'all' }: Props) {
     const id    = actionModal.id
     const notes = actionModal.notes.trim()
     if (!id) return
-    if (notes.length < 5) { showErrorToast('Action note is required (minimum 5 characters).'); return }
+    if (actionModal.action === 'reject' && notes.length < 5) { showErrorToast('Reject reason is required (minimum 5 characters).'); return }
+    if (actionModal.action === 'release' && notes.length < 5) { showErrorToast('Release note is required (minimum 5 characters).'); return }
     if (actionModal.action === 'release' && !actionModal.proofUrl) { showErrorToast('Screenshot proof is required before release.'); return }
     setBusyId(id)
     try {
       if (actionModal.action === 'approve') {
-        await approveRequest({ id, notes }).unwrap()
-        showSuccessToast('Request approved successfully.')
+        await approveRequest({ id, notes: notes || undefined }).unwrap()
+        showSuccessToast('Encashment approved. Status updated and member wallet debited.')
       } else if (actionModal.action === 'release') {
         await releaseRequest({ id, notes, proof_url: actionModal.proofUrl, proof_public_id: actionModal.proofPublicId || undefined }).unwrap()
         showSuccessToast('Request released successfully.')
       } else {
         await rejectRequest({ id, notes }).unwrap()
-        showSuccessToast('Request rejected successfully.')
+        showSuccessToast('Encashment rejected. Member has been notified.')
       }
       closeActionModal()
     } catch (err: unknown) {
