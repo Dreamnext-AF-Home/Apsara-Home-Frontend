@@ -1163,7 +1163,7 @@ function PreviewScreen({ playing }: { playing: boolean }) {
 
 /* ─── Scale constants ────────────────────────────────────────── */
 const BEZEL_W = 1308; // 1280 screen + 14px padding × 2
-const TOTAL_H = 810;  // 734 bezel (14px top + 720) + 12 gap + 56 controls + 8 buffer
+const BEZEL_H = 734;  // 14px top padding + 720px screen (controls are outside the scale)
 
 /* ─── Main ───────────────────────────────────────────────────── */
 export default function StorefrontTutorial() {
@@ -1227,7 +1227,7 @@ export default function StorefrontTutorial() {
   useEffect(() => {
     const update = () => {
       const sw = (window.innerWidth - 24) / BEZEL_W;
-      const sh = (window.innerHeight - 24) / TOTAL_H;
+      const sh = (window.innerHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
       setScale(Math.min(1, sw, sh));
     };
     update();
@@ -1315,6 +1315,29 @@ export default function StorefrontTutorial() {
     window.addEventListener('mouseup', onUp);
   };
 
+  const handleScrubTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const el = scrubberRef.current;
+    if (!el) return;
+    const getX = (ev: TouchEvent) => ev.touches[0]?.clientX ?? ev.changedTouches[0]?.clientX ?? 0;
+    const update = (clientX: number) => {
+      const rect = el.getBoundingClientRect();
+      elapsedRef.current = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * TOTAL_DURATION;
+      setElapsed(elapsedRef.current);
+    };
+    update(e.touches[0].clientX);
+    const onMove = (ev: TouchEvent) => update(getX(ev));
+    const onEnd = (ev: TouchEvent) => {
+      isDragging.current = false;
+      handleScrubInteract(ev.changedTouches[0]?.clientX ?? elapsedRef.current);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+  };
+
   const meta = STEP_META[step];
 
   return (
@@ -1323,8 +1346,8 @@ export default function StorefrontTutorial() {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden', padding: '12px 0',
     }}>
-      {/* Scale wrapper — gives correct layout footprint while content is CSS-scaled */}
-      <div style={{ position: 'relative', width: BEZEL_W * scale, height: TOTAL_H * scale, flexShrink: 0 }}>
+      {/* Scale wrapper — only wraps the bezel, controls are outside */}
+      <div style={{ position: 'relative', width: BEZEL_W * scale, height: BEZEL_H * scale, flexShrink: 0 }}>
         <div style={{
           position: 'absolute', top: 0, left: 0, width: BEZEL_W,
           transform: `scale(${scale})`, transformOrigin: 'top left',
@@ -1527,40 +1550,43 @@ export default function StorefrontTutorial() {
         </div>{/* end screen viewport */}
       </div>{/* end MacBook bezel */}
 
-        {/* ── Controls bar ─────────────────────────────────────── */}
-      <div style={{ width: 1308 }}>
-        <div className="flex items-center gap-4 rounded-2xl px-5 py-3" style={{
+        </div>{/* end scale content */}
+      </div>{/* end scale wrapper */}
+
+      {/* ── Controls bar — native size, NOT inside scale transform ── */}
+      <div style={{ width: Math.min(BEZEL_W * scale, window.innerWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
           background: 'rgba(255,255,255,0.07)',
           border: '1px solid rgba(255,255,255,0.1)',
           backdropFilter: 'blur(16px)',
+          borderRadius: 16, padding: '8px 12px',
         }}>
 
-          {/* Play / Pause */}
+          {/* Play / Pause — 44px touch target */}
           <button
             onClick={handleTogglePlay}
-            className="flex items-center justify-center rounded-xl transition-all hover:brightness-125"
-            style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.13)', color: '#fff', flexShrink: 0 }}
+            style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.13)', color: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
           >
-            {playing ? <Pause size={15} /> : <Play size={15} />}
+            {playing ? <Pause size={17} /> : <Play size={17} />}
           </button>
 
           {/* Current time */}
-          <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'ui-monospace, monospace', minWidth: 34, textAlign: 'right' }}>
+          <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: 'ui-monospace, monospace', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>
             {formatTime(elapsed)}
           </span>
 
-          {/* Scrubber track */}
+          {/* Scrubber — 44px touch target height */}
           <div
             ref={scrubberRef}
-            className="flex-1 relative cursor-pointer select-none"
-            style={{ height: 24, display: 'flex', alignItems: 'center' }}
+            style={{ flex: 1, position: 'relative', height: 44, display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none', touchAction: 'none' }}
             onMouseDown={handleScrubMouseDown}
+            onTouchStart={handleScrubTouchStart}
           >
-            {/* Track bg */}
-            <div className="absolute inset-0 flex items-center pointer-events-none">
-              <div className="w-full rounded-full" style={{ height: 4, background: 'rgba(255,255,255,0.14)' }}>
-                <div className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, (elapsed / TOTAL_DURATION) * 100)}%`, background: '#10b981' }} />
+            {/* Track */}
+            <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+              <div style={{ width: '100%', height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.14)', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 2, background: '#10b981', width: `${Math.min(100, (elapsed / TOTAL_DURATION) * 100)}%` }} />
               </div>
             </div>
 
@@ -1569,14 +1595,12 @@ export default function StorefrontTutorial() {
               const pct = ((STEP_STARTS[s] ?? 0) / TOTAL_DURATION) * 100;
               const isActive = step === s;
               return (
-                <div key={s} className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
-                  style={{ left: `${pct}%` }}>
+                <div key={s} style={{ position: 'absolute', top: '50%', left: `${pct}%`, transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
                   <div style={{ width: 1, height: 10, background: 'rgba(255,255,255,0.28)' }} />
                   <span style={{
-                    position: 'absolute', top: 10, fontSize: 9,
+                    position: 'absolute', top: 10, fontSize: 9, whiteSpace: 'nowrap',
                     color: isActive ? '#10b981' : 'rgba(255,255,255,0.3)',
                     fontWeight: isActive ? 700 : 400,
-                    whiteSpace: 'nowrap',
                     transform: 'translateX(-50%)',
                     transition: 'color 0.3s',
                   }}>{SCRUB_LABELS[s]}</span>
@@ -1585,50 +1609,48 @@ export default function StorefrontTutorial() {
             })}
 
             {/* Thumb */}
-            <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none" style={{
-              left: `${Math.min(100, (elapsed / TOTAL_DURATION) * 100)}%`,
-              width: 14, height: 14, borderRadius: '50%',
-              background: '#fff',
-              boxShadow: '0 1px 6px rgba(0,0,0,0.55)',
-              transition: isDragging.current ? 'none' : undefined,
+            <div style={{
+              position: 'absolute', top: '50%', left: `${Math.min(100, (elapsed / TOTAL_DURATION) * 100)}%`,
+              transform: 'translate(-50%, -50%)',
+              width: 16, height: 16, borderRadius: '50%',
+              background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.55)',
+              pointerEvents: 'none',
             }} />
           </div>
 
           {/* Total time */}
-          <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 12, fontFamily: 'ui-monospace, monospace', minWidth: 34 }}>
+          <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 12, fontFamily: 'ui-monospace, monospace', minWidth: 32, flexShrink: 0 }}>
             {formatTime(TOTAL_DURATION)}
           </span>
 
           {/* Step chips */}
-          <div className="flex items-center gap-1.5 pl-1" style={{ flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
             {SCRUB_STEPS.map(s => {
               const active = step === s;
               const passed = (elapsed >= (STEP_STARTS[s] ?? 0)) && !active;
               return (
                 <button key={s} onClick={() => goTo(s)} title={SCRUB_LABELS[s] ?? s}
-                  className="rounded transition-all duration-300"
                   style={{
-                    width: active ? 20 : 6, height: 6, borderRadius: 3,
+                    width: active ? 22 : 8, height: 8, borderRadius: 4,
                     background: active ? '#10b981' : passed ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.18)',
+                    border: 'none', cursor: 'pointer', padding: 0,
+                    transition: 'width 0.3s',
                   }} />
               );
             })}
           </div>
 
-          {/* Maximize / Fullscreen */}
+          {/* Fullscreen — 44px touch target */}
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-            className="flex items-center justify-center rounded-xl transition-all hover:brightness-125"
-            style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)', flexShrink: 0, marginLeft: 4 }}
+            style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
           >
-            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </button>
         </div>
       </div>
 
-        </div>{/* end scale content */}
-      </div>{/* end scale wrapper */}
     </div>
   );
 }
