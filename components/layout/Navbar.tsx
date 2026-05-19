@@ -243,6 +243,8 @@ function NavbarInner({
   const [surfacedCustomerNotificationKeys, setSurfacedCustomerNotificationKeys] = useState<string[]>([])
   const [realtimeNotification, setRealtimeNotification] = useState<CustomerNotificationItem | null>(null)
   const [freshRealtimeNotificationIds, setFreshRealtimeNotificationIds] = useState<string[]>([])
+  const [isMobile, setIsMobile] = useState(false)
+  const [diPhase, setDiPhase] = useState<'pill' | 'expanded'>('pill')
 
   useEffect(() => {
     if (!realtimeNotification) return
@@ -257,6 +259,24 @@ function NavbarInner({
     const timeoutId = window.setTimeout(() => setFreshRealtimeNotificationIds([]), 120000)
     return () => window.clearTimeout(timeoutId)
   }, [freshRealtimeNotificationIds])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  useEffect(() => {
+    if (!realtimeNotification) {
+      setDiPhase('pill')
+      return
+    }
+    setDiPhase('pill')
+    const t = window.setTimeout(() => setDiPhase('expanded'), 380)
+    return () => window.clearTimeout(t)
+  }, [realtimeNotification])
 
   useEffect(() => {
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY
@@ -2019,70 +2039,174 @@ function NavbarInner({
     {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
         {realtimeNotification && (
-          <motion.div
-            key={realtimeNotification.id}
-            initial={{ opacity: 0, x: 36, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 36, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.35}
-            onDragEnd={(_, info) => {
-              if (Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 550) {
-                setRealtimeNotification(null)
-              }
-            }}
-            className="fixed bottom-4 right-3 z-[130] w-[calc(100vw-1.5rem)] max-w-sm sm:bottom-5 sm:right-5"
-          >
-            <Link
-              href={realtimeNotification.href}
-              onClick={() => setRealtimeNotification(null)}
-              className="block overflow-hidden rounded-2xl border border-emerald-200/80 bg-white shadow-2xl shadow-slate-900/15 ring-1 ring-emerald-100/70 transition hover:-translate-y-0.5 hover:shadow-emerald-900/15 dark:border-emerald-800/60 dark:bg-slate-900 dark:ring-emerald-900/30"
+          isMobile ? (
+            // ─── Mobile: Dynamic Island style ───────────────────────────────────
+            <motion.div
+              key={realtimeNotification.id + '_di'}
+              className="fixed top-3 left-1/2 z-[130]"
+              style={{ translateX: '-50%' }}
+              initial={{ y: -80, opacity: 0, scale: 0.6 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -80, opacity: 0, scale: 0.6, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+              transition={{ type: 'spring', bounce: 0.42, duration: 0.58 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 8 }}
+              dragElastic={{ top: 0.45, bottom: 0 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y < -48 || info.velocity.y < -420) {
+                  setRealtimeNotification(null)
+                }
+              }}
             >
-              <div className="flex items-start gap-3 p-4">
-                <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${getNotificationIcon(realtimeNotification.title).bg}`}>
-                  {getNotificationIcon(realtimeNotification.title).icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{realtimeNotification.title}</p>
-                    <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                      New
-                    </span>
+              <motion.div
+                layout
+                transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                className="overflow-hidden bg-[#1c1c1e] shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
+                style={{
+                  borderRadius: diPhase === 'pill' ? 999 : 22,
+                  width: diPhase === 'pill' ? '158px' : 'min(90vw, 340px)',
+                }}
+              >
+                <AnimatePresence mode="wait">
+                  {diPhase === 'pill' ? (
+                    <motion.div
+                      key="di-pill"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                      transition={{ duration: 0.16 }}
+                      className="flex items-center gap-2 px-3.5"
+                      style={{ height: 40 }}
+                    >
+                      <div className={`h-5 w-5 shrink-0 flex items-center justify-center rounded-full ${getNotificationIcon(realtimeNotification.title).bg}`}>
+                        {getNotificationIcon(realtimeNotification.title).icon}
+                      </div>
+                      <p className="text-[11px] font-semibold text-white truncate leading-none">
+                        {realtimeNotification.title}
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="di-expanded"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                      transition={{ duration: 0.22, delay: 0.06 }}
+                    >
+                      <Link
+                        href={realtimeNotification.href}
+                        onClick={() => setRealtimeNotification(null)}
+                        className="block"
+                      >
+                        <div className="flex items-start gap-3 px-4 pt-3.5 pb-2.5">
+                          <div className={`mt-0.5 h-9 w-9 shrink-0 flex items-center justify-center rounded-xl ${getNotificationIcon(realtimeNotification.title).bg}`}>
+                            {getNotificationIcon(realtimeNotification.title).icon}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate text-[13px] font-bold text-white leading-tight">
+                                {realtimeNotification.title}
+                              </p>
+                              <span className="shrink-0 rounded-full bg-emerald-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-400">
+                                New
+                              </span>
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-400">
+                              {realtimeNotification.description}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setRealtimeNotification(null) }}
+                            className="mt-0.5 rounded-lg p-1 text-slate-600 hover:text-slate-400 transition-colors"
+                            aria-label="Dismiss"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="mx-4 mb-3.5 h-[3px] rounded-full bg-[#2c2c2e] overflow-hidden">
+                          <motion.div
+                            className="h-full origin-left rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400"
+                            initial={{ scaleX: 1 }}
+                            animate={{ scaleX: 0 }}
+                            transition={{ duration: REALTIME_NOTIFICATION_DURATION_SECONDS - 0.45, ease: 'linear' }}
+                          />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </motion.div>
+          ) : (
+            // ─── Desktop: existing bottom-right popup ───────────────────────────
+            <motion.div
+              key={realtimeNotification.id}
+              initial={{ opacity: 0, x: 36, scale: 0.96 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 36, scale: 0.96 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.35}
+              onDragEnd={(_, info) => {
+                if (Math.abs(info.offset.x) > 90 || Math.abs(info.velocity.x) > 550) {
+                  setRealtimeNotification(null)
+                }
+              }}
+              className="fixed bottom-4 right-3 z-[130] w-[calc(100vw-1.5rem)] max-w-sm sm:bottom-5 sm:right-5"
+            >
+              <Link
+                href={realtimeNotification.href}
+                onClick={() => setRealtimeNotification(null)}
+                className="block overflow-hidden rounded-2xl border border-emerald-200/80 bg-white shadow-2xl shadow-slate-900/15 ring-1 ring-emerald-100/70 transition hover:-translate-y-0.5 hover:shadow-emerald-900/15 dark:border-emerald-800/60 dark:bg-slate-900 dark:ring-emerald-900/30"
+              >
+                <div className="flex items-start gap-3 p-4">
+                  <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${getNotificationIcon(realtimeNotification.title).bg}`}>
+                    {getNotificationIcon(realtimeNotification.title).icon}
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                    {realtimeNotification.description}
-                  </p>
-                  <p className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    View in notifications
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{realtimeNotification.title}</p>
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                        New
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      {realtimeNotification.description}
+                    </p>
+                    <p className="mt-2 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      View in notifications
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setRealtimeNotification(null)
+                    }}
+                    className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    aria-label="Dismiss notification"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    setRealtimeNotification(null)
-                  }}
-                  className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  aria-label="Dismiss notification"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="h-1 bg-slate-100 dark:bg-slate-800">
-                <motion.div
-                  className="h-full origin-left bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400"
-                  initial={{ scaleX: 1 }}
-                  animate={{ scaleX: 0 }}
-                  transition={{ duration: REALTIME_NOTIFICATION_DURATION_SECONDS, ease: 'linear' }}
-                />
-              </div>
-            </Link>
-          </motion.div>
+                <div className="h-1 bg-slate-100 dark:bg-slate-800">
+                  <motion.div
+                    className="h-full origin-left bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400"
+                    initial={{ scaleX: 1 }}
+                    animate={{ scaleX: 0 }}
+                    transition={{ duration: REALTIME_NOTIFICATION_DURATION_SECONDS, ease: 'linear' }}
+                  />
+                </div>
+              </Link>
+            </motion.div>
+          )
         )}
       </AnimatePresence>,
       document.body,
