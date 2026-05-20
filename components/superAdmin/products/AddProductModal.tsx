@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
@@ -22,7 +22,7 @@ import { ListBox } from '@heroui/react/list-box'
 import { ListBoxItem } from '@heroui/react/list-box-item'
 import { Select } from '@heroui/react/select'
 
-/* â"€â"€â"€ types â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* --- types ------------------------------------------------ */
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -101,7 +101,7 @@ interface AddProductDraft {
   roomTouched: boolean
 }
 
-/* â"€â"€â"€ constants â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* --- constants -------------------------------------------- */
 
 const defaultForm: FormState = {
   pd_name: '',
@@ -198,7 +198,7 @@ const WARRANTY_OPTIONS = [
 
 const ADD_PRODUCT_DRAFT_KEY = 'afhome:add-product-draft'
 
-/* --- ZQ import types + helpers ----------------------------------------------- */
+/* --- Global Supplier import types + helpers ----------------------------------------------- */
 
 interface ZqImportListItem {
   id: string
@@ -235,7 +235,7 @@ const extractZqImportProducts = (payload: Record<string, unknown> | undefined) =
   return { products, hasMore: Boolean(data.hasMore), nextCursor: data.nextCursor == null ? null : String(data.nextCursor) }
 }
 
-/* â"€â"€â"€ helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* --- helpers ---------------------------------------------- */
 
 const generateSkuFromName = (name: string) => {
   const letters = name.toUpperCase().replace(/[^A-Z]/g, '')
@@ -642,7 +642,7 @@ function PricingSummaryPanel({
 
   return (
     <div className="rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
-      {/* â"€â"€ Header â"€â"€ */}
+      {/* -- Header -- */}
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500">
         <div className="flex items-center gap-2">
           <svg className="w-3.5 h-3.5 text-white/80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -654,14 +654,14 @@ function PricingSummaryPanel({
         <div className="text-right shrink-0">
           <p className="text-[9px] md:text-[11px] font-semibold uppercase tracking-wide text-blue-200">Member Price</p>
           <p className="text-sm md:text-base font-bold text-white leading-none mt-0.5">
-            {summary.effectiveMemberPrice > 0 ? `â‚± ${mp}` : <span className="text-blue-300 text-xs italic">-</span>}
+            {summary.effectiveMemberPrice > 0 ? `₱ ${mp}` : <span className="text-blue-300 text-xs italic">-</span>}
           </p>
         </div>
       </div>
 
       <div className="bg-gradient-to-br from-slate-50 to-blue-50/60 divide-y divide-slate-100 dark:divide-slate-800/70">
 
-        {/* â"€â"€ Section 1: PV Computation (hero) â"€â"€ */}
+        {/* -- Section 1: PV Computation (hero) -- */}
         <div className="px-4 py-3">
           <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">PV Computation</p>
           <div className="rounded-xl bg-white border border-teal-100 px-3 py-3">
@@ -686,29 +686,29 @@ function PricingSummaryPanel({
           </div>
         </div>
 
-        {/* â"€â"€ Section 2: Price breakdown â"€â"€ */}
+        {/* -- Section 2: Price breakdown -- */}
         <div className="px-4 py-3">
           <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Low-End Price Breakdown</p>
           <div className="rounded-xl bg-white border border-slate-100 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/70 dark:divide-slate-800/70">
             <CalcRow
               label="Retail Profit (SRP - Member Price)"
-              a={`SRP â‚±${fmt(summary.retailProfit + summary.effectiveMemberPrice)}`}
+              a={`SRP ₱${fmt(summary.retailProfit + summary.effectiveMemberPrice)}`}
               op="-"
-              b={`MP â‚±${mp}`}
-              result={`â‚± ${fmt(summary.retailProfit)}`}
+              b={`MP ₱${mp}`}
+              result={`₱ ${fmt(summary.retailProfit)}`}
               resultAccent={summary.retailProfit >= 0 ? 'emerald' : 'rose'}
             />
             <CalcRow
               label="VAT (12% of Member Price)"
-              a={`â‚±${mp}`}
+              a={`₱${mp}`}
               op="x"
               b="12%"
-              result={`â‚± ${fmt(summary.vatOnMemberPrice)}`}
+              result={`₱ ${fmt(summary.vatOnMemberPrice)}`}
             />
           </div>
         </div>
 
-        {/* â"€â"€ Section 3: PV allocation preview â"€â"€ */}
+        {/* -- Section 3: PV allocation preview -- */}
         <div className="px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[9px] md:text-[11px] font-bold uppercase tracking-widest text-slate-400">PV Allocation Preview</p>
@@ -773,7 +773,7 @@ const hasAddDraftContent = (draft: AddProductDraft) => {
   return hasFormContent || draft.variants.length > 0 || (draft.globalColors?.length ?? 0) > 0 || (draft.globalPrimaryValues?.length ?? 0) > 0 || (draft.globalSizeValues?.length ?? 0) > 0 || draft.uploadedUrls.length > 0 || draft.roomTouched
 }
 
-/* â"€â"€â"€ small components â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* --- small components ------------------------------------- */
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -946,7 +946,7 @@ const scrollToFirstErrorField = (container: HTMLElement | null) => {
   })
 }
 
-/* â"€â"€â"€ main component â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* --- main component --------------------------------------- */
 
 export default function AddProductModal({ isOpen, onClose, onSaved }: AddProductModalProps) {
   const [entryMode, setEntryMode] = useState<'manual' | 'csv' | 'api'>('manual')
@@ -1195,7 +1195,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
   }, [globalColors, globalPrimaryValues, globalSizeValues, hasVariants])
   const visibleImagePreviews = imageFiles.length > 0 ? imagePreviews : uploadedUrls
 
-  /* â"€â"€ image handlers â"€â"€ */
+  /* -- image handlers -- */
   const applySelectedImages = (files: File[]) => {
     if (!files.length) return
     setImageError('')
@@ -1279,7 +1279,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     setActiveImageAdjustIndex(null)
   }
 
-  /* â"€â"€ variant handlers â"€â"€ */
+  /* -- variant handlers -- */
   const addVariant    = () => setVariants(prev => [...prev, { ...emptyVariant(), pv_colors: globalColors.map((color) => ({ ...color })) }])
   const removeVariant = (index: number) => {
     setVariants(prev => prev.filter((_, i) => i !== index))
@@ -1462,7 +1462,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     void uploadVariantImages(index, Array.from(e.dataTransfer.files ?? []))
   }
 
-  /* â"€â"€ validation â"€â"€ */
+  /* -- validation -- */
   const validate = (): Errors => {
     const e: Errors = {}
     if (!form.pd_name.trim())                                              e.pd_name      = 'Product name is required'
@@ -1543,7 +1543,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
       }))
     })
 
-  /* â"€â"€ submit â"€â"€ */
+  /* -- submit -- */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setServerError('')
@@ -1716,7 +1716,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
     }
   }
 
-  /* â"€â"€â"€ render â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+  /* --- render ----------------------------------------------- */
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1738,7 +1738,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
               onClick={e => e.stopPropagation()}
               className="flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-2xl dark:bg-slate-950 sm:h-[94vh] sm:max-w-6xl sm:rounded-2xl sm:border sm:border-slate-100 sm:dark:border-slate-800"
             >
-              {/* â"€â"€ Header â"€â"€ */}
+              {/* -- Header -- */}
               <div className="shrink-0 border-b border-slate-100 px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-start gap-3 sm:items-center">
@@ -1788,7 +1788,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                 </div>
               </div>
 
-              {/* â"€â"€ Scrollable form body â"€â"€ */}
+              {/* -- Scrollable form body -- */}
               <form onSubmit={entryMode === 'manual' ? handleSubmit : (event) => event.preventDefault()} className="flex flex-col flex-1 min-h-0">
                 {entryMode === 'csv' ? (
                   <BulkProductImportPanel
@@ -1798,7 +1798,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     }}
                   />
                 ) : entryMode === 'api' ? (
-                  /* -- ZQ API Import Panel -- */
+                  /* -- Global Supplier API Import Panel -- */
                   <div className="flex flex-col flex-1 min-h-0">
                     {/* Endpoint banner */}
                     <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-6 py-3">
@@ -1864,7 +1864,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                             </svg>
                           </div>
                           <p className="text-sm font-semibold text-slate-500">No items fetched yet</p>
-                          <p className="text-xs text-slate-400">Click <span className="font-semibold">Fetch Items</span> to load products from the ZQ API.</p>
+                          <p className="text-xs text-slate-400">Click <span className="font-semibold">Fetch Items</span> to load products from the Global Supplier API.</p>
                         </div>
                       ) : (
                         <table className="w-full text-sm">
@@ -2036,7 +2036,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                 ) : (
                 <div ref={formContentRef} className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
 
-                  {/* â"€â"€ Section: Product Image â"€â"€ */}
+                  {/* -- Section: Product Image -- */}
                   <SectionLabel>Product Image</SectionLabel>
                   <input
                     ref={fileInputRef}
@@ -2360,7 +2360,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </div>
                   </Field>
 
-                  {/* â"€â"€ Section: Product Details â"€â"€ */}
+                  {/* -- Section: Product Details -- */}
                   <SectionLabel>Product Details</SectionLabel>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Material">
@@ -2389,7 +2389,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                       }`}
                     >
                       <span className={`text-sm font-semibold ${form.pd_assembly_required ? 'text-teal-700' : 'text-slate-500'}`}>
-                        {form.pd_assembly_required ? 'Yes â€" Assembly Required' : 'No Assembly Required'}
+                        {form.pd_assembly_required ? 'Yes - Assembly Required' : 'No Assembly Required'}
                       </span>
                       <div className={`relative h-5 w-9 rounded-full transition-colors ${form.pd_assembly_required ? 'bg-teal-500' : 'bg-slate-200'}`}>
                         <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.pd_assembly_required ? 'left-4' : 'left-0.5'}`}/>
@@ -2397,7 +2397,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </button>
                   </Field>
 
-                  {/* â"€â"€ Section: Pricing â"€â"€ */}
+                  {/* -- Section: Pricing -- */}
                   <SectionLabel>Pricing</SectionLabel>
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
                     <Field label="PV Pricing Tier">
@@ -2411,16 +2411,16 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                         <p className="text-[11px] text-slate-500">Low-End is active for the current formula. High-End will follow once its formula is finalized.</p>
                       </div>
                     </Field>
-                    <Field label="SRP Price (â‚±)" required error={errors.pd_price_srp}>
+                    <Field label="SRP Price (₱)" required error={errors.pd_price_srp}>
                       <input type="number" value={form.pd_price_srp} onChange={e => set('pd_price_srp', e.target.value)} placeholder="0.00" className={inputCls(!!errors.pd_price_srp)}/>
                     </Field>
-                    <Field label="Member Price (â‚±)" error={errors.pd_price_member}>
+                    <Field label="Member Price (₱)" error={errors.pd_price_member}>
                       <div className="space-y-1">
                         <input type="number" value={form.pd_price_member} onChange={e => set('pd_price_member', e.target.value)} placeholder="0.00" className={inputCls(!!errors.pd_price_member)}/>
                         <p className="text-[11px] text-slate-500">Shown to member accounts. If blank, SRP will be used.</p>
                       </div>
                     </Field>
-                    <Field label="Dealer Price (â‚±)" error={errors.pd_price_dp}>
+                    <Field label="Dealer Price (₱)" error={errors.pd_price_dp}>
                       <div className="space-y-1">
                         <input type="number" value={form.pd_price_dp} onChange={e => set('pd_price_dp', e.target.value)} placeholder="0.00" className={inputCls(!!errors.pd_price_dp)}/>
                         <p className="text-[11px] text-slate-500">Separate dealer pricing. Optional.</p>
@@ -2447,7 +2447,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                   </div>
                   <PricingSummaryPanel summary={mainPricingSummary} memberFallbackToSrp={!form.pd_price_member.trim()} />
 
-                  {/* â"€â"€ Section: Stock & Shipping â"€â"€ */}
+                  {/* -- Section: Stock & Shipping -- */}
                   <SectionLabel>Stock & Shipping</SectionLabel>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Quantity" error={errors.pd_qty}>
@@ -2474,7 +2474,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </Field>
                   </div>
 
-                  {/* â"€â"€ Section: Settings â"€â"€ */}
+                  {/* -- Section: Settings -- */}
                   <SectionLabel>Settings</SectionLabel>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {/* Status */}
@@ -2563,7 +2563,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     </Field>
                   </div>
 
-                  {/* â"€â"€ Section: Product Badges â"€â"€ */}
+                  {/* -- Section: Product Badges -- */}
                   <SectionLabel>Product Badges</SectionLabel>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {FLAG_CARDS.map(flag => {
@@ -2597,7 +2597,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                     })}
                   </div>
 
-                  {/* â"€â"€ Section: Variants â"€â"€ */}
+                  {/* -- Section: Variants -- */}
                   {hasVariants && (
                     <>
                       <SectionLabel>Variants</SectionLabel>
@@ -2800,11 +2800,11 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     <p className="text-xs font-bold text-slate-700 dark:text-slate-100">
                                       {variant.pv_name.trim() || `Variant #${index + 1}`}
                                       {variantStyles.length > 1 && <span className="text-slate-400 font-normal ml-1">(+{variantStyles.length - 1} more styles)</span>}
-                                      {variant.pv_style && <span className="text-slate-400 font-normal ml-1">Â· {variant.pv_style}</span>}
-                                      {variant.pv_size && <span className="text-slate-400 font-normal ml-1">Â· {variant.pv_size}</span>}
+                                      {variant.pv_style && <span className="text-slate-400 font-normal ml-1">· {variant.pv_style}</span>}
+                                      {variant.pv_size && <span className="text-slate-400 font-normal ml-1">· {variant.pv_size}</span>}
                                       {(variant.pv_width || variant.pv_dimension || variant.pv_height) && (
                                         <span className="text-slate-400 font-normal ml-1">
-                                          Â· {variant.pv_width || '-'}W x {variant.pv_dimension || '-'}D x {variant.pv_height || '-'}H
+                                          · {variant.pv_width || '-'}W x {variant.pv_dimension || '-'}D x {variant.pv_height || '-'}H
                                         </span>
                                       )}
                                       {variant.pv_colors.length > 0 && (
@@ -2833,7 +2833,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
 
                                 <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
 
-                                  {/* â"€â"€ Identity â"€â"€ */}
+                                  {/* -- Identity -- */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identity</p>
                                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -2904,7 +2904,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* â"€â"€ Colors â"€â"€ */}
+                                  {/* -- Colors -- */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Colors / Extra Option Values</p>
                                     {variant.pv_colors.length > 0 && (
@@ -2974,20 +2974,20 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* â"€â"€ Pricing â"€â"€ */}
+                                  {/* -- Pricing -- */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pricing</p>
                                     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">SRP (â‚±)</label>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">SRP (₱)</label>
                                         <input type="number" value={variant.pv_price_srp} onChange={e => setVariant(index, 'pv_price_srp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_srp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="0.00" className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">Dealer (â‚±)</label>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Dealer (₱)</label>
                                         <input type="number" value={variant.pv_price_dp} onChange={e => setVariant(index, 'pv_price_dp', e.target.value)} onBlur={e => setVariant(index, 'pv_price_dp', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-slate-500 block">Member (â‚±)</label>
+                                        <label className="text-[11px] font-semibold text-slate-500 block">Member (₱)</label>
                                         <input type="number" value={variant.pv_price_member} onChange={e => setVariant(index, 'pv_price_member', e.target.value)} onBlur={e => setVariant(index, 'pv_price_member', toOptionalPositiveNumber(e.target.value)?.toString() ?? '')} placeholder="Inherit" className={variantInputCls}/>
                                       </div>
                                       <div className="space-y-1">
@@ -3042,7 +3042,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     />
                                   </div>
 
-                                  {/* â"€â"€ Inventory & Status â"€â"€ */}
+                                  {/* -- Inventory & Status -- */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inventory & Status</p>
                                     <div className="grid grid-cols-2 gap-3">
@@ -3074,7 +3074,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                                     </div>
                                   </div>
 
-                                  {/* â"€â"€ Images â"€â"€ */}
+                                  {/* -- Images -- */}
                                   <div className="px-4 py-3.5 space-y-2.5">
                                     <div className="flex items-center justify-between">
                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Images</p>
@@ -3162,7 +3162,7 @@ export default function AddProductModal({ isOpen, onClose, onSaved }: AddProduct
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                         </svg>
-                        {isUploading ? 'Uploadingâ€¦' : 'Savingâ€¦'}
+                        {isUploading ? 'Uploading...' : 'Saving...'}
                       </>
                     ) : (
                       <>

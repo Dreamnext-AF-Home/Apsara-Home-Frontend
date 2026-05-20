@@ -2,8 +2,8 @@ import { buildPageMetadata } from '@/app/seo'
 import ZqSupplierProductsPageMain from '@/components/superAdmin/products/ZqSupplierProductsPageMain'
 
 export const metadata = buildPageMetadata({
-  title: 'Supplier ZQ Products',
-  description: 'Browse cached ZQ supplier products in the supplier panel.',
+  title: 'Global Supplier Products',
+  description: 'Browse cached AF HOME GLOBAL SUPPLIER products in the supplier panel.',
   path: '/supplier/products/zq-supplier',
   noIndex: true,
 })

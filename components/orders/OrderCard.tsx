@@ -57,7 +57,7 @@ const formatCourierLabel = (courier?: string | null) => {
     if (normalized === 'afhome') return 'AF Home';
     if (normalized === 'jnt') return 'J&T';
     if (normalized === 'xde') return 'XDE';
-    if (normalized === 'zq') return 'ZQ';
+    if (normalized === 'zq') return 'Global Supplier';
     return courier ?? '';
 };
 

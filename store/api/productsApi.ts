@@ -386,9 +386,13 @@ export interface ZqCachedProduct {
   externalId: string
   offerId?: string | null
   brandType?: number | null
+  zqCategoryId?: string | null
   subject: string
   subjectCn?: string | null
   categoryName?: string | null
+  localCategoryId?: number | null
+  localCategoryName?: string | null
+  categoryMappingStatus?: 'mapped' | 'unmapped' | 'missing'
   primaryImage?: string | null
   images?: string[]
   sourceType?: string | null
@@ -446,6 +450,43 @@ export interface ZqProductsSummaryResponse {
   low_stock: number
   saved_cursor?: string | null
   has_saved_cursor?: boolean
+}
+
+export interface ZqCategoryMappingItem {
+  zqCategoryId?: string | null
+  zqCategoryName: string
+  productCount: number
+  localCategoryId?: number | null
+  localCategoryName?: string | null
+  status: 'mapped' | 'unmapped'
+}
+
+export interface ZqCategoryMappingLocalCategory {
+  id: number
+  name: string
+  url: string
+}
+
+export interface ZqCategoryMappingsResponse {
+  zqCategories: ZqCategoryMappingItem[]
+  localCategories: ZqCategoryMappingLocalCategory[]
+  message?: string
+}
+
+export interface UpsertZqCategoryMappingPayload {
+  zqCategoryId?: string | null
+  zqCategoryName: string
+  localCategoryId?: number | null
+}
+
+export interface UpsertZqCategoryMappingResponse {
+  message: string
+  mapping: {
+    zqCategoryId?: string | null
+    zqCategoryName: string
+    localCategoryId?: number | null
+    localCategoryName?: string | null
+  }
 }
 
 export interface ImportZqToLocalResponse {
@@ -549,6 +590,16 @@ interface ZqCachedProductsQueryParams {
   sourceType?: string
   status?: string
   importStatus?: string
+  localCategoryId?: number
+  mappingStatus?: 'mapped' | 'unmapped' | 'missing'
+}
+
+const zqProductsApiBase = () => {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/supplier')) {
+    return '/api/supplier/products/zq'
+  }
+
+  return '/api/admin/products/zq'
 }
 
 const cleanParams = (params: Record<string, unknown>) =>
@@ -987,7 +1038,7 @@ export const productsApi = baseApi.injectEndpoints({
     }),
     fetchZqImportPreview: builder.mutation<ZqImportPreviewResponse, ZqImportPreviewPayload | void>({
       query: (body) => ({
-        url: '/api/admin/products/zq/fetch-preview',
+        url: `${zqProductsApiBase()}/fetch-preview`,
         method: 'POST',
         body: body
           ? (() => {
@@ -1011,13 +1062,13 @@ export const productsApi = baseApi.injectEndpoints({
     }),
     fetchZqImportDetail: builder.mutation<ZqImportDetailResponse, string | number>({
       query: (id) => ({
-        url: `/api/admin/products/zq/detail/${id}`,
+        url: `${zqProductsApiBase()}/detail/${id}`,
         method: 'GET',
       }),
     }),
     getZqCachedProducts: builder.query<ZqCachedProductsResponse, ZqCachedProductsQueryParams | void>({
       query: (params) => ({
-        url: '/api/admin/products/zq/cached',
+        url: `${zqProductsApiBase()}/cached`,
         method: 'GET',
         cache: 'no-store',
         params: cleanParams({
@@ -1028,13 +1079,15 @@ export const productsApi = baseApi.injectEndpoints({
           source_type: params?.sourceType,
           status: params?.status,
           import_status: params?.importStatus,
+          local_category_id: params?.localCategoryId,
+          mapping_status: params?.mappingStatus,
         }),
       }),
       providesTags: ['Products'],
     }),
     getZqProductsSummary: builder.query<ZqProductsSummaryResponse, void>({
       query: () => ({
-        url: '/api/admin/products/zq/summary',
+        url: `${zqProductsApiBase()}/summary`,
         method: 'GET',
         cache: 'no-store',
       }),
@@ -1042,7 +1095,7 @@ export const productsApi = baseApi.injectEndpoints({
     }),
     syncZqProducts: builder.mutation<ZqSyncProductsResponse, ZqSyncProductsPayload | void>({
       query: (body) => ({
-        url: '/api/admin/products/zq/sync',
+        url: `${zqProductsApiBase()}/sync`,
         method: 'POST',
         body: body
           ? (() => {
@@ -1059,8 +1112,28 @@ export const productsApi = baseApi.injectEndpoints({
     }),
     importZqToLocal: builder.mutation<ImportZqToLocalResponse, string>({
       query: (externalId) => ({
-        url: `/api/admin/products/zq/import-to-local/${externalId}`,
+        url: `${zqProductsApiBase()}/import-to-local/${externalId}`,
         method: 'POST',
+      }),
+      invalidatesTags: ['Products'],
+    }),
+    getZqCategoryMappings: builder.query<ZqCategoryMappingsResponse, void>({
+      query: () => ({
+        url: `${zqProductsApiBase()}/category-mappings`,
+        method: 'GET',
+        cache: 'no-store',
+      }),
+      providesTags: ['Products'],
+    }),
+    upsertZqCategoryMapping: builder.mutation<UpsertZqCategoryMappingResponse, UpsertZqCategoryMappingPayload>({
+      query: (body) => ({
+        url: `${zqProductsApiBase()}/category-mappings`,
+        method: 'POST',
+        body: {
+          zq_category_id: body.zqCategoryId,
+          zq_category_name: body.zqCategoryName,
+          local_category_id: body.localCategoryId,
+        },
       }),
       invalidatesTags: ['Products'],
     }),
@@ -1110,6 +1183,8 @@ export const {
   useGetZqProductsSummaryQuery,
   useSyncZqProductsMutation,
   useImportZqToLocalMutation,
+  useGetZqCategoryMappingsQuery,
+  useUpsertZqCategoryMappingMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
 } = productsApi

@@ -541,7 +541,7 @@ export default function ProductsTable({
                           <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{product.id}</span>
                           {isZqMode ? (
                             <span className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-500/12 dark:text-sky-200">
-                              {product.specifications?.trim() || 'ZQ Product'}
+                              {product.specifications?.trim() || 'Global Supplier Product'}
                             </span>
                           ) : variantCount > 0 ? (
                             <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
@@ -561,7 +561,7 @@ export default function ProductsTable({
                     <td className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
                       <div className="min-w-[150px]">
                         <p className="line-clamp-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-                          {isZqMode ? (product.brand?.trim() || 'ZQ Supplier') : (product.supplierName?.trim() || product.brand?.trim() || 'No supplier')}
+                          {isZqMode ? (product.brand?.trim() || 'AF HOME GLOBAL SUPPLIER') : (product.supplierName?.trim() || product.brand?.trim() || 'No supplier')}
                         </p>
                         {isZqMode ? (
                           <p className="line-clamp-1 text-[11px] text-slate-400 dark:text-slate-500">
@@ -578,7 +578,7 @@ export default function ProductsTable({
                     <td className="border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
                       <div className="min-w-[150px]">
                         <p className="line-clamp-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-                          {isZqMode ? 'ZQ API' : (product.uploaderName?.trim() || 'Unknown user')}
+                          {isZqMode ? 'Global Supplier API' : (product.uploaderName?.trim() || 'Unknown user')}
                         </p>
                         {isZqMode ? (
                           <p className="line-clamp-1 text-[11px] text-slate-400 dark:text-slate-500">
@@ -616,7 +616,7 @@ export default function ProductsTable({
                       {isZqMode ? (
                         <div className="flex justify-center">
                           <TableChip className="bg-sky-50 text-sky-700 dark:bg-sky-500/12 dark:text-sky-200">
-                            {product.description?.replace('ZQ import status: ', '').trim() || 'Imported'}
+                            {product.description?.replace('Global Supplier import status: ', '').trim() || 'Imported'}
                           </TableChip>
                         </div>
                       ) : (

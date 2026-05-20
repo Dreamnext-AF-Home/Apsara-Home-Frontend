@@ -1,12 +1,14 @@
 import { createApi, fetchBaseQuery, type BaseQueryFn, type FetchArgs, type FetchBaseQueryError } from '@reduxjs/toolkit/query/react'
 
 let cachedAccessToken: string | undefined
+let cachedSessionPath: string | undefined
 let tokenPromise: Promise<string | undefined> | null = null
 let cachedAt = 0
 const TOKEN_CACHE_TTL_MS = 120_000
 
 export const clearAccessTokenCache = () => {
     cachedAccessToken = undefined
+    cachedSessionPath = undefined
     tokenPromise = null
     cachedAt = 0
     if (typeof window !== 'undefined') {
@@ -17,19 +19,20 @@ export const clearAccessTokenCache = () => {
 const resolveAccessToken = async (): Promise<string | undefined> => {
     if (typeof window === 'undefined') return undefined
 
-    if (cachedAccessToken && Date.now() - cachedAt < TOKEN_CACHE_TTL_MS) {
+    const pathname = window.location.pathname || ''
+    const sessionPath = pathname.startsWith('/admin')
+        ? '/api/admin/auth/session'
+        : pathname.startsWith('/partner')
+          ? '/api/partner/auth/session'
+        : pathname.startsWith('/supplier')
+          ? '/api/supplier/auth/session'
+          : '/api/auth/session'
+
+    if (cachedAccessToken && cachedSessionPath === sessionPath && Date.now() - cachedAt < TOKEN_CACHE_TTL_MS) {
         return cachedAccessToken
     }
 
     if (!tokenPromise) {
-        const pathname = window.location.pathname || ''
-        const sessionPath = pathname.startsWith('/admin')
-            ? '/api/admin/auth/session'
-            : pathname.startsWith('/partner')
-              ? '/api/partner/auth/session'
-            : pathname.startsWith('/supplier')
-              ? '/api/supplier/auth/session'
-              : '/api/auth/session'
         tokenPromise = fetch(sessionPath, {
             method: 'GET',
             cache: 'no-store',
@@ -45,11 +48,13 @@ const resolveAccessToken = async (): Promise<string | undefined> => {
                 const token = (session?.user as { accessToken?: string } | undefined)?.accessToken
                 if (token) {
                     cachedAccessToken = token
+                    cachedSessionPath = sessionPath
                     cachedAt = Date.now()
                     return token
                 }
 
                 cachedAccessToken = undefined
+                cachedSessionPath = sessionPath
                 cachedAt = Date.now()
                 return undefined
             })
@@ -92,6 +97,11 @@ const baseQueryWithBanCheck: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQ
 ) => {
     let result = await baseQuery(args, api, extraOptions)
     const requestUrl = typeof args === 'string' ? args : String(args.url ?? '')
+
+    if (result.error?.status === 401 && typeof window !== 'undefined') {
+        clearAccessTokenCache()
+        result = await baseQuery(args, api, extraOptions)
+    }
 
     if (
         result.error?.status === 401 &&

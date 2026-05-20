@@ -2,8 +2,8 @@ import { buildPageMetadata } from '@/app/seo'
 import ZqProductPreviewClient from '@/components/superAdmin/products/ZqProductPreviewClient'
 
 export const metadata = buildPageMetadata({
-  title: 'ZQ Product Preview',
-  description: 'Preview a ZQ supplier product inside the admin panel.',
+  title: 'Global Supplier Product Preview',
+  description: 'Preview an AF HOME GLOBAL SUPPLIER product inside the admin panel.',
   path: '/admin/products/zq-preview',
   noIndex: true,
 })
@@ -21,7 +21,7 @@ export default async function AdminZqProductPreviewPage({
     <ZqProductPreviewClient
       id={id}
       backHref="/admin/products"
-      scopeLabel="Admin ZQ Preview"
+      scopeLabel="Admin Global Product Preview"
     />
   )
 }

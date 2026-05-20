@@ -63,7 +63,7 @@ export default function ZqProductPreviewClient({
         const json = (await res.json()) as { message?: string; zq?: Record<string, unknown> }
 
         if (!res.ok) {
-          throw new Error(json.message || 'Failed to fetch ZQ product detail.')
+          throw new Error(json.message || 'Failed to fetch global supplier product detail.')
         }
 
         if (!ignore) {
@@ -71,7 +71,7 @@ export default function ZqProductPreviewClient({
         }
       } catch (error) {
         if (!ignore) {
-          setErrorMessage(error instanceof Error ? error.message : 'Failed to load ZQ product preview.')
+          setErrorMessage(error instanceof Error ? error.message : 'Failed to load global supplier product preview.')
         }
       } finally {
         if (!ignore) {
@@ -105,7 +105,7 @@ export default function ZqProductPreviewClient({
   if (isLoading) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-sm font-medium text-slate-500 shadow-sm">
-        Loading ZQ product preview...
+        Loading global supplier product preview...
       </div>
     )
   }
@@ -114,7 +114,7 @@ export default function ZqProductPreviewClient({
     return (
       <div className="space-y-4 rounded-3xl border border-rose-200 bg-rose-50 p-8 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-600">{scopeLabel}</p>
-        <h1 className="text-2xl font-bold text-slate-900">Unable to load ZQ preview</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Unable to load Global Supplier preview</h1>
         <p className="text-sm text-slate-600">{errorMessage || 'No detail was returned for this product.'}</p>
         <a
           href={backHref}
@@ -150,7 +150,7 @@ export default function ZqProductPreviewClient({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-sky-50 px-5 py-4">
           <div>
-            <p className="text-sm font-semibold text-sky-800">This is a ZQ Supplier product preview.</p>
+            <p className="text-sm font-semibold text-sky-800">This is a Global Supplier product preview.</p>
             <p className="mt-0.5 text-xs text-sky-700">I-import sa local catalog para ma-edit, ma-publish, at ma-sell sa storefront.</p>
           </div>
           <button

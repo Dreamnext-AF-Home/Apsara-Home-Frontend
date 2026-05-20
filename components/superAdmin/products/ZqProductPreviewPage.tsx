@@ -135,7 +135,7 @@ export default function ZqProductPreviewPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">{scopeLabel}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">ZQ Product Preview</h1>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900">Global Supplier Product Preview</h1>
           <p className="mt-1 text-sm text-slate-500">Viewing only ito. Hindi pa ito kasama sa local catalog o sa public All Products.</p>
         </div>
         <Link
@@ -179,7 +179,7 @@ export default function ZqProductPreviewPage({
                 )}
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{detail.sourceType ?? 'ZQ Supplier'}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{detail.sourceType ?? 'AF HOME GLOBAL SUPPLIER'}</p>
                 <h2 className="line-clamp-3 text-xl font-bold leading-snug text-slate-900">{detail.subject || 'Untitled product'}</h2>
                 <div className="flex flex-wrap items-end gap-2">
                   <span className="text-3xl font-extrabold text-sky-700">{centsToDisplay(primarySpec?.salesPrice ?? null)}</span>
