@@ -1,9 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function AppPromoBar() {
   const [isOpen, setIsOpen] = useState(true);
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollDifference = currentScrollY - lastScrollYRef.current;
+
+      if (scrollDifference > 50) {
+        // Scrolling down - hide banner
+        setIsVisible(false);
+      } else if (scrollDifference < -30) {
+        // Scrolling up - show banner
+        setIsVisible(true);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -30,7 +52,13 @@ export default function AppPromoBar() {
   };
 
   return (
-    <div className="sticky top-0 z-10 bg-gradient-to-r from-[#ef7f1a] to-[#d96f10] text-white px-4 py-2">
+    <div
+      className="sticky top-0 z-10 md:hidden bg-gradient-to-r from-[#ef7f1a] to-[#d96f10] text-white px-4 py-2 transition-all duration-300 ease-in-out overflow-hidden"
+      style={{
+        transform: isVisible ? 'translateY(0)' : 'translateY(-100%)',
+        opacity: isVisible ? 1 : 0,
+      }}
+    >
       <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
