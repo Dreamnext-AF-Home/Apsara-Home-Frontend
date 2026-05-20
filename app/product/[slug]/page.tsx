@@ -75,6 +75,7 @@ export async function generateMetadata(
     title: data.product.name,
     description: safeDescription,
     path: `/product/${canonicalSlug}`,
+    image: data.product.image,
   });
 }
 
