@@ -1,94 +1,214 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import {
   useApproveWebstoreRequestMutation,
   useDeleteWebstoreRequestMutation,
   useGetWebstoreRequestsQuery,
+  useRejectWebstoreRequestMutation,
 } from '@/store/api/adminInquiriesApi'
 
 type RequestStatus = 'all' | 'pending_review' | 'approved' | 'rejected'
+type StatusKey = Exclude<RequestStatus, 'all'>
+
+type StatusStyleMap = Record<StatusKey, string>
+
+const statusStyles: StatusStyleMap = {
+  pending_review:
+    'border border-amber-200/80 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
+  approved:
+    'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',
+  rejected:
+    'border border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200',
+}
+
+const prettyStatus = (status: StatusKey) => {
+  if (status === 'pending_review') return 'Pending'
+  if (status === 'approved') return 'Approved'
+  return 'Rejected'
+}
 
 export default function WebstoreRequestsPage() {
-  const { data, isLoading, isError, refetch } = useGetWebstoreRequestsQuery()
+  const { data, isLoading, isError } = useGetWebstoreRequestsQuery()
   const [approveRequest, { isLoading: isApproving }] = useApproveWebstoreRequestMutation()
+  const [rejectRequest, { isLoading: isRejecting }] = useRejectWebstoreRequestMutation()
   const [deleteRequest, { isLoading: isDeleting }] = useDeleteWebstoreRequestMutation()
+
+  const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<RequestStatus>('all')
+
   const [confirm, setConfirm] = useState<{
     open: boolean
-    action: 'approve' | 'delete'
+    action: 'approve' | 'reject' | 'delete'
     id: number | null
     displayName?: string | null
-  }>({ open: false, action: 'approve', id: null, displayName: null })
+    slugName?: string | null
+  }>({ open: false, action: 'approve', id: null, displayName: null, slugName: null })
 
   const rows = useMemo(() => {
     const source = data?.requests ?? []
-    if (statusFilter === 'all') return source
-    return source.filter((item) => item.status === statusFilter)
-  }, [data?.requests, statusFilter])
+    const q = search.trim().toLowerCase()
 
-  const onApprove = async (id: number) => {
-    await approveRequest({ id }).unwrap()
+    return source.filter((item) => {
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false
+      if (!q) return true
+
+      const haystack = [
+        item.customer_name,
+        item.customer_email,
+        item.username,
+        item.email,
+        item.slug_name,
+        item.display_name,
+        String(item.ticket_id),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(q)
+    })
+  }, [data?.requests, search, statusFilter])
+
+  const counts = useMemo(() => {
+    const all = data?.requests ?? []
+    const pending = all.filter((r) => r.status === 'pending_review').length
+    const approved = all.filter((r) => r.status === 'approved').length
+    const rejected = all.filter((r) => r.status === 'rejected').length
+    return { all: all.length, pending, approved, rejected }
+  }, [data?.requests])
+
+  const openConfirm = (
+    action: 'approve' | 'reject' | 'delete',
+    id: number,
+    displayName?: string | null,
+    slugName?: string | null,
+  ) => {
+    setConfirm({ open: true, action, id, displayName: displayName ?? null, slugName: slugName ?? null })
   }
 
-  const onDelete = async (id: number) => {
-    await deleteRequest({ id }).unwrap()
-  }
-
-  const openConfirm = (action: 'approve' | 'delete', id: number, displayName?: string | null) => {
-    setConfirm({ open: true, action, id, displayName: displayName ?? null })
-  }
-
-  const closeConfirm = () => {
-    setConfirm({ open: false, action: 'approve', id: null, displayName: null })
-  }
+  const closeConfirm = () =>
+    setConfirm({ open: false, action: 'approve', id: null, displayName: null, slugName: null })
 
   const handleConfirm = async () => {
     if (!confirm.id) return
+
     if (confirm.action === 'approve') {
-      await onApprove(confirm.id)
+      await approveRequest({ id: confirm.id }).unwrap()
+    } else if (confirm.action === 'reject') {
+      await rejectRequest({ id: confirm.id }).unwrap()
     } else {
-      await onDelete(confirm.id)
+      await deleteRequest({ id: confirm.id }).unwrap()
     }
+
     closeConfirm()
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => setStatusFilter('all')} className="rounded-full border px-3 py-1 text-xs font-semibold">
-          All
-        </button>
-        <button onClick={() => setStatusFilter('pending_review')} className="rounded-full border px-3 py-1 text-xs font-semibold">
-          Pending
-        </button>
-        <button onClick={() => setStatusFilter('approved')} className="rounded-full border px-3 py-1 text-xs font-semibold">
-          Approved
-        </button>
-        <button onClick={() => setStatusFilter('rejected')} className="rounded-full border px-3 py-1 text-xs font-semibold">
-          Rejected
-        </button>
+    <div className="space-y-5">
+      <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 px-5 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-[260px]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+              <span className="inline-flex h-2 w-2 rounded-full bg-cyan-500 shadow-[0_0_0_3px_rgba(6,182,212,0.12)]" />
+              System · Inquiries
+            </div>
+            <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Webstore Requests
+            </h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Review partner webstore submissions and approve to auto-create storefronts.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <label className="sr-only" htmlFor="webstore-search">Search</label>
+              <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z"
+                />
+              </svg>
+              <input
+                id="webstore-search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, email, username, ticket..."
+                className="w-64 max-w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-200 dark:placeholder:text-slate-500"
+              />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as RequestStatus)}
+              className="rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-700 shadow-sm focus:border-cyan-300 focus:outline-none focus:ring-4 focus:ring-cyan-100/60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-cyan-500 dark:focus:ring-cyan-500/20"
+            >
+              <option value="all">All Status ({counts.all})</option>
+              <option value="pending_review">Pending ({counts.pending})</option>
+              <option value="approved">Approved ({counts.approved})</option>
+              <option value="rejected">Rejected ({counts.rejected})</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {(
+            [
+              { key: 'all' as const, label: 'All', count: counts.all },
+              { key: 'pending_review' as const, label: 'Pending', count: counts.pending },
+              { key: 'approved' as const, label: 'Approved', count: counts.approved },
+              { key: 'rejected' as const, label: 'Rejected', count: counts.rejected },
+            ] as const
+          ).map((chip) => {
+            const active = statusFilter === chip.key
+            return (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setStatusFilter(chip.key)}
+                className={
+                  active
+                    ? 'rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-bold text-cyan-800 shadow-sm dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200'
+                    : 'rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                }
+              >
+                {chip.label} <span className="ml-1 text-[11px] opacity-70">{chip.count}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        {isLoading ? (
-          <div className="p-5 text-sm text-slate-500 dark:text-slate-300">Loading webstore requests...</div>
-        ) : null}
-        {isError ? <div className="p-5 text-sm text-rose-600 dark:text-rose-300">Failed to load webstore requests.</div> : null}
-        {isError ? (
-          <div className="px-5 pb-5">
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              Retry
-            </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Showing</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              {rows.length}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {rows.length === 1 ? 'request' : 'requests'}
+            </span>
           </div>
+
+          {isLoading ? (
+            <div className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-cyan-500" /> Loading...
+            </div>
+          ) : null}
+        </div>
+
+        {isError ? (
+          <div className="p-5 text-sm text-rose-600 dark:text-rose-300">Failed to load webstore requests.</div>
         ) : null}
+
         {!isLoading && !rows.length && !isError ? (
           <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">No webstore requests yet.</div>
         ) : null}
+
         {rows.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -96,6 +216,7 @@ export default function WebstoreRequestsPage() {
                 <tr>
                   <th className="px-5 py-3 text-left font-semibold">Ticket</th>
                   <th className="px-5 py-3 text-left font-semibold">Customer</th>
+                  <th className="px-5 py-3 text-left font-semibold">Username</th>
                   <th className="px-5 py-3 text-left font-semibold">Slug</th>
                   <th className="px-5 py-3 text-left font-semibold">Display</th>
                   <th className="px-5 py-3 text-left font-semibold">Status</th>
@@ -104,52 +225,76 @@ export default function WebstoreRequestsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {rows.map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
-                    <td className="px-5 py-4 font-semibold text-slate-700 dark:text-slate-200">#{item.ticket_id}</td>
-                    <td className="px-5 py-4">
-                      <p className="font-semibold text-slate-900 dark:text-slate-100">{item.customer_name || item.full_name || '-'}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{item.customer_email || item.email || '-'}</p>
-                    </td>
-                    <td className="px-5 py-4 text-slate-700 dark:text-slate-200">{item.slug_name || '-'}</td>
-                    <td className="px-5 py-4 text-slate-700 dark:text-slate-200">{item.display_name || '-'}</td>
-                    <td className="px-5 py-4 text-slate-700 dark:text-slate-200">{item.status}</td>
-                    <td className="px-5 py-4 text-xs text-slate-500 dark:text-slate-400">
-                      {item.submitted_at ? new Date(item.submitted_at).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-2">
+                {rows.map((item) => {
+                  const submitted = item.submitted_at ? new Date(item.submitted_at).toLocaleString() : '-'
+                  const status = item.status as StatusKey
+                  const statusClass = statusStyles[status] ?? statusStyles.pending_review
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
+                    >
+                      <td className="px-5 py-4 font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          #{item.ticket_id}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="min-w-[180px]">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">
+                            {item.customer_name || item.full_name || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {item.customer_email || item.email || 'No email'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-slate-600 dark:text-slate-300">{item.username ? `@${item.username}` : '-'}</td>
+                      <td className="px-5 py-4 font-semibold text-slate-900 dark:text-slate-100">{item.slug_name || '-'}</td>
+                      <td className="px-5 py-4 text-slate-700 dark:text-slate-200">{item.display_name || '-'}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold ${statusClass}`}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+                          {prettyStatus(status)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-xs text-slate-500 dark:text-slate-400">{submitted}</td>
+                      <td className="px-5 py-4">
                         {item.status === 'pending_review' ? (
-                          <button
-                            type="button"
-                            disabled={isApproving || isDeleting}
-                            onClick={() => openConfirm('approve', item.id, item.display_name)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100"
-                            title="Approve request"
-                          >
-                            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.2">
-                              <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          disabled={isApproving || isDeleting}
-                          onClick={() => openConfirm('delete', item.id, item.display_name)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100"
-                          title="Delete request"
-                        >
-                          <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.1">
-                            <path d="M4 7h16" strokeLinecap="round" />
-                            <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M7 7l1 12a1 1 0 0 0 1 .9h6a1 1 0 0 0 1-.9L17 7" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M10 11v5M14 11v5" strokeLinecap="round" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isApproving || isRejecting || isDeleting}
+                              onClick={() => openConfirm('approve', item.id, item.display_name, item.slug_name)}
+                              className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/15"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isApproving || isRejecting || isDeleting}
+                              onClick={() => openConfirm('reject', item.id, item.display_name, item.slug_name)}
+                              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isApproving || isRejecting || isDeleting}
+                              onClick={() => openConfirm('delete', item.id, item.display_name, item.slug_name)}
+                              className="rounded-xl border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -157,25 +302,44 @@ export default function WebstoreRequestsPage() {
       </div>
 
       {confirm.open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur">
           <div className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                {confirm.action === 'approve' ? 'Approve Webstore Request' : 'Delete Webstore Request'}
-              </h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {confirm.action === 'approve'
-                  ? 'Are you sure you want to approve this webstore request?'
-                  : 'Are you sure you want to delete this webstore request?'}
-              </p>
+            <div className="relative border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+              <div
+                className={
+                  confirm.action === 'approve'
+                    ? 'absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500'
+                    : confirm.action === 'reject'
+                      ? 'absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-rose-500 via-rose-400 to-rose-500'
+                      : 'absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-500 via-slate-400 to-slate-500'
+                }
+              />
+              <div className="pt-2">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {confirm.action === 'approve'
+                    ? 'Confirm Approval'
+                    : confirm.action === 'reject'
+                      ? 'Confirm Rejection'
+                      : 'Confirm Delete'}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {confirm.action === 'approve'
+                    ? 'Approving will also auto-create or update partner storefront using slug and display name.'
+                    : confirm.action === 'reject'
+                      ? 'This will mark the request as rejected.'
+                      : 'This will permanently remove the request.'}
+                </p>
+              </div>
             </div>
 
-            <div className="p-5">
+            <div className="p-5 space-y-3">
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Store Display Name</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {confirm.displayName || '-'}
-                </p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Display name</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{confirm.displayName || '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Slug</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{confirm.slugName || '-'}</p>
               </div>
             </div>
 
@@ -183,26 +347,34 @@ export default function WebstoreRequestsPage() {
               <button
                 type="button"
                 onClick={closeConfirm}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={isApproving || isDeleting}
+                disabled={isApproving || isRejecting || isDeleting}
                 onClick={handleConfirm}
                 className={
-                  'rounded-2xl px-4 py-2 text-sm font-bold text-white ' +
-                  (confirm.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700')
+                  'rounded-2xl px-4 py-2 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ' +
+                  (confirm.action === 'approve'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : confirm.action === 'reject'
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : 'bg-slate-700 hover:bg-slate-800')
                 }
               >
                 {confirm.action === 'approve'
                   ? isApproving
                     ? 'Approving...'
-                    : 'Yes, Approve'
-                  : isDeleting
-                    ? 'Deleting...'
-                    : 'Yes, Delete'}
+                    : 'Confirm Approval'
+                  : confirm.action === 'reject'
+                    ? isRejecting
+                      ? 'Rejecting...'
+                      : 'Confirm Rejection'
+                    : isDeleting
+                      ? 'Deleting...'
+                      : 'Confirm Delete'}
               </button>
             </div>
           </div>
@@ -211,3 +383,4 @@ export default function WebstoreRequestsPage() {
     </div>
   )
 }
+

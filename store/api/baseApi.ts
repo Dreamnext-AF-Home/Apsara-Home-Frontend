@@ -90,8 +90,23 @@ const baseQueryWithBanCheck: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQ
     api,
     extraOptions,
 ) => {
-    const result = await baseQuery(args, api, extraOptions)
+    let result = await baseQuery(args, api, extraOptions)
     const requestUrl = typeof args === 'string' ? args : String(args.url ?? '')
+
+    if (
+        result.error?.status === 401 &&
+        typeof window !== 'undefined' &&
+        !requestUrl.includes('/auth/session')
+    ) {
+        // Token may be stale or unavailable during navigation transitions.
+        // Clear cache and retry once with a freshly resolved session access token.
+        clearAccessTokenCache()
+        const retried = await baseQuery(args, api, extraOptions)
+        if (!retried.error) {
+            return retried
+        }
+        result = retried
+    }
 
     if (
         result.error?.status === 401 &&

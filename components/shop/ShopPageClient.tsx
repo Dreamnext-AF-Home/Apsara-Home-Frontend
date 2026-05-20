@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import TopBar from '@/components/layout/TopBar';
 import Navbar from '@/components/layout/Navbar';
 import TrustBar from '@/components/layout/TrustBar';
-import AdsPopup from '@/components/shop/AdsPopup';
 import ShopBuilderSections, { type ShopBuilderApiResponse } from '@/components/sections/ShopBuilderSections';
 import Footer from '@/components/landing-page/Footer';
 import ScrollToTop from '@/components/landing-page/ScrollToTop';
@@ -47,7 +46,6 @@ const ShopPageClient = ({ shopData, navbarCategories, topBarConfig, trustBarConf
       <TopBar {...topBarConfig} />
       <Navbar initialCategories={navbarCategories} />
       <TrustBar {...trustBarConfig} />
-      <AdsPopup />
       <ShopBuilderSections data={shopData} />
       <Footer />
       <ScrollToTop />

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import type { ReactNode } from 'react'
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
@@ -8,6 +8,7 @@ import { getPartnerStorefrontConfig, parseIdList } from '@/libs/partnerStorefron
 import { Loader2, Trash2 } from 'lucide-react'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { type Product, useLazyGetProductsQuery, useLazyGetPublicProductQuery } from '@/store/api/productsApi'
+
 import {
   useCreateAdminWebPageItemMutation,
   useDeleteAdminWebPageItemMutation,
@@ -127,7 +128,6 @@ export default function PartnerStorefrontStudio() {
   const [helperProductById, setHelperProductById] = useState<Record<number, Product>>({})
   const [isLoadingHelperProducts, setIsLoadingHelperProducts] = useState(false)
   const [logoVersion, setLogoVersion] = useState(0)
-  const [previewRefreshKey, setPreviewRefreshKey] = useState('')
   const missingSelectedProductRequestIdsRef = useRef<Set<number>>(new Set())
   const { data: session } = useSession()
 
@@ -343,8 +343,8 @@ export default function PartnerStorefrontStudio() {
           accent_color: nextDraft.accentColor.trim(),
           notification_email: nextDraft.notificationEmail.trim(),
           domain_link: nextDraft.domainLink.trim(),
-          allowed_category_ids: nextDraft.allowedCategoryIds.join(','),
-          featured_product_ids: nextDraft.featuredProductIds.join(','),
+          allowed_category_ids: nextDraft.allowedCategoryIds.length > 0 ? nextDraft.allowedCategoryIds.join(',') : '0',
+          featured_product_ids: nextDraft.featuredProductIds.length > 0 ? nextDraft.featuredProductIds.join(',') : '0',
           enable_ai_support: nextDraft.enableAiSupport ? '1' : '0',
           activate_discount: nextDraft.enableActivateDiscount ? '1' : '0',
 
@@ -763,7 +763,6 @@ export default function PartnerStorefrontStudio() {
 
       setDraft(toDraft(savedItem))
       setSelectedId(savedItem.id)
-      setPreviewRefreshKey(String(savedItem.updated_at ?? savedItem.id))
       showSuccessToast('Partner storefront saved.')
       broadcastStorefrontUpdate(slug)
       refetch()
@@ -1534,7 +1533,7 @@ export default function PartnerStorefrontStudio() {
               <span>Save Storefront</span>
             </button>
             <a
-              href={draft.slug ? `/shop/${draft.slug}${previewRefreshKey ? `?preview=${previewRefreshKey}` : ''}` : '#'}
+              href={draft.slug ? `/shop/${draft.slug}` : '#'}
               target="_blank"
               rel="noreferrer"
               className={`rounded-2xl border px-5 py-3 text-sm font-semibold transition ${
@@ -1562,29 +1561,157 @@ export default function PartnerStorefrontStudio() {
               </span>
             </div>
 
-              <div className="mt-4 grid gap-2 md:grid-cols-2">
-              {categories.map((category) => {
-                const active = draft.allowedCategoryIds.includes(category.id)
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => toggleCategory(category.id)}
-                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                      active
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200'
-                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    <div>
-                      <p className="text-sm font-semibold">{category.name}</p>
-                      <p className="text-xs text-slate-400">ID {category.id} · {category.product_count ?? 0} items</p>
-                    </div>
-                    <span className={`h-4 w-4 rounded-full border-2 ${active ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900'}`} />
-                  </button>
-                )
-              })}
-              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {categories.map((category) => {
+                    const active = draft.allowedCategoryIds.includes(category.id)
+
+                    const categoryName = (category.name ?? '').toLowerCase()
+                    const iconTone = categoryName.includes('mobile') || categoryName.includes('accessories')
+                      ? 'border-violet-100 bg-violet-50 text-violet-500'
+                      : categoryName.includes('decor')
+                        ? 'border-emerald-100 bg-emerald-50 text-emerald-500'
+                        : categoryName.includes('essential') || categoryName.includes('home ')
+                          ? 'border-amber-100 bg-amber-50 text-amber-500'
+                          : categoryName.includes('appliance')
+                            ? 'border-sky-100 bg-sky-50 text-sky-500'
+                            : categoryName.includes('auto') || categoryName.includes('care')
+                              ? 'border-rose-100 bg-rose-50 text-rose-500'
+                              : categoryName.includes('living')
+                                ? 'border-purple-100 bg-purple-50 text-purple-500'
+                                : categoryName.includes('service')
+                                  ? 'border-cyan-100 bg-cyan-50 text-cyan-500'
+                                  : categoryName.includes('propert')
+                                    ? 'border-orange-100 bg-orange-50 text-orange-500'
+                                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                    const countTone = categoryName.includes('mobile') || categoryName.includes('accessories')
+                      ? 'text-violet-500'
+                      : categoryName.includes('decor')
+                        ? 'text-emerald-500'
+                        : categoryName.includes('essential') || categoryName.includes('home ')
+                          ? 'text-amber-500'
+                          : categoryName.includes('appliance')
+                            ? 'text-sky-500'
+                            : categoryName.includes('auto') || categoryName.includes('care')
+                              ? 'text-rose-500'
+                              : categoryName.includes('living')
+                                ? 'text-purple-500'
+                                : categoryName.includes('service')
+                                  ? 'text-cyan-500'
+                                  : categoryName.includes('propert')
+                                    ? 'text-orange-500'
+                                    : 'text-slate-500'
+                    const modernIcon =
+                      categoryName.includes('mobile') || categoryName.includes('accessories') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+                          <path d="M11 18h2" />
+                        </svg>
+                      ) : categoryName.includes('decor') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M4 12h16" />
+                          <path d="M6.5 12V9a3.5 3.5 0 0 1 7 0v3" />
+                          <path d="M10.5 12V9a3.5 3.5 0 0 1 7 0v3" />
+                          <path d="M5 12v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+                        </svg>
+                      ) : categoryName.includes('essential') || categoryName.includes('home ') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M3 10.5L12 3l9 7.5" />
+                          <path d="M5 9.5V21h14V9.5" />
+                          <path d="M10 21v-6h4v6" />
+                        </svg>
+                      ) : categoryName.includes('appliance') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <rect x="5" y="2.5" width="14" height="19" rx="2.5" />
+                          <circle cx="12" cy="13" r="4" />
+                          <path d="M8 6.5h8" />
+                        </svg>
+                      ) : categoryName.includes('auto') || categoryName.includes('care') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M6 16h12l-1.5-5a2 2 0 0 0-1.9-1.4H9.4A2 2 0 0 0 7.5 11z" />
+                          <path d="M4 16h16v2a2 2 0 0 1-2 2h-1v-2H7v2H6a2 2 0 0 1-2-2z" />
+                          <circle cx="8" cy="16.5" r="0.8" />
+                          <circle cx="16" cy="16.5" r="0.8" />
+                        </svg>
+                      ) : categoryName.includes('living') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M12 2l5 9h-10z" />
+                          <path d="M12 11v9" />
+                          <path d="M8 20h8" />
+                        </svg>
+                      ) : categoryName.includes('service') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M21 7.5a3 3 0 0 1-3 3h-1l-4.7 4.7a2 2 0 0 1-2.8 0L8 13.7a2 2 0 0 1 0-2.8L12.7 6H14a3 3 0 1 1 0 6h-1.2" />
+                          <path d="M4 20l4-4" />
+                        </svg>
+                      ) : categoryName.includes('propert') ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <rect x="4" y="3" width="16" height="18" rx="2" />
+                          <path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <path d="M4 7h16" />
+                          <path d="M4 12h16" />
+                          <path d="M4 17h16" />
+                        </svg>
+                      )
+
+                    const text = active ? 'text-slate-900 dark:text-slate-100' : 'text-slate-800 dark:text-slate-100'
+                    const sub = active ? 'text-slate-500 dark:text-slate-300' : 'text-slate-500 dark:text-slate-300'
+
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => toggleCategory(category.id)}
+                        className={[
+                          'group relative flex items-center justify-between gap-3 rounded-2xl border px-4 py-4 text-left transition',
+                          'focus:outline-none focus:ring-4 focus:ring-slate-200/70 dark:focus:ring-slate-700/40',
+                          active
+                            ? 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900/40'
+                            : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900/20 dark:hover:border-slate-600',
+                        ].join(' ')}
+                        aria-pressed={active}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={[
+                                'flex h-12 w-12 items-center justify-center rounded-xl border',
+                                'dark:bg-slate-900/30',
+                                iconTone,
+                                'dark:border-slate-700/60 dark:bg-slate-800/70',
+                              ].join(' ')}
+                              aria-hidden="true"
+                            >
+                              <div className="text-current">
+                                {modernIcon}
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <p className={`truncate text-sm font-semibold ${text}`}>{category.name}</p>
+                              <p className={`mt-0.5 text-xs ${sub}`}>
+                                ID {category.id} • <span className={countTone}>{category.product_count ?? 0} items</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span
+                          className={[
+                            'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition',
+                            active
+                              ? 'border-slate-400 bg-slate-100 dark:border-slate-500 dark:bg-slate-700/60'
+                              : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900/40',
+                          ].join(' ')}
+                          aria-label={active ? 'Selected' : 'Not selected'}
+                        >
+                          {active ? <span className="h-2.5 w-2.5 rounded-full bg-slate-500 dark:bg-slate-200" /> : <span className="h-2.5 w-2.5 rounded-full bg-transparent" />}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
             </div>
 
             <div className={`flex h-[500px] flex-col ${panelClass}`}>
@@ -1641,7 +1768,7 @@ export default function PartnerStorefrontStudio() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">ID {product.id} · Category {product.catid}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">ID {product.id} Â· Category {product.catid}</p>
                       </div>
                       <button
                         type="button"
@@ -1755,7 +1882,7 @@ export default function PartnerStorefrontStudio() {
                         </div>
                         <div className="min-w-0">
                           <p className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</p>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">ID {product.id} · Category {product.catid}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">ID {product.id} Â· Category {product.catid}</p>
                         </div>
                       </div>
                     </button>
@@ -1771,6 +1898,7 @@ export default function PartnerStorefrontStudio() {
           </div>
         </div>
       </section>
+
     </div>
   )
 }
@@ -1791,6 +1919,9 @@ function Field({
     </label>
   )
 }
+
+
+
 
 
 

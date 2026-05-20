@@ -120,6 +120,10 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
     redirect(`/shop/${normalizedPartner}/product`)
   }
   const navbarCategories = await getNavbarCategories()
+  const allowedCategoryIdSet = new Set((storefront.allowedCategoryIds ?? []).map((id) => Number(id)))
+  const partnerNavbarCategories = navbarCategories.filter((category) =>
+    allowedCategoryIdSet.has(Number(category.id)),
+  )
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
 
   const canonicalSlug = buildCanonicalProductSlug(dynamicData.product.name, dynamicData.product.id)
@@ -162,7 +166,7 @@ export default async function PartnerProductDetailPage({ params }: PageProps) {
 
   return (
     <ProductPageWrapper
-      initialCategories={navbarCategories}
+      initialCategories={partnerNavbarCategories}
       hideTopBar
       logoSrc={storefront.logoUrl || storefront.tabLogoUrl || '/Images/af_home_logo.png'}
       logoAlt={storefront.displayName}

@@ -2,13 +2,45 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useGetAddsContentPublicQuery } from '@/store/api/addsContentApi'
+import { usePathname } from 'next/navigation'
+
+const resolveAdsPageFromPathname = (pathname: string): 'shop' | 'home' | 'landing' | 'product' | 'category' | 'brand' | null => {
+  if (!pathname) return null
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/partner') ||
+    pathname.startsWith('/supplier') ||
+    pathname.startsWith('/api')
+  ) {
+    return null
+  }
+
+  // Never show admin Ads Content popups on partner storefront routes (/shop/{partner}/...).
+  if (pathname.startsWith('/shop/')) return null
+  if (pathname === '/shop') return 'shop'
+  if (pathname === '/landing-page' || pathname.startsWith('/landing-page/')) return 'landing'
+  if (pathname === '/product' || pathname.startsWith('/product/')) return 'product'
+  if (pathname === '/category' || pathname.startsWith('/category/')) return 'category'
+  if (pathname === '/by-brand' || pathname.startsWith('/by-brand/')) return 'brand'
+  if (pathname === '/' || pathname === '/home' || pathname.startsWith('/home/')) return 'home'
+
+  return null
+}
 
 export default function AdsPopup() {
-  const { data, isLoading, isError } = useGetAddsContentPublicQuery({ page: 'shop' })
+  const pathname = usePathname() ?? ''
+  const adsPage = useMemo(() => resolveAdsPageFromPathname(pathname), [pathname])
+  const { data, isLoading, isError } = useGetAddsContentPublicQuery(
+    adsPage ? { page: adsPage } : undefined,
+    { skip: !adsPage },
+  )
   const activeItems = useMemo(() => {
-    const items = (data?.items ?? []).filter(
-      (item) => (item.status ?? 1) === 0 && (Boolean(item.image_url) || Boolean(item.video_url)),
-    )
+    const normalizedAdsPage = String(adsPage ?? '').trim().toLowerCase()
+    const items = (data?.items ?? []).filter((item) => {
+      const itemPage = String(item.page ?? '').trim().toLowerCase()
+      const isPageMatch = itemPage === normalizedAdsPage || itemPage === 'all'
+      return isPageMatch && (item.status ?? 1) === 0 && (Boolean(item.image_url) || Boolean(item.video_url))
+    })
     const sorted = [...items].sort((a, b) => {
       const dateA = a.date_created ? new Date(`${a.date_created}T00:00:00`).getTime() : Number.NaN
       const dateB = b.date_created ? new Date(`${b.date_created}T00:00:00`).getTime() : Number.NaN
@@ -18,13 +50,14 @@ export default function AdsPopup() {
       return (b.id ?? 0) - (a.id ?? 0)
     })
     return sorted.slice(0, 1)
-  }, [data])
+  }, [data, adsPage])
 
   const [isOpen, setIsOpen] = useState(false)
-  const [hasOpened, setHasOpened] = useState(false)
+  const [pendingOpen, setPendingOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [isReady, setIsReady] = useState(false)
   const [canClose, setCanClose] = useState(false)
+  const [countdown, setCountdown] = useState(10)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -38,28 +71,56 @@ export default function AdsPopup() {
   }, [])
 
   useEffect(() => {
-    if (hasOpened) return
+    if (!isReady) return
+    if (!adsPage) {
+      setPendingOpen(false)
+      setIsOpen(false)
+      return
+    }
+    // Route changed: always reset stale popup state before scheduling next open.
+    setIsOpen(false)
+    setCanClose(false)
+    setCountdown(10)
+    setPendingOpen(true)
+  }, [adsPage, pathname, isReady])
+
+  useEffect(() => {
+    if (!pendingOpen) return
+    if (!adsPage) return
     if (!isReady) return
     if (isLoading || isError) return
     if (activeItems.length === 0) return
     const timer = window.setTimeout(() => {
       setActiveIndex(0)
       setIsOpen(true)
-      setHasOpened(true)
+      setPendingOpen(false)
       setCanClose(false)
+      setCountdown(10)
     }, 350)
     return () => window.clearTimeout(timer)
-  }, [activeItems.length, hasOpened, isReady, isLoading, isError])
+  }, [activeItems.length, adsPage, pendingOpen, isReady, isLoading, isError])
 
   useEffect(() => {
     if (!isOpen) return
-    const timer = window.setTimeout(() => {
-      setCanClose(true)
-    }, 10_000)
-    return () => window.clearTimeout(timer)
+    const openedAt = Date.now()
+    setCanClose(false)
+    setCountdown(10)
+    const tickTimer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - openedAt) / 1000)
+      const remaining = Math.max(0, 10 - elapsedSeconds)
+      setCountdown(remaining)
+      if (remaining <= 0) {
+        setCanClose(true)
+        window.clearInterval(tickTimer)
+      }
+    }, 250)
+
+    return () => {
+      window.clearInterval(tickTimer)
+    }
   }, [isOpen])
 
-  if (isLoading || isError || activeItems.length === 0 || !isOpen) return null
+  if (!adsPage || isLoading || isError || activeItems.length === 0 || !isOpen) return null
 
   const activeItem = activeItems[activeIndex]
 
@@ -76,6 +137,11 @@ export default function AdsPopup() {
       />
       <div className="relative z-[71] flex w-full max-w-[96vw] items-center justify-center">
         <div className="relative">
+          {!canClose ? (
+            <div className="absolute right-2 top-2 z-10 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-700 shadow">
+              Close in {countdown}s
+            </div>
+          ) : null}
           {canClose ? (
             <button
               type="button"

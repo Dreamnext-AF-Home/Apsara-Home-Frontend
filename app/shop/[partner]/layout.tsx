@@ -47,6 +47,15 @@ export default async function PartnerShopLayout({ children, params }: LayoutProp
   const user = session?.user
 
   if (user) {
+    const normalizedRole = String((user as { role?: string } | undefined)?.role ?? '').trim().toLowerCase()
+    const userLevelId = Number((user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
+    const isAdminByRole = normalizedRole === 'super_admin' || normalizedRole === 'admin' || normalizedRole === 'web_content'
+    const isAdminByLevel = userLevelId === 1 || userLevelId === 2
+
+    if (isAdminByRole || isAdminByLevel) {
+      return children
+    }
+
     const record = await getPartnerStorefrontRecordBySlug(normalizedPartner, { fresh: true })
     if (record) {
       const assignedStorefrontIds = (user.storefrontIds ?? [])

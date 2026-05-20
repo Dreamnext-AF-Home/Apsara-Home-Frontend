@@ -342,11 +342,20 @@ export default function AdminProjectPageMain() {
   }
 
   return (
-    <div className="space-y-6 dark:bg-slate-950 dark:text-slate-100">
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-sm dark:border-slate-800 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900/40 dark:to-cyan-950/30 md:p-6">
+      <div className="space-y-6 dark:bg-slate-950 dark:text-slate-100">
+      <div className="relative overflow-hidden rounded-3xl border border-sky-200/70 bg-gradient-to-br from-white via-sky-50 to-cyan-50 p-6 shadow-sm dark:border-slate-800 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900/40 dark:to-cyan-950/20 md:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.12),transparent_35%)]" />
         <div className="relative">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 md:text-2xl">Project Gallery Uploads</h1>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-200/80 bg-sky-50 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-200">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <path d="M8 14l2-2 3 3 4-4" />
+                <path d="M8 9h.01" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 md:text-2xl">Project Gallery Uploads</h1>
+          </div>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Upload and manage photo and video galleries.</p>
         </div>
       </div>
@@ -355,8 +364,12 @@ export default function AdminProjectPageMain() {
         {/* Photos */}
         <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-white to-sky-50 p-5 shadow-sm dark:border-slate-800 dark:bg-gradient-to-br dark:from-slate-950/40 dark:via-slate-950/40 dark:to-sky-950/30 md:p-6">
           <div className="flex items-start justify-between gap-4">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Photo Gallery</h2>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{photos.length} item(s)</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              Photo Gallery
+            </h2>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {photos.length} item(s)
+            </p>
           </div>
 
           <form onSubmit={handlePhotoSubmit} className="mt-4 space-y-4">
@@ -385,12 +398,14 @@ export default function AdminProjectPageMain() {
               ))}
             </select>
 
-            <FileDropzone
-              label="Upload photos"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              files={photoFiles}
-              onFilesChange={setPhotoFiles}
-            />
+            <div className="relative">
+              <FileDropzone
+                label="Upload photos"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                files={photoFiles}
+                onFilesChange={setPhotoFiles}
+              />
+            </div>
 
             <button type="submit" disabled={photoUploading} className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
               {photoUploading ? 'Uploading...' : 'Upload Photo Gallery'}
@@ -504,12 +519,14 @@ export default function AdminProjectPageMain() {
               placeholder="Description"
             />
 
-            <FileDropzone
-              label="Upload videos"
-              accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv"
-              files={videoFiles}
-              onFilesChange={setVideoFiles}
-            />
+            <div className="relative">
+              <FileDropzone
+                label="Upload videos"
+                accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-ms-wmv"
+                files={videoFiles}
+                onFilesChange={setVideoFiles}
+              />
+            </div>
 
             <button type="submit" disabled={videoUploading} className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
               {videoUploading ? 'Uploading...' : 'Upload Videos Gallery'}
