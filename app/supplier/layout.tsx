@@ -1,17 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import { SessionProvider } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import SupplierLayoutShell from '@/components/supplier/SupplierLayoutShell'
 
-export default function SupplierLayout({ children }: { children: React.ReactNode }) {
-  const [pathname] = useState(() => (typeof window !== 'undefined' ? window.location.pathname : ''))
+const UNAUTHENTICATED_PATHS = ['/supplier/login', '/supplier/forgot-password', '/supplier/reset-password']
 
-  if (
-    pathname === '/supplier/login' ||
-    pathname === '/supplier/forgot-password' ||
-    pathname === '/supplier/reset-password'
-  ) {
+export default function SupplierLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
+  if (UNAUTHENTICATED_PATHS.includes(pathname)) {
     return (
       <SessionProvider basePath="/api/supplier/auth">
         {children}

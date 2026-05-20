@@ -39,6 +39,7 @@ export default function SupplierLayoutShell({ children }: { children: React.Reac
   )
   const { data: notificationsData, isFetching: isNotificationsFetching, isError: isNotificationsError } =
     useGetSupplierOrderNotificationsQuery(undefined, {
+      skip: status !== 'authenticated',
       pollingInterval: 60000,
       refetchOnFocus: true,
       refetchOnReconnect: true,

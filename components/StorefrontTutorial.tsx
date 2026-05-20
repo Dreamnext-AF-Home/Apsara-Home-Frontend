@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2, RotateCcw, Download } from 'lucide-react';
 import ProductFilter from '@/components/item/ProductFilter';
 import TopFilter from '@/components/item/TopFilter';
 import ItemCard from '@/components/item/ItemCard';
@@ -1191,6 +1191,7 @@ function PreviewScreen({ playing }: { playing: boolean }) {
 /* ─── Scale constants ────────────────────────────────────────── */
 const BEZEL_W = 1308; // 1280 screen + 14px padding × 2
 const BEZEL_H = 734;  // 14px top padding + 720px screen (controls are outside the scale)
+const TUTORIAL_VIDEO_DOWNLOAD_URL = '/videos/storefront-tutorial.mp4';
 
 /* ─── Main ───────────────────────────────────────────────────── */
 export default function StorefrontTutorial() {
@@ -1499,6 +1500,27 @@ export default function StorefrontTutorial() {
       try { await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'); } catch { /* iOS ignores */ }
     } catch {
       setMobileTheater(true);
+    }
+  };
+
+  const handleDownloadVideo = async () => {
+    playSound('step');
+
+    try {
+      const response = await fetch(TUTORIAL_VIDEO_DOWNLOAD_URL, { method: 'HEAD' });
+      if (!response.ok) {
+        window.alert('Downloadable tutorial video is not available yet. Add storefront-tutorial.mp4 in public/videos first.');
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.href = TUTORIAL_VIDEO_DOWNLOAD_URL;
+      link.download = 'storefront-tutorial.mp4';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      window.alert('Downloadable tutorial video is not available yet.');
     }
   };
 
@@ -1997,6 +2019,15 @@ export default function StorefrontTutorial() {
               })}
             </div>
           )}
+
+          {/* Download video */}
+          <button
+            onClick={handleDownloadVideo}
+            title="Download tutorial video"
+            style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.78)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
+          >
+            <Download size={17} />
+          </button>
 
           {/* Fullscreen — 44px touch target */}
           <button

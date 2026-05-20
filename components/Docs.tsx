@@ -480,7 +480,7 @@ const D = {
     Shipping[J&T / XDE]
     AI[Gemini / OpenAI]
     Pusher[Pusher — realtime]
-    ZQ[ZQ — product sync]
+    GS[AF HOME GLOBAL SUPPLIER — product sync]
   end
   Next --> Pages
   Pages --> RTK
@@ -499,7 +499,7 @@ const D = {
   Services --> Shipping
   Services --> AI
   Services --> Pusher
-  Services --> ZQ`,
+  Services --> GS`,
 
   boundedAreas: `flowchart LR
   App[AF Home] --> A[Public Storefront]
@@ -638,7 +638,7 @@ const D = {
   Svc --> Pay[PayMongoService]
   Svc --> JT[JTShippingService]
   Svc --> XDE[XDEShippingService]
-  Svc --> ZQ[ZQSyncService]`,
+  Svc --> GS[Global Supplier Sync Service]`,
 
   dbGroups: `flowchart LR
   DB[(Database)] --> Infra[Infrastructure]
@@ -877,7 +877,7 @@ export default function Docs() {
               ['Media', 'Cloudinary — image upload and CDN'],
               ['AI', 'Gemini + OpenAI — support, vision, embeddings, recommendations'],
               ['Realtime', 'Pusher — customer-admin chat events'],
-              ['External Sync', 'ZQ — product and order data synchronization'],
+              ['External Sync', 'AF HOME GLOBAL SUPPLIER — product and order data synchronization'],
             ]} />
           </section>
 
@@ -1017,7 +1017,7 @@ composer dev        # Full dev: server + queue + logs + Vite`} />
               ['Gemini AI', 'AI support, content generation, vision', 'Admin / customer support'],
               ['OpenAI', 'AI-assisted features, embeddings', 'Backend services'],
               ['Pusher', 'Realtime websocket events (chat)', 'Customer / Admin'],
-              ['ZQ', 'External product / order data synchronization', 'Admin'],
+              ['AF HOME GLOBAL SUPPLIER', 'External product / order data synchronization', 'Admin'],
               ['Turnstile', 'CAPTCHA / bot protection', 'Public auth flows'],
               ['Serwist', 'Service worker / PWA', 'Frontend production'],
               ['Neon', 'Serverless PostgreSQL hosting', 'Backend production'],

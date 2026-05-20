@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { getSession, signIn, signOut, useSession } from "next-auth/react";
 import Loading from '@/components/Loading'
-import { showErrorToast, showInfoToast, showSuccessToast } from '@/libs/toast'
+import { DynamicIslandToast, dynamicIsland } from '@/components/ui/LoginLoading/LoginLoading'
 import { clearAccessTokenCache } from "@/store/api/baseApi";
 
 declare global {
@@ -326,7 +326,6 @@ const LoginForm = ({
         if (!turnstileSiteKey || !isMounted) return
 
         let cancelled = false
-
         const doRender = () => {
             if (cancelled || !turnstileRef.current || !window.turnstile) return
             widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
@@ -374,6 +373,7 @@ const LoginForm = ({
     const attemptSignIn = useCallback(async (source: 'manual' | 'auto' = 'manual') => {
         setError('');
         setIsLoading(true);
+        dynamicIsland.loading('Logging in…')
 
         if (!mfaChallengeToken) {
             clearAccessTokenCache()
@@ -409,12 +409,12 @@ const LoginForm = ({
             }
 
             if (passwordChangeRequired) {
-                showInfoToast('Create a new password first before continuing to the shop.')
+                dynamicIsland.success('Create a new password first before continuing to the shop.')
                 onRequirePasswordChange()
                 return
             }
 
-            showSuccessToast(source === 'auto' ? 'Login approved. Welcome back!' : 'Login successful. Welcome back!')
+            dynamicIsland.success(source === 'auto' ? 'Login approved. Welcome back!' : 'Login successful. Welcome back!')
             const sessionReady = await waitForAuthenticatedSession()
             const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
 
@@ -454,7 +454,7 @@ const LoginForm = ({
                 ? 'Your account has been banned. Please contact support for assistance.'
                 : (rawError || 'Invalid email or password. Please try again.')
             setError(message)
-            showErrorToast(message)
+            dynamicIsland.error(message)
             resetTurnstile()
         }
     }, [callbackPath, defaultCallbackPath, form.email, form.password, form.rememberMe, mfaChallengeToken, onRequirePasswordChange, router, turnstileToken, updateSession])
@@ -483,6 +483,7 @@ const LoginForm = ({
 
         setError('')
         setIsPasskeyLoading(true)
+        dynamicIsland.loading('Verifying passkey…')
 
         try {
             const beginRes = await fetch(`${apiBaseUrl}/api/auth/passkeys/login/options`, {
@@ -570,12 +571,12 @@ const LoginForm = ({
             }
 
             if (passwordChangeRequired) {
-                showInfoToast('Create a new password first before continuing to the shop.')
+                dynamicIsland.success('Create a new password first before continuing to the shop.')
                 onRequirePasswordChange()
                 return
             }
 
-            showSuccessToast('Passkey sign-in successful. Welcome back!')
+            dynamicIsland.success('Passkey sign-in successful. Welcome back!')
             const sessionReady = await waitForAuthenticatedSession()
             const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
             router.replace(targetPath)
@@ -588,7 +589,7 @@ const LoginForm = ({
         } catch (err: unknown) {
             const message = parsePasskeyError(err)
             setError(message)
-            showErrorToast(message)
+            dynamicIsland.error(message)
         } finally {
             setIsPasskeyLoading(false)
         }
@@ -597,20 +598,21 @@ const LoginForm = ({
     const handleGoogleSignIn = async () => {
         setError('')
         setIsGoogleLoading(true)
+        dynamicIsland.loading('Signing in with Google…')
 
         try {
             const result = await openGoogleAuthPopup()
 
             if (!result.success) {
                 setError(result.error)
-                showErrorToast(result.error)
+                dynamicIsland.error(result.error)
                 return
             }
 
             if (!result.id_token) {
                 const msg = 'Google sign-in failed: No token received from Google.'
                 setError(msg)
-                showErrorToast(msg)
+                dynamicIsland.error(msg)
                 return
             }
 
@@ -638,7 +640,7 @@ const LoginForm = ({
 
                 const message = rawError || 'Google sign-in failed. Please try again.'
                 setError(message)
-                showErrorToast(message)
+                dynamicIsland.error(message)
                 return
             }
 
@@ -657,18 +659,18 @@ const LoginForm = ({
             }
 
             if (passwordChangeRequired) {
-                showInfoToast('Create a new password first before continuing to the shop.')
+                dynamicIsland.success('Create a new password first before continuing to the shop.')
                 onRequirePasswordChange()
                 return
             }
 
-            showSuccessToast('Google sign-in successful. Welcome back!')
+            dynamicIsland.success('Google sign-in successful. Welcome back!')
             const targetPath = callbackPath.startsWith('/') ? callbackPath : '/shop'
             window.location.replace(targetPath)
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.'
             setError(message)
-            showErrorToast(message)
+            dynamicIsland.error(message)
         } finally {
             setIsGoogleLoading(false)
         }
@@ -736,6 +738,7 @@ const LoginForm = ({
             exit={{ opacity: 0, x: 24 }}
             transition={{ duration: 0.25 }}
         >
+            <DynamicIslandToast />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back!</h2>
             <p className="text-gray-500 dark:text-white/70 text-sm mb-7">Sign in to your {accountLabel} account</p>
 

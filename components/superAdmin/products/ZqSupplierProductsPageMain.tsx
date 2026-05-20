@@ -139,7 +139,7 @@ export default function ZqSupplierProductsPageMain({
       }))
     } catch (error) {
       const apiError = error as { data?: { message?: string } }
-      const message = apiError?.data?.message || 'Failed to load ZQ products.'
+      const message = apiError?.data?.message || 'Failed to load global supplier products.'
       setLastError(message)
       showErrorToast(message)
     }
@@ -188,10 +188,10 @@ export default function ZqSupplierProductsPageMain({
           className="flex flex-wrap items-start justify-between gap-4"
         >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">ZQ Supplier</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">Get ZQ Product</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">AF HOME GLOBAL SUPPLIER</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-900">Get Global Supplier Product</h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Live product list ito mula sa ZQ API. Pang-viewing muna ito sa table at hindi pa ini-import sa local catalog.
+              Live product list ito mula sa Global Supplier API. Pang-viewing muna ito sa table at hindi pa ini-import sa local catalog.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -201,7 +201,7 @@ export default function ZqSupplierProductsPageMain({
               disabled={isLoading}
               className="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
             >
-              {isLoading ? 'Loading...' : 'Get ZQ Product'}
+              {isLoading ? 'Loading...' : 'Get Global Supplier Product'}
             </button>
             <Link
               href={backHref}
@@ -218,9 +218,9 @@ export default function ZqSupplierProductsPageMain({
           className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3"
         >
           <div>
-            <p className="text-sm font-semibold text-sky-800">Get ZQ Product</p>
+            <p className="text-sm font-semibold text-sky-800">Get Global Supplier Product</p>
             <p className="mt-0.5 text-xs text-sky-700">
-              Dito mismo sa table lumalabas ang live products mula sa ZQ API. Walang navigation sa ibang page.
+              Dito mismo sa table lumalabas ang live products mula sa Global Supplier API. Walang navigation sa ibang page.
             </p>
           </div>
           <button
@@ -229,7 +229,7 @@ export default function ZqSupplierProductsPageMain({
             disabled={isLoading}
             className="rounded-xl border border-sky-200 bg-white px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? 'Loading...' : 'Refresh ZQ Products'}
+            {isLoading ? 'Loading...' : 'Refresh Global Supplier Products'}
           </button>
         </motion.div>
       )}
@@ -258,7 +258,7 @@ export default function ZqSupplierProductsPageMain({
                 type="text"
                 value={draftSearch}
                 onChange={(event) => setDraftSearch(event.target.value)}
-                placeholder="Search ZQ product name or external ID..."
+                placeholder="Search global supplier product name or external ID..."
                 className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-sky-300 focus:bg-white"
               />
               <button
@@ -295,9 +295,9 @@ export default function ZqSupplierProductsPageMain({
       >
         {!embedded ? (
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-base font-bold text-slate-900">ZQ Product Table</h2>
+            <h2 className="text-base font-bold text-slate-900">Global Supplier Product Table</h2>
             <p className="mt-0.5 text-sm text-slate-500">
-              Ito na mismo ang live list ng ZQ products sa table. I-click ang <span className="font-semibold">View Preview</span> para sa sariling detail preview natin.
+              Ito na mismo ang live list ng global supplier products sa table. I-click ang <span className="font-semibold">View Preview</span> para sa sariling detail preview natin.
             </p>
           </div>
         ) : null}
@@ -310,7 +310,7 @@ export default function ZqSupplierProductsPageMain({
           </div>
         ) : lastError ? (
           <div className="px-5 py-16 text-center">
-            <p className="text-base font-semibold text-slate-800">Failed to load ZQ products.</p>
+            <p className="text-base font-semibold text-slate-800">Failed to load global supplier products.</p>
             <p className="mt-1 text-sm text-slate-500">{lastError}</p>
             <button
               type="button"
@@ -322,9 +322,9 @@ export default function ZqSupplierProductsPageMain({
           </div>
         ) : products.length === 0 ? (
           <div className="px-5 py-16 text-center">
-            <p className="text-base font-semibold text-slate-800">No ZQ products found.</p>
+            <p className="text-base font-semibold text-slate-800">No global supplier products found.</p>
             <p className="mt-1 text-sm text-slate-500">
-              {searchKeyword ? 'Walang tumamang products sa current search.' : 'I-click ang Get ZQ Product para kunin ang first page ng products mula sa ZQ API.'}
+              {searchKeyword ? 'Walang tumamang products sa current search.' : 'I-click ang Get Global Supplier Product para kunin ang first page ng products mula sa Global Supplier API.'}
             </p>
           </div>
         ) : (

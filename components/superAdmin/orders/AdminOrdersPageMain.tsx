@@ -85,7 +85,7 @@ type FulfillmentMode = 'manual' | 'local_courier' | 'zq'
 const FULFILLMENT_MODE_OPTIONS: Array<{ value: FulfillmentMode; label: string }> = [
   { value: 'manual', label: 'Manual' },
   { value: 'local_courier', label: 'Local Courier' },
-  { value: 'zq', label: 'ZQ Supplier' },
+  { value: 'zq', label: 'AF HOME GLOBAL SUPPLIER' },
 ]
 
 const APPROVAL_CONFIG: Record<string, { dot: string; badge: string; label: string }> = {
@@ -260,7 +260,7 @@ const formatCourierLabel = (courier?: string | null) => {
   if (normalized === 'afhome') return 'AF Home'
   if (normalized === 'jnt') return 'J&T'
   if (normalized === 'xde') return 'XDE'
-  if (normalized === 'zq') return 'ZQ'
+  if (normalized === 'zq') return 'Global Supplier'
   return courier ?? ''
 }
 
@@ -759,9 +759,9 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
           payload: result.zq,
         })
       }
-      showSuccessToast(result.message || 'Order pushed to ZQ successfully.')
+      showSuccessToast(result.message || 'Order pushed to Global Supplier successfully.')
     } catch (err: unknown) {
-      showErrorToast(extractApiError(err, 'Failed to push order to ZQ.'))
+      showErrorToast(extractApiError(err, 'Failed to push order to Global Supplier.'))
     } finally { setBusyId(null) }
   }
 
@@ -775,9 +775,9 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
           payload: result.zq,
         })
       }
-      showSuccessToast(result.message || 'ZQ order detail fetched successfully.')
+      showSuccessToast(result.message || 'Global Supplier order detail fetched successfully.')
     } catch (err: unknown) {
-      showErrorToast(extractApiError(err, 'Failed to fetch ZQ detail.'))
+      showErrorToast(extractApiError(err, 'Failed to fetch Global Supplier detail.'))
     } finally { setBusyId(null) }
   }
 
@@ -791,9 +791,9 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
           payload: result.zq,
         })
       }
-      showSuccessToast(result.message || 'ZQ tracking synced successfully.')
+      showSuccessToast(result.message || 'Global Supplier tracking synced successfully.')
     } catch (err: unknown) {
-      showErrorToast(extractApiError(err, 'Failed to sync ZQ tracking.'))
+      showErrorToast(extractApiError(err, 'Failed to sync Global Supplier tracking.'))
     } finally { setBusyId(null) }
   }
 
@@ -1284,17 +1284,17 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                               {isZqMode ? (
                                   <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700">ZQ Supplier Flow</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700">Global Supplier Flow</p>
                                     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${zqBadgeClass}`}>
                                       {order.zq_status ?? 'Not sent'}
                                     </span>
                                   </div>
                                   <p className="mt-2 text-[11px] leading-relaxed text-violet-700">
                                     {hasZqOrder
-                                      ? 'ZQ handoff is active for this order. Use ZQ detail and tracking below.'
+                                      ? 'Global Supplier handoff is active for this order. Use Global Supplier detail and tracking below.'
                                       : order.approval_status === 'approved'
-                                        ? 'Push this order to ZQ first to unlock detail and tracking.'
-                                        : 'Approve the order first before pushing it to ZQ.'}
+                                        ? 'Push this order to Global Supplier first to unlock detail and tracking.'
+                                        : 'Approve the order first before pushing it to Global Supplier.'}
                                   </p>
                                   {order.zq_platform_order_id ? (
                                     <p className="mt-2 break-all text-[11px] font-semibold text-slate-800 dark:text-slate-100">
@@ -1303,7 +1303,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                   ) : null}
                                   {order.zq_order_id ? (
                                     <p className="mt-1 break-all text-[11px] text-slate-600 dark:text-slate-300">
-                                      ZQ Order: {order.zq_order_id}
+                                      Global Supplier Order: {order.zq_order_id}
                                     </p>
                                   ) : null}
                                 </div>
@@ -1316,7 +1316,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                     </span>
                                   </div>
                                   <p className="mt-2 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                                    This order is managed manually. No courier booking or ZQ handoff will be used.
+                                    This order is managed manually. No courier booking or Global Supplier handoff will be used.
                                   </p>
                                   <AdminOrderSelect
                                     ariaLabel={`Manual shipment status for order ${order.checkout_id}`}
@@ -1407,7 +1407,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                   {order.zq_platform_order_id || order.zq_status ? (
                                     <div className="rounded-xl border border-violet-200 bg-violet-50 p-2.5 dark:border-violet-500/30 dark:bg-violet-500/10">
                                       <div className="flex items-center justify-between gap-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700">ZQ</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700">Global Supplier</p>
                                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${zqBadgeClass}`}>
                                           {order.zq_status ?? 'Not sent'}
                                         </span>
@@ -1419,7 +1419,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                       ) : null}
                                       {order.zq_order_id ? (
                                         <p className="mt-1 break-all text-[11px] text-slate-600 dark:text-slate-300">
-                                          ZQ Order: {order.zq_order_id}
+                                          Global Supplier Order: {order.zq_order_id}
                                         </p>
                                       ) : null}
                                     </div>
@@ -1543,14 +1543,14 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                   {isZqMode ? (
                                     <>
                                       <Button size="sm" variant="tertiary" isDisabled={isBusy || !canPushZq} onPress={() => handlePushToZq(order.id)} className={`w-full border px-3 py-1.5 text-xs font-semibold transition ${canPushZq ? 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                                        {hasZqOrder ? 'ZQ Pushed' : 'Push ZQ'}
+                                        {hasZqOrder ? 'Global Supplier Pushed' : 'Push Global Supplier'}
                                       </Button>
                                       <div className="grid grid-cols-2 gap-1">
                                       <Button size="sm" variant="tertiary" isDisabled={isBusy || !canUseZqLookup} onPress={() => handleFetchZqDetail(order.id)} className={`border px-2 py-1.5 text-[11px] font-semibold transition ${canUseZqLookup ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'}`}>
-                                        ZQ Detail
+                                        Global Supplier Detail
                                       </Button>
                                         <Button size="sm" variant="tertiary" isDisabled={isBusy || !canUseZqLookup} onPress={() => handleSyncZqTracking(order.id)} className={`border px-2 py-1.5 text-[11px] font-semibold transition ${canUseZqLookup ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                                          ZQ Track
+                                          Global Supplier Track
                                         </Button>
                                       </div>
                                     </>
@@ -1561,9 +1561,9 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                                   )}
                                   {isZqMode ? (
                                     !hasZqOrder ? (
-                                      <p className="text-[11px] text-slate-400 dark:text-slate-300">Push to ZQ first to unlock detail and tracking.</p>
+                                      <p className="text-[11px] text-slate-400 dark:text-slate-300">Push to Global Supplier first to unlock detail and tracking.</p>
                                     ) : (
-                                      <p className="text-[11px] text-violet-600">ZQ lookup is now available for this order.</p>
+                                      <p className="text-[11px] text-violet-600">Global Supplier lookup is now available for this order.</p>
                                     )
                                   ) : (
                                     <p className="text-[11px] text-slate-400 dark:text-slate-300">
