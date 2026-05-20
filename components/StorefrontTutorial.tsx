@@ -43,6 +43,16 @@ const STEP_META: Partial<Record<Step, StepMeta>> = {
   },
 };
 const MAIN_STEPS: Step[] = ['step1', 'step2', 'step3', 'step4', 'step5'];
+const VOICE_LINES: Partial<Record<Step, string>> = {
+  intro: 'Welcome to the AF Home Partner Storefront Studio tutorial. Press play to begin setting up your branded store.',
+  step1: 'Step one. Set your store identity. Fill in your store URL slug, display name, hero title, and notification email.',
+  step2: 'Step two. Upload your logo and add your referral links. These help brand your store and track orders.',
+  step3: 'Step three. Choose your brand colors and hero subtitle. These make the storefront feel like your own brand.',
+  step4: 'Step four. Select product categories. Choose which products your customers can browse in your partner store.',
+  step5: 'Step five. Save and launch. Once saved, your branded partner storefront is ready to share.',
+  preview: 'This is your live partner store preview. Customers can browse products, add to cart, and checkout through AF Home.',
+  ending: 'Your store is ready. Your brand, your curated products, powered by AF Home.',
+};
 
 /* ─── Timeline ───────────────────────────────────────────────── */
 const SCRUB_STEPS: Step[] = ['intro', 'step1', 'step2', 'step3', 'step4', 'step5', 'preview'];
@@ -1204,14 +1214,137 @@ export default function StorefrontTutorial() {
   const scrubberRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controlsHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const musicGainRef = useRef<GainNode | null>(null);
+  const musicNodesRef = useRef<Array<OscillatorNode | GainNode>>([]);
+  const spokenStepRef = useRef<Step | null>(null);
   const stepIdx = STEPS.indexOf(step);
 
   const goTo = (s: Step) => { if (timer.current) clearTimeout(timer.current); setStep(s); };
+
+  const getAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    if (!audioContextRef.current) {
+      const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return null;
+      audioContextRef.current = new AudioContextCtor();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      void audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const playSound = useCallback((kind: 'play' | 'pause' | 'step' | 'success' | 'replay') => {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    const osc = ctx.createOscillator();
+    const frequencies: Record<typeof kind, [number, number]> = {
+      play: [420, 680],
+      pause: [300, 180],
+      step: [520, 760],
+      success: [520, 920],
+      replay: [360, 720],
+    };
+    const [startFreq, endFreq] = frequencies[kind];
+    const duration = kind === 'success' ? 0.42 : 0.16;
+
+    osc.type = kind === 'pause' ? 'triangle' : 'sine';
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(kind === 'success' ? 0.08 : 0.045, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }, [getAudioContext]);
+
+  const startMusic = useCallback(() => {
+    const ctx = getAudioContext();
+    if (!ctx || musicGainRef.current) return;
+
+    const master = ctx.createGain();
+    const low = ctx.createOscillator();
+    const high = ctx.createOscillator();
+    const shimmer = ctx.createGain();
+    const now = ctx.currentTime;
+
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.026, now + 0.8);
+    low.type = 'sine';
+    high.type = 'triangle';
+    low.frequency.setValueAtTime(110, now);
+    high.frequency.setValueAtTime(220, now);
+    shimmer.gain.setValueAtTime(0.22, now);
+
+    low.connect(master);
+    high.connect(shimmer);
+    shimmer.connect(master);
+    master.connect(ctx.destination);
+    low.start();
+    high.start();
+
+    musicGainRef.current = master;
+    musicNodesRef.current = [low, high, shimmer, master];
+  }, [getAudioContext]);
+
+  const stopMusic = useCallback(() => {
+    const ctx = audioContextRef.current;
+    const master = musicGainRef.current;
+    if (!ctx || !master) return;
+
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(master.gain.value || 0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    window.setTimeout(() => {
+      musicNodesRef.current.forEach((node) => {
+        if ('stop' in node) {
+          try { node.stop(); } catch { /* already stopped */ }
+        }
+        try { node.disconnect(); } catch { /* already disconnected */ }
+      });
+      musicNodesRef.current = [];
+      musicGainRef.current = null;
+    }, 420);
+  }, []);
+
+  const stopVoiceOver = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+  }, []);
+
+  const speakVoiceOver = useCallback((targetStep: Step) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const text = VOICE_LINES[targetStep];
+    if (!text) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.94;
+    utterance.pitch = 1;
+    utterance.volume = 0.92;
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find((voice) =>
+      /female|zira|samantha|google us english|english/i.test(`${voice.name} ${voice.lang}`),
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
+    window.speechSynthesis.speak(utterance);
+  }, []);
 
   const handleReplay = () => {
     if (timer.current) clearTimeout(timer.current);
     if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
 
+    stopVoiceOver();
+    spokenStepRef.current = null;
+    startMusic();
+    playSound('replay');
     justSeeked.current = true;
     elapsedRef.current = 0;
     setElapsed(0);
@@ -1229,9 +1362,15 @@ export default function StorefrontTutorial() {
     }
 
     if (!playing) {
+      startMusic();
+      playSound('play');
       // Resuming: remount step component so animations restart cleanly.
       // Elapsed is intentionally NOT reset — scrubber stays at the pause position.
       setStepRestartKey(k => k + 1);
+    } else {
+      stopMusic();
+      stopVoiceOver();
+      playSound('pause');
     }
     setControlsVisible(true);
     setPlaying(p => !p);
@@ -1241,13 +1380,34 @@ export default function StorefrontTutorial() {
     togglePlayRef.current = handleTogglePlay;
   });
 
+  useEffect(() => {
+    if (!playing || step === 'intro') return;
+    playSound(step === 'ending' ? 'success' : 'step');
+    if (step === 'ending') stopMusic();
+  }, [step, playing, playSound, stopMusic]);
+
+  useEffect(() => {
+    if (!playing) {
+      stopVoiceOver();
+      return;
+    }
+    if (spokenStepRef.current === step) return;
+    spokenStepRef.current = step;
+    speakVoiceOver(step);
+  }, [step, playing, speakVoiceOver, stopVoiceOver]);
+
+  useEffect(() => () => {
+    stopVoiceOver();
+  }, [stopVoiceOver]);
+
   const handleSaved = useCallback(() => {
+    playSound('success');
     setUrlBar('afhome.ph/shop/livingco');
     setTimeout(() => {
       if (timer.current) clearTimeout(timer.current);
       setStep('preview');
     }, 400);
-  }, []); // stable ref — setUrlBar/setStep are stable, timer is a ref
+  }, [playSound]); // stable ref — setUrlBar/setStep are stable, timer is a ref
 
   useEffect(() => {
     if (!playing) return;
