@@ -1191,8 +1191,8 @@ export default function StorefrontTutorial() {
   const [urlBar, setUrlBar] = useState('admin.afhome.ph/partner-storefronts');
   const [scale, setScale] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(BEZEL_W + 16);
-  const [viewportHeight, setViewportHeight] = useState(800);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isDevicePortrait, setIsDevicePortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mobileTheater, setMobileTheater] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1248,13 +1248,13 @@ export default function StorefrontTutorial() {
     const update = () => {
       const rawWidth = window.innerWidth;
       const rawHeight = window.innerHeight;
-      const portraitMobileTheater = mobileTheater && rawWidth < rawHeight;
-      const effectiveWidth = portraitMobileTheater ? rawHeight : rawWidth;
-      const effectiveHeight = portraitMobileTheater ? rawWidth : rawHeight;
+      const devicePortrait = rawWidth < rawHeight;
+      const effectiveWidth = mobileTheater ? Math.max(rawWidth, rawHeight) : rawWidth;
+      const effectiveHeight = mobileTheater ? Math.min(rawWidth, rawHeight) : rawHeight;
 
       setViewportWidth(effectiveWidth);
-      setViewportHeight(effectiveHeight);
       setIsMobileViewport(rawWidth < 768);
+      setIsDevicePortrait(devicePortrait);
 
       const sw = (effectiveWidth - 24) / BEZEL_W;
       const sh = (effectiveHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
@@ -1416,7 +1416,7 @@ export default function StorefrontTutorial() {
 
   const meta = STEP_META[step];
   const showInitialPlayButton = !playing && step === 'intro' && elapsed === 0;
-  const isPortraitMobileTheater = mobileTheater && viewportWidth > viewportHeight;
+  const shouldRotateMobileTheater = mobileTheater && isDevicePortrait;
   const fullscreenActive = isFullscreen || mobileTheater;
   const currentUrlBar = step === 'preview' ? urlBar : 'admin.afhome.ph/partner-storefronts';
   const rootStyle = {
@@ -1435,13 +1435,13 @@ export default function StorefrontTutorial() {
     transition: 'padding 260ms ease, background 260ms ease',
   };
   const playerShellStyle = {
-    width: isPortraitMobileTheater ? '100dvh' : '100%',
-    height: isPortraitMobileTheater ? '100dvw' : 'auto',
+    width: shouldRotateMobileTheater ? '100dvh' : '100%',
+    height: shouldRotateMobileTheater ? '100dvw' : 'auto',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: isPortraitMobileTheater ? 'rotate(90deg)' : 'rotate(0deg)',
+    transform: shouldRotateMobileTheater ? 'rotate(90deg)' : 'rotate(0deg)',
     transformOrigin: 'center center',
     transition: 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1), width 420ms cubic-bezier(0.22, 1, 0.36, 1), height 420ms cubic-bezier(0.22, 1, 0.36, 1)',
     willChange: 'transform, width, height',
