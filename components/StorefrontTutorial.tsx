@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2 } from 'lucide-react';
+import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import ProductFilter from '@/components/item/ProductFilter';
 import TopFilter from '@/components/item/TopFilter';
 import ItemCard from '@/components/item/ItemCard';
@@ -1195,6 +1195,7 @@ export default function StorefrontTutorial() {
   const [isDevicePortrait, setIsDevicePortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mobileTheater, setMobileTheater] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
@@ -1202,16 +1203,37 @@ export default function StorefrontTutorial() {
   const justSeeked = useRef(false);
   const scrubberRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const controlsHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stepIdx = STEPS.indexOf(step);
 
   const goTo = (s: Step) => { if (timer.current) clearTimeout(timer.current); setStep(s); };
 
+  const handleReplay = () => {
+    if (timer.current) clearTimeout(timer.current);
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
+
+    justSeeked.current = true;
+    elapsedRef.current = 0;
+    setElapsed(0);
+    setStep('intro');
+    setStepRestartKey(k => k + 1);
+    setTimelineVersion(v => v + 1);
+    setPlaying(true);
+    setControlsVisible(true);
+  };
+
   const handleTogglePlay = () => {
+    if (step === 'ending' || elapsedRef.current >= TOTAL_DURATION - 100) {
+      handleReplay();
+      return;
+    }
+
     if (!playing) {
       // Resuming: remount step component so animations restart cleanly.
       // Elapsed is intentionally NOT reset — scrubber stays at the pause position.
       setStepRestartKey(k => k + 1);
     }
+    setControlsVisible(true);
     setPlaying(p => !p);
   };
   const togglePlayRef = useRef(handleTogglePlay);
@@ -1249,16 +1271,20 @@ export default function StorefrontTutorial() {
       const rawWidth = window.innerWidth;
       const rawHeight = window.innerHeight;
       const devicePortrait = rawWidth < rawHeight;
+      const fullscreenLayout = mobileTheater || isFullscreen;
       const effectiveWidth = mobileTheater ? Math.max(rawWidth, rawHeight) : rawWidth;
       const effectiveHeight = mobileTheater ? Math.min(rawWidth, rawHeight) : rawHeight;
+      const outerGap = fullscreenLayout ? 0 : 24;
+      const controlsGap = fullscreenLayout ? 0 : 68;
 
       setViewportWidth(effectiveWidth);
       setIsMobileViewport(rawWidth < 768);
       setIsDevicePortrait(devicePortrait);
 
-      const sw = (effectiveWidth - 24) / BEZEL_W;
-      const sh = (effectiveHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
-      setScale(Math.min(1, sw, sh));
+      const sw = (effectiveWidth - outerGap) / BEZEL_W;
+      const sh = (effectiveHeight - outerGap - controlsGap) / BEZEL_H;
+      const nextScale = Math.min(sw, sh);
+      setScale(fullscreenLayout ? nextScale : Math.min(1, nextScale));
     };
     update();
     window.addEventListener('resize', update);
@@ -1267,13 +1293,16 @@ export default function StorefrontTutorial() {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
     };
-  }, [mobileTheater]);
+  }, [mobileTheater, isFullscreen]);
 
   useEffect(() => {
     const onFSChange = () => {
       const active = !!document.fullscreenElement;
       setIsFullscreen(active);
-      if (!active) setMobileTheater(false);
+      if (!active) {
+        setMobileTheater(false);
+        setControlsVisible(true);
+      }
     };
     document.addEventListener('fullscreenchange', onFSChange);
     return () => document.removeEventListener('fullscreenchange', onFSChange);
@@ -1292,12 +1321,14 @@ export default function StorefrontTutorial() {
   const toggleFullscreen = async () => {
     if (document.fullscreenElement || mobileTheater) {
       setMobileTheater(false);
+      setControlsVisible(true);
       if (document.fullscreenElement) await document.exitFullscreen();
       try { screen.orientation.unlock(); } catch { /* ignore */ }
       return;
     }
 
     try {
+      setControlsVisible(false);
       if (isMobileViewport) setMobileTheater(true);
       if (document.fullscreenEnabled && containerRef.current?.requestFullscreen) {
         await containerRef.current.requestFullscreen();
@@ -1310,6 +1341,23 @@ export default function StorefrontTutorial() {
       setMobileTheater(true);
     }
   };
+
+  const revealFullscreenControls = useCallback(() => {
+    const active = isFullscreen || mobileTheater;
+    if (!active) return;
+
+    setControlsVisible(true);
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
+    controlsHideTimer.current = setTimeout(() => {
+      if (playing && elapsedRef.current < TOTAL_DURATION - 100) {
+        setControlsVisible(false);
+      }
+    }, 2200);
+  }, [isFullscreen, mobileTheater, playing]);
+
+  useEffect(() => () => {
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
+  }, []);
 
   // Sync scrubber position when step changes naturally (not from a seek)
   useEffect(() => {
@@ -1418,17 +1466,19 @@ export default function StorefrontTutorial() {
   const showInitialPlayButton = !playing && step === 'intro' && elapsed === 0;
   const shouldRotateMobileTheater = mobileTheater && isDevicePortrait;
   const fullscreenActive = isFullscreen || mobileTheater;
+  const isTimelineComplete = step === 'ending' || elapsed >= TOTAL_DURATION - 100;
+  const showControls = !fullscreenActive || controlsVisible || !playing || isTimelineComplete;
   const currentUrlBar = step === 'preview' ? urlBar : 'admin.afhome.ph/partner-storefronts';
   const rootStyle = {
-    minHeight: mobileTheater ? '100dvh' : '100vh',
-    width: mobileTheater ? '100dvw' : '100%',
+    minHeight: fullscreenActive ? '100dvh' : '100vh',
+    width: fullscreenActive ? '100dvw' : '100%',
     background: 'radial-gradient(ellipse at 50% 30%, #2a2a2a 0%, #0f0f0f 100%)',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    padding: mobileTheater ? 0 : '12px 0',
+    padding: fullscreenActive ? 0 : '12px 0',
     position: mobileTheater ? 'fixed' as const : 'relative' as const,
     inset: mobileTheater ? 0 : undefined,
     zIndex: mobileTheater ? 9999 : undefined,
@@ -1448,7 +1498,12 @@ export default function StorefrontTutorial() {
   };
 
   return (
-    <div ref={containerRef} style={rootStyle}>
+    <div
+      ref={containerRef}
+      style={rootStyle}
+      onMouseMove={revealFullscreenControls}
+      onTouchStart={revealFullscreenControls}
+    >
       <div style={playerShellStyle}>
       {/* Scale wrapper — only wraps the bezel, controls are outside */}
       <div style={{ position: 'relative', width: BEZEL_W * scale, height: BEZEL_H * scale, flexShrink: 0, transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1), height 420ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
@@ -1654,19 +1709,19 @@ export default function StorefrontTutorial() {
           </AnimatePresence>
 
           <AnimatePresence>
-            {showInitialPlayButton && (
+            {(showInitialPlayButton || (!playing && step !== 'ending')) && (
               <motion.button
-                key="initial-play"
+                key="pause-play-overlay"
                 type="button"
                 onClick={handleTogglePlay}
                 initial={{ opacity: 0, scale: 0.92 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.22 }}
-                className="absolute inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-[1px]"
-                aria-label="Play storefront tutorial"
+                className="absolute inset-0 z-[120] flex items-center justify-center bg-black/20 backdrop-blur-[1px]"
+                aria-label={showInitialPlayButton ? 'Play storefront tutorial' : 'Resume storefront tutorial'}
               >
-                <span className="flex h-24 w-24 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-white/20">
+                <span className="flex h-24 w-24 items-center justify-center rounded-full border border-white/30 bg-black/55 text-white shadow-[0_18px_70px_rgba(0,0,0,0.55)] transition hover:scale-105 hover:bg-black/65">
                   <Play size={38} fill="currentColor" className="ml-1" />
                 </span>
               </motion.button>
@@ -1680,21 +1735,36 @@ export default function StorefrontTutorial() {
       </div>{/* end scale wrapper */}
 
       {/* ── Controls bar — native size, NOT inside scale transform ── */}
-      <div style={{ width: Math.min(BEZEL_W * scale, viewportWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box', transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
+      <div style={{
+        width: Math.min(BEZEL_W * scale, viewportWidth - (fullscreenActive ? 0 : 16)),
+        flexShrink: 0,
+        padding: fullscreenActive ? '0 16px 16px' : '0 4px',
+        boxSizing: 'border-box',
+        position: fullscreenActive ? 'absolute' as const : 'relative' as const,
+        left: fullscreenActive ? '50%' : undefined,
+        bottom: fullscreenActive ? 0 : undefined,
+        zIndex: fullscreenActive ? 200 : undefined,
+        transform: fullscreenActive ? `translate(-50%, ${showControls ? '0' : '22px'})` : 'none',
+        opacity: showControls ? 1 : 0,
+        pointerEvents: showControls ? 'auto' as const : 'none' as const,
+        transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1)',
+      }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(255,255,255,0.07)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          backdropFilter: 'blur(16px)',
+          background: 'rgba(15,23,42,0.78)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          backdropFilter: 'blur(18px)',
+          boxShadow: '0 18px 60px rgba(0,0,0,0.32)',
           borderRadius: 16, padding: '8px 12px',
         }}>
 
           {/* Play / Pause — 44px touch target */}
           <button
-            onClick={handleTogglePlay}
+            onClick={isTimelineComplete ? handleReplay : handleTogglePlay}
+            title={isTimelineComplete ? 'Replay' : playing ? 'Pause' : 'Play'}
             style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.13)', color: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
           >
-            {playing ? <Pause size={17} /> : <Play size={17} />}
+            {isTimelineComplete ? <RotateCcw size={17} /> : playing ? <Pause size={17} /> : <Play size={17} />}
           </button>
 
           {/* Current time */}
