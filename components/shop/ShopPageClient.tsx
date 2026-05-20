@@ -7,7 +7,6 @@ import TrustBar from '@/components/layout/TrustBar';
 import ShopBuilderSections, { type ShopBuilderApiResponse } from '@/components/sections/ShopBuilderSections';
 import Footer from '@/components/landing-page/Footer';
 import ScrollToTop from '@/components/landing-page/ScrollToTop';
-import AppPromoBar from '@/components/layout/AppPromoBar';
 import type { TopBarConfig } from '@/components/layout/TopBar';
 import type { TrustBarConfig } from '@/components/layout/TrustBar';
 
@@ -44,7 +43,6 @@ const ShopPageClient = ({ shopData, navbarCategories, topBarConfig, trustBarConf
 
   return (
     <div>
-      <AppPromoBar />
       <TopBar {...topBarConfig} />
       <Navbar initialCategories={navbarCategories} />
       <TrustBar {...trustBarConfig} />

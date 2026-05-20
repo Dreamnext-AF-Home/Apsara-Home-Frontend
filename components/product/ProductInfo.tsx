@@ -804,10 +804,11 @@ const ProductInfo = ({
 
     const referralCode = (me?.username ?? '').trim();
     const shareUrl = useMemo(() => {
-        const baseUrl = 'https://www.afhome.ph/shop';
+        const productSlug = product.id ? `${toSlug(product.name)}-i${product.id}` : toSlug(product.name);
+        const baseUrl = `https://www.afhome.ph/product/${productSlug}`;
         if (!referralCode) return baseUrl;
         return `${baseUrl}?ref=${encodeURIComponent(referralCode)}`;
-    }, [referralCode]);
+    }, [referralCode, product.name, product.id]);
 
     return (
         <motion.div
@@ -1231,7 +1232,7 @@ const ProductInfo = ({
                     prodpv: variantPv,
                 }}
                 brandName={product.brand}
-                shareUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                shareUrl={shareUrl}
                 forceRealPrice={forceRealPrice}
             />
 

@@ -14,6 +14,7 @@ import { useMeQuery } from '@/store/api/userApi'
 import { useEffect, useState } from 'react'
 import { useAccountDeletedListener } from '@/hooks/useAccountDeletedListener'
 import AdsPopup from '@/components/shop/AdsPopup'
+import { useEchoSetup } from '@/hooks/useEchoSetup'
 
 function CustomerSessionGuard() {
   const { data: session, status } = useSession()
@@ -77,6 +78,11 @@ function CustomerBannedOverlay() {
       )}
     </AnimatePresence>
   )
+}
+
+function EchoInitializer() {
+  useEchoSetup()
+  return null
 }
 
 function AccountDeletedListener() {
@@ -144,6 +150,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ReduxProvider store={store}>
           <CartProvider>
           <WishlistProvider>
+            <EchoInitializer />
             <CustomerSessionGuard />
             <AccountDeletedListener />
             <CustomerBannedOverlay />

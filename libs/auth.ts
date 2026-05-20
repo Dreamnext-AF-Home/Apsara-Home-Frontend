@@ -21,6 +21,68 @@ const apiBaseUrl = (process.env.LARAVEL_API_URL || process.env.NEXT_PUBLIC_LARAV
 export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
+            id: 'qr',
+            name: 'QR Code',
+            credentials: {
+                sessionId: { label: 'Session ID', type: 'text' },
+            },
+            async authorize(credentials, req) {
+                const sessionId = credentials?.sessionId;
+                if (!sessionId) {
+                    return null;
+                }
+
+                try {
+                    if (!apiBaseUrl) {
+                        throw new Error('Authentication service is not configured (LARAVEL_API_URL).')
+                    }
+
+                    const incomingHeaders = req?.headers ?? {}
+                    const forwardedFor = String(
+                        incomingHeaders['x-forwarded-for']
+                        ?? incomingHeaders['x-real-ip']
+                        ?? ''
+                    ).trim()
+                    const userAgent = String(incomingHeaders['user-agent'] ?? '').trim()
+                    const cfIpCountry = String(incomingHeaders['cf-ipcountry'] ?? '').trim()
+
+                    const res = await fetch(`${apiBaseUrl}/api/auth/qr/complete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            ...(forwardedFor ? { 'X-Forwarded-For': forwardedFor } : {}),
+                            ...(userAgent ? { 'User-Agent': userAgent } : {}),
+                            ...(cfIpCountry ? { 'CF-IPCountry': cfIpCountry } : {}),
+                        },
+                        body: JSON.stringify({
+                            session_id: sessionId,
+                        }),
+                    })
+
+                    const data = await res.json().catch(() => null)
+
+                    if (!res.ok) {
+                        const message = data?.message || 'QR login failed. Please try again.'
+                        throw new Error(message)
+                    }
+
+                    if (!data.user || !data.token) return null
+
+                    return {
+                        id: String(data.user.id),
+                        name: data.user.name,
+                        email: data.user.email,
+                        accessToken: data.token,
+                        role: 'customer',
+                        passwordChangeRequired: Boolean(data.user.password_change_required),
+                    }
+                } catch (e) {
+                    throw e instanceof Error ? e : new Error('QR authentication failed.')
+                }
+            }
+        }),
+        CredentialsProvider({
             name: 'Credentials',
             credentials: {
                 email: { label: 'Email', type: 'email' },

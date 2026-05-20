@@ -94,6 +94,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: data.product.name,
     description: safeDescription,
     path: `/shop/${normalizedPartner}/product/${canonicalSlug}`,
+    image: data.product.image,
     siteName: storefront?.displayName || toTitle(partner),
   })
 

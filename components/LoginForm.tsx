@@ -9,6 +9,7 @@ import { getSession, signIn, signOut, useSession } from "next-auth/react";
 import Loading from '@/components/Loading'
 import { showErrorToast, showInfoToast, showSuccessToast } from '@/libs/toast'
 import { clearAccessTokenCache } from "@/store/api/baseApi";
+import QrModal from "@/components/QrModal";
 
 declare global {
   interface Window {
@@ -275,6 +276,8 @@ const LoginForm = ({
     const [lockoutSeconds, setLockoutSeconds] = useState(0);
     const [showTotpField, setShowTotpField] = useState(false);
     const [totpLoginCode, setTotpLoginCode] = useState('');
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+    const [preGeneratedQr, setPreGeneratedQr] = useState<{ sessionId: string; qrData: string } | null>(null);
     const [form, setForm] = useState({
         email: '',
         password: '',
@@ -304,6 +307,34 @@ const LoginForm = ({
     useEffect(() => {
         setIsMounted(true)
     }, [])
+
+    // Pre-generate QR code in background
+    useEffect(() => {
+        const generateQrInBackground = async () => {
+            try {
+                if (!apiBaseUrl) return
+                const response = await fetch(`${apiBaseUrl}/api/auth/qr/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                })
+
+                if (response.ok) {
+                    const data = await response.json()
+                    setPreGeneratedQr({
+                        sessionId: data.session_id,
+                        qrData: data.qr_data,
+                    })
+                }
+            } catch (err) {
+                console.warn('Background QR generation failed:', err)
+            }
+        }
+
+        generateQrInBackground()
+    }, [apiBaseUrl])
 
     const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm(f => ({ ...f, [field]: e.target.value }))
@@ -972,6 +1003,22 @@ const LoginForm = ({
                         <span className={`text-xs font-medium ${showTotpField ? 'text-sky-600 dark:text-sky-400' : 'text-slate-600 dark:text-gray-300'}`}>Authenticator</span>
                     </button> */}
 
+                    {/* QR Code */}
+                    <button
+                        type="button"
+                        onClick={() => setIsQrModalOpen(true)}
+                        disabled={isLoading || isPasskeyLoading || isGoogleLoading}
+                        className="flex-1 flex flex-row items-center justify-center gap-2 py-3 rounded-[14px] border border-slate-200 bg-white transition-colors hover:bg-slate-50 disabled:opacity-60 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+                    >
+                        <svg className="h-5 w-5 text-slate-600 dark:text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="4" height="4"></rect>
+                        </svg>
+                        <span className="text-xs font-medium text-slate-600 dark:text-gray-300">QR Code</span>
+                    </button>
+
                     {/* Passkey */}
                     {isMounted && (
                         <button
@@ -1008,6 +1055,15 @@ const LoginForm = ({
                     <p className="text-[11px] text-center text-slate-500 dark:text-gray-400">Passkeys are not supported in this browser.</p>
                 )}
             </form>
+
+            <QrModal
+              isOpen={isQrModalOpen}
+              onClose={() => setIsQrModalOpen(false)}
+              defaultCallbackPath={defaultCallbackPath}
+              accountLabel={accountLabel}
+              preGeneratedSessionId={preGeneratedQr?.sessionId}
+              preGeneratedQrData={preGeneratedQr?.qrData}
+            />
         </motion.div>
     )
 }

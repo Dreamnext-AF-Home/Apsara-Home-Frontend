@@ -6,7 +6,7 @@ import ProductImageGallery from './ProductImageGallery';
 import ProductInfo from './ProductInfo';
 import StickyAddToCart from './StickyAddToCart';
 import { useGetProductBrandQuery } from '@/store/api/productsApi';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { setStoredReferralCode } from '@/libs/referral';
 import { resolveCheckoutSource } from '@/libs/checkoutSource';
 import { useSession } from 'next-auth/react';
@@ -225,9 +225,29 @@ const ProductPageClient = ({
     const role = String(session?.user?.role ?? '').toLowerCase();
     const isManualCheckoutOnly = Boolean(publicSettingsData?.settings?.enable_manual_checkout_mode) && !Boolean(product.manualCheckoutEnabled);
 
+    const pathname = usePathname();
+
     const handleVariantChange = useCallback((variant?: VariantOption) => {
         setSelectedVariant(variant);
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const slug = pathname.split('/').pop();
+        if (!slug) return;
+
+        const appScheme = `apsarahome://product/${slug}`;
+
+        console.log('[ProductPage] Attempting to open app with scheme:', appScheme);
+        window.location.href = appScheme;
+
+        const fallbackTimeout = setTimeout(() => {
+            console.log('[ProductPage] App not detected, staying on web');
+        }, 500);
+
+        return () => clearTimeout(fallbackTimeout);
+    }, [pathname]);
 
     useEffect(() => {
         const username = (searchParams.get('username') ?? '').trim();

@@ -2,7 +2,11 @@
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2 } from 'lucide-react';
+import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import ProductFilter from '@/components/item/ProductFilter';
+import TopFilter from '@/components/item/TopFilter';
+import ItemCard from '@/components/item/ItemCard';
+import type { Category } from '@/store/api/categoriesApi';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 type Step = 'intro' | 'step1' | 'step2' | 'step3' | 'step4' | 'step5' | 'preview' | 'ending';
@@ -39,6 +43,16 @@ const STEP_META: Partial<Record<Step, StepMeta>> = {
   },
 };
 const MAIN_STEPS: Step[] = ['step1', 'step2', 'step3', 'step4', 'step5'];
+const VOICE_LINES: Partial<Record<Step, string>> = {
+  intro: 'Welcome to the AF Home Partner Storefront Studio tutorial. Press play to begin setting up your branded store.',
+  step1: 'Step one. Set your store identity. Fill in your store URL slug, display name, hero title, and notification email.',
+  step2: 'Step two. Upload your logo and add your referral links. These help brand your store and track orders.',
+  step3: 'Step three. Choose your brand colors and hero subtitle. These make the storefront feel like your own brand.',
+  step4: 'Step four. Select product categories. Choose which products your customers can browse in your partner store.',
+  step5: 'Step five. Save and launch. Once saved, your branded partner storefront is ready to share.',
+  preview: 'This is your live partner store preview. Customers can browse products, add to cart, and checkout through AF Home.',
+  ending: 'Your store is ready. Your brand, your curated products, powered by AF Home.',
+};
 
 /* ─── Timeline ───────────────────────────────────────────────── */
 const SCRUB_STEPS: Step[] = ['intro', 'step1', 'step2', 'step3', 'step4', 'step5', 'preview'];
@@ -56,6 +70,13 @@ function formatTime(ms: number) {
 const SCRUB_LABELS: Partial<Record<Step, string>> = {
   intro: 'Intro', step1: 'Identity', step2: 'Logo', step3: 'Colors',
   step4: 'Categories', step5: 'Save', preview: 'Live Store',
+};
+
+const getStepStart = (step: Step) => STEP_STARTS[step] ?? 0;
+
+const getRemainingStepDuration = (step: Step, elapsed: number) => {
+  const offset = Math.max(0, elapsed - getStepStart(step));
+  return Math.max(0, DURATIONS[step] - offset);
 };
 
 
@@ -267,7 +288,6 @@ function useTyping(fullText: string, speed = 52, startAfter = 0, playing = true)
   const [displayed, setDisplayed] = useState('');
   useEffect(() => {
     if (!playing) return;
-    setDisplayed('');
     let i = 0;
     const t = setTimeout(() => {
       const iv = setInterval(() => {
@@ -924,53 +944,128 @@ function Step5Screen({ onSaved, playing }: { onSaved: () => void; playing: boole
   );
 }
 
-/* ─── Preview Products ───────────────────────────────────────── */
-const PREVIEW_PRODUCTS = [
-  { brand: 'LIVING LUXE',  name: 'Ceramic Vase Collection',      price: '₱1,299', orig: '₱1,500', disc: 13, bg: 'linear-gradient(135deg,#fef9c3,#fde68a)',   emoji: '🏺' },
-  { brand: 'NORDIC HOME',  name: 'Minimalist Wall Art Set',       price: '₱2,499', orig: '₱2,800', disc: 11, bg: 'linear-gradient(135deg,#dbeafe,#bfdbfe)',   emoji: '🖼️' },
-  { brand: 'RATTAN CO.',   name: 'Rattan Display Shelf 3-Tier',  price: '₱3,850', orig: '₱4,200', disc:  8, bg: 'linear-gradient(135deg,#f5f0e8,#e8dcc8)',   emoji: '📚' },
-  { brand: 'COZY HOME',    name: 'Scented Candle Set of 6',      price: '₱899',   orig: '₱999',   disc: 10, bg: 'linear-gradient(135deg,#fce7f3,#fbcfe8)',   emoji: '🕯️' },
-  { brand: 'VINTAGE CO.',  name: 'Macramé Wall Hanging',          price: '₱1,599', orig: '₱1,800', disc: 11, bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)',   emoji: '🧶' },
-  { brand: 'LIVING LUXE',  name: 'Boho Throw Pillow Set',         price: '₱1,199', orig: '₱1,399', disc: 14, bg: 'linear-gradient(135deg,#fef3c7,#fde68a)',   emoji: '🛋️' },
-  { brand: 'NORDIC HOME',  name: 'Bamboo Plant Stand',            price: '₱2,199', orig: '₱2,500', disc: 12, bg: 'linear-gradient(135deg,#d1fae5,#a7f3d0)',   emoji: '🪴' },
-  { brand: 'ARTISAN',      name: 'Handwoven Basket Set',          price: '₱1,599', orig: '₱1,800', disc: 11, bg: 'linear-gradient(135deg,#fff7ed,#fed7aa)',   emoji: '🧺' },
+type TutorialProduct = {
+  id: number;
+  name: string;
+  catid?: number;
+  image?: string | null;
+  images?: string[] | string | null;
+  price?: number | null;
+  priceSrp?: number | null;
+  priceDp?: number | null;
+  priceMember?: number | null;
+  originalPrice?: number | null;
+  sku?: string | null;
+  prodpv?: number | null;
+  brand?: string | null;
+  bestseller?: boolean;
+  salespromo?: boolean;
+  musthave?: boolean;
+  verified?: boolean;
+  qty?: number;
+  variants?: [];
+};
+
+type ProductsApiResponse = {
+  products?: TutorialProduct[];
+};
+
+type CategoriesApiResponse = {
+  categories?: Category[];
+};
+
+const FALLBACK_PREVIEW_PRODUCTS: TutorialProduct[] = [
+  { id: 9001, brand: 'AF HOME', name: 'Modern Sofa Set', priceSrp: 12499, priceDp: 12499, image: '/Images/HeroSection/chairs_stools.jpg', qty: 12 },
+  { id: 9002, brand: 'AF HOME', name: 'Oak Coffee Table', priceSrp: 5299, priceDp: 5299, image: '/Images/HeroSection/living_room.jpg', qty: 9 },
+  { id: 9003, brand: 'AF HOME', name: 'Linen Curtain Set', priceSrp: 1899, priceDp: 1899, image: '/Images/HeroSection/curtains.jpg', qty: 18 },
+  { id: 9004, brand: 'AF HOME', name: 'Velvet Accent Chair', priceSrp: 8799, priceDp: 8799, image: '/Images/HeroSection/chairs_stools.jpg', qty: 6 },
 ];
+
+const resolvePreviewAssetUrl = (rawValue: string | null | undefined, apiUrl?: string) => {
+  const value = String(rawValue ?? '').trim();
+  if (!value) return '/Images/af_home_logo.png';
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) return value;
+  return apiUrl ? `${apiUrl.replace(/\/$/, '')}/${value.replace(/^\/+/, '')}` : `/${value.replace(/^\/+/, '')}`;
+};
+
+const normalizePreviewProduct = (product: TutorialProduct, apiUrl?: string): TutorialProduct => ({
+  ...product,
+  price: Number(product.price ?? product.priceSrp ?? product.priceDp ?? 0),
+  priceSrp: Number(product.priceSrp ?? product.price ?? product.priceDp ?? 0),
+  priceDp: Number(product.priceDp ?? product.priceSrp ?? product.price ?? 0),
+  priceMember: Number(product.priceMember ?? product.priceDp ?? product.priceSrp ?? product.price ?? 0),
+  image: resolvePreviewAssetUrl(product.image, apiUrl),
+  qty: Number(product.qty ?? 0),
+});
 
 /* ─── Preview: Live partner store ────────────────────────────── */
 function PreviewScreen({ playing }: { playing: boolean }) {
   const [curPos, setCurPos] = useState({ x: -300, y: -300 });
   const [clicking, setClicking] = useState(false);
   const [callout, setCallout] = useState('');
-  const [scrollY, setScrollY] = useState(0);
   const [showListing, setShowListing] = useState(false);
+  const [products, setProducts] = useState<TutorialProduct[]>(FALLBACK_PREVIEW_PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(() => Boolean(process.env.NEXT_PUBLIC_LARAVEL_API_URL));
+  const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+  const visibleProducts = products.slice(0, 8);
+
+  useEffect(() => {
+    let cancelled = false;
+    const apiUrl = process.env.NEXT_PUBLIC_LARAVEL_API_URL;
+    const baseUrl = apiUrl?.replace(/\/$/, '');
+
+    if (!baseUrl) {
+      return;
+    }
+
+    const loadPreviewData = async () => {
+      try {
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch(`${baseUrl}/api/products?page=1&per_page=24&status=1`, { headers: { Accept: 'application/json' } }),
+          fetch(`${baseUrl}/api/categories?used_only=1&per_page=100`, { headers: { Accept: 'application/json' } }),
+        ]);
+
+        const productsJson = productsResponse.ok ? ((await productsResponse.json()) as ProductsApiResponse) : { products: [] };
+        const categoriesJson = categoriesResponse.ok ? ((await categoriesResponse.json()) as CategoriesApiResponse) : { categories: [] };
+        const nextProducts = (productsJson.products ?? []).map((product) => normalizePreviewProduct(product, baseUrl));
+
+        if (!cancelled) {
+          setProducts(nextProducts.length > 0 ? nextProducts : FALLBACK_PREVIEW_PRODUCTS);
+          setCategories(categoriesJson.categories ?? []);
+          setIsLoadingData(false);
+        }
+      } catch {
+        if (!cancelled) setIsLoadingData(false);
+      }
+    };
+
+    void loadPreviewData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
     const click = (cb: () => void) => { setClicking(true); setTimeout(() => { setClicking(false); cb(); }, 220); };
 
-    // Scroll storefront hero out of view to reveal category grid
-    const scrollFrames: [number, () => void][] = Array.from({ length: 20 }, (_, i) => [
-      1800 + i * 25,
-      () => setScrollY(y => Math.min(y + 8, 160)),
-    ] as [number, () => void]);
-
     const seq: [number, () => void][] = [
-      [800,  () => setCallout('Your live partner storefront — exactly what customers see')],
+      [800,  () => setCallout('Your live partner storefront, loaded from the real system')],
       [2500, () => setCallout('')],
-      [2800, () => setCurPos({ x: 270, y: 190 })],
-      [3600, () => click(() => { setShowListing(true); setCallout('Click a category to see all its products'); })],
-      [4200, () => setCurPos({ x: 590, y: 165 })],
+      [2800, () => setCurPos({ x: 1088, y: 138 })],
+      [3600, () => click(() => { setShowListing(true); setCallout('Products, images, filters, and cards come from backend data'); })],
+      [4200, () => setCurPos({ x: 610, y: 245 })],
       [6500, () => setCallout('')],
       [8000, () => setCallout('Customers can add to cart and checkout on AF Home')],
       [10500, () => setCallout('')],
     ];
 
-    const allTimers = [...seq, ...scrollFrames].map(([t, fn]) => setTimeout(fn as () => void, t as number));
+    const allTimers = seq.map(([t, fn]) => setTimeout(fn as () => void, t as number));
     return () => allTimers.forEach(clearTimeout);
   }, [playing]);
 
-  const themeColor = '#1d4ed8';
-  const accentColor = '#7c3aed';
+  const noopFilterChange = () => undefined;
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#f8f9fa]">
@@ -986,177 +1081,109 @@ function PreviewScreen({ playing }: { playing: boolean }) {
 
       <AnimatePresence mode="wait">
         {!showListing ? (
-          /* ── Storefront homepage ── */
-          <motion.div key="storefront" className="absolute inset-0" exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.35 }}>
-            <div style={{ transform: `translateY(-${scrollY}px)`, willChange: 'transform' }}>
-              {/* Hero */}
-              <div style={{ background: `linear-gradient(135deg, ${themeColor} 0%, ${accentColor} 100%)` }}>
-                <div className="mx-auto max-w-5xl px-6 py-5">
-                  <div className="flex gap-4 rounded-[24px] bg-white/93 p-5 shadow-sm items-center justify-between">
-                    <div className="flex items-center gap-5">
-                      <div className="h-20 w-24 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center text-sm font-black text-slate-600">LC</div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Partner Store</p>
-                        <h1 className="text-2xl font-bold tracking-tight" style={{ color: themeColor }}>Modern Living, Delivered.</h1>
-                        <p className="mt-1 text-sm text-slate-500">Curated home products for every Filipino home.</p>
-                      </div>
+          <motion.div key="storefront" className="absolute inset-0 overflow-y-auto bg-slate-50" exit={{ opacity: 0, scale: 0.985 }} transition={{ duration: 0.35 }}>
+            <section className="border-b border-slate-200" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #2563eb 100%)' }}>
+              <div className="mx-auto max-w-7xl px-6 py-5">
+                <div className="flex items-center justify-between gap-5 rounded-[28px] bg-white/92 p-6 shadow-sm backdrop-blur">
+                  <div className="flex items-center gap-5">
+                    <div className="flex h-24 w-28 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <span className="text-xl font-bold text-teal-700">LC</span>
                     </div>
-                    <div className="flex gap-3">
-                      <button className="rounded-full px-5 py-2.5 text-sm font-semibold text-white" style={{ backgroundColor: themeColor }}>Login</button>
-                      <button className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700">LivingCo Products</button>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Partner Store</p>
+                      <h1 className="text-3xl font-bold tracking-tight text-teal-700">Modern Living, Delivered.</h1>
+                      <p className="mt-1 max-w-2xl text-sm text-slate-600">Curated home products for every Filipino home.</p>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button className="rounded-full bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm">Login</button>
+                    <button className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700">LivingCo Products</button>
                   </div>
                 </div>
               </div>
+            </section>
 
-              {/* Category grid */}
-              <div className="mx-auto max-w-5xl px-6 py-8">
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] mb-1 text-center" style={{ color: accentColor }}>Shop by Category</p>
-                <h2 className="text-xl font-bold text-slate-900 mb-5 text-center">Find Your Perfect Home Product</h2>
-                <div className="grid grid-cols-4 gap-3">
-                  {(['Home Decor', 'Home Essentials', 'Appliances', 'Home & Living'] as const).map((cat, i) => (
-                    <div key={cat} className="relative rounded-2xl overflow-hidden aspect-[4/3] flex flex-col justify-end p-3"
-                      style={{ background: `linear-gradient(160deg, ${['#e2e8f0','#dbeafe','#fef9c3','#dcfce7'][i]} 0%, #cbd5e1 100%)` }}>
-                      <p className="text-sm font-bold text-slate-800">{cat}</p>
-                      <p className="text-[10px] text-slate-500">{[47, 27, 142, 1894][i]} Products</p>
-                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold" style={{ color: accentColor }}>
-                        Shop Now <ArrowRight size={8} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <section className="mx-auto max-w-7xl px-6 py-8">
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.22em] text-blue-600">Featured Products</p>
+              <h2 className="mb-5 text-center text-2xl font-bold text-slate-900">Loaded From Backend</h2>
+              <div className="grid grid-cols-4 gap-4">
+                {visibleProducts.slice(0, 4).map((product, index) => (
+                  <motion.div key={product.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                    <ItemCard
+                      product={product}
+                      brandName={product.brand || ''}
+                      allowGuestAddToCart
+                      allowGuestWishlist
+                    />
+                  </motion.div>
+                ))}
               </div>
+            </section>
 
-              {/* Featured products */}
-              <div className="mx-auto max-w-5xl px-6 pb-8">
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] mb-1" style={{ color: accentColor }}>Featured Products</p>
-                <h2 className="text-xl font-bold text-slate-900 mb-5">Top Picks This Week</h2>
-                <div className="grid grid-cols-4 gap-3">
-                  {PREVIEW_PRODUCTS.slice(0, 4).map((p) => (
-                    <div key={p.name} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                      <div className="h-28 flex flex-col items-center justify-center gap-1" style={{ background: p.bg }}>
-                        <span style={{ fontSize: 36, lineHeight: 1 }}>{p.emoji}</span>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(30,30,80,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AF HOME</span>
-                      </div>
-                      <div className="p-3">
-                        <p className="text-xs font-semibold text-slate-800 line-clamp-2 mb-1">{p.name}</p>
-                        <p className="text-sm font-bold" style={{ color: themeColor }}>{p.price}</p>
-                        <button className="mt-2 w-full rounded-lg py-1.5 text-[10px] font-bold text-white" style={{ backgroundColor: accentColor }}>Add to Cart</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <footer className="border-t border-slate-200 bg-white px-6 py-4">
+              <div className="mx-auto flex max-w-7xl items-center justify-between text-xs text-slate-500">
+                <p>Orders from <span className="font-semibold text-slate-800">LivingCo Philippines</span> are still processed through AF Home.</p>
+                <p>{isLoadingData ? 'Loading live products...' : `${products.length} backend products available`}</p>
               </div>
-
-              {/* Footer */}
-              <div className="border-t border-slate-200 bg-white px-6 py-4">
-                <div className="mx-auto max-w-5xl flex items-center justify-between text-xs text-slate-500">
-                  <p>Orders from <span className="font-semibold text-slate-800">LivingCo Philippines</span> are still processed through AF Home.</p>
-                  <p>Partner notifications: partner@livingco.ph</p>
-                </div>
-              </div>
-            </div>
-            <Cursor x={curPos.x} y={curPos.y} clicking={clicking} />
+            </footer>
           </motion.div>
         ) : (
-          /* ── Product listing page ── */
           <motion.div key="listing" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.38 }}
-            className="absolute inset-0 flex flex-col bg-[#f8f9fa]">
-            {/* Breadcrumb */}
-            <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>
-              <span>Home</span><span style={{ color: '#cbd5e1' }}>›</span>
-              <span style={{ fontWeight: 600, color: '#1e293b' }}>Home Decor</span>
+            className="absolute inset-0 flex flex-col bg-[#faf8f5]">
+            <div className="border-b border-gray-100 bg-gray-50 px-6 py-3">
+              <div className="flex items-center justify-between">
+                <h1 className="text-base font-bold text-slate-800">All Products</h1>
+                <nav className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <span className="font-medium">Home</span>
+                  <span>›</span>
+                  <span className="font-semibold text-slate-600">All Products</span>
+                </nav>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-              {/* Filters sidebar */}
-              <div style={{ width: 196, borderRight: '1px solid #e2e8f0', background: '#fff', padding: '14px 12px', flexShrink: 0, overflowY: 'auto' }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>Filters</p>
+            <div className="flex flex-1 gap-6 overflow-hidden px-6 py-6">
+              <aside className="w-80 shrink-0 overflow-y-auto">
+                <ProductFilter
+                  onFilterChange={noopFilterChange}
+                  categories={categories}
+                  currentCategory="All Products"
+                  maxPrice={100000}
+                />
+              </aside>
 
-                <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Shop Category</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
-                  {['All Category', 'Mobile & Accessories', 'Home Decor', 'Home Essentials', 'Appliances', 'Auto Care & Detailing', 'Home & Living', 'AF Properties'].map(cat => (
-                    <div key={cat} style={{
-                      padding: '3px 10px', borderRadius: 20, fontSize: 10,
-                      background: cat === 'Home Decor' ? themeColor : '#f1f5f9',
-                      color: cat === 'Home Decor' ? '#fff' : '#64748b',
-                      fontWeight: cat === 'Home Decor' ? 600 : 400,
-                    }}>{cat}</div>
-                  ))}
+              <main className="min-w-0 flex-1 overflow-y-auto">
+                <TopFilter
+                  onViewTypeChange={setViewType}
+                  viewType={viewType}
+                  showNumber={12}
+                  showPageSizeControl={false}
+                  className="mb-4"
+                />
+                <div className="mb-4 flex items-center justify-between text-sm text-gray-600">
+                  <span>
+                    Showing <span className="font-semibold text-slate-700">{visibleProducts.length}</span> of{' '}
+                    <span className="font-semibold text-slate-700">{products.length}</span> products
+                  </span>
+                  {isLoadingData ? <span className="text-xs font-medium text-sky-500">Loading live data...</span> : null}
                 </div>
-
-                <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Price Range</p>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                  {['Min: 0', 'Max: 10000'].map(v => (
-                    <div key={v} style={{ flex: 1, background: '#f1f5f9', borderRadius: 8, padding: '4px 8px', fontSize: 10, color: '#64748b' }}>{v}</div>
-                  ))}
-                </div>
-                {['Under ₱1,000', '₱1,000 – ₱5,000', '₱5,000 – ₱10,000', 'Over ₱10,000'].map(r => (
-                  <div key={r} style={{ fontSize: 10, color: '#64748b', padding: '3px 6px', marginBottom: 2 }}>{r}</div>
-                ))}
-
-                <p style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '10px 0 6px' }}>Sort By Name</p>
-                {['Default', 'A to Z', 'Z to A'].map(s => (
-                  <div key={s} style={{
-                    padding: '4px 10px', borderRadius: 8, fontSize: 10, marginBottom: 3,
-                    background: s === 'Default' ? themeColor : 'transparent',
-                    color: s === 'Default' ? '#fff' : '#64748b',
-                    fontWeight: s === 'Default' ? 600 : 400,
-                  }}>{s}</div>
-                ))}
-              </div>
-
-              {/* Product grid */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <p style={{ fontSize: 11, color: '#64748b' }}>Showing <strong>16</strong> of <strong>47</strong> products</p>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {[true, false].map((active) => (
-                      <div key={String(active)} style={{ width: 26, height: 26, borderRadius: 7, background: active ? themeColor : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {active
-                          ? <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><rect x="0" y="0" width="5" height="5"/><rect x="7" y="0" width="5" height="5"/><rect x="0" y="7" width="5" height="5"/><rect x="7" y="7" width="5" height="5"/></svg>
-                          : <svg width="12" height="12" viewBox="0 0 12 12" fill="#94a3b8"><rect x="0" y="1" width="12" height="2"/><rect x="0" y="5" width="12" height="2"/><rect x="0" y="9" width="12" height="2"/></svg>
-                        }
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-                  {PREVIEW_PRODUCTS.map((p, idx) => (
-                    <motion.div key={p.name}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}
-                    >
-                      <div style={{ position: 'relative', height: 96, background: p.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                        <div style={{ position: 'absolute', top: 6, left: 6, background: '#ef4444', color: '#fff', fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>
-                          Enjoy {p.disc}% off
-                        </div>
-                        <span style={{ fontSize: 30, lineHeight: 1 }}>{p.emoji}</span>
-                        <span style={{ fontSize: 7, fontWeight: 700, color: 'rgba(30,30,80,0.28)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>AF HOME</span>
-                      </div>
-                      <div style={{ padding: '8px 9px' }}>
-                        <p style={{ fontSize: 8, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 2, textTransform: 'uppercase' }}>{p.brand}</p>
-                        <p style={{ fontSize: 10, fontWeight: 600, color: '#1e293b', lineHeight: 1.3, marginBottom: 5 }}>{p.name}</p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: themeColor }}>{p.price}</span>
-                          <span style={{ fontSize: 9, color: '#94a3b8', textDecoration: 'line-through' }}>{p.orig}</span>
-                        </div>
-                        <div style={{ background: accentColor, borderRadius: 7, padding: '4px 0', textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#fff' }}>
-                          Add to Cart
-                        </div>
-                      </div>
+                <div className={viewType === 'grid' ? 'grid grid-cols-4 gap-4' : 'flex flex-col gap-3'}>
+                  {visibleProducts.map((product, index) => (
+                    <motion.div key={product.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: index * 0.02 }}>
+                      <ItemCard
+                        product={product}
+                        brandName={product.brand || ''}
+                        allowGuestAddToCart
+                        allowGuestWishlist
+                      />
                     </motion.div>
                   ))}
                 </div>
-              </div>
+              </main>
             </div>
-            <Cursor x={curPos.x} y={curPos.y} clicking={clicking} />
           </motion.div>
         )}
       </AnimatePresence>
+      <Cursor x={curPos.x} y={curPos.y} clicking={clicking} />
     </div>
   );
 }
@@ -1168,12 +1195,17 @@ const BEZEL_H = 734;  // 14px top padding + 720px screen (controls are outside t
 /* ─── Main ───────────────────────────────────────────────────── */
 export default function StorefrontTutorial() {
   const [step, setStep] = useState<Step>('intro');
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [stepRestartKey, setStepRestartKey] = useState(0);
+  const [timelineVersion, setTimelineVersion] = useState(0);
   const [urlBar, setUrlBar] = useState('admin.afhome.ph/partner-storefronts');
   const [scale, setScale] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(BEZEL_W + 16);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isDevicePortrait, setIsDevicePortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mobileTheater, setMobileTheater] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
@@ -1181,43 +1213,212 @@ export default function StorefrontTutorial() {
   const justSeeked = useRef(false);
   const scrubberRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const controlsHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const musicGainRef = useRef<GainNode | null>(null);
+  const musicNodesRef = useRef<Array<OscillatorNode | GainNode>>([]);
+  const spokenStepRef = useRef<Step | null>(null);
   const stepIdx = STEPS.indexOf(step);
 
   const goTo = (s: Step) => { if (timer.current) clearTimeout(timer.current); setStep(s); };
 
+  const getAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    if (!audioContextRef.current) {
+      const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return null;
+      audioContextRef.current = new AudioContextCtor();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      void audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const playSound = useCallback((kind: 'play' | 'pause' | 'step' | 'success' | 'replay') => {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    const osc = ctx.createOscillator();
+    const frequencies: Record<typeof kind, [number, number]> = {
+      play: [420, 680],
+      pause: [300, 180],
+      step: [520, 760],
+      success: [520, 920],
+      replay: [360, 720],
+    };
+    const [startFreq, endFreq] = frequencies[kind];
+    const duration = kind === 'success' ? 0.42 : 0.16;
+
+    osc.type = kind === 'pause' ? 'triangle' : 'sine';
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(kind === 'success' ? 0.08 : 0.045, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }, [getAudioContext]);
+
+  const startMusic = useCallback(() => {
+    const ctx = getAudioContext();
+    if (!ctx || musicGainRef.current) return;
+
+    const master = ctx.createGain();
+    const low = ctx.createOscillator();
+    const high = ctx.createOscillator();
+    const shimmer = ctx.createGain();
+    const now = ctx.currentTime;
+
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.026, now + 0.8);
+    low.type = 'sine';
+    high.type = 'triangle';
+    low.frequency.setValueAtTime(110, now);
+    high.frequency.setValueAtTime(220, now);
+    shimmer.gain.setValueAtTime(0.22, now);
+
+    low.connect(master);
+    high.connect(shimmer);
+    shimmer.connect(master);
+    master.connect(ctx.destination);
+    low.start();
+    high.start();
+
+    musicGainRef.current = master;
+    musicNodesRef.current = [low, high, shimmer, master];
+  }, [getAudioContext]);
+
+  const stopMusic = useCallback(() => {
+    const ctx = audioContextRef.current;
+    const master = musicGainRef.current;
+    if (!ctx || !master) return;
+
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(master.gain.value || 0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+    window.setTimeout(() => {
+      musicNodesRef.current.forEach((node) => {
+        if ('stop' in node) {
+          try { node.stop(); } catch { /* already stopped */ }
+        }
+        try { node.disconnect(); } catch { /* already disconnected */ }
+      });
+      musicNodesRef.current = [];
+      musicGainRef.current = null;
+    }, 420);
+  }, []);
+
+  const stopVoiceOver = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+  }, []);
+
+  const speakVoiceOver = useCallback((targetStep: Step) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const text = VOICE_LINES[targetStep];
+    if (!text) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.94;
+    utterance.pitch = 1;
+    utterance.volume = 0.92;
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find((voice) =>
+      /female|zira|samantha|google us english|english/i.test(`${voice.name} ${voice.lang}`),
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const handleReplay = () => {
+    if (timer.current) clearTimeout(timer.current);
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
+
+    stopVoiceOver();
+    spokenStepRef.current = null;
+    startMusic();
+    playSound('replay');
+    justSeeked.current = true;
+    elapsedRef.current = 0;
+    setElapsed(0);
+    setStep('intro');
+    setStepRestartKey(k => k + 1);
+    setTimelineVersion(v => v + 1);
+    setPlaying(true);
+    setControlsVisible(true);
+  };
+
   const handleTogglePlay = () => {
+    if (step === 'ending' || elapsedRef.current >= TOTAL_DURATION - 100) {
+      handleReplay();
+      return;
+    }
+
     if (!playing) {
+      startMusic();
+      playSound('play');
       // Resuming: remount step component so animations restart cleanly.
       // Elapsed is intentionally NOT reset — scrubber stays at the pause position.
       setStepRestartKey(k => k + 1);
+    } else {
+      stopMusic();
+      stopVoiceOver();
+      playSound('pause');
     }
+    setControlsVisible(true);
     setPlaying(p => !p);
   };
   const togglePlayRef = useRef(handleTogglePlay);
-  togglePlayRef.current = handleTogglePlay;
+  useEffect(() => {
+    togglePlayRef.current = handleTogglePlay;
+  });
+
+  useEffect(() => {
+    if (!playing || step === 'intro') return;
+    playSound(step === 'ending' ? 'success' : 'step');
+    if (step === 'ending') stopMusic();
+  }, [step, playing, playSound, stopMusic]);
+
+  useEffect(() => {
+    if (!playing) {
+      stopVoiceOver();
+      return;
+    }
+    if (spokenStepRef.current === step) return;
+    spokenStepRef.current = step;
+    speakVoiceOver(step);
+  }, [step, playing, speakVoiceOver, stopVoiceOver]);
+
+  useEffect(() => () => {
+    stopVoiceOver();
+  }, [stopVoiceOver]);
 
   const handleSaved = useCallback(() => {
+    playSound('success');
     setUrlBar('afhome.ph/shop/livingco');
     setTimeout(() => {
       if (timer.current) clearTimeout(timer.current);
       setStep('preview');
     }, 400);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable ref — setUrlBar/setStep are stable, timer is a ref
-
-  useEffect(() => {
-    if (step !== 'preview') setUrlBar('admin.afhome.ph/partner-storefronts');
-  }, [step]);
+  }, [playSound]); // stable ref — setUrlBar/setStep are stable, timer is a ref
 
   useEffect(() => {
     if (!playing) return;
     if (step === 'step5') return; // step5 advances via onSaved
+    const remaining = getRemainingStepDuration(step, elapsedRef.current);
     timer.current = setTimeout(() => {
       const next = STEPS[stepIdx + 1];
       if (next) setStep(next);
-    }, DURATIONS[step]);
+    }, remaining);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [step, stepIdx, playing]);
+  }, [step, stepIdx, playing, timelineVersion]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); togglePlayRef.current(); } };
@@ -1227,31 +1428,96 @@ export default function StorefrontTutorial() {
 
   useEffect(() => {
     const update = () => {
-      setViewportWidth(window.innerWidth);
-      const sw = (window.innerWidth - 24) / BEZEL_W;
-      const sh = (window.innerHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
-      setScale(Math.min(1, sw, sh));
+      const rawWidth = window.innerWidth;
+      const rawHeight = window.innerHeight;
+      const devicePortrait = rawWidth < rawHeight;
+      const fullscreenLayout = mobileTheater || isFullscreen;
+      const effectiveWidth = mobileTheater ? Math.max(rawWidth, rawHeight) : rawWidth;
+      const effectiveHeight = mobileTheater ? Math.min(rawWidth, rawHeight) : rawHeight;
+      const outerGap = fullscreenLayout ? 0 : 24;
+      const controlsGap = fullscreenLayout ? 0 : 68;
+
+      setViewportWidth(effectiveWidth);
+      setIsMobileViewport(rawWidth < 768);
+      setIsDevicePortrait(devicePortrait);
+
+      const sw = (effectiveWidth - outerGap) / BEZEL_W;
+      const sh = (effectiveHeight - outerGap - controlsGap) / BEZEL_H;
+      const nextScale = Math.min(sw, sh);
+      setScale(fullscreenLayout ? nextScale : Math.min(1, nextScale));
     };
     update();
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, [mobileTheater, isFullscreen]);
 
   useEffect(() => {
-    const onFSChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onFSChange = () => {
+      const active = !!document.fullscreenElement;
+      setIsFullscreen(active);
+      if (!active) {
+        setMobileTheater(false);
+        setControlsVisible(true);
+      }
+    };
     document.addEventListener('fullscreenchange', onFSChange);
     return () => document.removeEventListener('fullscreenchange', onFSChange);
   }, []);
 
+  useEffect(() => {
+    if (!mobileTheater) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileTheater]);
+
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) {
-      await containerRef.current?.requestFullscreen();
-      try { await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'); } catch { /* desktop ignores */ }
-    } else {
-      await document.exitFullscreen();
+    if (document.fullscreenElement || mobileTheater) {
+      setMobileTheater(false);
+      setControlsVisible(true);
+      if (document.fullscreenElement) await document.exitFullscreen();
       try { screen.orientation.unlock(); } catch { /* ignore */ }
+      return;
+    }
+
+    try {
+      setControlsVisible(false);
+      if (isMobileViewport) setMobileTheater(true);
+      if (document.fullscreenEnabled && containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else if (!isMobileViewport) {
+        setMobileTheater(true);
+      }
+      try { await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'); } catch { /* iOS ignores */ }
+    } catch {
+      setMobileTheater(true);
     }
   };
+
+  const revealFullscreenControls = useCallback(() => {
+    const active = isFullscreen || mobileTheater;
+    if (!active) return;
+
+    setControlsVisible(true);
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
+    controlsHideTimer.current = setTimeout(() => {
+      if (playing && elapsedRef.current < TOTAL_DURATION - 100) {
+        setControlsVisible(false);
+      }
+    }, 2200);
+  }, [isFullscreen, mobileTheater, playing]);
+
+  useEffect(() => () => {
+    if (controlsHideTimer.current) clearTimeout(controlsHideTimer.current);
+  }, []);
 
   // Sync scrubber position when step changes naturally (not from a seek)
   useEffect(() => {
@@ -1276,6 +1542,8 @@ export default function StorefrontTutorial() {
   }, [playing, step]);
 
   const seekToMs = (ms: number) => {
+    if (timer.current) clearTimeout(timer.current);
+
     const clamped = Math.max(0, Math.min(ms, TOTAL_DURATION - 1));
     let acc = 0;
     for (const s of SCRUB_STEPS) {
@@ -1284,11 +1552,25 @@ export default function StorefrontTutorial() {
         elapsedRef.current = clamped;
         setElapsed(clamped);
         goTo(s);
+        setStepRestartKey(k => k + 1);
+        setTimelineVersion(v => v + 1);
         setPlaying(true);
         return;
       }
       acc += DURATIONS[s];
     }
+  };
+
+  const jumpToStep = (targetStep: Step) => {
+    if (timer.current) clearTimeout(timer.current);
+
+    const start = targetStep === 'ending' ? TOTAL_DURATION : getStepStart(targetStep);
+    justSeeked.current = true;
+    elapsedRef.current = start;
+    setElapsed(start);
+    setStep(targetStep);
+    setStepRestartKey(k => k + 1);
+    setTimelineVersion(v => v + 1);
   };
 
   const handleScrubInteract = (clientX: number) => {
@@ -1298,7 +1580,7 @@ export default function StorefrontTutorial() {
     seekToMs(frac * TOTAL_DURATION);
   };
 
-  const handleScrubMouseDown = (_e: React.MouseEvent) => {
+  const handleScrubMouseDown = () => {
     isDragging.current = true;
     const el = scrubberRef.current;
     if (!el) return;
@@ -1341,19 +1623,56 @@ export default function StorefrontTutorial() {
   };
 
   const meta = STEP_META[step];
+  const showInitialPlayButton = !playing && step === 'intro' && elapsed === 0;
+  const shouldRotateMobileTheater = mobileTheater && isDevicePortrait;
+  const fullscreenActive = isFullscreen || mobileTheater;
+  const isTimelineComplete = step === 'ending' || elapsed >= TOTAL_DURATION - 100;
+  const showControls = !fullscreenActive || controlsVisible || !playing || isTimelineComplete;
+  const currentUrlBar = step === 'preview' ? urlBar : 'admin.afhome.ph/partner-storefronts';
+  const rootStyle = {
+    minHeight: fullscreenActive ? '100dvh' : '100vh',
+    width: fullscreenActive ? '100dvw' : '100%',
+    background: 'radial-gradient(ellipse at 50% 30%, #2a2a2a 0%, #0f0f0f 100%)',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    padding: fullscreenActive ? 0 : '12px 0',
+    position: mobileTheater ? 'fixed' as const : 'relative' as const,
+    inset: mobileTheater ? 0 : undefined,
+    zIndex: mobileTheater ? 9999 : undefined,
+    transition: 'padding 260ms ease, background 260ms ease',
+  };
+  const playerShellStyle = {
+    width: shouldRotateMobileTheater ? '100dvh' : '100%',
+    height: shouldRotateMobileTheater ? '100dvw' : 'auto',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: shouldRotateMobileTheater ? 'rotate(90deg)' : 'rotate(0deg)',
+    transformOrigin: 'center center',
+    transition: 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1), width 420ms cubic-bezier(0.22, 1, 0.36, 1), height 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+    willChange: 'transform, width, height',
+  };
 
   return (
-    <div ref={containerRef} style={{
-      minHeight: '100vh', background: 'radial-gradient(ellipse at 50% 30%, #2a2a2a 0%, #0f0f0f 100%)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      overflow: 'hidden', padding: '12px 0',
-    }}>
+    <div
+      ref={containerRef}
+      style={rootStyle}
+      onMouseMove={revealFullscreenControls}
+      onTouchStart={revealFullscreenControls}
+    >
+      <div style={playerShellStyle}>
       {/* Scale wrapper — only wraps the bezel, controls are outside */}
-      <div style={{ position: 'relative', width: BEZEL_W * scale, height: BEZEL_H * scale, flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: BEZEL_W * scale, height: BEZEL_H * scale, flexShrink: 0, transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1), height 420ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
         <div style={{
           position: 'absolute', top: 0, left: 0, width: BEZEL_W,
           transform: `scale(${scale})`, transformOrigin: 'top left',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+          transition: 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+          willChange: 'transform',
         }}>
 
       {/* MacBook bezel */}
@@ -1391,14 +1710,14 @@ export default function StorefrontTutorial() {
                 <span className="px-1 opacity-40">›</span>
               </div>
               <div className="flex flex-1 justify-center">
-                <motion.div key={urlBar}
+                <motion.div key={currentUrlBar}
                   initial={{ opacity: 0.6 }} animate={{ opacity: 1 }}
                   className="flex items-center gap-1.5 bg-[#f0f0f0] rounded-lg px-3 h-7 border border-[#d0d0d0]" style={{ width: 480 }}>
                   <svg width="10" height="11" viewBox="0 0 12 14" fill="none" className="shrink-0">
                     <path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5z" fill="#10b981"/>
                   </svg>
                   <span className="text-[11.5px] text-[#444] flex-1 text-center" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
-                    {urlBar}
+                    {currentUrlBar}
                   </span>
                 </motion.div>
               </div>
@@ -1549,6 +1868,26 @@ export default function StorefrontTutorial() {
             )}
           </AnimatePresence>
 
+          <AnimatePresence>
+            {(showInitialPlayButton || (!playing && step !== 'ending')) && (
+              <motion.button
+                key="pause-play-overlay"
+                type="button"
+                onClick={handleTogglePlay}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.22 }}
+                className="absolute inset-0 z-[120] flex items-center justify-center bg-black/20 backdrop-blur-[1px]"
+                aria-label={showInitialPlayButton ? 'Play storefront tutorial' : 'Resume storefront tutorial'}
+              >
+                <span className="flex h-24 w-24 items-center justify-center rounded-full border border-white/30 bg-black/55 text-white shadow-[0_18px_70px_rgba(0,0,0,0.55)] transition hover:scale-105 hover:bg-black/65">
+                  <Play size={38} fill="currentColor" className="ml-1" />
+                </span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+
         </div>{/* end screen viewport */}
       </div>{/* end MacBook bezel */}
 
@@ -1556,21 +1895,36 @@ export default function StorefrontTutorial() {
       </div>{/* end scale wrapper */}
 
       {/* ── Controls bar — native size, NOT inside scale transform ── */}
-      <div style={{ width: Math.min(BEZEL_W * scale, viewportWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box' }}>
+      <div style={{
+        width: Math.min(BEZEL_W * scale, viewportWidth - (fullscreenActive ? 0 : 16)),
+        flexShrink: 0,
+        padding: fullscreenActive ? '0 16px 16px' : '0 4px',
+        boxSizing: 'border-box',
+        position: fullscreenActive ? 'absolute' as const : 'relative' as const,
+        left: fullscreenActive ? '50%' : undefined,
+        bottom: fullscreenActive ? 0 : undefined,
+        zIndex: fullscreenActive ? 200 : undefined,
+        transform: fullscreenActive ? `translate(-50%, ${showControls ? '0' : '22px'})` : 'none',
+        opacity: showControls ? 1 : 0,
+        pointerEvents: showControls ? 'auto' as const : 'none' as const,
+        transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1)',
+      }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(255,255,255,0.07)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          backdropFilter: 'blur(16px)',
+          background: 'rgba(15,23,42,0.78)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          backdropFilter: 'blur(18px)',
+          boxShadow: '0 18px 60px rgba(0,0,0,0.32)',
           borderRadius: 16, padding: '8px 12px',
         }}>
 
           {/* Play / Pause — 44px touch target */}
           <button
-            onClick={handleTogglePlay}
+            onClick={isTimelineComplete ? handleReplay : handleTogglePlay}
+            title={isTimelineComplete ? 'Replay' : playing ? 'Pause' : 'Play'}
             style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.13)', color: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
           >
-            {playing ? <Pause size={17} /> : <Play size={17} />}
+            {isTimelineComplete ? <RotateCcw size={17} /> : playing ? <Pause size={17} /> : <Play size={17} />}
           </button>
 
           {/* Current time */}
@@ -1593,7 +1947,7 @@ export default function StorefrontTutorial() {
             </div>
 
             {/* Step boundary markers + labels */}
-            {SCRUB_STEPS.slice(1).map(s => {
+            {!isMobileViewport && SCRUB_STEPS.slice(1).map(s => {
               const pct = ((STEP_STARTS[s] ?? 0) / TOTAL_DURATION) * 100;
               const isActive = step === s;
               return (
@@ -1626,33 +1980,36 @@ export default function StorefrontTutorial() {
           </span>
 
           {/* Step chips */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            {SCRUB_STEPS.map(s => {
-              const active = step === s;
-              const passed = (elapsed >= (STEP_STARTS[s] ?? 0)) && !active;
-              return (
-                <button key={s} onClick={() => goTo(s)} title={SCRUB_LABELS[s] ?? s}
-                  style={{
-                    width: active ? 22 : 8, height: 8, borderRadius: 4,
-                    background: active ? '#10b981' : passed ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.18)',
-                    border: 'none', cursor: 'pointer', padding: 0,
-                    transition: 'width 0.3s',
-                  }} />
-              );
-            })}
-          </div>
+          {!isMobileViewport && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              {SCRUB_STEPS.map(s => {
+                const active = step === s;
+                const passed = (elapsed >= (STEP_STARTS[s] ?? 0)) && !active;
+                return (
+                  <button key={s} onClick={() => jumpToStep(s)} title={SCRUB_LABELS[s] ?? s}
+                    style={{
+                      width: active ? 22 : 8, height: 8, borderRadius: 4,
+                      background: active ? '#10b981' : passed ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.18)',
+                      border: 'none', cursor: 'pointer', padding: 0,
+                      transition: 'width 0.3s',
+                    }} />
+                );
+              })}
+            </div>
+          )}
 
           {/* Fullscreen — 44px touch target */}
           <button
             onClick={toggleFullscreen}
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={fullscreenActive ? 'Exit fullscreen' : 'Fullscreen'}
             style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
           >
-            {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+            {fullscreenActive ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </button>
         </div>
       </div>
 
+      </div>
     </div>
   );
 }

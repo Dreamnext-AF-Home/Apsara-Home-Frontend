@@ -141,7 +141,7 @@ export default function LoginPageClient({
         >
           <div className={`rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-800 ${mode === 'signup' ? 'p-5 sm:p-9 md:p-10' : 'p-5 sm:p-8'}`}>
             {mode !== 'force-password-change' && (
-              <AuthTabs mode={mode === 'signup' ? 'signup' : 'login'} setMode={handleTabChange} />
+              <AuthTabs mode={mode as 'login' | 'signup'} setMode={handleTabChange} />
             )}
             <AnimatePresence
               mode="wait"
