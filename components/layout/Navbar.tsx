@@ -32,6 +32,7 @@ import PrimaryButton from '@/components/ui/buttons/PrimaryButton'
 import OutlineButton from '@/components/ui/buttons/OutlineButton'
 import ThemeToggle from '@/components/ui/buttons/ThemeToggle'
 import { getProfileCompletion } from '@/libs/profileCompletion'
+import AppPromoBar from '@/components/layout/AppPromoBar'
 
 type NavLink = {
   label: string;
@@ -909,6 +910,7 @@ function NavbarInner({
 
   return (
     <>
+    <AppPromoBar />
     <motion.header
       initial={{ y: -80 }}
       animate={{ y: 0 }}
