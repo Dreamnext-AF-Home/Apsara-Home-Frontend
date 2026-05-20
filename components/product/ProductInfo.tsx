@@ -804,11 +804,11 @@ const ProductInfo = ({
 
     const referralCode = (me?.username ?? '').trim();
     const shareUrl = useMemo(() => {
-        const productSlug = toSlug(product.name);
+        const productSlug = product.id ? `${toSlug(product.name)}-i${product.id}` : toSlug(product.name);
         const baseUrl = `https://www.afhome.ph/product/${productSlug}`;
         if (!referralCode) return baseUrl;
         return `${baseUrl}?ref=${encodeURIComponent(referralCode)}`;
-    }, [referralCode, product.name]);
+    }, [referralCode, product.name, product.id]);
 
     return (
         <motion.div
