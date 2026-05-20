@@ -18,6 +18,10 @@ export const addsContentApi = baseApi.injectEndpoints({
         method: 'GET',
         params: params?.page ? { page: params.page } : undefined,
       }),
+      keepUnusedDataFor: 0,
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
       providesTags: ['WebPages'],
     }),
     getAddsContent: builder.query<{ items: AddsContentItem[] }, void>({

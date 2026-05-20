@@ -4,6 +4,24 @@ import { useMemo, useState } from 'react'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { useCreateAddsContentMutation, useDeleteAddsContentMutation, useGetAddsContentQuery, useUpdateAddsContentStatusMutation, useUpdateAddsContentMutation } from '@/store/api/addsContentApi'
 
+const getApiErrorMessage = (error: any, fallback: string) => {
+  const direct = String(error?.data?.message || '').trim()
+  if (direct) return direct
+
+  const validationErrors = error?.data?.errors
+  if (validationErrors && typeof validationErrors === 'object') {
+    const firstField = Object.keys(validationErrors)[0]
+    const firstFieldErrors = firstField ? validationErrors[firstField] : null
+    if (Array.isArray(firstFieldErrors) && firstFieldErrors[0]) {
+      return String(firstFieldErrors[0])
+    }
+  }
+
+  const generic = String(error?.message || '').trim()
+  if (generic) return generic
+  return fallback
+}
+
 export default function AddsContentClient() {
   const [isOpen, setIsOpen] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -383,7 +401,7 @@ export default function AddsContentClient() {
                     setPageTarget('shop')
                     setEditingItemId(null)
                   } catch (error: any) {
-                    showErrorToast(error?.data?.message || 'Failed to save content.')
+                    showErrorToast(getApiErrorMessage(error, 'Failed to save content.'))
                   }
                 }}
                 disabled={isLoading || isUpdating}

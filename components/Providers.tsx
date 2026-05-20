@@ -13,6 +13,7 @@ import { Toaster } from 'react-hot-toast'
 import { useMeQuery } from '@/store/api/userApi'
 import { useEffect, useState } from 'react'
 import { useAccountDeletedListener } from '@/hooks/useAccountDeletedListener'
+import AdsPopup from '@/components/shop/AdsPopup'
 
 function CustomerSessionGuard() {
   const { data: session, status } = useSession()
@@ -148,6 +149,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <CustomerBannedOverlay />
             <CustomerDeletedOverlay />
             {children}
+            <AdsPopup />
             <CartDrawer />
             <WishlistDrawer />
             <Toaster

@@ -622,6 +622,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [webstoreAcceptedTerms, setWebstoreAcceptedTerms] = useState(false);
   const [webstoreTermsOpen, setWebstoreTermsOpen] = useState(false);
   const [webstoreMsg, setWebstoreMsg] = useState<AlertMsg | null>(null);
+  const [webstoreSyncSuccessOpen, setWebstoreSyncSuccessOpen] = useState(false);
+  const [showPartnerLoginShortcut, setShowPartnerLoginShortcut] = useState(false);
 
   const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwError, setPwError] = useState<string | null>(null);
@@ -1898,14 +1900,25 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   const handleSyncWebstoreAccount = async () => {
     setWebstoreMsg(null);
+    setShowPartnerLoginShortcut(false);
     try {
       const response = await syncWebstorePartnerAccount().unwrap();
       setWebstoreMsg({ type: 'success', text: response?.message || 'Partner account synced successfully.' });
       showSuccessToast('Partner account synced.');
+      setWebstoreSyncSuccessOpen(true);
       refetchWebstoreRequestLatest();
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
-      setWebstoreMsg({ type: 'error', text: apiErr?.data?.message || 'Failed to sync partner account.' });
+      const rawMessage = apiErr?.data?.message || 'Failed to sync partner account.';
+      if (rawMessage.toLowerCase().includes('unable to map request slug to a partner storefront')) {
+        setShowPartnerLoginShortcut(true);
+        setWebstoreMsg({
+          type: 'error',
+          text: `Your request slug "${latestWebstoreRequest?.slug_name || '-'}" is not linked to a partner storefront yet. Please ask admin to map this slug in Partner Storefront settings.`,
+        });
+      } else {
+        setWebstoreMsg({ type: 'error', text: rawMessage });
+      }
     }
   };
 
@@ -5230,57 +5243,113 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       </div>
                     </form>
 
-                    <div className="mt-6 rounded-2xl border border-[#dfe8fb] bg-[#f8fbff] p-4 md:p-5">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h4 className="text-base font-bold text-[#0f1f44]">Your Webstore Request</h4>
+                    <div className="mt-6 rounded-[28px] border border-[#e6ebf8] bg-white p-5 shadow-[0_16px_40px_rgba(17,24,39,0.04)] md:p-7">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-[#eef1ff] text-[#2f5bff]">
+                            <Icon.Package className="h-8 w-8" />
+                          </div>
+                          <h4 className="text-[20px] md:text-[24px] font-extrabold tracking-tight text-[#162449]">Your Webstore Request</h4>
+                        </div>
                         {latestWebstoreRequest?.status ? (
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-[12px] font-bold leading-none ${
                               latestWebstoreRequest.status === 'approved'
-                                ? 'bg-emerald-100 text-emerald-700'
+                                ? 'bg-emerald-50 text-emerald-700'
                                 : latestWebstoreRequest.status === 'rejected'
-                                  ? 'bg-rose-100 text-rose-700'
-                                  : 'bg-amber-100 text-amber-700'
+                                  ? 'bg-rose-50 text-rose-700'
+                                  : 'bg-amber-50 text-amber-700'
                             }`}
                           >
-                            {latestWebstoreRequest.status === 'pending_review'
-                              ? 'Pending Review'
-                              : latestWebstoreRequest.status === 'approved'
-                                ? 'Approved'
-                                : 'Rejected'}
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-current/15">
+                              <Icon.Check className="h-4 w-4" />
+                            </span>
+                            <span className="text-sm md:text-base">
+                              {latestWebstoreRequest.status === 'pending_review'
+                                ? 'Pending Review'
+                                : latestWebstoreRequest.status === 'approved'
+                                  ? 'Approved'
+                                  : 'Rejected'}
+                            </span>
                           </span>
                         ) : null}
                       </div>
 
                       {latestWebstoreRequest ? (
-                        <div className="grid grid-cols-1 gap-3 text-sm text-[#334b76] md:grid-cols-2">
-                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Reference</p>
-                            <p className="mt-1 font-semibold">{latestWebstoreRequest.reference_no || '-'}</p>
+                        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                  <path d="M6 2h8l4 4v16H6z" />
+                                  <path d="M14 2v4h4" />
+                                  <path d="M9 12h6M9 16h6" />
+                                </svg>
+                              </span>
+                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Reference</p>
+                            </div>
+                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.reference_no || '-'}</p>
                           </div>
-                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Submitted</p>
-                            <p className="mt-1 font-semibold">
-                              {latestWebstoreRequest.created_at ? new Date(latestWebstoreRequest.created_at).toLocaleString() : '-'}
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                                  <path d="M16 3v4M8 3v4M3 10h18" />
+                                </svg>
+                              </span>
+                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Submitted</p>
+                            </div>
+                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">
+                              {latestWebstoreRequest.created_at
+                                ? new Date(latestWebstoreRequest.created_at).toLocaleString('en-US', {
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  }).replace(',', ' at')
+                                : '-'}
                             </p>
                           </div>
-                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Slug Name</p>
-                            <p className="mt-1 font-semibold">{latestWebstoreRequest.slug_name || '-'}</p>
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                  <path d="m20 12-8 8-8-8 8-8 8 8Z" />
+                                  <circle cx="12" cy="12" r="2" />
+                                </svg>
+                              </span>
+                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Slug Name</p>
+                            </div>
+                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.slug_name || '-'}</p>
                           </div>
-                          <div className="rounded-xl border border-[#dce6fb] bg-white px-3 py-2.5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8eb6]">Display Name</p>
-                            <p className="mt-1 font-semibold">{latestWebstoreRequest.display_name || '-'}</p>
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                  <rect x="3" y="4" width="18" height="13" rx="2" />
+                                  <path d="M8 20h8M12 17v3" />
+                                </svg>
+                              </span>
+                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Display Name</p>
+                            </div>
+                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.display_name || '-'}</p>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm text-[#6e7fa3]">No webstore request submitted yet.</p>
+                        <p className="mt-6 text-sm text-[#6e7fa3]">No webstore request submitted yet.</p>
                       )}
 
                       {latestWebstoreRequest?.status === 'approved' ? (
-                        <div className="mt-4 border-t border-[#dce6fb] pt-4">
+                        <div className="mt-6 border-t border-[#e5ebfa] pt-6">
                           {latestWebstoreRequest.partner_sync_status === 'synced' ? (
-                            <p className="text-sm font-semibold text-emerald-700">Partner login account already synced.</p>
+                            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white">
+                                <Icon.Check className="h-4 w-4" />
+                              </span>
+                              Partner login account already synced.
+                            </div>
                           ) : (
                             <button
                               type="button"
@@ -5292,6 +5361,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                               {isSyncingWebstoreAccount ? 'Syncing account...' : 'Sync Your Account'}
                             </button>
                           )}
+                          {showPartnerLoginShortcut ? (
+                            <button
+                              type="button"
+                              onClick={() => router.push('/partner/login')}
+                              className="ml-3 inline-flex items-center justify-center gap-2 rounded-xl border border-[#c7d8ff] bg-white px-5 py-2.5 text-sm font-semibold text-[#1f4fc9] hover:bg-[#f4f8ff]"
+                            >
+                              Go to Partner Login
+                            </button>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
@@ -5487,6 +5565,54 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                 >
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/60 text-xs">✓</span>
                   I Agree
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {webstoreSyncSuccessOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setWebstoreSyncSuccessOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.18 }}
+              className="mx-auto mt-20 w-full max-w-md overflow-hidden rounded-3xl border border-[#d8e2f6] bg-white shadow-[0_24px_50px_rgba(30,64,175,0.18)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 pb-4 pt-6 text-center">
+                <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <Icon.Check className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-[#0f1f44]">Account Connected</h3>
+                <p className="mt-2 text-sm text-[#5f7298]">
+                  Your account has been connected successfully. You can now continue to Partner Login.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 border-t border-[#e3eaf8] bg-[#fbfdff] px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setWebstoreSyncSuccessOpen(false)}
+                  className="rounded-xl border border-[#d6e0f5] bg-white px-4 py-2.5 text-sm font-semibold text-[#2f3f62] hover:bg-[#f7faff]"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWebstoreSyncSuccessOpen(false);
+                    router.push('/partner/login');
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] hover:from-[#1d4ed8] hover:to-[#1e40af]"
+                >
+                  Go to Partner Login
                 </button>
               </div>
             </motion.div>

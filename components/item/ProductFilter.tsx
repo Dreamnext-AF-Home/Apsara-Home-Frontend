@@ -99,32 +99,14 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
     { label: 'Over 2000 PV', min: 2000, max: 5000 },
   ]
 
-  // Keep maxPrice in sync with parent-provided maxPrice, but do NOT override user typing.
+  // Keep maxPrice in sync with parent-provided maxPrice for initial empty states only.
   useEffect(() => {
     setPriceRange((previous) => {
-      // if user already changed min away from 0, do not touch max.
-      if (previous[0] !== 0) return previous
-
-      const currentMax = previous[1]
-      if (currentMax === maxPrice) return previous
-
-      // only clamp if user max is out of bounds
-      if (currentMax > maxPrice) {
-        const next: [number, number] = [0, maxPrice]
-        onFilterChange({
-          priceRange: next,
-          sortBy,
-          inStock: inStockOnly,
-          discountOnly,
-          minDiscount,
-          pvRange,
-          search: propSearch,
-          hasPvOnly,
-        })
-        return next
+      // Do not override user-entered values.
+      // Only seed the range when max is empty/invalid.
+      if (!Number.isFinite(previous[1]) || previous[1] <= 0) {
+        return [0, maxPrice]
       }
-
-      // if currentMax is within bounds but differs, keep user value
       return previous
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,9 +195,9 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
     const newMin = type === 'min' ? value : priceRange[0]
     const newMax = type === 'max' ? value : priceRange[1]
 
-    // keep inside dynamic boundaries
+    // keep non-negative, but allow manual max values above the current catalog max
     const clampedMin = Math.max(0, newMin)
-    const clampedMax = Math.min(maxPrice, newMax)
+    const clampedMax = Math.max(0, newMax)
 
     if (clampedMin <= clampedMax) {
       handlePriceChange(clampedMin, clampedMax)
