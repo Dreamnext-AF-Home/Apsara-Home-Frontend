@@ -7,6 +7,7 @@ export function buildPageMetadata(input: {
   title: string;
   description: string;
   path?: string;
+  image?: string;
   noIndex?: boolean;
   siteName?: string;
 }): Metadata {
@@ -16,6 +17,12 @@ export function buildPageMetadata(input: {
   const canonicalUrl = canonicalPath.startsWith('http')
     ? canonicalPath
     : `${SITE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
+
+  const imageUrl = input.image?.startsWith('http')
+    ? input.image
+    : input.image
+    ? `${SITE_URL}${input.image.startsWith('/') ? input.image : `/${input.image}`}`
+    : `${SITE_URL}/Images/af_home_logo.png`;
 
   return {
     title: fullTitle,
@@ -27,11 +34,20 @@ export function buildPageMetadata(input: {
       url: canonicalUrl,
       siteName,
       type: 'website',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: input.title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: fullTitle,
       description: input.description,
+      images: [imageUrl],
     },
     robots: input.noIndex
       ? { index: false, follow: false }
