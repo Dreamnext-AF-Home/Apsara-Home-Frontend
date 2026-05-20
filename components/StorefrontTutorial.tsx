@@ -58,6 +58,13 @@ const SCRUB_LABELS: Partial<Record<Step, string>> = {
   step4: 'Categories', step5: 'Save', preview: 'Live Store',
 };
 
+const getStepStart = (step: Step) => STEP_STARTS[step] ?? 0;
+
+const getRemainingStepDuration = (step: Step, elapsed: number) => {
+  const offset = Math.max(0, elapsed - getStepStart(step));
+  return Math.max(0, DURATIONS[step] - offset);
+};
+
 
 /* ─── Cursor ─────────────────────────────────────────────────── */
 function Cursor({ x, y, clicking }: { x: number; y: number; clicking: boolean }) {
@@ -267,7 +274,6 @@ function useTyping(fullText: string, speed = 52, startAfter = 0, playing = true)
   const [displayed, setDisplayed] = useState('');
   useEffect(() => {
     if (!playing) return;
-    setDisplayed('');
     let i = 0;
     const t = setTimeout(() => {
       const iv = setInterval(() => {
@@ -1168,12 +1174,16 @@ const BEZEL_H = 734;  // 14px top padding + 720px screen (controls are outside t
 /* ─── Main ───────────────────────────────────────────────────── */
 export default function StorefrontTutorial() {
   const [step, setStep] = useState<Step>('intro');
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [stepRestartKey, setStepRestartKey] = useState(0);
+  const [timelineVersion, setTimelineVersion] = useState(0);
   const [urlBar, setUrlBar] = useState('admin.afhome.ph/partner-storefronts');
   const [scale, setScale] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(BEZEL_W + 16);
+  const [viewportHeight, setViewportHeight] = useState(800);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mobileTheater, setMobileTheater] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [elapsed, setElapsed] = useState(0);
   const elapsedRef = useRef(0);
@@ -1194,7 +1204,9 @@ export default function StorefrontTutorial() {
     setPlaying(p => !p);
   };
   const togglePlayRef = useRef(handleTogglePlay);
-  togglePlayRef.current = handleTogglePlay;
+  useEffect(() => {
+    togglePlayRef.current = handleTogglePlay;
+  });
 
   const handleSaved = useCallback(() => {
     setUrlBar('afhome.ph/shop/livingco');
@@ -1202,22 +1214,18 @@ export default function StorefrontTutorial() {
       if (timer.current) clearTimeout(timer.current);
       setStep('preview');
     }, 400);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // stable ref — setUrlBar/setStep are stable, timer is a ref
-
-  useEffect(() => {
-    if (step !== 'preview') setUrlBar('admin.afhome.ph/partner-storefronts');
-  }, [step]);
 
   useEffect(() => {
     if (!playing) return;
     if (step === 'step5') return; // step5 advances via onSaved
+    const remaining = getRemainingStepDuration(step, elapsedRef.current);
     timer.current = setTimeout(() => {
       const next = STEPS[stepIdx + 1];
       if (next) setStep(next);
-    }, DURATIONS[step]);
+    }, remaining);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [step, stepIdx, playing]);
+  }, [step, stepIdx, playing, timelineVersion]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); togglePlayRef.current(); } };
@@ -1227,29 +1235,68 @@ export default function StorefrontTutorial() {
 
   useEffect(() => {
     const update = () => {
-      setViewportWidth(window.innerWidth);
-      const sw = (window.innerWidth - 24) / BEZEL_W;
-      const sh = (window.innerHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
+      const rawWidth = window.innerWidth;
+      const rawHeight = window.innerHeight;
+      const portraitMobileTheater = mobileTheater && rawWidth < rawHeight;
+      const effectiveWidth = portraitMobileTheater ? rawHeight : rawWidth;
+      const effectiveHeight = portraitMobileTheater ? rawWidth : rawHeight;
+
+      setViewportWidth(effectiveWidth);
+      setViewportHeight(effectiveHeight);
+      setIsMobileViewport(rawWidth < 768);
+
+      const sw = (effectiveWidth - 24) / BEZEL_W;
+      const sh = (effectiveHeight - 24 - 68) / BEZEL_H; // 68px reserved for controls bar
       setScale(Math.min(1, sw, sh));
     };
     update();
     window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, [mobileTheater]);
 
   useEffect(() => {
-    const onFSChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onFSChange = () => {
+      const active = !!document.fullscreenElement;
+      setIsFullscreen(active);
+      if (!active) setMobileTheater(false);
+    };
     document.addEventListener('fullscreenchange', onFSChange);
     return () => document.removeEventListener('fullscreenchange', onFSChange);
   }, []);
 
+  useEffect(() => {
+    if (!mobileTheater) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileTheater]);
+
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) {
-      await containerRef.current?.requestFullscreen();
-      try { await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'); } catch { /* desktop ignores */ }
-    } else {
-      await document.exitFullscreen();
+    if (document.fullscreenElement || mobileTheater) {
+      setMobileTheater(false);
+      if (document.fullscreenElement) await document.exitFullscreen();
       try { screen.orientation.unlock(); } catch { /* ignore */ }
+      return;
+    }
+
+    try {
+      if (isMobileViewport) setMobileTheater(true);
+      if (document.fullscreenEnabled && containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else if (!isMobileViewport) {
+        setMobileTheater(true);
+      }
+      try { await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'); } catch { /* iOS ignores */ }
+    } catch {
+      setMobileTheater(true);
     }
   };
 
@@ -1276,6 +1323,8 @@ export default function StorefrontTutorial() {
   }, [playing, step]);
 
   const seekToMs = (ms: number) => {
+    if (timer.current) clearTimeout(timer.current);
+
     const clamped = Math.max(0, Math.min(ms, TOTAL_DURATION - 1));
     let acc = 0;
     for (const s of SCRUB_STEPS) {
@@ -1284,11 +1333,25 @@ export default function StorefrontTutorial() {
         elapsedRef.current = clamped;
         setElapsed(clamped);
         goTo(s);
+        setStepRestartKey(k => k + 1);
+        setTimelineVersion(v => v + 1);
         setPlaying(true);
         return;
       }
       acc += DURATIONS[s];
     }
+  };
+
+  const jumpToStep = (targetStep: Step) => {
+    if (timer.current) clearTimeout(timer.current);
+
+    const start = targetStep === 'ending' ? TOTAL_DURATION : getStepStart(targetStep);
+    justSeeked.current = true;
+    elapsedRef.current = start;
+    setElapsed(start);
+    setStep(targetStep);
+    setStepRestartKey(k => k + 1);
+    setTimelineVersion(v => v + 1);
   };
 
   const handleScrubInteract = (clientX: number) => {
@@ -1298,7 +1361,7 @@ export default function StorefrontTutorial() {
     seekToMs(frac * TOTAL_DURATION);
   };
 
-  const handleScrubMouseDown = (_e: React.MouseEvent) => {
+  const handleScrubMouseDown = () => {
     isDragging.current = true;
     const el = scrubberRef.current;
     if (!el) return;
@@ -1341,19 +1404,49 @@ export default function StorefrontTutorial() {
   };
 
   const meta = STEP_META[step];
+  const showInitialPlayButton = !playing && step === 'intro' && elapsed === 0;
+  const isPortraitMobileTheater = mobileTheater && viewportWidth > viewportHeight;
+  const fullscreenActive = isFullscreen || mobileTheater;
+  const currentUrlBar = step === 'preview' ? urlBar : 'admin.afhome.ph/partner-storefronts';
+  const rootStyle = {
+    minHeight: mobileTheater ? '100dvh' : '100vh',
+    width: mobileTheater ? '100dvw' : '100%',
+    background: 'radial-gradient(ellipse at 50% 30%, #2a2a2a 0%, #0f0f0f 100%)',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    padding: mobileTheater ? 0 : '12px 0',
+    position: mobileTheater ? 'fixed' as const : 'relative' as const,
+    inset: mobileTheater ? 0 : undefined,
+    zIndex: mobileTheater ? 9999 : undefined,
+    transition: 'padding 260ms ease, background 260ms ease',
+  };
+  const playerShellStyle = {
+    width: isPortraitMobileTheater ? '100dvh' : '100%',
+    height: isPortraitMobileTheater ? '100dvw' : 'auto',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: isPortraitMobileTheater ? 'rotate(90deg)' : 'rotate(0deg)',
+    transformOrigin: 'center center',
+    transition: 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1), width 420ms cubic-bezier(0.22, 1, 0.36, 1), height 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+    willChange: 'transform, width, height',
+  };
 
   return (
-    <div ref={containerRef} style={{
-      minHeight: '100vh', background: 'radial-gradient(ellipse at 50% 30%, #2a2a2a 0%, #0f0f0f 100%)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      overflow: 'hidden', padding: '12px 0',
-    }}>
+    <div ref={containerRef} style={rootStyle}>
+      <div style={playerShellStyle}>
       {/* Scale wrapper — only wraps the bezel, controls are outside */}
-      <div style={{ position: 'relative', width: BEZEL_W * scale, height: BEZEL_H * scale, flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: BEZEL_W * scale, height: BEZEL_H * scale, flexShrink: 0, transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1), height 420ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
         <div style={{
           position: 'absolute', top: 0, left: 0, width: BEZEL_W,
           transform: `scale(${scale})`, transformOrigin: 'top left',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+          transition: 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1)',
+          willChange: 'transform',
         }}>
 
       {/* MacBook bezel */}
@@ -1391,14 +1484,14 @@ export default function StorefrontTutorial() {
                 <span className="px-1 opacity-40">›</span>
               </div>
               <div className="flex flex-1 justify-center">
-                <motion.div key={urlBar}
+                <motion.div key={currentUrlBar}
                   initial={{ opacity: 0.6 }} animate={{ opacity: 1 }}
                   className="flex items-center gap-1.5 bg-[#f0f0f0] rounded-lg px-3 h-7 border border-[#d0d0d0]" style={{ width: 480 }}>
                   <svg width="10" height="11" viewBox="0 0 12 14" fill="none" className="shrink-0">
                     <path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5z" fill="#10b981"/>
                   </svg>
                   <span className="text-[11.5px] text-[#444] flex-1 text-center" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
-                    {urlBar}
+                    {currentUrlBar}
                   </span>
                 </motion.div>
               </div>
@@ -1549,6 +1642,26 @@ export default function StorefrontTutorial() {
             )}
           </AnimatePresence>
 
+          <AnimatePresence>
+            {showInitialPlayButton && (
+              <motion.button
+                key="initial-play"
+                type="button"
+                onClick={handleTogglePlay}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={{ duration: 0.22 }}
+                className="absolute inset-0 z-[120] flex items-center justify-center bg-black/30 backdrop-blur-[1px]"
+                aria-label="Play storefront tutorial"
+              >
+                <span className="flex h-24 w-24 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] transition hover:scale-105 hover:bg-white/20">
+                  <Play size={38} fill="currentColor" className="ml-1" />
+                </span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+
         </div>{/* end screen viewport */}
       </div>{/* end MacBook bezel */}
 
@@ -1556,7 +1669,7 @@ export default function StorefrontTutorial() {
       </div>{/* end scale wrapper */}
 
       {/* ── Controls bar — native size, NOT inside scale transform ── */}
-      <div style={{ width: Math.min(BEZEL_W * scale, viewportWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box' }}>
+      <div style={{ width: Math.min(BEZEL_W * scale, viewportWidth - 16), flexShrink: 0, padding: '0 4px', boxSizing: 'border-box', transition: 'width 420ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           background: 'rgba(255,255,255,0.07)',
@@ -1593,7 +1706,7 @@ export default function StorefrontTutorial() {
             </div>
 
             {/* Step boundary markers + labels */}
-            {SCRUB_STEPS.slice(1).map(s => {
+            {!isMobileViewport && SCRUB_STEPS.slice(1).map(s => {
               const pct = ((STEP_STARTS[s] ?? 0) / TOTAL_DURATION) * 100;
               const isActive = step === s;
               return (
@@ -1626,33 +1739,36 @@ export default function StorefrontTutorial() {
           </span>
 
           {/* Step chips */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            {SCRUB_STEPS.map(s => {
-              const active = step === s;
-              const passed = (elapsed >= (STEP_STARTS[s] ?? 0)) && !active;
-              return (
-                <button key={s} onClick={() => goTo(s)} title={SCRUB_LABELS[s] ?? s}
-                  style={{
-                    width: active ? 22 : 8, height: 8, borderRadius: 4,
-                    background: active ? '#10b981' : passed ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.18)',
-                    border: 'none', cursor: 'pointer', padding: 0,
-                    transition: 'width 0.3s',
-                  }} />
-              );
-            })}
-          </div>
+          {!isMobileViewport && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              {SCRUB_STEPS.map(s => {
+                const active = step === s;
+                const passed = (elapsed >= (STEP_STARTS[s] ?? 0)) && !active;
+                return (
+                  <button key={s} onClick={() => jumpToStep(s)} title={SCRUB_LABELS[s] ?? s}
+                    style={{
+                      width: active ? 22 : 8, height: 8, borderRadius: 4,
+                      background: active ? '#10b981' : passed ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.18)',
+                      border: 'none', cursor: 'pointer', padding: 0,
+                      transition: 'width 0.3s',
+                    }} />
+                );
+              })}
+            </div>
+          )}
 
           {/* Fullscreen — 44px touch target */}
           <button
             onClick={toggleFullscreen}
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={fullscreenActive ? 'Exit fullscreen' : 'Fullscreen'}
             style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
           >
-            {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+            {fullscreenActive ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </button>
         </div>
       </div>
 
+      </div>
     </div>
   );
 }
