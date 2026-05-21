@@ -1,8 +1,9 @@
 'use client';
 
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2, RotateCcw, Download } from 'lucide-react';
+import { Store, Upload, CheckCircle2, Eye, ArrowRight, ShoppingBag, Play, Pause, Maximize2, Minimize2, RotateCcw, Download, Link2, Palette, Tags, Rocket, ShoppingCart, CreditCard } from 'lucide-react';
 import ProductFilter from '@/components/item/ProductFilter';
 import TopFilter from '@/components/item/TopFilter';
 import ItemCard from '@/components/item/ItemCard';
@@ -13,7 +14,7 @@ type Step = 'intro' | 'step1' | 'step2' | 'step3' | 'step4' | 'step5' | 'preview
 const STEPS: Step[] = ['intro', 'step1', 'step2', 'step3', 'step4', 'step5', 'preview', 'ending'];
 const DURATIONS: Record<Step, number> = {
   intro: 3500, step1: 15000, step2: 10000, step3: 9000,
-  step4: 9000, step5: 5500, preview: 13000, ending: 99999,
+  step4: 9000, step5: 7000, preview: 30000, ending: 99999,
 };
 type StepMeta = { label: string; title: string; caption: string };
 const STEP_META: Partial<Record<Step, StepMeta>> = {
@@ -43,15 +44,69 @@ const STEP_META: Partial<Record<Step, StepMeta>> = {
   },
 };
 const MAIN_STEPS: Step[] = ['step1', 'step2', 'step3', 'step4', 'step5'];
-const VOICE_LINES: Partial<Record<Step, string>> = {
-  intro: 'Welcome to the AF Home Partner Storefront Studio tutorial. Press play to begin setting up your branded store.',
-  step1: 'Step one. Set your store identity. Fill in your store URL slug, display name, hero title, and notification email.',
-  step2: 'Step two. Upload your logo and add your referral links. These help brand your store and track orders.',
-  step3: 'Step three. Choose your brand colors and hero subtitle. These make the storefront feel like your own brand.',
-  step4: 'Step four. Select product categories. Choose which products your customers can browse in your partner store.',
-  step5: 'Step five. Save and launch. Once saved, your branded partner storefront is ready to share.',
-  preview: 'This is your live partner store preview. Customers can browse products, add to cart, and checkout through AF Home.',
-  ending: 'Your store is ready. Your brand, your curated products, powered by AF Home.',
+const VOICE_AUDIO: Partial<Record<Step, string>> = {
+  intro: '/voiceover/Intro.wav',
+  step1: '/voiceover/step1.mp3',
+  step2: '/voiceover/step%202.mp3',
+  step3: '/voiceover/step%203.mp3',
+  step4: '/voiceover/step%204.mp3',
+  step5: '/voiceover/sterp%205.mp3',
+  preview: '/voiceover/this%20is%20your%20live%20partner%20store.wav',
+  ending: '/voiceover/your%20store%20is%20ready.mp3',
+};
+const BACKGROUND_MUSIC_URL = '/voiceover/bg-tutorial.wav';
+const BACKGROUND_MUSIC_VOLUME = 0.1;
+const SECTION_CARDS: Partial<Record<Step, { kicker: string; title: string; detail: string; icon: ReactNode; color: string }>> = {
+  step1: {
+    kicker: 'Step 1',
+    title: 'Set Your Store Identity',
+    detail: 'Store URL, display name, hero title, and notifications.',
+    icon: <Store size={34} />,
+    color: '#10b981',
+  },
+  step2: {
+    kicker: 'Step 2',
+    title: 'Upload Logo & Referral Links',
+    detail: 'Brand your storefront and track every order.',
+    icon: <Link2 size={34} />,
+    color: '#38bdf8',
+  },
+  step3: {
+    kicker: 'Step 3',
+    title: 'Choose Brand Colors',
+    detail: 'Style the storefront with your own look and hero message.',
+    icon: <Palette size={34} />,
+    color: '#a78bfa',
+  },
+  step4: {
+    kicker: 'Step 4',
+    title: 'Select Product Categories',
+    detail: 'Curate the products your customers can browse.',
+    icon: <Tags size={34} />,
+    color: '#f59e0b',
+  },
+  step5: {
+    kicker: 'Step 5',
+    title: 'Save and Launch',
+    detail: 'Publish your branded partner storefront.',
+    icon: <Rocket size={34} />,
+    color: '#22c55e',
+  },
+  preview: {
+    kicker: 'Live Store Preview',
+    title: 'Your Store Is Live',
+    detail: 'Customers can browse, add to cart, and checkout through AF Home.',
+    icon: <ShoppingBag size={34} />,
+    color: '#14b8a6',
+  },
+};
+const STEP_MOTION_LABELS: Partial<Record<Step, string[]>> = {
+  step1: ['Slug', 'Hero title', 'Notification email'],
+  step2: ['Logo', 'Referral links', 'Order tracking'],
+  step3: ['Theme color', 'Accent color', 'Hero subtitle'],
+  step4: ['Categories', 'Product curation', 'Customer view'],
+  step5: ['Review', 'Save', 'Launch'],
+  preview: ['Live storefront', 'Cart flow', 'Checkout'],
 };
 
 /* ─── Timeline ───────────────────────────────────────────────── */
@@ -100,6 +155,103 @@ function Cursor({ x, y, clicking }: { x: number; y: number; clicking: boolean })
           className="absolute -top-3 -left-3 w-6 h-6 rounded-full border-2 border-emerald-400" />
       )}
     </motion.div>
+  );
+}
+
+function SectionTitleCard({ step }: { step: Step }) {
+  const card = SECTION_CARDS[step];
+  if (!card) return null;
+
+  return (
+    <motion.div
+      key={`${step}-title-card`}
+      initial={{ opacity: 0, x: 28, y: -10, scale: 0.96 }}
+      animate={{ opacity: [0, 1, 1, 0], x: [28, 0, 0, -18], y: [-10, 0, 0, 0], scale: [0.96, 1, 1, 0.98], pointerEvents: 'none' }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 1.3, times: [0, 0.18, 0.76, 1], ease: 'easeInOut' }}
+      className="absolute right-5 top-5 z-[95] overflow-hidden rounded-2xl border border-white/24 bg-slate-950/68 px-4 py-3 text-white shadow-[0_18px_50px_rgba(15,23,42,0.28)] backdrop-blur-md"
+    >
+      {[0, 1].map((index) => (
+        <motion.div
+          key={index}
+          initial={{ x: -180, opacity: 0 }}
+          animate={{ x: 260, opacity: [0, 0.7, 0] }}
+          transition={{ duration: 1, delay: index * 0.15, ease: 'easeInOut' }}
+          className="absolute h-[1px] w-[180px]"
+          style={{
+            top: 16 + index * 54,
+            background: `linear-gradient(90deg, transparent, ${card.color}, transparent)`,
+          }}
+        />
+      ))}
+      <div className="relative flex w-[330px] items-center gap-3">
+        <motion.div
+          initial={{ scale: 0.85, rotate: -8, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 190, damping: 18, delay: 0.08 }}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white"
+          style={{ background: `linear-gradient(135deg, ${card.color}, rgba(255,255,255,0.18))` }}
+        >
+          {card.icon}
+        </motion.div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: card.color }}>{card.kicker}</p>
+          <h2 className="mt-0.5 truncate text-base font-black tracking-normal text-white">{card.title}</h2>
+          <p className="mt-0.5 truncate text-[11px] font-medium text-white/62">{card.detail}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function MotionGraphicsOverlay({ step, playing }: { step: Step; playing: boolean }) {
+  const labels = STEP_MOTION_LABELS[step];
+  if (!playing || !labels) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+      <motion.div
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(16,185,129,0.85), rgba(56,189,248,0.85), transparent)' }}
+        animate={{ x: ['-100%', '100%'] }}
+        transition={{ duration: 4.2, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        className="absolute inset-y-0 left-0 w-[2px]"
+        style={{ background: 'linear-gradient(180deg, transparent, rgba(168,85,247,0.75), rgba(245,158,11,0.7), transparent)' }}
+        animate={{ y: ['-100%', '100%'] }}
+        transition={{ duration: 5.6, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        className="absolute -right-20 top-20 h-32 w-[360px] rotate-[-18deg]"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.16), transparent)' }}
+        animate={{ x: [-80, -560], opacity: [0, 1, 0] }}
+        transition={{ duration: 5.8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute bottom-10 left-10 grid grid-cols-3 gap-2"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 1.1 }}
+      >
+        {labels.map((label, index) => (
+          <motion.div
+            key={label}
+            initial={{ opacity: 0, y: 12, scale: 0.94 }}
+            animate={{ opacity: [0, 1, 0.72, 1], y: 0, scale: 1 }}
+            transition={{ duration: 2.4, delay: 1.2 + index * 0.22, repeat: Infinity, repeatDelay: 3.6 }}
+            className="rounded-md border border-white/30 bg-slate-950/58 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white shadow-[0_12px_30px_rgba(15,23,42,0.22)] backdrop-blur"
+          >
+            {label}
+          </motion.div>
+        ))}
+      </motion.div>
+      <motion.div
+        className="absolute right-8 bottom-8 h-20 w-20 rounded-[18px] border border-emerald-300/45"
+        animate={{ rotate: [0, 90, 180], scale: [1, 1.08, 1] }}
+        transition={{ duration: 7.2, repeat: Infinity, ease: 'easeInOut' }}
+      />
+    </div>
   );
 }
 
@@ -875,7 +1027,7 @@ function Step5Screen({ onSaved, playing }: { onSaved: () => void; playing: boole
       [100,  () => setCurPos({ x: 120, y: 262 })],
       [550,  () => click(() => setSaving(true))],
       [1450, () => { setSaving(false); setSaved(true); }],
-      [2200, () => onSaved()],
+      [6200, () => onSaved()],
     ];
     const timers = seq.map(([t, fn]) => setTimeout(fn, t));
     return () => timers.forEach(clearTimeout);
@@ -999,11 +1151,323 @@ const normalizePreviewProduct = (product: TutorialProduct, apiUrl?: string): Tut
 });
 
 /* ─── Preview: Live partner store ────────────────────────────── */
+const formatPeso = (value: number | null | undefined) =>
+  `PHP ${Number(value ?? 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
+
+function CheckoutDemoOverlay({ stage, product }: { stage: number; product?: TutorialProduct }) {
+  if (stage <= 0 || !product) return null;
+
+  const price = Number(product.priceDp ?? product.priceSrp ?? product.price ?? 0);
+  const imageUrl = resolvePreviewAssetUrl(product.image);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[70] overflow-hidden">
+      <AnimatePresence>
+        {stage === 1 && (
+          <motion.div
+            key="fly-to-cart"
+            initial={{ opacity: 0, x: 590, y: 285, scale: 0.78 }}
+            animate={{ opacity: [0, 1, 1, 0], x: [590, 650, 970, 1040], y: [285, 240, 90, 62], scale: [0.78, 0.82, 0.42, 0.18] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="absolute h-28 w-28 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_22px_60px_rgba(15,23,42,0.32)]"
+          >
+            <Image src={imageUrl} alt="" fill sizes="112px" className="object-cover" unoptimized />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        initial={{ opacity: 0, y: -14, scale: 0.96 }}
+        animate={{ opacity: stage >= 1 ? 1 : 0, y: 0, scale: 1 }}
+        className="absolute right-8 top-5 flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-[0_12px_34px_rgba(15,23,42,0.18)]"
+      >
+        <ShoppingCart size={16} />
+        <span>Cart</span>
+        <motion.span
+          key={stage >= 2 ? 'cart-1' : 'cart-0'}
+          initial={{ scale: 0.5 }}
+          animate={{ scale: [0.5, 1.25, 1] }}
+          className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[11px] text-white"
+        >
+          1
+        </motion.span>
+      </motion.div>
+
+      <AnimatePresence>
+        {stage === 2 && (
+          <motion.div
+            key="cart-drawer"
+            initial={{ x: 390, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 390, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 190, damping: 24 }}
+            className="absolute right-0 top-0 h-full w-[360px] border-l border-slate-200 bg-white shadow-[-28px_0_80px_rgba(15,23,42,0.18)]"
+          >
+            <div className="border-b border-slate-100 px-5 py-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">Cart Summary</p>
+              <h3 className="mt-1 text-lg font-black text-slate-900">Ready for checkout</h3>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="flex gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+                  <Image src={imageUrl} alt="" fill sizes="80px" className="object-cover" unoptimized />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-slate-900">{product.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{product.brand || 'AF HOME'}</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="rounded-full bg-white px-2 py-1 text-xs font-bold text-slate-600">Qty 1</span>
+                    <span className="text-sm font-black text-emerald-700">{formatPeso(price)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white shadow-sm">
+                Proceed to Checkout
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {stage >= 3 && stage <= 5 && (
+          <motion.div
+            key="checkout-page"
+            initial={{ opacity: 0, x: 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="absolute inset-0 bg-slate-50 text-slate-900"
+          >
+            <div className="border-b border-slate-200 bg-white px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100">
+                    <CreditCard size={19} className="text-slate-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">LivingCo Secure Checkout</p>
+                    <h2 className="text-lg font-black text-slate-900">Guest Checkout</h2>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600">
+                  /livingco/checkout/customer
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-5 p-6">
+              <div className="col-span-2 space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-slate-200 bg-white p-5"
+                >
+                  <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-xs text-white">1</span>
+                    Contact information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      ['Full Name', stage >= 3 ? 'Maria Santos' : ''],
+                      ['Email', stage >= 3 ? 'maria@email.com' : ''],
+                      ['Phone Number', stage >= 3 ? '0917 555 0198' : ''],
+                      ['Referred By', stage >= 3 ? '@livingco' : ''],
+                    ].map(([label, value], index) => (
+                      <div key={label}>
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-600">{label}</label>
+                        <div className="h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.28 + index * 0.18 }}>
+                            {value}
+                          </motion.span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: stage >= 4 ? 1 : 0.45, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="rounded-2xl border border-slate-200 bg-white p-5"
+                >
+                  <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-xs text-white">2</span>
+                    Delivery address
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      ['Province', 'Metro Manila'],
+                      ['City', 'Makati City'],
+                      ['Barangay', 'Poblacion'],
+                      ['Street Address', 'Unit 8B, Home Tower'],
+                    ].map(([label, value], index) => (
+                      <div key={label} className={label === 'Street Address' ? 'col-span-2' : ''}>
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-600">{label}</label>
+                        <div className="h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                          {stage >= 4 && (
+                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: index * 0.14 }}>
+                              {value}
+                            </motion.span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: stage >= 4 ? 1 : 0.45, y: 0 }}
+                  className="rounded-2xl border border-slate-200 bg-white p-5"
+                >
+                  <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-500 text-xs text-white">3</span>
+                    Payment method
+                  </h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    {['GCash', 'Card', 'Online Banking'].map((method, index) => (
+                      <motion.div
+                        key={method}
+                        animate={{
+                          borderColor: stage >= 4 && index === 0 ? '#0ea5e9' : '#e2e8f0',
+                          backgroundColor: stage >= 4 && index === 0 ? '#f0f9ff' : '#ffffff',
+                        }}
+                        className="rounded-xl border px-3 py-3 text-center text-xs font-bold text-slate-700"
+                      >
+                        {method}
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Order Summary</p>
+                <div className="mt-4 flex gap-3 rounded-2xl bg-slate-50 p-3">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
+                    <Image src={imageUrl} alt="" fill sizes="64px" className="object-cover" unoptimized />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-900">{product.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">Qty 1</p>
+                    <p className="mt-2 text-sm font-black text-emerald-700">{formatPeso(price)}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
+                  <div className="flex justify-between text-slate-500"><span>Subtotal</span><span>{formatPeso(price)}</span></div>
+                  <div className="flex justify-between text-slate-500"><span>Shipping</span><span>PHP 180</span></div>
+                  <div className="flex justify-between text-base font-black text-slate-900"><span>Total</span><span>{formatPeso(price + 180)}</span></div>
+                </div>
+                <motion.div
+                  animate={{
+                    backgroundColor: stage >= 5 ? '#059669' : '#0ea5e9',
+                    scale: stage === 5 ? [1, 0.97, 1] : 1,
+                  }}
+                  className="relative mt-5 overflow-hidden rounded-xl px-4 py-3 text-center text-sm font-bold text-white"
+                >
+                  {stage === 5 && (
+                    <motion.span
+                      initial={{ x: '-120%' }}
+                      animate={{ x: '120%' }}
+                      transition={{ duration: 0.95, repeat: Infinity, ease: 'linear' }}
+                      className="absolute inset-y-0 left-0 w-1/2 bg-white/20"
+                    />
+                  )}
+                  <span className="relative">{stage === 5 ? 'Creating checkout session...' : 'Place Order'}</span>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {stage >= 6 && (
+          <motion.div
+            key="success-page"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-white"
+          >
+            <div className="border-b border-slate-200 bg-white px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-600">Checkout Success</p>
+                  <h2 className="text-lg font-black text-slate-900">/livingco/checkout/success</h2>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Paid</span>
+              </div>
+            </div>
+            <div className="flex h-[calc(100%-73px)] items-center justify-center bg-white">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-md overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
+              >
+                <div className="border-b border-gray-100 px-8 py-8 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 220, delay: 0.1 }}
+                    className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500 bg-emerald-500"
+                  >
+                    <CheckCircle2 size={40} className="text-white" />
+                  </motion.div>
+                  <h1 className="mt-4 text-2xl font-black text-green-700">Payment Successful!</h1>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-500">Your order is confirmed and is now being prepared.</p>
+                </div>
+                <div className="space-y-4 px-6 py-6">
+                  <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100">
+                    {[
+                      ['Checkout ID', 'AFH-2408'],
+                      ['Status', 'paid'],
+                      ['Payment Intent', 'pi_afhome_demo'],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between px-4 py-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+                        <span className="max-w-[190px] truncate text-xs font-semibold text-gray-700">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="mb-3 text-xs font-bold text-emerald-700">What happens next?</p>
+                    {['Order confirmation will be sent to your email', 'Our team will prepare your items for delivery', 'You will receive a shipping update soon'].map((line) => (
+                      <div key={line} className="mt-2 flex items-start gap-2.5">
+                        <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-500">
+                          <CheckCircle2 size={10} className="text-white" />
+                        </div>
+                        <p className="text-xs leading-relaxed text-emerald-700">{line}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="rounded-xl border border-slate-200 bg-white py-3 text-center text-sm font-semibold text-slate-700">Track This Order</div>
+                    <div className="rounded-xl bg-sky-500 py-3 text-center text-sm font-semibold text-white">Back to Home</div>
+                  </div>
+                  <p className="text-center text-[11px] text-gray-400">Secured by PayMongo · AF Home</p>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function PreviewScreen({ playing }: { playing: boolean }) {
   const [curPos, setCurPos] = useState({ x: -300, y: -300 });
   const [clicking, setClicking] = useState(false);
   const [callout, setCallout] = useState('');
   const [showListing, setShowListing] = useState(false);
+  const [storeScrolled, setStoreScrolled] = useState(false);
+  const [listingScrolled, setListingScrolled] = useState(false);
+  const [highlightAddCart, setHighlightAddCart] = useState(false);
+  const [checkoutStage, setCheckoutStage] = useState(0);
   const [products, setProducts] = useState<TutorialProduct[]>(FALLBACK_PREVIEW_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(() => Boolean(process.env.NEXT_PUBLIC_LARAVEL_API_URL));
@@ -1051,14 +1515,31 @@ function PreviewScreen({ playing }: { playing: boolean }) {
     const click = (cb: () => void) => { setClicking(true); setTimeout(() => { setClicking(false); cb(); }, 220); };
 
     const seq: [number, () => void][] = [
+      [100,  () => { setCheckoutStage(0); setStoreScrolled(false); setListingScrolled(false); setHighlightAddCart(false); }],
       [800,  () => setCallout('Your live partner storefront, loaded from the real system')],
       [2500, () => setCallout('')],
-      [2800, () => setCurPos({ x: 1088, y: 138 })],
-      [3600, () => click(() => { setShowListing(true); setCallout('Products, images, filters, and cards come from backend data'); })],
-      [4200, () => setCurPos({ x: 610, y: 245 })],
-      [6500, () => setCallout('')],
-      [8000, () => setCallout('Customers can add to cart and checkout on AF Home')],
-      [10500, () => setCallout('')],
+      [2800, () => setCallout('Scroll through the storefront to browse featured products')],
+      [3100, () => setStoreScrolled(true)],
+      [4300, () => setCurPos({ x: 1088, y: 138 })],
+      [5100, () => click(() => { setShowListing(true); setCallout('Products, images, filters, and cards come from backend data'); })],
+      [6200, () => setCurPos({ x: 610, y: 245 })],
+      [7000, () => { setListingScrolled(true); setCallout('The customer scrolls the product list to view more items'); }],
+      [8100, () => setHighlightAddCart(true)],
+      [8500, () => setCallout('The product card hover reveals the Add to Cart button')],
+      [8900, () => setCurPos({ x: 612, y: 413 })],
+      [9600, () => click(() => { setHighlightAddCart(false); setCheckoutStage(1); })],
+      [10800, () => setCheckoutStage(2)],
+      [11700, () => setCallout('The cart opens, then continues to the secure checkout page')],
+      [12500, () => click(() => setCheckoutStage(3))],
+      [13600, () => setCallout('Checkout captures customer contact information and referral source')],
+      [14800, () => setCheckoutStage(4)],
+      [16100, () => setCallout('Delivery address and payment method are selected before placing the order')],
+      [17600, () => setCurPos({ x: 1008, y: 430 })],
+      [18400, () => click(() => setCheckoutStage(5))],
+      [19100, () => setCallout('Place Order creates the checkout session and processes payment securely')],
+      [21400, () => setCheckoutStage(6)],
+      [22700, () => setCallout('Success page confirms payment and shows the next steps')],
+      [28200, () => setCallout('')],
     ];
 
     const allTimers = seq.map(([t, fn]) => setTimeout(fn as () => void, t as number));
@@ -1081,7 +1562,13 @@ function PreviewScreen({ playing }: { playing: boolean }) {
 
       <AnimatePresence mode="wait">
         {!showListing ? (
-          <motion.div key="storefront" className="absolute inset-0 overflow-y-auto bg-slate-50" exit={{ opacity: 0, scale: 0.985 }} transition={{ duration: 0.35 }}>
+          <motion.div
+            key="storefront"
+            className="absolute inset-0 bg-slate-50"
+            animate={{ y: storeScrolled ? -145 : 0 }}
+            exit={{ opacity: 0, scale: 0.985 }}
+            transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
             <section className="border-b border-slate-200" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #2563eb 100%)' }}>
               <div className="mx-auto max-w-7xl px-6 py-5">
                 <div className="flex items-center justify-between gap-5 rounded-[28px] bg-white/92 p-6 shadow-sm backdrop-blur">
@@ -1126,6 +1613,13 @@ function PreviewScreen({ playing }: { playing: boolean }) {
                 <p>{isLoadingData ? 'Loading live products...' : `${products.length} backend products available`}</p>
               </div>
             </footer>
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: storeScrolled ? 1 : 0, y: storeScrolled ? 0 : 14 }}
+              className="absolute bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/70 bg-white/90 px-4 py-2 text-xs font-bold text-teal-700 shadow-[0_14px_40px_rgba(15,23,42,0.18)] backdrop-blur"
+            >
+              Featured products in view
+            </motion.div>
           </motion.div>
         ) : (
           <motion.div key="listing" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.38 }}
@@ -1151,7 +1645,7 @@ function PreviewScreen({ playing }: { playing: boolean }) {
                 />
               </aside>
 
-              <main className="min-w-0 flex-1 overflow-y-auto">
+              <main className="relative min-w-0 flex-1 overflow-hidden">
                 <TopFilter
                   onViewTypeChange={setViewType}
                   viewType={viewType}
@@ -1166,23 +1660,50 @@ function PreviewScreen({ playing }: { playing: boolean }) {
                   </span>
                   {isLoadingData ? <span className="text-xs font-medium text-sky-500">Loading live data...</span> : null}
                 </div>
-                <div className={viewType === 'grid' ? 'grid grid-cols-4 gap-4' : 'flex flex-col gap-3'}>
+                <motion.div
+                  animate={{ y: listingScrolled ? -96 : 0 }}
+                  transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className={viewType === 'grid' ? 'grid grid-cols-4 gap-4' : 'flex flex-col gap-3'}
+                >
                   {visibleProducts.map((product, index) => (
-                    <motion.div key={product.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: index * 0.02 }}>
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: highlightAddCart && index === 0 ? 1.035 : 1,
+                      }}
+                      transition={{ duration: 0.22, delay: index * 0.02 }}
+                      className={highlightAddCart && index === 0 ? 'relative z-[60] rounded-lg ring-2 ring-sky-400 ring-offset-2 ring-offset-[#faf8f5]' : ''}
+                    >
                       <ItemCard
                         product={product}
                         brandName={product.brand || ''}
                         allowGuestAddToCart
                         allowGuestWishlist
                       />
+                      {highlightAddCart && index === 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                          className="pointer-events-none absolute bottom-[145px] right-3 z-[70] flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-bold text-white shadow-lg"
+                        >
+                          <ShoppingCart size={17} />
+                          Add to Cart
+                        </motion.div>
+                      )}
                     </motion.div>
                   ))}
-                </div>
+                </motion.div>
               </main>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+      <CheckoutDemoOverlay stage={checkoutStage} product={visibleProducts[0]} />
       <Cursor x={curPos.x} y={curPos.y} clicking={clicking} />
     </div>
   );
@@ -1216,8 +1737,8 @@ export default function StorefrontTutorial() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controlsHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const musicGainRef = useRef<GainNode | null>(null);
-  const musicNodesRef = useRef<Array<OscillatorNode | GainNode>>([]);
+  const voiceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const spokenStepRef = useRef<Step | null>(null);
   const stepIdx = STEPS.indexOf(step);
 
@@ -1265,77 +1786,57 @@ export default function StorefrontTutorial() {
     osc.stop(now + duration + 0.02);
   }, [getAudioContext]);
 
-  const startMusic = useCallback(() => {
-    const ctx = getAudioContext();
-    if (!ctx || musicGainRef.current) return;
+  const startMusic = useCallback((restart = false) => {
+    if (typeof window === 'undefined') return;
 
-    const master = ctx.createGain();
-    const low = ctx.createOscillator();
-    const high = ctx.createOscillator();
-    const shimmer = ctx.createGain();
-    const now = ctx.currentTime;
+    if (!musicAudioRef.current) {
+      const audio = new Audio(BACKGROUND_MUSIC_URL);
+      audio.loop = true;
+      audio.volume = BACKGROUND_MUSIC_VOLUME;
+      musicAudioRef.current = audio;
+    }
 
-    master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.026, now + 0.8);
-    low.type = 'sine';
-    high.type = 'triangle';
-    low.frequency.setValueAtTime(110, now);
-    high.frequency.setValueAtTime(220, now);
-    shimmer.gain.setValueAtTime(0.22, now);
+    const audio = musicAudioRef.current;
+    if (restart) audio.currentTime = 0;
+    audio.volume = BACKGROUND_MUSIC_VOLUME;
+    void audio.play().catch(() => {
+      // Browser autoplay rules can reject until the user's play click unlocks audio.
+    });
+  }, []);
 
-    low.connect(master);
-    high.connect(shimmer);
-    shimmer.connect(master);
-    master.connect(ctx.destination);
-    low.start();
-    high.start();
-
-    musicGainRef.current = master;
-    musicNodesRef.current = [low, high, shimmer, master];
-  }, [getAudioContext]);
-
-  const stopMusic = useCallback(() => {
-    const ctx = audioContextRef.current;
-    const master = musicGainRef.current;
-    if (!ctx || !master) return;
-
-    const now = ctx.currentTime;
-    master.gain.cancelScheduledValues(now);
-    master.gain.setValueAtTime(master.gain.value || 0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-    window.setTimeout(() => {
-      musicNodesRef.current.forEach((node) => {
-        if ('stop' in node) {
-          try { node.stop(); } catch { /* already stopped */ }
-        }
-        try { node.disconnect(); } catch { /* already disconnected */ }
-      });
-      musicNodesRef.current = [];
-      musicGainRef.current = null;
-    }, 420);
+  const stopMusic = useCallback((reset = false) => {
+    const audio = musicAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    if (reset) audio.currentTime = 0;
   }, []);
 
   const stopVoiceOver = useCallback(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
+    const audio = voiceAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
   }, []);
 
-  const speakVoiceOver = useCallback((targetStep: Step) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const text = VOICE_LINES[targetStep];
-    if (!text) return;
+  const playVoiceOver = useCallback((targetStep: Step) => {
+    if (typeof window === 'undefined') return;
+    const src = VOICE_AUDIO[targetStep];
+    if (!src) return;
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.94;
-    utterance.pitch = 1;
-    utterance.volume = 0.92;
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find((voice) =>
-      /female|zira|samantha|google us english|english/i.test(`${voice.name} ${voice.lang}`),
-    );
-    if (preferredVoice) utterance.voice = preferredVoice;
-    window.speechSynthesis.speak(utterance);
+    const currentAudio = voiceAudioRef.current;
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+
+    const audio = new Audio(src);
+    audio.volume = 0.95;
+    voiceAudioRef.current = audio;
+    void audio.play().catch(() => {
+      if (voiceAudioRef.current === audio) {
+        voiceAudioRef.current = null;
+      }
+    });
   }, []);
 
   const handleReplay = () => {
@@ -1344,7 +1845,7 @@ export default function StorefrontTutorial() {
 
     stopVoiceOver();
     spokenStepRef.current = null;
-    startMusic();
+    startMusic(true);
     playSound('replay');
     justSeeked.current = true;
     elapsedRef.current = 0;
@@ -1384,7 +1885,7 @@ export default function StorefrontTutorial() {
   useEffect(() => {
     if (!playing || step === 'intro') return;
     playSound(step === 'ending' ? 'success' : 'step');
-    if (step === 'ending') stopMusic();
+    if (step === 'ending') stopMusic(true);
   }, [step, playing, playSound, stopMusic]);
 
   useEffect(() => {
@@ -1394,12 +1895,13 @@ export default function StorefrontTutorial() {
     }
     if (spokenStepRef.current === step) return;
     spokenStepRef.current = step;
-    speakVoiceOver(step);
-  }, [step, playing, speakVoiceOver, stopVoiceOver]);
+    playVoiceOver(step);
+  }, [step, playing, playVoiceOver, stopVoiceOver]);
 
   useEffect(() => () => {
     stopVoiceOver();
-  }, [stopVoiceOver]);
+    stopMusic(true);
+  }, [stopMusic, stopVoiceOver]);
 
   const handleSaved = useCallback(() => {
     playSound('success');
@@ -1407,7 +1909,7 @@ export default function StorefrontTutorial() {
     setTimeout(() => {
       if (timer.current) clearTimeout(timer.current);
       setStep('preview');
-    }, 400);
+    }, 700);
   }, [playSound]); // stable ref — setUrlBar/setStep are stable, timer is a ref
 
   useEffect(() => {
@@ -1854,6 +2356,8 @@ export default function StorefrontTutorial() {
                     {step === 'step4' && <Step4Screen key={stepRestartKey} playing={playing} />}
                     {step === 'step5' && <Step5Screen key={stepRestartKey} onSaved={handleSaved} playing={playing} />}
                     {step === 'preview' && <PreviewScreen key={stepRestartKey} playing={playing} />}
+                    <MotionGraphicsOverlay step={step} playing={playing} />
+                    {playing && <SectionTitleCard step={step} />}
                   </div>
                 </motion.div>
               )}
