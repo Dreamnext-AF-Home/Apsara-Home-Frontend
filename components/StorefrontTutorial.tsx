@@ -55,7 +55,7 @@ const VOICE_AUDIO: Partial<Record<Step, string>> = {
   ending: '/voiceover/your%20store%20is%20ready.mp3',
 };
 const BACKGROUND_MUSIC_URL = '/voiceover/bg-tutorial.wav';
-const BACKGROUND_MUSIC_VOLUME = 0.1;
+const BACKGROUND_MUSIC_VOLUME = 0.045;
 const SECTION_CARDS: Partial<Record<Step, { kicker: string; title: string; detail: string; icon: ReactNode; color: string }>> = {
   step1: {
     kicker: 'Step 1',
