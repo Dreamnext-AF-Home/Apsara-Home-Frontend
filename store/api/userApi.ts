@@ -430,7 +430,7 @@ export const userApi = baseApi.injectEndpoints({
                 method: 'POST',
                 body,
             }),
-            invalidatesTags: ['User'],
+            invalidatesTags: ['User', 'WebstoreRequests', 'AdminNotifications'],
         }),
 
         usernameChangeLatest: builder.query<{ request: UsernameChangeRequest | null }, void>({
@@ -446,7 +446,7 @@ export const userApi = baseApi.injectEndpoints({
                 url: '/api/webstore-requests/latest',
                 method: 'GET',
             }),
-            providesTags: ['User'],
+            providesTags: ['User', 'WebstoreRequests'],
         }),
 
         syncWebstorePartnerAccount: builder.mutation<{ message: string; partner?: { id: number; username: string; storefront_ids: number[] } }, void>({
@@ -454,7 +454,7 @@ export const userApi = baseApi.injectEndpoints({
                 url: '/api/webstore-requests/sync-account',
                 method: 'POST',
             }),
-            invalidatesTags: ['User'],
+            invalidatesTags: ['User', 'WebstoreRequests', 'AdminNotifications'],
         }),
 
         memberActivity: builder.query<{ items: MemberActivityItem[] }, void>({

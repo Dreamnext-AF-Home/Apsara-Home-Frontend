@@ -754,7 +754,11 @@ function NavbarInner({
       const interiorHref = `/${partnerSlug}/${interiorSlug}`
       const nonInteriorItems = scopedItems.filter((item) => item.label.trim().toLowerCase() !== interiorLabel.toLowerCase())
       const orderedScopedItems = [...nonInteriorItems, { label: interiorLabel, href: interiorHref }]
-      return [{ label: 'All Category', href: `/${partnerSlug}/product` }, ...orderedScopedItems]
+      return [
+        { label: 'Home', href: `/${partnerSlug}` },
+        { label: 'All Category', href: `/${partnerSlug}/product` },
+        ...orderedScopedItems,
+      ]
     }
     return scopedItems
   }, [initialCategories, partnerSlug])

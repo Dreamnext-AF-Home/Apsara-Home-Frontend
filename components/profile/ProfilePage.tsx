@@ -1,8 +1,8 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useSubmitWebstoreRequestMutation, useUsernameChangeLatestQuery, useWebstoreRequestLatestQuery, useSyncWebstorePartnerAccountMutation, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useWebstoreRequestLatestQuery, useSyncWebstorePartnerAccountMutation, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -511,12 +511,28 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const { data: partnerStorefrontData } = useGetPublicWebPageItemsQuery('partner-storefront', {
     skip: !partnerSlug,
   });
+  const { data: publicTermsData } = useGetPublicWebPageItemsQuery('terms-and-conditions');
   const partnerStorefront = useMemo(() => {
     if (!partnerSlug) return null;
     const storefrontItems = partnerStorefrontData?.items ?? [];
     const matched = storefrontItems.find((item) => getPartnerStorefrontConfig(item)?.slug === partnerSlug);
     return getPartnerStorefrontConfig(matched);
   }, [partnerSlug, partnerStorefrontData?.items]);
+  const webstoreTermsTitle = useMemo(() => {
+    const items = publicTermsData?.items ?? []
+    const webstore = items.find((item) => String(item.key ?? '').trim().toLowerCase() === 'webstore')
+    const general = items.find((item) => String(item.key ?? '').trim().toLowerCase() === 'general')
+    const selected = webstore ?? general ?? items[0]
+    return String(selected?.title ?? '').trim() || 'Webstore Terms and Conditions'
+  }, [publicTermsData?.items])
+  const webstoreTermsBody = useMemo(() => {
+    const items = publicTermsData?.items ?? []
+    const webstore = items.find((item) => String(item.key ?? '').trim().toLowerCase() === 'webstore')
+    const general = items.find((item) => String(item.key ?? '').trim().toLowerCase() === 'general')
+    const selected = webstore ?? general ?? items[0]
+    const body = String(selected?.body ?? '').trim()
+    return body || 'No published terms yet. Please contact admin.'
+  }, [publicTermsData?.items])
   const partnerLogoUrl = partnerStorefront?.logoUrl
     ? `${partnerStorefront.logoUrl}${partnerStorefront.logoUrl.includes('?') ? '&' : '?'}v=${partnerStorefront.logoVersion || '1'}`
     : undefined;
@@ -564,7 +580,6 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [sendUsernameChangeOtp, { isLoading: isSendingUsernameOtp }] = useSendUsernameChangeOtpMutation();
   const [submitUsernameChangeRequest, { isLoading: isSubmittingUsernameChange }] = useSubmitUsernameChangeRequestMutation();
-  const [submitWebstoreRequest, { isLoading: isSubmittingWebstoreRequest }] = useSubmitWebstoreRequestMutation();
   const [syncWebstorePartnerAccount, { isLoading: isSyncingWebstoreAccount }] = useSyncWebstorePartnerAccountMutation();
   const [revokeMemberSession, { isLoading: isRevokingSession }] = useRevokeMemberSessionMutation();
   const { data: linkedAccountsData, refetch: refetchLinkedAccounts } = useLinkedAccountsQuery(undefined, {
@@ -624,6 +639,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [webstoreMsg, setWebstoreMsg] = useState<AlertMsg | null>(null);
   const [webstoreSyncSuccessOpen, setWebstoreSyncSuccessOpen] = useState(false);
   const [showPartnerLoginShortcut, setShowPartnerLoginShortcut] = useState(false);
+  const [selectedWebstorePlan, setSelectedWebstorePlan] = useState<'quarterly' | 'semiAnnual' | 'annual' | null>(null);
+  const [selectedBillingOption, setSelectedBillingOption] = useState<'full' | 'monthly' | null>(null);
+  const [webstoreReceiptFiles, setWebstoreReceiptFiles] = useState<Array<{ name: string; preview: string }>>([]);
+  const [isDraggingReceipt, setIsDraggingReceipt] = useState(false);
+  const webstoreReceiptInputRef = useRef<HTMLInputElement | null>(null);
 
   const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwError, setPwError] = useState<string | null>(null);
@@ -1863,40 +1883,52 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   const handleSubmitWebstoreRequest = async (e: FormEvent) => {
     e.preventDefault();
-    setWebstoreMsg(null);
-
-    if (!webstoreForm.fullName.trim() || !webstoreForm.username.trim() || !webstoreForm.email.trim() || !webstoreForm.slugName.trim() || !webstoreForm.displayName.trim()) {
-      setWebstoreMsg({ type: 'error', text: 'Please complete all required fields.' });
-      return;
-    }
-
-    if (!webstoreAcceptedTerms) {
-      setWebstoreMsg({ type: 'error', text: 'You must accept the Terms and Conditions before submitting.' });
-      setWebstoreTermsOpen(true);
-      return;
-    }
-
-    try {
-      const response = await submitWebstoreRequest({
-        full_name: webstoreForm.fullName.trim(),
-        username: webstoreForm.username.trim(),
-        email: webstoreForm.email.trim(),
-        slug_name: webstoreForm.slugName.trim(),
-        display_name: webstoreForm.displayName.trim(),
-        accepted_terms: webstoreAcceptedTerms,
-      }).unwrap();
-
-      const submittedAtLabel = response?.request?.submitted_at
-        ? new Date(response.request.submitted_at).toLocaleString()
-        : 'just now';
-      setWebstoreMsg({ type: 'success', text: `Webstore request submitted successfully on ${submittedAtLabel}.` });
-      showSuccessToast('Webstore request submitted.');
-      refetchWebstoreRequestLatest();
-    } catch (error) {
-      const apiErr = error as { data?: { message?: string } }
-      setWebstoreMsg({ type: 'error', text: apiErr?.data?.message || 'Failed to submit webstore request.' });
-    }
+    setWebstoreMsg({
+      type: 'error',
+      text: 'Sorry, the webstore request is under maintenance right now. Please try again later.',
+    });
+    showErrorToast('Sorry, the webstore request is under maintenance right now. Please try again later.');
   };
+
+  const processWebstoreReceiptFiles = (files: File[]) => {
+    if (files.length === 0) return
+
+    void Promise.all(
+      files.map(
+        (file) =>
+          new Promise<{ name: string; preview: string }>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => {
+              resolve({ name: file.name, preview: typeof reader.result === 'string' ? reader.result : '' })
+            }
+            reader.onerror = () => reject(new Error('Failed to read receipt image.'))
+            reader.readAsDataURL(file)
+          }),
+      ),
+    )
+      .then((items) => {
+        setWebstoreReceiptFiles((prev) => [...prev, ...items.filter((item) => item.preview)])
+      })
+      .catch(() => {
+        setWebstoreMsg({ type: 'error', text: 'Unable to load one or more receipt images.' })
+      })
+      .finally(() => {
+        if (webstoreReceiptInputRef.current) {
+          webstoreReceiptInputRef.current.value = ''
+        }
+      })
+  }
+
+  const handleWebstoreReceiptUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    processWebstoreReceiptFiles(Array.from(event.target.files ?? []))
+  }
+
+  const handleWebstoreReceiptDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDraggingReceipt(false)
+    processWebstoreReceiptFiles(Array.from(event.dataTransfer.files ?? []).filter((file) => file.type.startsWith('image/')))
+  }
 
   const handleSyncWebstoreAccount = async () => {
     setWebstoreMsg(null);
@@ -5131,6 +5163,135 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       </div>
                     )}
 
+                    <div className="mb-5 overflow-hidden rounded-2xl border border-[#cfe0ff] bg-gradient-to-br from-[#f8fbff] via-[#f3f8ff] to-[#eef4ff] shadow-[0_10px_28px_rgba(37,99,235,0.12)]">
+                      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#dce8ff] px-4 py-4 md:px-5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#dbeafe] text-[#1d4ed8]">
+                            <Icon.Activity className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-extrabold tracking-wide text-[#0f1f44]">Webstore Subscription</p>
+                            <p className="text-xs text-[#5f739d]">Fixed duration plan for partner storefront access.</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-4 py-4 md:px-5">
+                        <div className="overflow-hidden rounded-2xl border border-[#d9e6ff] bg-white">
+                          <div className="grid grid-cols-4 gap-0 border-b border-[#e7efff] bg-[#f4f8ff] px-4 py-3 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#6d82ab]">
+                            <div>Plan</div>
+                            <div>Term</div>
+                            <div>Subscription Fee</div>
+                            <div>Effective Monthly</div>
+                          </div>
+                          <div className="divide-y divide-[#edf2ff]">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWebstorePlan('quarterly')}
+                              className={`grid w-full grid-cols-2 gap-2 px-4 py-4 text-left transition md:grid-cols-4 md:divide-x md:divide-[#edf2ff] md:px-0 md:py-0 ${
+                                selectedWebstorePlan === 'quarterly' ? 'bg-[#f4f8ff]' : 'bg-white hover:bg-[#fafcff]'
+                              }`}
+                            >
+                              <div className="md:px-4 md:py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${selectedWebstorePlan === 'quarterly' ? 'border-[#2f5bd8]' : 'border-[#c2d3f5]'}`}>
+                                    <span className={`h-2 w-2 rounded-full ${selectedWebstorePlan === 'quarterly' ? 'bg-[#2f5bd8]' : 'bg-transparent'}`} />
+                                  </span>
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Plan</p>
+                                    <p className="text-sm font-bold text-[#163060]">Quarterly</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Term</p>
+                                <p className="text-sm font-semibold text-[#163060]">3 months</p>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Subscription Fee</p>
+                                <p className="text-sm font-semibold text-[#163060]">₱48,000</p>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Effective Monthly</p>
+                                <p className="text-sm font-semibold text-[#163060]">₱16,000</p>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWebstorePlan('semiAnnual')}
+                              className={`grid w-full grid-cols-2 gap-2 px-4 py-4 text-left transition md:grid-cols-4 md:divide-x md:divide-[#edf2ff] md:px-0 md:py-0 ${
+                                selectedWebstorePlan === 'semiAnnual' ? 'bg-[#f4f8ff]' : 'bg-white hover:bg-[#fafcff]'
+                              }`}
+                            >
+                              <div className="md:px-4 md:py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${selectedWebstorePlan === 'semiAnnual' ? 'border-[#2f5bd8]' : 'border-[#c2d3f5]'}`}>
+                                    <span className={`h-2 w-2 rounded-full ${selectedWebstorePlan === 'semiAnnual' ? 'bg-[#2f5bd8]' : 'bg-transparent'}`} />
+                                  </span>
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Plan</p>
+                                    <p className="text-sm font-bold text-[#163060]">Semi-Annual</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Term</p>
+                                <p className="text-sm font-semibold text-[#163060]">6 months</p>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Subscription Fee</p>
+                                <p className="text-sm font-semibold text-[#163060]">₱90,000</p>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Effective Monthly</p>
+                                <p className="text-sm font-semibold text-[#163060]">₱15,000</p>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedWebstorePlan('annual')}
+                              className={`grid w-full grid-cols-2 gap-2 px-4 py-4 text-left transition md:grid-cols-4 md:divide-x md:divide-[#edf2ff] md:px-0 md:py-0 ${
+                                selectedWebstorePlan === 'annual' ? 'bg-[#eef4ff]' : 'bg-white hover:bg-[#fafcff]'
+                              }`}
+                            >
+                              <div className="md:px-4 md:py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${selectedWebstorePlan === 'annual' ? 'border-[#2f5bd8]' : 'border-[#c2d3f5]'}`}>
+                                    <span className={`h-2 w-2 rounded-full ${selectedWebstorePlan === 'annual' ? 'bg-[#2f5bd8]' : 'bg-transparent'}`} />
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <div>
+                                      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Plan</p>
+                                      <p className="text-sm font-bold text-[#163060]">Annual</p>
+                                    </div>
+                                    <span className="rounded-full bg-[#e8f0ff] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#2f5bd8]">
+                                      Best Value
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Term</p>
+                                <p className="text-sm font-semibold text-[#163060]">Yearly</p>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Subscription Fee</p>
+                                <p className="text-sm font-semibold text-[#163060]">₱150,000</p>
+                              </div>
+                              <div className="md:px-4 md:py-4">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d82ab] md:hidden">Effective Monthly</p>
+                                <p className="text-sm font-semibold text-[#163060]">₱12,500</p>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="border-t border-[#dce8ff] bg-white/80 px-4 py-3 md:px-5">
+                        <p className="mt-1 text-xs font-semibold text-[#2f5bd8]">
+                          Selected plan: {selectedWebstorePlan ? (selectedWebstorePlan === 'quarterly' ? 'Quarterly' : selectedWebstorePlan === 'semiAnnual' ? 'Semi-Annual' : 'Annual') : 'None selected'}
+                        </p>
+                      </div>
+                    </div>
+
                     <form onSubmit={handleSubmitWebstoreRequest} className="space-y-5">
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-1.5">
@@ -5171,26 +5332,155 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-sm font-semibold text-[#1f3763]">Slug Name</label>
+                        <input
+                          type="text"
+                          value={latestWebstoreRequest?.slug_name || '-'}
+                          disabled
+                          className="w-full rounded-xl border border-[#d5def1] bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none opacity-80"
+                          placeholder="your-store-slug"
+                        />
+                          <p className="text-xs font-medium text-[#7d8fb0]">Registered slug name for your store&apos;s unique URL.</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-semibold text-[#1f3763]">Display Name</label>
                           <input
                             type="text"
-                            value={webstoreForm.slugName}
-                            onChange={(e) => setWebstoreForm((prev) => ({ ...prev, slugName: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }))}
-                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
-                            placeholder="your-store-slug"
+                            value={latestWebstoreRequest?.display_name || '-'}
+                            disabled
+                            className="w-full rounded-xl border border-[#d5def1] bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none opacity-80"
+                            placeholder="Storefront display name"
                           />
-                          <p className="text-xs font-medium text-[#7d8fb0]">This will be your store&apos;s unique URL.</p>
+                          <p className="text-xs font-medium text-[#7d8fb0]">Registered display name for your storefront.</p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-semibold text-[#1f3763]">Billing Option</label>
+                          <div className="relative">
+                            <select
+                              value={selectedBillingOption ?? ''}
+                              onChange={(event) => setSelectedBillingOption((event.target.value || null) as 'full' | 'monthly' | null)}
+                              className="w-full appearance-none rounded-xl border border-[#d5def1] bg-white px-4 py-3 pr-12 text-sm font-semibold text-[#163060] outline-none transition hover:border-[#9fb4ef] focus:border-[#4f7df0] focus:bg-[#fbfdff] focus:ring-2 focus:ring-sky-100"
+                            >
+                              <option value="">Select billing option</option>
+                              <option value="full">Full Payment</option>
+                              <option value="monthly">Monthly Installment</option>
+                            </select>
+                            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#2457e7]">
+                              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="m6 9 6 6 6-6" />
+                              </svg>
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-[#7d8fb0]">Choose how the subscription will be billed.</p>
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-[#1f3763]">Display Name</label>
-                        <input
-                          type="text"
-                          value={webstoreForm.displayName}
-                          onChange={(e) => setWebstoreForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                          className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
-                          placeholder="Storefront display name"
-                        />
+                        <label className="text-sm font-semibold text-[#1f3763]">Receipt Upload</label>
+                        <div className="rounded-2xl border border-[#d5def1] bg-[#f8fbff] p-4">
+                          <input
+                            ref={webstoreReceiptInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={handleWebstoreReceiptUpload}
+                          />
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => webstoreReceiptInputRef.current?.click()}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                webstoreReceiptInputRef.current?.click()
+                              }
+                            }}
+                            onDragEnter={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              setIsDraggingReceipt(true)
+                            }}
+                            onDragOver={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              setIsDraggingReceipt(true)
+                            }}
+                            onDragLeave={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              setIsDraggingReceipt(false)
+                            }}
+                            onDrop={handleWebstoreReceiptDrop}
+                            className={`rounded-[22px] border border-dashed bg-white p-5 outline-none transition focus-visible:ring-2 focus-visible:ring-sky-100 ${
+                              isDraggingReceipt
+                                ? 'border-[#4f7df0] bg-[#f5f9ff] shadow-[0_0_0_4px_rgba(37,99,235,0.08)]'
+                                : 'border-[#c6d4f7] hover:border-[#9fb4ef] hover:bg-[#fbfdff]'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <p className="text-sm font-semibold text-[#163060]">Upload your payment receipt</p>
+                                <p className="text-xs text-[#7d8fb0]">UI preview only. Click anywhere to add one or more images.</p>
+                              </div>
+                              <div className="rounded-full bg-[#eff4ff] px-3 py-1 text-[11px] font-semibold text-[#4968c9]">
+                                {webstoreReceiptFiles.length > 0 ? `${webstoreReceiptFiles.length} selected` : 'Click to upload'}
+                              </div>
+                            </div>
+
+                            <div className="mt-5">
+                              {webstoreReceiptFiles.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                  {webstoreReceiptFiles.map((file, index) => (
+                                    <div key={`${file.name}-${index}`} className="overflow-hidden rounded-2xl border border-[#d5def1] bg-[#f8fbff] shadow-sm">
+                                      <div className="flex items-center justify-between gap-2 border-b border-[#e7eefb] px-3 py-2">
+                                        <p className="truncate text-xs font-semibold text-[#5d739f]">{file.name}</p>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation()
+                                            setWebstoreReceiptFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                                          }}
+                                          className="rounded-full border border-[#d5def1] bg-white px-2 py-1 text-[11px] font-semibold text-[#355289] hover:bg-[#f6f9ff]"
+                                          aria-label={`Remove receipt ${file.name}`}
+                                        >
+                                          X
+                                        </button>
+                                      </div>
+                                      <div className="p-3">
+                                        <img
+                                          src={file.preview}
+                                          alt={file.name}
+                                          className="h-40 w-full rounded-xl object-contain bg-white"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex min-h-[180px] flex-col items-center justify-center text-center">
+                                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#eef3ff] text-[#2457e7] shadow-[0_10px_25px_rgba(37,99,235,0.12)]">
+                                    <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                      <path d="M4 7a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z" />
+                                      <path d="m12 11v5" />
+                                      <path d="m9.5 13.5 2.5-2.5 2.5 2.5" />
+                                    </svg>
+                                  </div>
+                                  <p className="text-sm font-semibold text-[#163060]">No receipt image selected yet.</p>
+                                  <p className="mt-1 text-xs text-[#7d8fb0]">Drag and drop your receipt here, or click anywhere to select images.</p>
+                                  <div className="mt-3 flex items-center gap-2 text-[11px] font-medium text-[#91a0c4]">
+                                    <span>JPG, PNG, WEBP</span>
+                                    <span>•</span>
+                                    <span>Max 10MB each</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="rounded-xl border border-[#d5def1] bg-[#f8faff] px-4 py-3">
@@ -5233,27 +5523,26 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         </div>
                         <button
                           type="submit"
-                          disabled={isSubmittingWebstoreRequest}
                           className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_25px_rgba(37,99,235,0.35)] transition hover:from-[#1d4ed8] hover:to-[#1e40af]"
                         >
                           <Icon.Package className="h-5 w-5" />
-                          {isSubmittingWebstoreRequest ? 'Submitting...' : 'Submit Webstore Request'}
+                          Under Maintenance
                           <span aria-hidden>→</span>
                         </button>
                       </div>
                     </form>
 
                     <div className="mt-6 rounded-[28px] border border-[#e6ebf8] bg-white p-5 shadow-[0_16px_40px_rgba(17,24,39,0.04)] md:p-7">
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-[#eef1ff] text-[#2f5bff]">
-                            <Icon.Package className="h-8 w-8" />
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="inline-flex h-12 w-12 items-center justify-center rounded-3xl bg-[#eef1ff] text-[#2f5bff]">
+                            <Icon.Package className="h-7 w-7" />
                           </div>
-                          <h4 className="text-[20px] md:text-[24px] font-extrabold tracking-tight text-[#162449]">Your Webstore Request</h4>
+                          <h4 className="text-[18px] md:text-[20px] font-extrabold tracking-tight text-[#162449]">Your Webstore Request</h4>
                         </div>
                         {latestWebstoreRequest?.status ? (
                           <span
-                            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-[12px] font-bold leading-none ${
+                            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-[11px] md:text-[12px] font-bold leading-none ${
                               latestWebstoreRequest.status === 'approved'
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : latestWebstoreRequest.status === 'rejected'
@@ -5261,10 +5550,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                   : 'bg-amber-50 text-amber-700'
                             }`}
                           >
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-current/15">
-                              <Icon.Check className="h-4 w-4" />
-                            </span>
-                            <span className="text-sm md:text-base">
+                              <span className="inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-current/15">
+                                <Icon.Check className="h-3.5 w-3.5" />
+                              </span>
+                              <span className="text-xs md:text-sm">
                               {latestWebstoreRequest.status === 'pending_review'
                                 ? 'Pending Review'
                                 : latestWebstoreRequest.status === 'approved'
@@ -5276,31 +5565,31 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       </div>
 
                       {latestWebstoreRequest ? (
-                        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-4 py-4">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                                   <path d="M6 2h8l4 4v16H6z" />
                                   <path d="M14 2v4h4" />
                                   <path d="M9 12h6M9 16h6" />
                                 </svg>
                               </span>
-                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Reference</p>
+                              <p className="text-[11px] md:text-xs font-bold uppercase tracking-wide text-[#667293]">Reference</p>
                             </div>
-                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.reference_no || '-'}</p>
+                            <p className="mt-2.5 text-[17px] md:text-[18px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.reference_no || '-'}</p>
                           </div>
-                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-4 py-4">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                                   <rect x="3" y="5" width="18" height="16" rx="2" />
                                   <path d="M16 3v4M8 3v4M3 10h18" />
                                 </svg>
                               </span>
-                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Submitted</p>
+                              <p className="text-[11px] md:text-xs font-bold uppercase tracking-wide text-[#667293]">Submitted</p>
                             </div>
-                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">
+                            <p className="mt-2.5 text-[17px] md:text-[18px] font-extrabold leading-tight text-[#17264a] break-words">
                               {latestWebstoreRequest.created_at
                                 ? new Date(latestWebstoreRequest.created_at).toLocaleString('en-US', {
                                     month: 'long',
@@ -5312,29 +5601,29 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                 : '-'}
                             </p>
                           </div>
-                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-4 py-4">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                                   <path d="m20 12-8 8-8-8 8-8 8 8Z" />
                                   <circle cx="12" cy="12" r="2" />
                                 </svg>
                               </span>
-                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Slug Name</p>
+                              <p className="text-[11px] md:text-xs font-bold uppercase tracking-wide text-[#667293]">Slug Name</p>
                             </div>
-                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.slug_name || '-'}</p>
+                            <p className="mt-2.5 text-[17px] md:text-[18px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.slug_name || '-'}</p>
                           </div>
-                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-5 py-5">
+                          <div className="rounded-3xl border border-[#e3e9f7] bg-white px-4 py-4">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-[#edf3ff] text-[#2e63d6]">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                                   <rect x="3" y="4" width="18" height="13" rx="2" />
                                   <path d="M8 20h8M12 17v3" />
                                 </svg>
                               </span>
-                              <p className="text-xs md:text-sm font-bold uppercase tracking-wide text-[#667293]">Display Name</p>
+                              <p className="text-[11px] md:text-xs font-bold uppercase tracking-wide text-[#667293]">Display Name</p>
                             </div>
-                            <p className="mt-3 text-[20px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.display_name || '-'}</p>
+                            <p className="mt-2.5 text-[17px] md:text-[18px] font-extrabold leading-tight text-[#17264a] break-words">{latestWebstoreRequest.display_name || '-'}</p>
                           </div>
                         </div>
                       ) : (
@@ -5342,11 +5631,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       )}
 
                       {latestWebstoreRequest?.status === 'approved' ? (
-                        <div className="mt-6 border-t border-[#e5ebfa] pt-6">
+                        <div className="mt-4 border-t border-[#e5ebfa] pt-4">
                           {latestWebstoreRequest.partner_sync_status === 'synced' ? (
-                            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-4 text-sm font-semibold text-emerald-700">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white">
-                                <Icon.Check className="h-4 w-4" />
+                            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
+                                <Icon.Check className="h-3.5 w-3.5" />
                               </span>
                               Partner login account already synced.
                             </div>
@@ -5426,7 +5715,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-4xl font-bold tracking-tight text-[#0f1f44]">Webstore Terms and Conditions</h3>
+                      <h3 className="text-4xl font-bold tracking-tight text-[#0f1f44]">{webstoreTermsTitle}</h3>
                       <p className="mt-1 text-lg text-[#60739b]">By submitting a Partner Webstore Request, you agree to the following terms and conditions:</p>
                     </div>
                   </div>
@@ -5442,108 +5731,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
               </div>
 
               <div className="px-5 py-4 md:px-6">
-                <div className="overflow-hidden rounded-2xl border border-[#dbe4f6]">
-                  {[
-                    {
-                      text: 'All information provided must be accurate, complete, and up to date.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <path d="M9 12h6M9 16h6M9 8h3" strokeLinecap="round" />
-                          <rect x="5" y="3" width="14" height="18" rx="2" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'Your requested store name, username, and slug must not infringe on any trademarks, copyrights, or third-party rights.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
-                          <path d="m9.5 12 2 2 3-3.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'The platform reserves the right to review, approve, reject, or suspend any webstore request that violates platform policies or contains inappropriate content.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <path d="m14 4 6 6-9 9H5v-6z" />
-                          <path d="m13 5 6 6" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'Approved webstore details and partner login access will be sent to your email.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <rect x="3" y="5" width="18" height="14" rx="2" />
-                          <path d="m4 7 8 6 8-6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'You are responsible for maintaining the confidentiality and security of your account credentials.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <rect x="5" y="11" width="14" height="10" rx="2" />
-                          <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'Any fraudulent activity, misleading information, or abuse of the platform may result in account suspension or permanent removal.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <path d="M12 2 4 6v6c0 5 3 8 8 10 5-2 8-5 8-10V6z" />
-                          <path d="M9.5 9.5h.01M14.5 14.5h.01M15 9l-6 6" strokeLinecap="round" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'Your webstore must comply with all applicable laws, regulations, and platform guidelines.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <path d="M12 3v18M5 7h14M7 7l5-4 5 4M7 17h10M6 21h12" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'The platform may update, modify, or discontinue services and features at any time without prior notice.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <path d="M21 12a9 9 0 0 1-15.5 6.2M3 12A9 9 0 0 1 18.5 5.8" />
-                          <path d="M3 16v-4h4M21 8v4h-4" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'Submitted requests are subject to manual review and approval before activation.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <circle cx="11" cy="11" r="7" />
-                          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      text: 'By continuing, you acknowledge that you have read, understood, and agreed to these Terms and Conditions.',
-                      icon: (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
-                          <circle cx="12" cy="12" r="9" />
-                          <path d="m8.5 12 2.5 2.5L15.5 10" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ),
-                    },
-                  ].map((item, index) => (
-                    <div key={`webstore-term-${index + 1}`} className="flex items-start gap-4 border-b border-[#e5ecf9] bg-white px-4 py-3 last:border-b-0">
-                      <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#edf3ff] px-2 text-xs font-bold text-[#2e63d6]">
-                        {index + 1}
-                      </span>
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-[#4d7ff0]">
-                        {item.icon}
-                      </span>
-                      <p className="text-base leading-relaxed text-[#42557e]">{item.text}</p>
-                    </div>
-                  ))}
+                <div className="max-h-[68vh] overflow-y-auto rounded-2xl border border-[#dbe4f6] bg-white p-5">
+                  <div
+                    className="prose prose-slate max-w-none text-[#42557e] prose-headings:text-[#1c2f57] prose-strong:text-[#1c2f57] [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6"
+                    dangerouslySetInnerHTML={{ __html: webstoreTermsBody }}
+                  />
                 </div>
               </div>
 

@@ -17,6 +17,7 @@ export type WebPageType =
   | 'dreambuild-gallery'
   | 'dreambuild-process'
   | 'dreambuild-contact'
+  | 'terms-and-conditions'
   | 'home-blogs'
 
 export interface WebPageItem {
