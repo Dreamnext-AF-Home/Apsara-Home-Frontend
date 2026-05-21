@@ -8,6 +8,7 @@ import { getPartnerStorefrontConfig, parseIdList } from '@/libs/partnerStorefron
 import { Loader2, Trash2 } from 'lucide-react'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { type Product, useLazyGetProductsQuery, useLazyGetPublicProductQuery } from '@/store/api/productsApi'
+import { useDeletePartnerUserMutation, useGetPartnerUsersQuery } from '@/store/api/partnerUsersApi'
 
 import {
   useCreateAdminWebPageItemMutation,
@@ -175,6 +176,17 @@ export default function PartnerStorefrontStudio() {
   const [createItem, { isLoading: isCreating }] = useCreateAdminWebPageItemMutation()
   const [updateItem, { isLoading: isUpdating }] = useUpdateAdminWebPageItemMutation()
   const [deleteItem, { isLoading: isDeleting }] = useDeleteAdminWebPageItemMutation()
+  const [deletePartnerUser, { isLoading: isDeletingPartnerUser }] = useDeletePartnerUserMutation()
+  const storefrontDeleteTargetId = deleteModal.open ? Number(deleteModal.item?.id ?? 0) : 0
+  const { data: relatedPartnerUsersData } = useGetPartnerUsersQuery(
+    storefrontDeleteTargetId > 0
+      ? { storefrontId: storefrontDeleteTargetId, page: 1, perPage: 200 }
+      : undefined,
+    {
+      skip: storefrontDeleteTargetId <= 0,
+      refetchOnMountOrArgChange: true,
+    },
+  )
 
   const storefronts = useMemo(() => {
     const items = (data?.items ?? [])
@@ -398,8 +410,21 @@ export default function PartnerStorefrontStudio() {
     const displayName = deleteModal.displayName ?? ''
 
     try {
+      const relatedUsers = (relatedPartnerUsersData?.users ?? []).filter((user) =>
+        (user.storefront_ids ?? []).includes(item.id),
+      )
+      for (const user of relatedUsers) {
+        await deletePartnerUser({ id: user.id }).unwrap()
+      }
+
       await deleteItem({ type: 'partner-storefront', id: item.id }).unwrap()
-      showSuccessToast(displayName ? `Partner storefront "${displayName}" deleted.` : 'Partner storefront deleted.')
+      showSuccessToast(
+        relatedUsers.length > 0
+          ? (displayName
+              ? `Partner storefront "${displayName}" deleted with ${relatedUsers.length} related partner user account(s).`
+              : `Partner storefront deleted with ${relatedUsers.length} related partner user account(s).`)
+          : (displayName ? `Partner storefront "${displayName}" deleted.` : 'Partner storefront deleted.'),
+      )
 
       if (selectedId === item.id) {
         setSelectedId('new')
@@ -410,7 +435,7 @@ export default function PartnerStorefrontStudio() {
       await refetch()
     } catch (error) {
       const apiErr = error as { data?: { message?: string } }
-      showErrorToast(apiErr?.data?.message || 'Failed to delete partner storefront.')
+      showErrorToast(apiErr?.data?.message || 'Failed to delete storefront and related partner users.')
       setDeleteModal({ open: false })
     }
   }
@@ -1012,7 +1037,7 @@ export default function PartnerStorefrontStudio() {
     return <div className="rounded-3xl border border-red-200 bg-red-50 p-12 text-center text-sm font-semibold text-red-600 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">Failed to load partner storefronts.</div>
   }
 
-  const saving = isCreating || isUpdating || isDeleting
+  const saving = isCreating || isUpdating || isDeleting || isDeletingPartnerUser
 
   return (
     <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)] text-slate-900 dark:text-slate-100">
@@ -1034,7 +1059,7 @@ export default function PartnerStorefrontStudio() {
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-500">Confirm Delete</p>
             <h3 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">Delete storefront?</h3>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              This will remove access to <span className="font-semibold text-slate-900 dark:text-slate-100">{deleteModal.displayName ?? 'this storefront'}</span>. This action cannot be undone.
+              This will delete <span className="font-semibold text-slate-900 dark:text-slate-100">{deleteModal.displayName ?? 'this storefront'}</span> and also delete related partner user account records. This action cannot be undone.
             </p>
 
             <div className="mt-6 flex items-center justify-end gap-3">
@@ -1042,7 +1067,7 @@ export default function PartnerStorefrontStudio() {
                 type="button"
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={() => setDeleteModal({ open: false })}
-                disabled={isDeleting}
+                disabled={isDeleting || isDeletingPartnerUser}
               >
                 Cancel
               </button>
@@ -1050,9 +1075,9 @@ export default function PartnerStorefrontStudio() {
                 type="button"
                 className="rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-900/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-400"
                 onClick={() => void confirmDeleteStorefrontNow()}
-                disabled={isDeleting}
+                disabled={isDeleting || isDeletingPartnerUser}
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                {isDeleting || isDeletingPartnerUser ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

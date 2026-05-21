@@ -1,6 +1,7 @@
 import { baseApi } from "./baseApi";
 
 export type UsernameChangeRequestStatus = 'pending_review' | 'approved' | 'rejected';
+export type WebstoreRequestStatus = 'pending_review' | 'approved' | 'rejected' | 'deleted';
 
 export interface AdminUsernameChangeRequest {
   id: number;
@@ -29,7 +30,7 @@ export interface AdminWebstoreRequest {
   email?: string | null;
   slug_name?: string | null;
   display_name?: string | null;
-  status: UsernameChangeRequestStatus;
+  status: WebstoreRequestStatus;
   submitted_at?: string | null;
 }
 
@@ -65,28 +66,28 @@ export const adminInquiriesApi = baseApi.injectEndpoints({
         url: '/api/admin/inquiries/webstore-requests',
         method: 'GET',
       }),
-      providesTags: ['AdminNotifications'],
+      providesTags: ['AdminNotifications', 'WebstoreRequests'],
     }),
     approveWebstoreRequest: builder.mutation<{ message: string }, { id: number }>({
       query: ({ id }) => ({
         url: `/api/admin/inquiries/webstore-requests/${id}/approve`,
         method: 'PATCH',
       }),
-      invalidatesTags: ['AdminNotifications'],
+      invalidatesTags: ['AdminNotifications', 'WebstoreRequests', 'User'],
     }),
     rejectWebstoreRequest: builder.mutation<{ message: string }, { id: number }>({
       query: ({ id }) => ({
         url: `/api/admin/inquiries/webstore-requests/${id}/reject`,
         method: 'PATCH',
       }),
-      invalidatesTags: ['AdminNotifications'],
+      invalidatesTags: ['AdminNotifications', 'WebstoreRequests', 'User'],
     }),
     deleteWebstoreRequest: builder.mutation<{ message: string }, { id: number }>({
       query: ({ id }) => ({
         url: `/api/admin/inquiries/webstore-requests/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['AdminNotifications'],
+      invalidatesTags: ['AdminNotifications', 'WebstoreRequests', 'User'],
     }),
   }),
 });

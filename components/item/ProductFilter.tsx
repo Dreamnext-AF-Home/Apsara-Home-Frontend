@@ -69,6 +69,10 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
     partnerSlugFromPath ? `/shop/${partnerSlugFromPath}/product` : '/category'
   )
 
+  const getPartnerHomePath = () => (
+    partnerSlugFromPath ? `/shop/${partnerSlugFromPath}` : '/'
+  )
+
   const getCategoryPath = (category: Category) => {
     const categorySlug = resolveCategorySlug(category)
     if (partnerSlugFromPath) {
@@ -286,6 +290,16 @@ export default function ProductFilter({ onFilterChange, className = '', pvRange:
       <div className="mb-4 sm:mb-6">
         <h4 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 sm:mb-3">Shop Category</h4>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          {partnerSlugFromPath && (
+            <button
+              onClick={() => {
+                router.push(getPartnerHomePath())
+              }}
+              className="px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 hover:bg-sky-100 hover:text-sky-600 dark:hover:bg-sky-900/30 dark:hover:text-sky-400"
+            >
+              Home
+            </button>
+          )}
           <button
             onClick={() => {
               router.push(getAllCategoryPath())

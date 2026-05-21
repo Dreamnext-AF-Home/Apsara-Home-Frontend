@@ -7,8 +7,11 @@ import {
   useGetWebstoreRequestsQuery,
   useRejectWebstoreRequestMutation,
 } from '@/store/api/adminInquiriesApi'
+import { useDeleteAdminWebPageItemMutation, useGetAdminWebPageItemsQuery } from '@/store/api/webPagesApi'
+import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront'
+import { showErrorToast } from '@/libs/toast'
 
-type RequestStatus = 'all' | 'pending_review' | 'approved' | 'rejected'
+type RequestStatus = 'all' | 'pending_review' | 'approved' | 'rejected' | 'deleted'
 type StatusKey = Exclude<RequestStatus, 'all'>
 
 type StatusStyleMap = Record<StatusKey, string>
@@ -20,11 +23,14 @@ const statusStyles: StatusStyleMap = {
     'border border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',
   rejected:
     'border border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200',
+  deleted:
+    'border border-slate-300/80 bg-slate-100 text-slate-700 dark:border-slate-600/60 dark:bg-slate-700/30 dark:text-slate-200',
 }
 
 const prettyStatus = (status: StatusKey) => {
   if (status === 'pending_review') return 'Pending'
   if (status === 'approved') return 'Approved'
+  if (status === 'deleted') return 'Deleted'
   return 'Rejected'
 }
 
@@ -33,6 +39,13 @@ export default function WebstoreRequestsPage() {
   const [approveRequest, { isLoading: isApproving }] = useApproveWebstoreRequestMutation()
   const [rejectRequest, { isLoading: isRejecting }] = useRejectWebstoreRequestMutation()
   const [deleteRequest, { isLoading: isDeleting }] = useDeleteWebstoreRequestMutation()
+  const [deleteStorefront, { isLoading: isDeletingStorefront }] = useDeleteAdminWebPageItemMutation()
+  const { data: storefrontsData } = useGetAdminWebPageItemsQuery({
+    type: 'partner-storefront',
+    page: 1,
+    perPage: 500,
+    status: 'all',
+  })
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<RequestStatus>('all')
@@ -44,6 +57,18 @@ export default function WebstoreRequestsPage() {
     displayName?: string | null
     slugName?: string | null
   }>({ open: false, action: 'approve', id: null, displayName: null, slugName: null })
+  const [deleteAcknowledge, setDeleteAcknowledge] = useState(false)
+  const [details, setDetails] = useState<{
+    open: boolean
+    id: number | null
+    displayName?: string | null
+    slugName?: string | null
+    customerName?: string | null
+    email?: string | null
+    username?: string | null
+    status?: string | null
+    submittedAt?: string | null
+  }>({ open: false, id: null, displayName: null, slugName: null, customerName: null, email: null, username: null, status: null, submittedAt: null })
 
   const rows = useMemo(() => {
     const source = data?.requests ?? []
@@ -75,7 +100,8 @@ export default function WebstoreRequestsPage() {
     const pending = all.filter((r) => r.status === 'pending_review').length
     const approved = all.filter((r) => r.status === 'approved').length
     const rejected = all.filter((r) => r.status === 'rejected').length
-    return { all: all.length, pending, approved, rejected }
+    const deleted = all.filter((r) => r.status === 'deleted').length
+    return { all: all.length, pending, approved, rejected, deleted }
   }, [data?.requests])
 
   const openConfirm = (
@@ -84,24 +110,69 @@ export default function WebstoreRequestsPage() {
     displayName?: string | null,
     slugName?: string | null,
   ) => {
+    setDeleteAcknowledge(false)
     setConfirm({ open: true, action, id, displayName: displayName ?? null, slugName: slugName ?? null })
   }
 
-  const closeConfirm = () =>
+  const closeConfirm = () => {
+    setDeleteAcknowledge(false)
     setConfirm({ open: false, action: 'approve', id: null, displayName: null, slugName: null })
+  }
+
+  const openDetails = (item: {
+    id: number
+    display_name?: string | null
+    slug_name?: string | null
+    customer_name?: string | null
+    customer_email?: string | null
+    username?: string | null
+    status?: string | null
+    submitted_at?: string | null
+  }) => {
+    setDetails({
+      open: true,
+      id: item.id,
+      displayName: item.display_name ?? null,
+      slugName: item.slug_name ?? null,
+      customerName: item.customer_name ?? null,
+      email: item.customer_email ?? null,
+      username: item.username ?? null,
+      status: item.status ?? null,
+      submittedAt: item.submitted_at ?? null,
+    })
+  }
+
+  const closeDetails = () => {
+    setDetails({ open: false, id: null, displayName: null, slugName: null, customerName: null, email: null, username: null, status: null, submittedAt: null })
+  }
 
   const handleConfirm = async () => {
     if (!confirm.id) return
 
-    if (confirm.action === 'approve') {
-      await approveRequest({ id: confirm.id }).unwrap()
-    } else if (confirm.action === 'reject') {
-      await rejectRequest({ id: confirm.id }).unwrap()
-    } else {
-      await deleteRequest({ id: confirm.id }).unwrap()
+    try {
+      if (confirm.action === 'approve') {
+        await approveRequest({ id: confirm.id }).unwrap()
+      } else if (confirm.action === 'reject') {
+        await rejectRequest({ id: confirm.id }).unwrap()
+      } else if (confirm.action === 'delete') {
+        const rowSlug = String(confirm.slugName ?? '').trim().toLowerCase()
+        if (rowSlug) {
+          const storefront = (storefrontsData?.items ?? []).find((entry) => {
+            const config = getPartnerStorefrontConfig(entry)
+            return config?.slug === rowSlug
+          })
+          if (storefront) {
+            await deleteStorefront({ type: 'partner-storefront', id: storefront.id }).unwrap()
+          }
+        }
+        await deleteRequest({ id: confirm.id }).unwrap()
+      }
+      closeConfirm()
+    } catch (error) {
+      const apiErr = error as { data?: { message?: string }; message?: string }
+      showErrorToast(apiErr?.data?.message || apiErr?.message || 'Failed to process request.')
+      closeConfirm()
     }
-
-    closeConfirm()
   }
 
   return (
@@ -150,6 +221,7 @@ export default function WebstoreRequestsPage() {
               <option value="pending_review">Pending ({counts.pending})</option>
               <option value="approved">Approved ({counts.approved})</option>
               <option value="rejected">Rejected ({counts.rejected})</option>
+              <option value="deleted">Deleted ({counts.deleted})</option>
             </select>
           </div>
         </div>
@@ -161,6 +233,7 @@ export default function WebstoreRequestsPage() {
               { key: 'pending_review' as const, label: 'Pending', count: counts.pending },
               { key: 'approved' as const, label: 'Approved', count: counts.approved },
               { key: 'rejected' as const, label: 'Rejected', count: counts.rejected },
+              { key: 'deleted' as const, label: 'Deleted', count: counts.deleted },
             ] as const
           ).map((chip) => {
             const active = statusFilter === chip.key
@@ -261,36 +334,75 @@ export default function WebstoreRequestsPage() {
                       </td>
                       <td className="px-5 py-4 text-xs text-slate-500 dark:text-slate-400">{submitted}</td>
                       <td className="px-5 py-4">
-                        {item.status === 'pending_review' ? (
-                          <div className="flex flex-wrap items-center gap-2">
+                        {(() => {
+                          const rowSlug = String(item.slug_name ?? '').trim().toLowerCase()
+                          const storefront = rowSlug
+                            ? (storefrontsData?.items ?? []).find((entry) => {
+                                const config = getPartnerStorefrontConfig(entry)
+                                return config?.slug === rowSlug
+                              })
+                            : undefined
+                          const busy = isApproving || isRejecting || isDeleting || isDeletingStorefront
+
+                          const RequestDeleteIcon = (
                             <button
                               type="button"
-                              disabled={isApproving || isRejecting || isDeleting}
-                              onClick={() => openConfirm('approve', item.id, item.display_name, item.slug_name)}
-                              className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/15"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isApproving || isRejecting || isDeleting}
-                              onClick={() => openConfirm('reject', item.id, item.display_name, item.slug_name)}
-                              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isApproving || isRejecting || isDeleting}
+                              disabled={busy}
                               onClick={() => openConfirm('delete', item.id, item.display_name, item.slug_name)}
-                              className="rounded-xl border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-slate-100 text-slate-700 transition hover:bg-slate-200 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                              title="Delete request"
+                              aria-label="Delete request"
                             >
-                              Delete
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">—</span>
-                        )}
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
+                              </svg>
+                              </button>
+                          )
+
+                          if (item.status === 'pending_review') {
+                            return (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openDetails(item)}
+                                  className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/15"
+                                >
+                                  Subscription Details
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => openConfirm('approve', item.id, item.display_name, item.slug_name)}
+                                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/15"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => openConfirm('reject', item.id, item.display_name, item.slug_name)}
+                                  className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
+                                >
+                                  Reject
+                                </button>
+                                {RequestDeleteIcon}
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openDetails(item)}
+                                className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/15"
+                              >
+                                Subscription Details
+                              </button>
+                              {RequestDeleteIcon}
+                            </div>
+                          )
+                        })()}
                       </td>
                     </tr>
                   )
@@ -309,7 +421,7 @@ export default function WebstoreRequestsPage() {
                 className={
                   confirm.action === 'approve'
                     ? 'absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500'
-                    : confirm.action === 'reject'
+                    : confirm.action === 'reject' || confirm.action === 'delete'
                       ? 'absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-rose-500 via-rose-400 to-rose-500'
                       : 'absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-500 via-slate-400 to-slate-500'
                 }
@@ -327,7 +439,7 @@ export default function WebstoreRequestsPage() {
                     ? 'Approving will also auto-create or update partner storefront using slug and display name.'
                     : confirm.action === 'reject'
                       ? 'This will mark the request as rejected.'
-                      : 'This will permanently remove the request.'}
+                      : 'This will permanently remove the request and linked partner storefront (if it exists).'}
                 </p>
               </div>
             </div>
@@ -341,6 +453,17 @@ export default function WebstoreRequestsPage() {
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Slug</p>
                 <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{confirm.slugName || '-'}</p>
               </div>
+              {confirm.action === 'delete' ? (
+                <label className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+                  <input
+                    type="checkbox"
+                    checked={deleteAcknowledge}
+                    onChange={(event) => setDeleteAcknowledge(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500/40 dark:border-rose-500/40"
+                  />
+                  <span>I understand this delete action is permanent and cannot be undone.</span>
+                </label>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
@@ -353,7 +476,13 @@ export default function WebstoreRequestsPage() {
               </button>
               <button
                 type="button"
-                disabled={isApproving || isRejecting || isDeleting}
+                disabled={
+                  isApproving ||
+                  isRejecting ||
+                  isDeleting ||
+                  isDeletingStorefront ||
+                  (confirm.action === 'delete' && !deleteAcknowledge)
+                }
                 onClick={handleConfirm}
                 className={
                   'rounded-2xl px-4 py-2 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ' +
@@ -372,9 +501,68 @@ export default function WebstoreRequestsPage() {
                     ? isRejecting
                       ? 'Rejecting...'
                       : 'Confirm Rejection'
-                    : isDeleting
+                    : isDeleting || isDeletingStorefront
                       ? 'Deleting...'
                       : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {details.open ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur">
+          <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">Webstore Request</p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">Subscription Details</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Preview only for now.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Close subscription details"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Customer</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.customerName || '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Email</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.email || '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Username</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.username ? `@${details.username}` : '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Status</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.status || '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Slug</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.slugName || '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Display Name</p>
+                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.displayName || '-'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Close
               </button>
             </div>
           </div>

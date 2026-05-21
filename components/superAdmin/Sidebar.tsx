@@ -205,6 +205,7 @@ const navItems: NavItem[] = [
       { label: 'Users & Roles', path: '/admin/settings/users' },
       { label: 'Security', path: '/admin/settings/security' },
       { label: 'Notifications', path: '/admin/settings/notifications' },
+      { label: 'Terms & Condition', path: '/admin/settings/terms-condition' },
     ],
   },
 ]
