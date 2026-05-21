@@ -345,7 +345,7 @@ const AdminLoginForm = ({ turnstileSiteKey = '' }: { turnstileSiteKey?: string }
                                             )}
                                         />
                                         <p className="mt-1.5 text-[11px] text-gray-400 dark:text-white/55">Passwords are case-sensitive.</p>
-                                    </div>
+                                    </div>  
 
                                     {otpChallengeToken ? (
                                         <div>
