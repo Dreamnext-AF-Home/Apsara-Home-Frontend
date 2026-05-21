@@ -1,11 +1,13 @@
 'use client'
 
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useImportZqToLocalMutation } from '@/store/api/productsApi'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import ZqProductPreviewPage, { extractZqImportDetail, type ZqImportDetailData } from './ZqProductPreviewPage'
+import ZqCustomerProductPreview from '@/components/supplier/zq/ZqCustomerProductPreview'
 
 export default function ZqProductPreviewClient({
   id,
@@ -101,6 +103,7 @@ export default function ZqProductPreviewClient({
   const editHref = importedProductId
     ? `${backHref}?edit=${importedProductId}`
     : null
+  const isSupplierPreview = backHref.startsWith('/supplier')
 
   if (isLoading) {
     return (
@@ -179,7 +182,11 @@ export default function ZqProductPreviewClient({
         </div>
       )}
 
-      <ZqProductPreviewPage detail={detail} backHref={backHref} scopeLabel={scopeLabel} />
+      {isSupplierPreview ? (
+        <ZqCustomerProductPreview detail={detail} backHref={backHref} />
+      ) : (
+        <ZqProductPreviewPage detail={detail} backHref={backHref} scopeLabel={scopeLabel} />
+      )}
     </div>
   )
 }

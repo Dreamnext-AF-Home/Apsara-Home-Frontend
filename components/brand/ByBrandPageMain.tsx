@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useGetPublicProductBrandsQuery } from '@/store/api/productBrandsApi'
-import { useGetPublicProductsQuery, useGetProductBrandQuery } from '@/store/api/productsApi'
+import { useGetPublicProductsQuery, useGetProductBrandQuery, useGetPublicZqProductsQuery, type ZqCachedProduct } from '@/store/api/productsApi'
 import { useAddToCartMutation } from '@/store/api/cartApi'
 import { useGetCategoriesQuery } from '@/store/api/categoriesApi'
 import { Skeleton } from '@heroui/react/skeleton'
@@ -30,6 +30,13 @@ const toSlug = (value: string) =>
     .replace(/^-+|-+$/g, '')
 const formatPeso = (value: number) => `P${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 const getBrandInitials = (value: string) => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'BR'
+const isGlobalSupplierBrandName = (value: string) => {
+  const normalized = toSlug(value)
+  return normalized === 'af-home-global-brand' || normalized === 'af-home-global-supplier' || normalized.includes('global')
+}
+
+const zqPrice = (product: ZqCachedProduct) => Number(product.priceMinCents ?? product.priceMaxCents ?? 0) / 100
+const zqComparePrice = (product: ZqCachedProduct) => Number(product.priceMaxCents ?? product.priceMinCents ?? 0) / 100
 
 const renderAdBlock = () => (
   <div className="mt-4 rounded-2xl overflow-hidden aspect-square border border-slate-100 bg-slate-50">
@@ -43,6 +50,177 @@ const renderAdBlock = () => (
     />
   </div>
 )
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function ZqBrandProductCard({ product, brandName }: { product: ZqCachedProduct; brandName: string }) {
+  const price = zqPrice(product)
+  const comparePrice = zqComparePrice(product)
+  const image = product.primaryImage || product.images?.[0] || '/Images/af_home_logo.png'
+
+  return (
+    <Link
+      href={`/global-product/${product.id}`}
+      className="group relative flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-sky-100 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
+    >
+      <div className="absolute left-0 top-0 z-10 rounded-br-sm bg-sky-500 px-2 py-1 text-[10px] font-bold text-white">
+        Register to get 6% discount
+      </div>
+      <div className="absolute right-2 top-2 z-10 flex flex-col gap-2">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-500 shadow-md ring-1 ring-gray-100 transition group-hover:text-sky-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </span>
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-500 shadow-md ring-1 ring-gray-100 transition group-hover:text-sky-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+        </span>
+      </div>
+      <div className="relative flex aspect-square items-center justify-center bg-white p-5">
+        <Image src={image} alt={product.subject} fill className="object-contain p-5 transition duration-300 group-hover:scale-105" unoptimized />
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 translate-y-4 items-center gap-2 rounded-full bg-sky-500 px-5 py-2 text-sm font-bold text-white opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+          </svg>
+          View Product
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col border-t border-gray-100 p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{brandName}</p>
+        <h3 className="mt-1 line-clamp-2 min-h-[40px] text-sm font-semibold uppercase leading-snug text-slate-800 dark:text-gray-100">
+          {product.subject}
+        </h3>
+        <div className="mt-auto flex flex-wrap items-end gap-2 pt-3">
+          <span className="text-lg font-black text-sky-500">{formatPeso(price)}</span>
+          {comparePrice > price ? <span className="text-sm text-gray-400 line-through">{formatPeso(comparePrice)}</span> : null}
+          <span className="ml-auto rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-semibold text-sky-600">PV 0</span>
+        </div>
+        <p className="mt-1 text-xs text-gray-400">Stock {product.totalStock.toLocaleString()} · Global Supplier</p>
+      </div>
+    </Link>
+  )
+}
+
+function ZqBrandItemCard({ product, brandName }: { product: ZqCachedProduct; brandName: string }) {
+  const price = zqPrice(product)
+  const comparePrice = zqComparePrice(product)
+  const image = product.primaryImage || product.images?.[0] || '/Images/af_home_logo.png'
+  const discount = comparePrice > price ? Math.max(1, Math.round(((comparePrice - price) / comparePrice) * 100)) : 6
+
+  return (
+    <Link href={`/global-product/${product.id}`} className="flex flex-col group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-sky-500 dark:hover:border-sky-400 transition-colors cursor-pointer">
+      <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-700 overflow-hidden border-b border-gray-200 dark:border-gray-700">
+        <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+          <button
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              toast.success('Added to wishlist')
+            }}
+            className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-gray-200 dark:border-gray-600 shadow-lg hover:bg-sky-500 hover:border-sky-500 dark:hover:bg-sky-500 dark:hover:border-sky-500 transition-all duration-200 cursor-pointer hover:cursor-hand"
+            title="Add to Wishlist"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-300 hover:text-white transition-colors">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </button>
+          <button
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              const productUrl = `${window.location.origin}/global-product/${product.id}`
+              navigator.clipboard.writeText(productUrl).then(() => {
+                toast.success('Link copied to clipboard')
+              }).catch(() => {
+                toast.error('Failed to copy link')
+              })
+            }}
+            className="p-2 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-gray-200 dark:border-gray-600 shadow-lg hover:bg-sky-500 hover:border-sky-500 dark:hover:bg-sky-500 dark:hover:border-sky-500 transition-all duration-200 cursor-pointer hover:cursor-hand"
+            title="Share"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-300 hover:text-white transition-colors">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+          </button>
+        </div>
+
+        <Image src={image} alt={product.subject} fill className="object-cover" unoptimized />
+
+        <div className="absolute top-0 left-0 flex flex-col">
+          <div className="bg-sky-500 text-white text-xs font-bold px-2 py-1">
+            Register to get {discount}% discount
+          </div>
+        </div>
+
+        <div className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg transition-all duration-300 hover:bg-sky-600 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm sm:font-semibold sm:opacity-0 sm:translate-y-2 sm:group-hover:opacity-100 sm:group-hover:translate-y-0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+          </svg>
+          <span className="hidden sm:inline">View Product</span>
+        </div>
+      </div>
+
+      <div className="mt-1 flex flex-col gap-1 px-2.5 sm:px-3 py-2.5 sm:py-3">
+        <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+          {brandName}
+        </p>
+        <h3 className="line-clamp-2 text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-snug min-h-[2.5rem]">
+          {product.subject}
+        </h3>
+
+        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-2">
+          <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
+            <span className="text-sm sm:text-base font-bold text-sky-500 dark:text-sky-400">
+              {formatPeso(price)}
+            </span>
+            {comparePrice > price && (
+              <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 line-through">
+                {formatPeso(comparePrice)}
+              </span>
+            )}
+          </div>
+          <span className="rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[11px] font-semibold text-blue-700 dark:text-blue-300 shrink-0 whitespace-nowrap w-fit">
+            PV 0
+          </span>
+        </div>
+
+        <div className="flex items-center gap-0.5 sm:gap-1">
+          <div className="flex items-center">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <svg
+                key={star}
+                xmlns="http://www.w3.org/2000/svg"
+                width="9"
+                height="9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#d1d5db"
+                strokeWidth="2"
+                className="sm:w-[10px] sm:h-[10px]"
+              >
+                <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+              </svg>
+            ))}
+          </div>
+          <span className="text-xs text-gray-400 dark:text-gray-500">0 sold</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
 
 const GRADIENT_PALETTES = [
   'from-sky-400 to-rose-400',
@@ -372,6 +550,7 @@ export default function ByBrandPageMain() {
     })
     return found ?? null
   }, [allBrands, selectedBrand])
+  const isGlobalSupplierBrand = selectedBrandItem ? isGlobalSupplierBrandName(selectedBrandItem.name) : false
 
   // Reset to page 1 when brand changes or filters change
   const prevBrand = useRef(selectedBrand)
@@ -408,9 +587,17 @@ export default function ByBrandPageMain() {
       : undefined,
     { skip: !selectedBrandItem },
   )
-  const rawBrandProducts = brandProductsData?.products ?? []
+  const { data: zqProductsData, isFetching: isFetchingZqProducts } = useGetPublicZqProductsQuery(
+    selectedBrandItem && isGlobalSupplierBrand
+      ? { page: productPage, perPage: perPage, search: filters.search || undefined }
+      : undefined,
+    { skip: !selectedBrandItem || !isGlobalSupplierBrand },
+  )
+  const rawBrandProducts = useMemo(() => brandProductsData?.products ?? [], [brandProductsData?.products])
   const productsMeta = brandProductsData?.meta
-  const totalPages = productsMeta?.last_page ?? 1
+  const zqRawBrandProducts = useMemo(() => zqProductsData?.products ?? [], [zqProductsData?.products])
+  const zqProductsMeta = zqProductsData?.meta
+  const totalPages = Math.max(productsMeta?.last_page ?? 1, zqProductsMeta?.last_page ?? 1)
 
   // Filter products based on selected filters
   const brandProducts = useMemo(() => {
@@ -496,6 +683,48 @@ export default function ByBrandPageMain() {
     return filtered
   }, [rawBrandProducts, filters, sortBy])
 
+  const zqBrandProducts = useMemo(() => {
+    let filtered = zqRawBrandProducts
+
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 10000) {
+      filtered = filtered.filter(product => {
+        const price = zqPrice(product)
+        return price >= filters.priceRange[0] && price <= filters.priceRange[1]
+      })
+    }
+
+    if (filters.inStock) {
+      filtered = filtered.filter(product => product.totalStock > 0)
+    }
+
+    if (filters.search.trim().length > 0) {
+      const searchTerm = filters.search.toLowerCase().trim()
+      filtered = filtered.filter(product =>
+        product.subject.toLowerCase().includes(searchTerm)
+        || (product.categoryName ?? '').toLowerCase().includes(searchTerm)
+      )
+    }
+
+    const sortBySource = filters.sortBy !== 'default' ? filters.sortBy : sortBy
+    const effectiveSortBy = sortBySource === 'asc' ? 'name-asc' : sortBySource === 'desc' ? 'name-desc' : sortBySource
+
+    if (effectiveSortBy === 'name-asc') {
+      filtered = [...filtered].sort((a, b) => a.subject.localeCompare(b.subject))
+    } else if (effectiveSortBy === 'name-desc') {
+      filtered = [...filtered].sort((a, b) => b.subject.localeCompare(a.subject))
+    } else if (effectiveSortBy === 'price-asc') {
+      filtered = [...filtered].sort((a, b) => zqPrice(a) - zqPrice(b))
+    } else if (effectiveSortBy === 'price-desc') {
+      filtered = [...filtered].sort((a, b) => zqPrice(b) - zqPrice(a))
+    }
+
+    return filtered
+  }, [zqRawBrandProducts, filters, sortBy])
+
+  const productDisplayCount = brandProducts.length + zqBrandProducts.length
+  const productTotalCount = (productsMeta?.total ?? brandProducts.length) + (zqProductsMeta?.total ?? 0)
+  const isFetchingBrandProducts = isFetchingProducts || (isGlobalSupplierBrand && isFetchingZqProducts)
+
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (filters.priceRange[0] > 0 || filters.priceRange[1] < 10000) count++
@@ -560,11 +789,11 @@ export default function ByBrandPageMain() {
 
       <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Brand Profile Card - only when brand selected */}
-        {selectedBrandItem && isFetchingProducts && (
+        {selectedBrandItem && isFetchingBrandProducts && (
           <BrandProfileSkeleton />
         )}
 
-        {selectedBrandItem && !isFetchingProducts && (
+        {selectedBrandItem && !isFetchingBrandProducts && (
           <>
             <div className="rounded-lg bg-white dark:bg-gray-800 p-6 border border-gray-200 dark:border-gray-700 relative">
               {/* Share button - mobile only (absolute), desktop version is beside Back button */}
@@ -625,7 +854,7 @@ export default function ByBrandPageMain() {
                         <line x1="3" y1="6" x2="21" y2="6" />
                         <path d="M16 10a4 4 0 0 1-8 0" />
                       </svg>
-                      <span>Total Products: {productsMeta?.total ?? brandProducts.length}</span>
+                      <span>Total Products: {productTotalCount}</span>
                     </div>
                     <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -918,7 +1147,7 @@ export default function ByBrandPageMain() {
           <div className="flex flex-col gap-6 lg:flex-row">
             {/* Left Sidebar - Filter (desktop only, mobile uses bottom drawer) */}
             <div className="hidden lg:block lg:w-72 shrink-0">
-              {isFetchingProducts ? (
+              {isFetchingBrandProducts ? (
                 <ProductFilterSkeleton />
               ) : (
                 <ProductFilter
@@ -942,7 +1171,7 @@ export default function ByBrandPageMain() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center rounded-full bg-sky-50 dark:bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-600 dark:text-sky-400 ring-1 ring-sky-200 dark:ring-sky-500/30">
-                    {isFetchingProducts ? 'Loading...' : `${productsMeta?.total ?? brandProducts.length} product${(productsMeta?.total ?? brandProducts.length) !== 1 ? 's' : ''}`}
+                    {isFetchingBrandProducts ? 'Loading...' : `${productTotalCount} product${productTotalCount !== 1 ? 's' : ''}`}
                   </span>
                   {/* Mobile filter button */}
                   <button
@@ -966,7 +1195,7 @@ export default function ByBrandPageMain() {
 
               {/* Top Filters */}
               <div className="mt-6">
-                {isFetchingProducts ? (
+                {isFetchingBrandProducts ? (
                   <TopFilterSkeleton />
                 ) : (
                   <TopFilter
@@ -980,18 +1209,18 @@ export default function ByBrandPageMain() {
                     sortValue={sortBy}
                   />
                 )}
-                {!isFetchingProducts && (
+                {!isFetchingBrandProducts && (
                   <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mt-4">
                     <span>
-                      Showing <span className="font-semibold text-slate-700 dark:text-gray-200">{brandProducts.length}</span> of{' '}
-                      <span className="font-semibold text-slate-700 dark:text-gray-200">{productsMeta?.total ?? brandProducts.length}</span> products
+                      Showing <span className="font-semibold text-slate-700 dark:text-gray-200">{productDisplayCount}</span> of{' '}
+                      <span className="font-semibold text-slate-700 dark:text-gray-200">{productTotalCount}</span> products
                     </span>
                   </div>
                 )}
               </div>
 
               <div className="mt-6">
-                {isFetchingProducts ? (
+                {isFetchingBrandProducts ? (
                   <div className={viewType === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-6' : 'flex flex-col gap-4 pb-6'}>
                     {Array.from({ length: viewType === 'grid' ? 12 : 8 }).map((_, i) =>
                       viewType === 'grid' ? <ProductCardSkeleton key={i} /> : <ProductListSkeleton key={i} />
@@ -999,7 +1228,7 @@ export default function ByBrandPageMain() {
                   </div>
                 ) : (
                   <>
-                    {brandProducts.length === 0 ? (
+                    {productDisplayCount === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 text-center">
                         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-2xl">ðŸ“¦</div>
                         <p className="mt-4 font-semibold text-gray-700 dark:text-gray-300">No products yet</p>
@@ -1151,6 +1380,27 @@ export default function ByBrandPageMain() {
                         </Link>
                       )
                     ))}
+                    {zqBrandProducts.map((product) => (
+                      viewType === 'grid' ? (
+                        <ZqBrandItemCard key={`zq-${product.id}`} product={product} brandName={selectedBrandItem.name} />
+                      ) : (
+                        <Link
+                          key={`zq-${product.id}`}
+                          href={`/global-product/${product.id}`}
+                          className="flex gap-4 overflow-hidden rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-sky-500 dark:border-gray-700 dark:bg-gray-800"
+                        >
+                          <div className="relative h-24 w-24 shrink-0 rounded-lg bg-white">
+                            <Image src={product.primaryImage || product.images?.[0] || '/Images/af_home_logo.png'} alt={product.subject} fill className="object-contain p-2" unoptimized />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold uppercase text-gray-500">{selectedBrandItem.name}</p>
+                            <h3 className="mt-1 line-clamp-2 font-semibold text-gray-900 dark:text-white">{product.subject}</h3>
+                            <p className="mt-2 text-lg font-black text-sky-500">{formatPeso(zqPrice(product))}</p>
+                            <p className="text-xs text-gray-400">Stock {product.totalStock.toLocaleString()} · Global Supplier</p>
+                          </div>
+                        </Link>
+                      )
+                    ))}
                       </div>
                     )}
                   </>
@@ -1158,7 +1408,7 @@ export default function ByBrandPageMain() {
               </div>
 
               {/* Pagination */}
-              {!isFetchingProducts && totalPages > 1 && (
+              {!isFetchingBrandProducts && totalPages > 1 && (
                 <div className="-mx-6 -mb-6 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-6 bg-white dark:bg-gray-800 px-6 pb-6">
                   <p className="text-sm text-gray-400 dark:text-gray-500">
                     Page <span className="font-semibold text-gray-700 dark:text-gray-300">{productPage}</span> of <span className="font-semibold text-gray-700 dark:text-gray-300">{totalPages}</span>
@@ -1320,7 +1570,7 @@ export default function ByBrandPageMain() {
                 onClick={() => setIsFilterDrawerOpen(false)}
                 className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm transition-colors"
               >
-                Show Results ({brandProducts.length})
+                Show Results ({productDisplayCount})
               </button>
             </div>
           </div>

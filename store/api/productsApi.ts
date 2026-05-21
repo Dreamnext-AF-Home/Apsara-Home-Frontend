@@ -418,6 +418,20 @@ export interface ZqCachedProductsResponse {
   meta: ProductsMeta
 }
 
+export interface ZqPublicProductResponse {
+  product: ZqCachedProduct & {
+    description?: string | null
+    specs?: Array<{
+      id: string
+      sku: string
+      name: string
+      priceCents?: number | null
+      stock: number
+      image?: string | null
+    }>
+  }
+}
+
 export interface ZqSyncProductsPayload {
   cursor?: string | number | null
   size?: number
@@ -900,6 +914,29 @@ export const productsApi = baseApi.injectEndpoints({
       },
       providesTags: ['Products'],
     }),
+    getPublicZqProducts: builder.query<ZqCachedProductsResponse, Pick<ZqCachedProductsQueryParams, 'page' | 'perPage' | 'search' | 'brandType'> | void>({
+      query: (params) => ({
+        url: '/api/products/zq/cached',
+        method: 'GET',
+        cache: 'no-store',
+        params: cleanParams({
+          page: params?.page ?? 1,
+          per_page: params?.perPage ?? 20,
+          search: params?.search,
+          brand_type: params?.brandType,
+        }),
+      }),
+      providesTags: ['Products'],
+    }),
+    getPublicZqProduct: builder.query<ZqPublicProductResponse['product'], number>({
+      query: (id) => ({
+        url: `/api/products/zq/cached/${id}`,
+        method: 'GET',
+        cache: 'no-store',
+      }),
+      transformResponse: (response: ZqPublicProductResponse) => response.product,
+      providesTags: ['Products'],
+    }),
     getProductReviews: builder.query<ProductReviewsResponse, number>({
       query: (id) => ({
         url: `/api/products/${id}/reviews`,
@@ -1162,6 +1199,8 @@ export const productsApi = baseApi.injectEndpoints({
 export const {
   useGetPublicProductsQuery,
   useLazyGetPublicProductQuery,
+  useGetPublicZqProductsQuery,
+  useGetPublicZqProductQuery,
   useGetProductReviewsQuery,
   useGetProductBrandQuery,
   useHeartbeatProductViewerMutation,
