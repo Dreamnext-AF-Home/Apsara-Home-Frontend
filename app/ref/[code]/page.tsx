@@ -10,7 +10,7 @@ async function fetchReferrerProfile(username: string) {
     const apiUrl = process.env.NEXT_PUBLIC_LARAVEL_API_URL || process.env.LARAVEL_API_URL;
     if (!apiUrl) return null;
 
-    const response = await fetch(`${apiUrl}/api/auth/public/profile/${encodeURIComponent(username)}`, {
+    const response = await fetch(`${apiUrl}/api/public/profile/${encodeURIComponent(username)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
