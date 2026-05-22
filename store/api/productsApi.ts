@@ -914,7 +914,7 @@ export const productsApi = baseApi.injectEndpoints({
       },
       providesTags: ['Products'],
     }),
-    getPublicZqProducts: builder.query<ZqCachedProductsResponse, Pick<ZqCachedProductsQueryParams, 'page' | 'perPage' | 'search' | 'brandType'> | void>({
+    getPublicZqProducts: builder.query<ZqCachedProductsResponse, Pick<ZqCachedProductsQueryParams, 'page' | 'perPage' | 'search' | 'brandType' | 'localCategoryId'> | void>({
       query: (params) => ({
         url: '/api/products/zq/cached',
         method: 'GET',
@@ -924,6 +924,7 @@ export const productsApi = baseApi.injectEndpoints({
           per_page: params?.perPage ?? 20,
           search: params?.search,
           brand_type: params?.brandType,
+          local_category_id: params?.localCategoryId,
         }),
       }),
       providesTags: ['Products'],

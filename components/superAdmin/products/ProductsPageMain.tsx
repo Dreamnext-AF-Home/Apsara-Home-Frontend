@@ -2109,8 +2109,7 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
               onToggleSelectAll={handleToggleSelectAll}
               onViewProduct={(product) => {
                 if (zqInlineActive) {
-                  const previewBasePath = isSupplierPortal ? '/supplier/products/zq-preview' : '/admin/products/zq-preview'
-                  window.open(`${previewBasePath}/${product.sku}`, '_blank', 'noopener,noreferrer')
+                  window.open(`/global-product/${Math.abs(product.id)}?preview=1`, '_blank', 'noopener,noreferrer')
                   return
                 }
 

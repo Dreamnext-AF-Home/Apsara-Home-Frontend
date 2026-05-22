@@ -29,6 +29,8 @@ export interface SupplierOrder {
   customer_phone?: string | null
   customer_address?: string | null
   paid_at?: string | null
+  zq_platform_order_id?: string | null
+  zq_status?: string | null
   created_at?: string | null
   updated_at?: string | null
 }
@@ -141,6 +143,28 @@ export const supplierOrdersApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Orders', 'SupplierNotifications'],
     }),
+    approveSupplierOrder: builder.mutation<
+      { message: string; order: SupplierOrder },
+      { id: number; notes?: string }
+    >({
+      query: ({ id, notes }) => ({
+        url: `/api/supplier/orders/${id}/approve`,
+        method: 'POST',
+        body: notes ? { notes } : {},
+      }),
+      invalidatesTags: ['Orders', 'SupplierNotifications'],
+    }),
+    pushSupplierOrderToZq: builder.mutation<
+      { message: string; zq: Record<string, unknown>; order: SupplierOrder },
+      { id: number }
+    >({
+      query: ({ id }) => ({
+        url: `/api/supplier/orders/${id}/push-to-zq`,
+        method: 'POST',
+        body: {},
+      }),
+      invalidatesTags: ['Orders', 'SupplierNotifications'],
+    }),
   }),
 })
 
@@ -149,4 +173,6 @@ export const {
   useGetSupplierOrderNotificationsQuery,
   useUpdateSupplierOrderFulfillmentMutation,
   useUpdateSupplierOrderTrackingMutation,
+  useApproveSupplierOrderMutation,
+  usePushSupplierOrderToZqMutation,
 } = supplierOrdersApi

@@ -119,7 +119,7 @@ export default function CustomerCheckoutOrderSummary({
         {/* Product */}
         <div className="flex gap-3 p-3 bg-sky-50 dark:bg-sky-900/20 rounded-xl border border-sky-200 dark:border-sky-800 mb-4">
           <div className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            <Image src={product.image} alt={product.name} fill className="object-cover" />
+            <Image src={product.image} alt={product.name} fill className="object-cover" unoptimized />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug line-clamp-2">{product.name}</p>
@@ -231,7 +231,7 @@ export default function CustomerCheckoutOrderSummary({
               {items.map((item) => (
                 <div key={`${item.cartItemId ?? item.id}-${item.selectedSku ?? item.variantId ?? ''}`} className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-white dark:bg-slate-800">
-                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                    <Image src={item.image} alt={item.name} fill className="object-cover" unoptimized />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-800 dark:text-white line-clamp-2">{item.name}</p>

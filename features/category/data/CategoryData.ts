@@ -44,6 +44,10 @@ export interface CategoryProduct {
     bestseller?: boolean;
     salespromo?: boolean;
     manualCheckoutEnabled?: boolean;
+    sourceType?: 'local' | 'zq';
+    zqProductId?: number;
+    zqExternalId?: string;
+    zqOfferId?: string | null;
     weight?: number;
     psweight?: number;
     pswidth?: number;

@@ -184,6 +184,10 @@ const BuyNowOptionsModal = ({
         price: unitPrice,
         prodpv: activeVariant?.prodpv ?? product.prodpv,
       },
+      sourceType: product.sourceType ?? 'local',
+      zqProductId: product.zqProductId ?? null,
+      zqExternalId: product.zqExternalId ?? null,
+      zqOfferId: product.zqOfferId ?? null,
       quantity,
       variantId: activeVariant?.id ?? null,
       selectedColor: activeSelectedColor,
@@ -296,7 +300,7 @@ const BuyNowOptionsModal = ({
 
                   <div className="flex gap-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3.5">
                     <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                      <Image src={selectedVariantImage} alt={product.name} fill className="object-cover" />
+                      <Image src={selectedVariantImage} alt={product.name} fill className="object-cover" unoptimized />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 dark:text-white">{product.name}</p>
@@ -510,6 +514,7 @@ const BuyNowOptionsModal = ({
                                                   alt={variantLabel}
                                                   fill
                                                   className="object-cover"
+                                                  unoptimized
                                                 />
                                               </div>
                                               <div className="min-w-0 flex-1">

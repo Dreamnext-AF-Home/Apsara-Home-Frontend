@@ -8,11 +8,16 @@ import type { ZqPublicProductResponse, ZqCachedProduct } from '@/store/api/produ
 
 export const revalidate = 60
 
-async function getGlobalProduct(id: string) {
+async function getGlobalProduct(id: string, preview = false) {
   const apiUrl = process.env.LARAVEL_API_URL ?? process.env.NEXT_PUBLIC_LARAVEL_API_URL
   if (!apiUrl) return null
 
-  const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/products/zq/cached/${encodeURIComponent(id)}`, {
+  const productUrl = new URL(`${apiUrl.replace(/\/$/, '')}/api/products/zq/cached/${encodeURIComponent(id)}`)
+  if (preview) {
+    productUrl.searchParams.set('preview', '1')
+  }
+
+  const response = await fetch(productUrl.toString(), {
     next: { revalidate },
   })
 
@@ -34,10 +39,18 @@ async function getRelatedGlobalProducts(currentId: number): Promise<ZqCachedProd
   return (payload.products ?? []).filter((p) => p.id !== currentId).slice(0, 4)
 }
 
-export default async function GlobalProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function GlobalProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams?: Promise<{ preview?: string }>
+}) {
   const { id } = await params
+  const resolvedSearchParams = searchParams ? await searchParams : {}
+  const preview = resolvedSearchParams.preview === '1'
   const [product, navbarCategories] = await Promise.all([
-    getGlobalProduct(id),
+    getGlobalProduct(id, preview),
     getNavbarCategories(),
   ])
 

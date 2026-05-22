@@ -160,6 +160,7 @@ const CustomerCheckoutMain = ({
     const checkoutHeaderLabel = isPartnerStorefront ? `${partnerName} Secure Checkout` : 'AF Home Secure Checkout';
 
     const checkoutData = useMemo(() => readCheckoutDraft(), [checkoutRefreshTrigger]);
+    const isZqCheckout = checkoutData?.sourceType === 'zq' || checkoutData?.product?.sourceType === 'zq';
     const storedReferral = useMemo(() => readStoredReferral(), []);
     const storefrontReferral = useMemo(() => normalizeReferralCode(storefrontReferralCode ?? ''), [storefrontReferralCode]);
     const memberReferral = (meData?.referrer_username ?? '').trim();
@@ -168,10 +169,10 @@ const CustomerCheckoutMain = ({
     const shouldRequireReferral = !isLoggedIn && !hasLockedReferral;
 
     useEffect(() => {
-        if (checkoutData?.product?.id) {
+        if (!isZqCheckout && checkoutData?.product?.id) {
             fetchProduct(checkoutData.product.id);
         }
-    }, [checkoutData?.product?.id, fetchProduct]);
+    }, [checkoutData?.product?.id, fetchProduct, isZqCheckout]);
 
     useEffect(() => {
         const handleVariantChange = () => {
@@ -196,6 +197,7 @@ const CustomerCheckoutMain = ({
     const [selectedOnlineBankingProvider, setSelectedOnlineBankingProvider] = useState<CheckoutOnlineBankingProvider>('dob');
     const paymentModeEnabledByAdmin = Boolean(publicSettingsData?.settings?.enable_test_payments);
     const manualCheckoutModeEnabledByAdmin = Boolean(publicSettingsData?.settings?.enable_manual_checkout_mode);
+    const useManualCheckoutShipping = manualCheckoutModeEnabledByAdmin && !isZqCheckout;
     const isLocalPaymentHost = useMemo(() => {
         if (typeof window === 'undefined') return false;
         return LOCAL_PAYMENT_MODE_HOSTS.has(window.location.hostname);
@@ -235,15 +237,15 @@ const CustomerCheckoutMain = ({
     }), [effectiveReferral, formOverrides, isLoggedIn, meData]);
 
     const shippingFee = useMemo(() => {
-        if (!manualCheckoutModeEnabledByAdmin) return 0;
+        if (!useManualCheckoutShipping) return 0;
         if (!form.province.trim() || !form.city.trim()) return null;
         return resolveShippingFee(shippingRatesData?.rates ?? [], form.province, form.city);
-    }, [form.city, form.province, manualCheckoutModeEnabledByAdmin, shippingRatesData?.rates]);
+    }, [form.city, form.province, shippingRatesData?.rates, useManualCheckoutShipping]);
     const hasShippingAddress = Boolean(form.province.trim() && form.city.trim());
     const shippingAddressLabel = [form.city.trim(), form.province.trim()].filter(Boolean).join(', ');
-    const isShippingRatePending = manualCheckoutModeEnabledByAdmin && hasShippingAddress && (shippingRatesLoading || shippingRatesFetching);
-    const isShippingRateUnavailable = manualCheckoutModeEnabledByAdmin && hasShippingAddress && !isShippingRatePending && shippingFee === null;
-    const canProceedWithoutShippingRate = manualCheckoutModeEnabledByAdmin && isShippingRateUnavailable;
+    const isShippingRatePending = useManualCheckoutShipping && hasShippingAddress && (shippingRatesLoading || shippingRatesFetching);
+    const isShippingRateUnavailable = useManualCheckoutShipping && hasShippingAddress && !isShippingRatePending && shippingFee === null;
+    const canProceedWithoutShippingRate = useManualCheckoutShipping && isShippingRateUnavailable;
     const resolvedShippingFee = shippingFee ?? 0;
 
     const voucherDiscount = useMemo(() => Math.max(0, Number(voucherInfo?.discount ?? 0)), [voucherInfo?.discount]);
@@ -341,13 +343,13 @@ const CustomerCheckoutMain = ({
 
     useEffect(() => {
         if (!checkoutData?.product) return;
-        if (!manualCheckoutModeEnabledByAdmin) return;
+        if (!useManualCheckoutShipping) return;
         if (checkoutData.product.manualCheckoutEnabled === true) {
             return;
         }
 
         setNotice('Some items may not support manual checkout. Please review your cart items before placing the order.');
-    }, [checkoutData, manualCheckoutModeEnabledByAdmin]);
+    }, [checkoutData, useManualCheckoutShipping]);
 
     useEffect(() => {
         if (!checkoutData) return;
@@ -495,6 +497,10 @@ const CustomerCheckoutMain = ({
                     selected_type: checkoutData.selectedType ?? null,
                     subtotal: effectiveSubtotal,
                     handling_fee: resolvedShippingFee,
+                    source_type: isZqCheckout ? 'zq' : 'local',
+                    zq_product_id: checkoutData.zqProductId ?? checkoutData.product.zqProductId ?? null,
+                    zq_external_id: checkoutData.zqExternalId ?? checkoutData.product.zqExternalId ?? null,
+                    zq_offer_id: checkoutData.zqOfferId ?? checkoutData.product.zqOfferId ?? null,
                 },
             }).unwrap();
 

@@ -28,6 +28,7 @@ export const extractPartnerSlugFromPath = (pathname?: string | null): string | n
       'api',
       'category',
       'product',
+      'global-product',
       'profile',
       'orders',
       'wishlist',
