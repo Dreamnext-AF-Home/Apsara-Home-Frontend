@@ -30,8 +30,16 @@ export interface AdminWebstoreRequest {
   email?: string | null;
   slug_name?: string | null;
   display_name?: string | null;
+  plan?: string | null;
+  plan_term?: string | null;
+  subscription_fee?: number | null;
+  effective_monthly?: number | null;
+  billing_option?: string | null;
+  payment_method?: string | null;
+  receipt_urls?: string[] | null;
   status: WebstoreRequestStatus;
   submitted_at?: string | null;
+  approved_at?: string | null;
 }
 
 export interface AdminWebstoreRequestsResponse {

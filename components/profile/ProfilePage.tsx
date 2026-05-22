@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useUsernameChangeLatestQuery, useWebstoreRequestLatestQuery, useSyncWebstorePartnerAccountMutation, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
+import { MeResponse, ReferralTreeNode, AccountSnapshot, useChangePasswordMutation, useMeQuery, useAccountSnapshotQuery, useReferralTreeQuery, useUpdateProfileMutation, useUploadAvatarMutation, useSendUsernameChangeOtpMutation, useSubmitUsernameChangeRequestMutation, useSubmitWebstoreRequestMutation, useUploadWebstoreReceiptMutation, useCreateWebstorePaymentSessionMutation, useLazyVerifyWebstorePaymentSessionQuery, useUsernameChangeLatestQuery, useWebstoreRequestLatestQuery, useSyncWebstorePartnerAccountMutation, useMemberActivityQuery, useMemberSessionsQuery, useRevokeMemberSessionMutation, useLinkedAccountsQuery, useLinkGoogleAccountMutation, useUnlinkGoogleAccountMutation, useLinkFacebookAccountMutation, useUnlinkFacebookAccountMutation, LinkedAccount, useSetupTotpMutation, useEnableTotpMutation, useDisableTotpMutation, SetupTotpResponse } from '@/store/api/userApi';
 import { signOut, useSession } from 'next-auth/react';
 import { ChangeEvent, DragEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Loading from '../Loading';
@@ -14,6 +14,20 @@ import { showErrorToast, showSuccessToast } from '@/libs/toast';
 import { extractPartnerSlugFromPath } from '@/libs/storefrontRouting';
 import { useGetPublicWebPageItemsQuery } from '@/store/api/webPagesApi';
 import { getPartnerStorefrontConfig } from '@/libs/partnerStorefront';
+import Icon from './Icons';
+import getPasswordStrength from './GetPasswordStrength';
+import fadeUp from './FadeUp';
+import PasswordInput from './PasswordInput';
+import Toggle from './Toggle';
+import getActivityIcon from './GetActivityIcon';
+import EncashmentTab from './EncashmentTab';
+import WalletTab from './WalletTab';
+import InteriorRequestsTab from './InteriorRequestsTab';
+import AvatarCropModal from './AvatarCropModal';
+import LevelsTab from './LevelsTab';
+import { usePhAddress } from '@/hooks/usePhAddress';
+import { containsBlockedWord } from '@/libs/badWords';
+import { getProfileCompletion } from '@/libs/profileCompletion';
 
 const TIER_BADGE_IMAGE: Record<MemberTier, string> = {
   'Home Starter': '/Badge/homeStarter.png',
@@ -46,20 +60,6 @@ const NEXT_TIER_REQUIREMENTS: Record<number, TierReq> = {
   3: { pv: 3000, referrals: 10, activeBuilders: 5 },
   4: { pv: 8000, referrals: 20, activeLeaders: 10 },
 };
-import Icon from './Icons';
-import getPasswordStrength from './GetPasswordStrength';
-import fadeUp from './FadeUp';
-import PasswordInput from './PasswordInput';
-import Toggle from './Toggle';
-import getActivityIcon from './GetActivityIcon';
-import EncashmentTab from './EncashmentTab';
-import WalletTab from './WalletTab';
-import InteriorRequestsTab from './InteriorRequestsTab';
-import AvatarCropModal from './AvatarCropModal';
-import LevelsTab from './LevelsTab';
-import { usePhAddress } from '@/hooks/usePhAddress';
-import { containsBlockedWord } from '@/libs/badWords';
-import { getProfileCompletion } from '@/libs/profileCompletion';
 
 const hasRealPhoneNumber = (value?: string | null) => {
   const digits = String(value ?? '').replace(/\D/g, '');
@@ -323,6 +323,12 @@ type Tab = 'profile' | 'security' | 'preferences' | 'wallet' | 'pv' | 'encashmen
 
 type AlertMsg = { type: 'success' | 'error'; text: string };
 type TreeStatusFilter = 'all' | 'verified' | 'pending_review' | 'not_verified' | 'blocked';
+const PROFILE_TABS: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'webstore', 'referrals', 'levels'];
+
+const resolveTabFromSearchParams = (value: string | null): Tab => {
+  if (value && PROFILE_TABS.includes(value as Tab)) return value as Tab;
+  return 'profile';
+};
 
 type ProfilePageProps = {
   initialProfile?: MeResponse | null;
@@ -580,6 +586,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [sendUsernameChangeOtp, { isLoading: isSendingUsernameOtp }] = useSendUsernameChangeOtpMutation();
   const [submitUsernameChangeRequest, { isLoading: isSubmittingUsernameChange }] = useSubmitUsernameChangeRequestMutation();
+  const [submitWebstoreRequest, { isLoading: isSubmittingWebstoreRequest }] = useSubmitWebstoreRequestMutation();
+  const [uploadWebstoreReceipt] = useUploadWebstoreReceiptMutation();
+  const [createWebstorePaymentSession, { isLoading: isCreatingWebstorePaymentSession }] = useCreateWebstorePaymentSessionMutation();
+  const [triggerVerifyWebstorePaymentSession] = useLazyVerifyWebstorePaymentSessionQuery();
   const [syncWebstorePartnerAccount, { isLoading: isSyncingWebstoreAccount }] = useSyncWebstorePartnerAccountMutation();
   const [revokeMemberSession, { isLoading: isRevokingSession }] = useRevokeMemberSessionMutation();
   const { data: linkedAccountsData, refetch: refetchLinkedAccounts } = useLinkedAccountsQuery(undefined, {
@@ -601,7 +611,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     return linkedAccountsData?.accounts?.some((account: LinkedAccount) => account.provider === 'facebook') ?? false;
   }, [linkedAccountsData]);
 
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>(() => resolveTabFromSearchParams(searchParams.get('tab')));
   const [googleLinkSuccess, setGoogleLinkSuccess] = useState(false);
   const [facebookLinkSuccess, setFacebookLinkSuccess] = useState(false);
   const profileDraftDirtyRef = useRef(false);
@@ -641,9 +651,36 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [showPartnerLoginShortcut, setShowPartnerLoginShortcut] = useState(false);
   const [selectedWebstorePlan, setSelectedWebstorePlan] = useState<'quarterly' | 'semiAnnual' | 'annual' | null>(null);
   const [selectedBillingOption, setSelectedBillingOption] = useState<'full' | 'monthly' | null>(null);
-  const [webstoreReceiptFiles, setWebstoreReceiptFiles] = useState<Array<{ name: string; preview: string }>>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null
+  >(null);
+  const [webstorePaymentProofUrl, setWebstorePaymentProofUrl] = useState<string | null>(null);
+  const [webstorePaymentReferenceId, setWebstorePaymentReferenceId] = useState<string | null>(null);
+  const [webstorePaymentIntentId, setWebstorePaymentIntentId] = useState<string | null>(null);
+  const [webstorePaymentCheckoutId, setWebstorePaymentCheckoutId] = useState<string | null>(null);
+  const [webstoreSuccessModalOpen, setWebstoreSuccessModalOpen] = useState(false);
+  const webstoreSuccessAutoShownRef = useRef(false);
+  const [webstoreReceiptFiles, setWebstoreReceiptFiles] = useState<Array<{ name: string; preview: string; file: File }>>([]);
   const [isDraggingReceipt, setIsDraggingReceipt] = useState(false);
+  const [webstoreInvalidFields, setWebstoreInvalidFields] = useState<Record<string, boolean>>({});
+  const [webstoreLatestRequestPreview, setWebstoreLatestRequestPreview] = useState<{
+    id: number
+    reference_no?: string
+    status: 'pending_review' | 'approved' | 'rejected'
+    slug_name?: string | null
+    display_name?: string | null
+    created_at?: string | null
+    billing_option?: 'full' | 'monthly' | null
+    payment_method?: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null
+  } | null>(null);
   const webstoreReceiptInputRef = useRef<HTMLInputElement | null>(null);
+  const webstorePlanSectionRef = useRef<HTMLDivElement | null>(null);
+  const webstoreSlugInputRef = useRef<HTMLInputElement | null>(null);
+  const webstoreDisplayInputRef = useRef<HTMLInputElement | null>(null);
+  const webstoreBillingSelectRef = useRef<HTMLSelectElement | null>(null);
+  const webstorePaymentSelectRef = useRef<HTMLSelectElement | null>(null);
+  const webstoreReceiptSectionRef = useRef<HTMLDivElement | null>(null);
+  const webstoreTermsSectionRef = useRef<HTMLDivElement | null>(null);
 
   const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [pwError, setPwError] = useState<string | null>(null);
@@ -894,12 +931,8 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   }, [profileData?.barangay, isAddressModalOpen, phAddress, phAddress.barangays, phAddress.address.barangay]);
 
   useEffect(() => {
-    const requestedTab = searchParams.get('tab');
-    const allowedTabs: Tab[] = ['profile', 'security', 'preferences', 'wallet', 'encashment', 'interior-requests', 'activity', 'change-username', 'webstore', 'referrals', 'levels'];
-
-    if (requestedTab && allowedTabs.includes(requestedTab as Tab)) {
-      setActiveTab(requestedTab as Tab);
-    }
+    const requestedTab = resolveTabFromSearchParams(searchParams.get('tab'));
+    setActiveTab((current) => (current === requestedTab ? current : requestedTab));
   }, [searchParams]);
 
   const passwordChangeRequired = Boolean(session?.user?.passwordChangeRequired || profileData?.password_change_required);
@@ -1811,9 +1844,369 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   };
 
   const latestUsernameRequest = usernameChangeLatest?.request ?? null;
-  const latestWebstoreRequest = webstoreRequestLatest?.request ?? null;
+  const latestWebstoreRequest = webstoreRequestLatest?.request ?? webstoreLatestRequestPreview ?? null;
+  const hasExistingWebstoreRequest = Boolean(latestWebstoreRequest);
+  const isApprovedWebstoreRequest = latestWebstoreRequest?.status === 'approved';
+
+  useEffect(() => {
+    if (webstoreRequestLatest?.request) {
+      setWebstoreLatestRequestPreview(null);
+    }
+  }, [webstoreRequestLatest?.request]);
+  const requestPlan = latestWebstoreRequest?.plan === 'semi_annual'
+    ? 'semiAnnual'
+    : latestWebstoreRequest?.plan === 'quarterly' || latestWebstoreRequest?.plan === 'annual'
+      ? latestWebstoreRequest.plan
+      : null;
+
+  useEffect(() => {
+    if (!latestWebstoreRequest) return;
+
+    setWebstoreForm((prev) => ({
+      ...prev,
+      fullName: latestWebstoreRequest.full_name || prev.fullName,
+      username: latestWebstoreRequest.username || prev.username,
+      email: latestWebstoreRequest.email || prev.email,
+      slugName: latestWebstoreRequest.slug_name || prev.slugName,
+      displayName: latestWebstoreRequest.display_name || prev.displayName,
+    }));
+
+    if (!selectedWebstorePlan && requestPlan) {
+      setSelectedWebstorePlan(requestPlan);
+    }
+    if (!selectedBillingOption && (latestWebstoreRequest.billing_option === 'full' || latestWebstoreRequest.billing_option === 'monthly')) {
+      setSelectedBillingOption(latestWebstoreRequest.billing_option);
+    }
+    if (!selectedPaymentMethod && (
+      latestWebstoreRequest.payment_method === 'gcash'
+      || latestWebstoreRequest.payment_method === 'grab_pay'
+      || latestWebstoreRequest.payment_method === 'maya'
+      || latestWebstoreRequest.payment_method === 'card'
+      || latestWebstoreRequest.payment_method === 'online_banking'
+    )) {
+      setSelectedPaymentMethod(latestWebstoreRequest.payment_method);
+    }
+  }, [latestWebstoreRequest, requestPlan, selectedBillingOption, selectedPaymentMethod, selectedWebstorePlan]);
+  const webstoreDraftStorageKey = 'afhome:webstore-payment-draft:v1';
+  const webstorePaymentSessionStorageKey = 'afhome:webstore-payment-session:v1';
+  const webstorePaymentStatus = (searchParams.get('webstore_payment') || '').toLowerCase();
+  const webstoreCheckoutId = searchParams.get('checkout_id') || '';
+  const webstorePaymentMode = (searchParams.get('payment_mode') || '').toLowerCase();
   const hasPendingUsernameRequest = isUsernamePendingLocal || latestUsernameRequest?.status === 'pending_review';
   const pendingRequestedUsername = latestUsernameRequest?.requested_username || usernameRequest.trim();
+  const selectedWebstorePaymentAmount = useMemo(() => {
+    const planAmounts: Record<'quarterly' | 'semiAnnual' | 'annual', { full: number; monthly: number }> = {
+      quarterly: { full: 48000, monthly: 16000 },
+      semiAnnual: { full: 90000, monthly: 15000 },
+      annual: { full: 150000, monthly: 12500 },
+    };
+    if (!selectedWebstorePlan || !selectedBillingOption) return null;
+    const amount = planAmounts[selectedWebstorePlan]?.[selectedBillingOption === 'monthly' ? 'monthly' : 'full'];
+    return typeof amount === 'number' ? amount : null;
+  }, [selectedBillingOption, selectedWebstorePlan]);
+  const selectedWebstoreSubscriptionFee = useMemo(() => {
+    const fullFees: Record<'quarterly' | 'semiAnnual' | 'annual', number> = {
+      quarterly: 48000,
+      semiAnnual: 90000,
+      annual: 150000,
+    };
+    if (!selectedWebstorePlan) return null;
+    return fullFees[selectedWebstorePlan] ?? null;
+  }, [selectedWebstorePlan]);
+  const webstorePlanLabel = selectedWebstorePlan === 'quarterly'
+    ? 'Quarterly'
+    : selectedWebstorePlan === 'semiAnnual'
+      ? 'Semi-Annual'
+      : selectedWebstorePlan === 'annual'
+        ? 'Annual'
+        : '-';
+  const webstoreTermLabel = selectedWebstorePlan === 'quarterly'
+    ? '3 months'
+    : selectedWebstorePlan === 'semiAnnual'
+      ? '6 months'
+      : selectedWebstorePlan === 'annual'
+        ? 'Yearly'
+        : '-';
+  const webstoreMonthlyPay = useMemo(() => {
+    const monthlyFees: Record<'quarterly' | 'semiAnnual' | 'annual', number> = {
+      quarterly: 16000,
+      semiAnnual: 15000,
+      annual: 12500,
+    };
+    if (!selectedWebstorePlan) return null;
+    return monthlyFees[selectedWebstorePlan] ?? null;
+  }, [selectedWebstorePlan]);
+  const webstoreBillingLabel = selectedBillingOption === 'monthly'
+    ? 'Monthly Installment'
+    : selectedBillingOption === 'full'
+      ? 'Full Payment'
+      : '-';
+  const webstorePaymentMethodLabel = selectedPaymentMethod === 'gcash'
+    ? 'GCash'
+    : selectedPaymentMethod === 'grab_pay'
+      ? 'GrabPay'
+      : selectedPaymentMethod === 'maya'
+        ? 'Maya'
+        : selectedPaymentMethod === 'card'
+          ? 'Card'
+          : selectedPaymentMethod === 'online_banking'
+            ? 'Online Banking'
+            : '-';
+  const webstorePaymentCompleted = Boolean(webstorePaymentReferenceId || webstorePaymentProofUrl);
+
+  useEffect(() => {
+    if (!webstorePaymentCompleted) return;
+    if (webstoreSuccessAutoShownRef.current) return;
+    webstoreSuccessAutoShownRef.current = true;
+    setWebstoreSuccessModalOpen(true);
+  }, [webstorePaymentCompleted]);
+
+  const saveWebstoreDraft = useCallback((overrides?: {
+    selectedPaymentMethod?: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null
+  }) => {
+    if (typeof window === 'undefined') return;
+    const draft = {
+      webstoreForm,
+      selectedWebstorePlan,
+      selectedBillingOption,
+      selectedPaymentMethod: overrides?.selectedPaymentMethod ?? selectedPaymentMethod,
+      webstoreAcceptedTerms,
+    };
+    window.localStorage.setItem(webstoreDraftStorageKey, JSON.stringify(draft));
+  }, [selectedBillingOption, selectedPaymentMethod, selectedWebstorePlan, webstoreAcceptedTerms, webstoreForm]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(webstoreDraftStorageKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as {
+        webstoreForm?: WebstoreRequestFormState;
+        selectedWebstorePlan?: 'quarterly' | 'semiAnnual' | 'annual' | null;
+        selectedBillingOption?: 'full' | 'monthly' | null;
+        selectedPaymentMethod?: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null;
+        webstoreAcceptedTerms?: boolean;
+      };
+      if (draft.webstoreForm) {
+        setWebstoreForm((prev) => ({ ...prev, ...draft.webstoreForm }));
+      }
+      if (draft.selectedWebstorePlan) setSelectedWebstorePlan(draft.selectedWebstorePlan);
+      if (draft.selectedBillingOption) setSelectedBillingOption(draft.selectedBillingOption);
+      if (draft.selectedPaymentMethod) setSelectedPaymentMethod(draft.selectedPaymentMethod);
+      if (typeof draft.webstoreAcceptedTerms === 'boolean') setWebstoreAcceptedTerms(draft.webstoreAcceptedTerms);
+    } catch {
+      // ignore invalid draft cache
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (webstorePaymentStatus !== 'success') return;
+    const fallbackSession = (() => {
+      try {
+        const raw = window.localStorage.getItem(webstorePaymentSessionStorageKey);
+        return raw ? (JSON.parse(raw) as { checkoutId?: string; paymentMode?: 'test' | 'live'; paymentMethod?: string }) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const resolvedCheckoutId = webstoreCheckoutId || fallbackSession?.checkoutId || '';
+    const resolvedPaymentMode = webstorePaymentMode === 'test' || webstorePaymentMode === 'live'
+      ? (webstorePaymentMode as 'test' | 'live')
+      : fallbackSession?.paymentMode;
+    if (!resolvedCheckoutId) return;
+    setWebstoreSuccessModalOpen(true);
+    setWebstorePaymentCheckoutId(resolvedCheckoutId);
+    if (fallbackSession?.paymentMethod && ['gcash', 'grab_pay', 'maya', 'card', 'online_banking'].includes(fallbackSession.paymentMethod)) {
+      setSelectedPaymentMethod(fallbackSession.paymentMethod as 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking');
+    }
+    void triggerVerifyWebstorePaymentSession({
+      checkoutId: resolvedCheckoutId,
+      paymentMode: resolvedPaymentMode,
+    })
+      .unwrap()
+      .then((result) => {
+        if (!result?.is_paid) {
+          setWebstoreMsg({ type: 'error', text: 'Payment was not completed yet. Please try paying again.' });
+          return;
+        }
+        if (result.payment_method && ['gcash', 'grab_pay', 'maya', 'card', 'online_banking'].includes(result.payment_method)) {
+          setSelectedPaymentMethod(result.payment_method as 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking');
+        }
+        setWebstorePaymentProofUrl(result.proof_url || null);
+        setWebstorePaymentReferenceId(result.payment_reference || result.payment_intent_id || null);
+        setWebstorePaymentIntentId(result.payment_intent_id || null);
+        setWebstorePaymentCheckoutId(result.checkout_id || resolvedCheckoutId || null);
+        setWebstoreMsg({ type: 'success', text: 'Payment successful. Your proof is attached automatically.' });
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete('webstore_payment');
+        nextParams.delete('checkout_id');
+        nextParams.delete('payment_mode');
+        router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+      })
+      .catch(() => {
+        setWebstoreMsg({ type: 'error', text: 'Unable to verify payment right now. Please refresh and try again.' });
+      });
+  }, [pathname, router, searchParams, triggerVerifyWebstorePaymentSession, webstoreCheckoutId, webstorePaymentMode, webstorePaymentStatus]);
+
+  const handleDownloadWebstoreSuccessImage = useCallback(async () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const escapeXml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+
+    const checkoutId = webstorePaymentCheckoutId || webstoreCheckoutId || '-';
+    const paymentReference = webstorePaymentReferenceId || '-';
+    const paymentIntent = webstorePaymentIntentId || '-';
+    const paymentMethod = webstorePaymentMethodLabel;
+    const customerName = webstoreForm.fullName?.trim() || '-';
+    const email = webstoreForm.email?.trim() || '-';
+    const total = selectedWebstorePaymentAmount != null ? `PHP ${selectedWebstorePaymentAmount.toLocaleString()}` : '-';
+    const subscriptionFee = selectedWebstoreSubscriptionFee != null ? `PHP ${selectedWebstoreSubscriptionFee.toLocaleString()}` : '-';
+
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+      <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1500" viewBox="0 0 1200 1500">
+        <defs>
+          <linearGradient id="header" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#06b6a0"/>
+            <stop offset="100%" stop-color="#10b981"/>
+          </linearGradient>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0f172a" flood-opacity="0.12"/>
+          </filter>
+        </defs>
+
+        <rect width="1200" height="1500" fill="#f8fbff"/>
+        <rect x="40" y="40" width="1120" height="1420" rx="34" fill="#ffffff" filter="url(#shadow)"/>
+        <rect x="40" y="40" width="1120" height="220" rx="34" fill="url(#header)"/>
+        <rect x="40" y="226" width="1120" height="34" fill="#ffffff"/>
+
+        <g transform="translate(600 122)">
+          <circle r="46" fill="rgba(255,255,255,0.22)"/>
+          <circle r="32" fill="#ffffff" opacity="0.18"/>
+          <path d="M -16 0 L -4 12 L 20 -12" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+
+        <text x="600" y="198" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="800" fill="#ffffff">Payment Successful!</text>
+        <text x="600" y="244" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="rgba(255,255,255,0.92)">Your payment is confirmed and your webstore request is ready to continue.</text>
+
+        <g transform="translate(76 300)">
+          <rect x="0" y="0" width="1048" height="94" rx="22" fill="#f8fafc" stroke="#e5e7eb"/>
+          <text x="24" y="34" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">CHECKOUT ID</text>
+          <text x="24" y="66" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(checkoutId)}</text>
+
+          <rect x="516" y="0" width="532" height="94" rx="22" fill="#f8fafc" stroke="#e5e7eb"/>
+          <text x="540" y="34" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">STATUS</text>
+          <rect x="540" y="46" width="78" height="34" rx="17" fill="#d1fae5"/>
+          <text x="579" y="68" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#047857">Paid</text>
+        </g>
+
+        <g transform="translate(76 414)">
+          <rect x="0" y="0" width="1048" height="94" rx="22" fill="#f8fafc" stroke="#e5e7eb"/>
+          <text x="24" y="34" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">PAYMENT REFERENCE</text>
+          <text x="24" y="66" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(paymentReference)}</text>
+        </g>
+
+        <g transform="translate(76 528)">
+          <rect x="0" y="0" width="1048" height="94" rx="22" fill="#f8fafc" stroke="#e5e7eb"/>
+          <text x="24" y="34" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">PAYMENT INTENT</text>
+          <text x="24" y="66" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(paymentIntent)}</text>
+        </g>
+
+        <g transform="translate(76 664)">
+          <rect x="0" y="0" width="334" height="96" rx="22" fill="#ffffff" stroke="#e5e7eb"/>
+          <text x="24" y="33" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">CUSTOMER</text>
+          <text x="24" y="64" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(customerName)}</text>
+        </g>
+        <g transform="translate(432 664)">
+          <rect x="0" y="0" width="334" height="96" rx="22" fill="#ffffff" stroke="#e5e7eb"/>
+          <text x="24" y="33" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">EMAIL</text>
+          <text x="24" y="64" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(email)}</text>
+        </g>
+        <g transform="translate(788 664)">
+          <rect x="0" y="0" width="336" height="96" rx="22" fill="#ffffff" stroke="#e5e7eb"/>
+          <text x="24" y="33" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">PAYMENT METHOD</text>
+          <text x="24" y="64" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(paymentMethod)}</text>
+        </g>
+
+        <g transform="translate(76 780)">
+          <rect x="0" y="0" width="1048" height="178" rx="22" fill="#ffffff" stroke="#e5e7eb"/>
+          <text x="24" y="33" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#94a3b8">ORDER SUMMARY</text>
+
+          <g transform="translate(24 62)">
+            <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#94a3b8">PLAN</text>
+            <text x="0" y="32" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(webstorePlanLabel)}</text>
+          </g>
+          <g transform="translate(392 62)">
+            <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#94a3b8">BILLING</text>
+            <text x="0" y="32" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(webstoreBillingLabel)}</text>
+          </g>
+          <g transform="translate(760 62)">
+            <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#94a3b8">SUBSCRIPTION FEE</text>
+            <text x="0" y="32" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(subscriptionFee)}</text>
+          </g>
+          <g transform="translate(760 112)">
+            <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" fill="#94a3b8">TOTAL</text>
+            <text x="0" y="32" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#0f172a">${escapeXml(total)}</text>
+          </g>
+        </g>
+
+        <g transform="translate(76 982)">
+          <rect x="0" y="0" width="1048" height="128" rx="22" fill="#effaf3" stroke="#86efac"/>
+          <text x="24" y="48" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#047857">This PNG is generated locally from your confirmed payment details.</text>
+          <text x="24" y="82" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#064e3b">Use it as your payment confirmation snapshot.</text>
+        </g>
+      </svg>`;
+
+    const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    try {
+      const image = new Image();
+      image.decoding = 'async';
+      const loaded = new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Unable to render success image.'));
+      });
+      image.src = svgUrl;
+      await loaded;
+
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200 * scale;
+      canvas.height = 1500 * scale;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas is not available.');
+      context.scale(scale, scale);
+      context.drawImage(image, 0, 0, 1200, 1500);
+
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `webstore-payment-success-${checkoutId}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+    } finally {
+      URL.revokeObjectURL(svgUrl);
+    }
+  }, [
+    selectedWebstorePaymentAmount,
+    webstoreBillingLabel,
+    webstoreForm.email,
+    webstoreForm.fullName,
+    webstorePaymentCheckoutId,
+    webstorePaymentIntentId,
+    webstorePaymentMethodLabel,
+    webstorePaymentReferenceId,
+    webstoreCheckoutId,
+    webstorePlanLabel,
+    selectedWebstoreSubscriptionFee,
+  ]);
 
   const handleSendUsernameOtp = async () => {
     setUsernameMsg(null);
@@ -1883,40 +2276,192 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
 
   const handleSubmitWebstoreRequest = async (e: FormEvent) => {
     e.preventDefault();
-    setWebstoreMsg({
-      type: 'error',
-      text: 'Sorry, the webstore request is under maintenance right now. Please try again later.',
-    });
-    showErrorToast('Sorry, the webstore request is under maintenance right now. Please try again later.');
+    setWebstoreMsg(null);
+    setWebstoreInvalidFields({});
+
+    const focusField = (key: 'plan' | 'slugName' | 'displayName' | 'billingOption' | 'paymentMethod' | 'receipt' | 'terms') => {
+      const targetMap: Record<typeof key, HTMLElement | null> = {
+        plan: webstorePlanSectionRef.current,
+        slugName: webstoreSlugInputRef.current,
+        displayName: webstoreDisplayInputRef.current,
+        billingOption: webstoreBillingSelectRef.current,
+        paymentMethod: webstorePaymentSelectRef.current,
+        receipt: webstoreReceiptSectionRef.current,
+        terms: webstoreTermsSectionRef.current,
+      };
+      const target = targetMap[key];
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if ('focus' in target) {
+        setTimeout(() => target.focus(), 120);
+      }
+    };
+
+    const markInvalidAndFocus = (key: 'plan' | 'slugName' | 'displayName' | 'billingOption' | 'paymentMethod' | 'receipt' | 'terms', message: string) => {
+      setWebstoreInvalidFields({ [key]: true });
+      setWebstoreMsg({ type: 'error', text: message });
+      focusField(key);
+    };
+
+    const slugName = (latestWebstoreRequest?.slug_name || webstoreForm.slugName || '').trim().toLowerCase();
+    const displayName = (latestWebstoreRequest?.display_name || webstoreForm.displayName || '').trim();
+
+    if (!selectedWebstorePlan) {
+      markInvalidAndFocus('plan', 'Please select a subscription plan.');
+      return;
+    }
+    if (!slugName || slugName === '-') {
+      markInvalidAndFocus('slugName', 'Please provide a valid slug name before submitting.');
+      return;
+    }
+    if (!displayName || displayName === '-') {
+      markInvalidAndFocus('displayName', 'Please provide a valid display name before submitting.');
+      return;
+    }
+    if (!selectedBillingOption) {
+      markInvalidAndFocus('billingOption', 'Please select a billing option.');
+      return;
+    }
+    if (!selectedPaymentMethod) {
+      markInvalidAndFocus('paymentMethod', 'Please select a payment method.');
+      return;
+    }
+    if (webstoreReceiptFiles.length === 0 && !webstorePaymentProofUrl) {
+      markInvalidAndFocus('receipt', 'Please upload a receipt or complete PayMongo payment first.');
+      return;
+    }
+    if (!webstoreAcceptedTerms) {
+      markInvalidAndFocus('terms', 'Please accept the Terms and Conditions first.');
+      return;
+    }
+
+    try {
+      const uploadedReceiptUrls = await Promise.all(
+        webstoreReceiptFiles.map(async (item) => {
+          const formData = new FormData();
+          formData.append('file', item.file);
+          const uploadResult = await uploadWebstoreReceipt(formData).unwrap();
+          return uploadResult.url;
+        }),
+      );
+      const receiptUrls = [...uploadedReceiptUrls, ...(webstorePaymentProofUrl ? [webstorePaymentProofUrl] : [])];
+
+      const planMap: Record<'quarterly' | 'semiAnnual' | 'annual', 'quarterly' | 'semi_annual' | 'annual'> = {
+        quarterly: 'quarterly',
+        semiAnnual: 'semi_annual',
+        annual: 'annual',
+      };
+
+      const submitResponse = await submitWebstoreRequest({
+        full_name: webstoreForm.fullName.trim(),
+        username: webstoreForm.username.trim(),
+        email: webstoreForm.email.trim(),
+        slug_name: slugName,
+        display_name: displayName,
+        plan: planMap[selectedWebstorePlan],
+        billing_option: selectedBillingOption,
+        payment_method: selectedPaymentMethod,
+        receipt_urls: receiptUrls,
+        accepted_terms: webstoreAcceptedTerms,
+      }).unwrap();
+
+      setWebstoreLatestRequestPreview({
+        id: Number(submitResponse?.request?.id ?? Date.now()),
+        reference_no: submitResponse?.request?.reference_no
+          ?? (submitResponse?.request?.id ? `WR-${submitResponse.request.id}` : undefined),
+        status: (submitResponse?.request?.status as 'pending_review' | 'approved' | 'rejected' | undefined) ?? 'pending_review',
+        slug_name: slugName,
+        display_name: displayName,
+        created_at: submitResponse?.request?.created_at ?? submitResponse?.request?.submitted_at ?? new Date().toISOString(),
+        billing_option: selectedBillingOption,
+        payment_method: selectedPaymentMethod,
+      });
+
+      const successText = isApprovedWebstoreRequest
+        ? 'Webstore receipt uploaded successfully.'
+        : 'Webstore request submitted successfully.';
+      setWebstoreMsg({ type: 'success', text: successText });
+      showSuccessToast(successText);
+      setWebstoreReceiptFiles((prev) => {
+        prev.forEach((item) => {
+          if (item.preview.startsWith('blob:')) URL.revokeObjectURL(item.preview);
+        });
+        return [];
+      });
+      if (webstoreReceiptInputRef.current) {
+        webstoreReceiptInputRef.current.value = '';
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(webstoreDraftStorageKey);
+        window.localStorage.removeItem(webstorePaymentSessionStorageKey);
+      }
+      setWebstorePaymentProofUrl(null);
+      setWebstorePaymentReferenceId(null);
+      setWebstorePaymentIntentId(null);
+      setWebstorePaymentCheckoutId(null);
+      webstoreSuccessAutoShownRef.current = false;
+      setWebstoreSuccessModalOpen(false);
+      await refetchWebstoreRequestLatest();
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string; errors?: Record<string, string[]> } };
+      const firstValidation = apiError?.data?.errors ? Object.values(apiError.data.errors)[0]?.[0] : undefined;
+      const message = firstValidation || apiError?.data?.message || 'Failed to submit webstore request.';
+      setWebstoreMsg({ type: 'error', text: message });
+      showErrorToast(message);
+    }
+  };
+
+  const handleStartWebstorePayment = async (method: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking') => {
+    if (!selectedWebstorePlan || !selectedBillingOption) {
+      setWebstoreMsg({ type: 'error', text: 'Please select a plan and billing option before choosing payment method.' });
+      return;
+    }
+
+    const planMap: Record<'quarterly' | 'semiAnnual' | 'annual', 'quarterly' | 'semi_annual' | 'annual'> = {
+      quarterly: 'quarterly',
+      semiAnnual: 'semi_annual',
+      annual: 'annual',
+    };
+
+    try {
+      webstoreSuccessAutoShownRef.current = false;
+      setWebstoreSuccessModalOpen(false);
+      saveWebstoreDraft({ selectedPaymentMethod: method });
+      const response = await createWebstorePaymentSession({
+        plan: planMap[selectedWebstorePlan],
+        billing_option: selectedBillingOption,
+        payment_method: method,
+      }).unwrap();
+      if (!response.checkout_url) {
+        throw new Error('Missing checkout URL.');
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          webstorePaymentSessionStorageKey,
+          JSON.stringify({ checkoutId: response.checkout_id, paymentMode: response.payment_mode || 'test', paymentMethod: method }),
+        );
+      }
+      window.location.href = response.checkout_url;
+    } catch (err: unknown) {
+      const apiError = err as { data?: { message?: string }; message?: string };
+      setWebstoreMsg({ type: 'error', text: apiError?.data?.message || apiError?.message || 'Failed to start payment flow.' });
+    }
   };
 
   const processWebstoreReceiptFiles = (files: File[]) => {
     if (files.length === 0) return
-
-    void Promise.all(
-      files.map(
-        (file) =>
-          new Promise<{ name: string; preview: string }>((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => {
-              resolve({ name: file.name, preview: typeof reader.result === 'string' ? reader.result : '' })
-            }
-            reader.onerror = () => reject(new Error('Failed to read receipt image.'))
-            reader.readAsDataURL(file)
-          }),
-      ),
-    )
-      .then((items) => {
-        setWebstoreReceiptFiles((prev) => [...prev, ...items.filter((item) => item.preview)])
-      })
-      .catch(() => {
-        setWebstoreMsg({ type: 'error', text: 'Unable to load one or more receipt images.' })
-      })
-      .finally(() => {
-        if (webstoreReceiptInputRef.current) {
-          webstoreReceiptInputRef.current.value = ''
-        }
-      })
+    const maxSizeBytes = 10 * 1024 * 1024;
+    const allowed = files.filter((file) => file.type.startsWith('image/') && file.size <= maxSizeBytes);
+    if (allowed.length !== files.length) {
+      setWebstoreMsg({ type: 'error', text: 'Some files were skipped. Only image files up to 10MB are allowed.' });
+    }
+    setWebstoreReceiptFiles((prev) => [
+      ...prev,
+      ...allowed.map((file) => ({ name: file.name, preview: URL.createObjectURL(file), file })),
+    ]);
+    if (webstoreReceiptInputRef.current) {
+      webstoreReceiptInputRef.current.value = ''
+    }
   }
 
   const handleWebstoreReceiptUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -4427,7 +4972,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                       <div>
                         <h3 className="text-2lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">Notifications</h3>
                         <p className="text-sm text-slate-500 dark:text-gray-400 mt-2">Choose how you&apos;d like to be updated.</p>
-                      </div>m
+                      </div>
                     </div>
                     <div className="space-y-3">
                       {[
@@ -5186,9 +5731,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <div className="divide-y divide-[#edf2ff]">
                             <button
                               type="button"
+                              disabled={hasExistingWebstoreRequest}
                               onClick={() => setSelectedWebstorePlan('quarterly')}
                               className={`grid w-full grid-cols-2 gap-2 px-4 py-4 text-left transition md:grid-cols-4 md:divide-x md:divide-[#edf2ff] md:px-0 md:py-0 ${
-                                selectedWebstorePlan === 'quarterly' ? 'bg-[#f4f8ff]' : 'bg-white hover:bg-[#fafcff]'
+                                selectedWebstorePlan === 'quarterly' ? 'bg-[#f4f8ff]' : 'bg-white'
                               }`}
                             >
                               <div className="md:px-4 md:py-4">
@@ -5217,9 +5763,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             </button>
                             <button
                               type="button"
+                              disabled={hasExistingWebstoreRequest}
                               onClick={() => setSelectedWebstorePlan('semiAnnual')}
                               className={`grid w-full grid-cols-2 gap-2 px-4 py-4 text-left transition md:grid-cols-4 md:divide-x md:divide-[#edf2ff] md:px-0 md:py-0 ${
-                                selectedWebstorePlan === 'semiAnnual' ? 'bg-[#f4f8ff]' : 'bg-white hover:bg-[#fafcff]'
+                                selectedWebstorePlan === 'semiAnnual' ? 'bg-[#f4f8ff]' : 'bg-white'
                               }`}
                             >
                               <div className="md:px-4 md:py-4">
@@ -5248,9 +5795,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             </button>
                             <button
                               type="button"
+                              disabled={hasExistingWebstoreRequest}
                               onClick={() => setSelectedWebstorePlan('annual')}
                               className={`grid w-full grid-cols-2 gap-2 px-4 py-4 text-left transition md:grid-cols-4 md:divide-x md:divide-[#edf2ff] md:px-0 md:py-0 ${
-                                selectedWebstorePlan === 'annual' ? 'bg-[#eef4ff]' : 'bg-white hover:bg-[#fafcff]'
+                                selectedWebstorePlan === 'annual' ? 'bg-[#eef4ff]' : 'bg-white'
                               }`}
                             >
                               <div className="md:px-4 md:py-4">
@@ -5298,9 +5846,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <label className="text-sm font-semibold text-[#1f3763]">Full Name</label>
                           <input
                             type="text"
-                            value={webstoreForm.fullName}
+                            value={hasExistingWebstoreRequest ? (latestWebstoreRequest?.full_name || webstoreForm.fullName) : webstoreForm.fullName}
                             onChange={(e) => setWebstoreForm((prev) => ({ ...prev, fullName: e.target.value }))}
-                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            className={`w-full rounded-xl border px-4 py-3 text-sm ${
+                              hasExistingWebstoreRequest ? 'border-[#d5def1] bg-slate-50 text-slate-500' : 'border-[#d5def1] bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300'
+                            }`}
                             placeholder="Enter full name"
                             readOnly
                           />
@@ -5309,9 +5859,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <label className="text-sm font-semibold text-[#1f3763]">Username</label>
                           <input
                             type="text"
-                            value={webstoreForm.username}
+                            value={hasExistingWebstoreRequest ? (latestWebstoreRequest?.username || webstoreForm.username) : webstoreForm.username}
                             onChange={(e) => setWebstoreForm((prev) => ({ ...prev, username: e.target.value }))}
-                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            className={`w-full rounded-xl border px-4 py-3 text-sm ${
+                              hasExistingWebstoreRequest ? 'border-[#d5def1] bg-slate-50 text-slate-500' : 'border-[#d5def1] bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300'
+                            }`}
                             placeholder="Enter username"
                             readOnly
                           />
@@ -5323,9 +5875,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <label className="text-sm font-semibold text-[#1f3763]">Email</label>
                           <input
                             type="email"
-                            value={webstoreForm.email}
+                            value={hasExistingWebstoreRequest ? (latestWebstoreRequest?.email || webstoreForm.email) : webstoreForm.email}
                             onChange={(e) => setWebstoreForm((prev) => ({ ...prev, email: e.target.value }))}
-                            className="w-full rounded-xl border border-[#d5def1] bg-white px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300"
+                            className={`w-full rounded-xl border px-4 py-3 text-sm ${
+                              hasExistingWebstoreRequest ? 'border-[#d5def1] bg-slate-50 text-slate-500' : 'border-[#d5def1] bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300'
+                            }`}
                             placeholder="Enter email"
                             readOnly
                           />
@@ -5334,12 +5888,21 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <label className="text-sm font-semibold text-[#1f3763]">Slug Name</label>
                         <input
                           type="text"
-                          value={latestWebstoreRequest?.slug_name || '-'}
-                          disabled
-                          className="w-full rounded-xl border border-[#d5def1] bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none opacity-80"
+                          value={hasExistingWebstoreRequest ? (latestWebstoreRequest?.slug_name || '-') : webstoreForm.slugName}
+                          onChange={(e) => setWebstoreForm((prev) => ({ ...prev, slugName: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                          disabled={hasExistingWebstoreRequest}
+                          className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${
+                            hasExistingWebstoreRequest
+                              ? 'border-[#d5def1] bg-slate-50 text-slate-500 opacity-80'
+                              : 'border-[#d5def1] bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300'
+                          }`}
                           placeholder="your-store-slug"
                         />
-                          <p className="text-xs font-medium text-[#7d8fb0]">Registered slug name for your store&apos;s unique URL.</p>
+                          <p className="text-xs font-medium text-[#7d8fb0]">
+                            {hasExistingWebstoreRequest
+                              ? "Registered slug name for your store's unique URL."
+                              : 'Set your store slug (letters, numbers, and hyphens only).'}
+                          </p>
                         </div>
                       </div>
 
@@ -5348,12 +5911,21 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <label className="text-sm font-semibold text-[#1f3763]">Display Name</label>
                           <input
                             type="text"
-                            value={latestWebstoreRequest?.display_name || '-'}
-                            disabled
-                            className="w-full rounded-xl border border-[#d5def1] bg-slate-50 px-4 py-3 text-sm text-slate-500 outline-none opacity-80"
+                            value={hasExistingWebstoreRequest ? (latestWebstoreRequest?.display_name || '-') : webstoreForm.displayName}
+                            onChange={(e) => setWebstoreForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                            disabled={hasExistingWebstoreRequest}
+                            className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${
+                              hasExistingWebstoreRequest
+                                ? 'border-[#d5def1] bg-slate-50 text-slate-500 opacity-80'
+                                : 'border-[#d5def1] bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-100 focus:border-sky-300'
+                            }`}
                             placeholder="Storefront display name"
                           />
-                          <p className="text-xs font-medium text-[#7d8fb0]">Registered display name for your storefront.</p>
+                          <p className="text-xs font-medium text-[#7d8fb0]">
+                            {hasExistingWebstoreRequest
+                              ? 'Registered display name for your storefront.'
+                              : 'Set your storefront display name.'}
+                          </p>
                         </div>
 
                         <div className="space-y-1.5">
@@ -5376,6 +5948,122 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           </div>
                           <p className="text-xs font-medium text-[#7d8fb0]">Choose how the subscription will be billed.</p>
                         </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-[#1f3763]">Payment Method</label>
+                        <div className="relative">
+                          <select
+                            value={selectedPaymentMethod ?? ''}
+                            onChange={(event) => {
+                              const method = (event.target.value || null) as 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null
+                              setSelectedPaymentMethod(method)
+                              if (method) {
+                                void handleStartWebstorePayment(method)
+                              }
+                            }}
+                            className="w-full appearance-none rounded-xl border border-[#d5def1] bg-white px-4 py-3 pr-28 text-sm font-semibold text-[#163060] outline-none transition hover:border-[#9fb4ef] focus:border-[#4f7df0] focus:bg-[#fbfdff] focus:ring-2 focus:ring-sky-100"
+                          >
+                            <option value="">Select payment method</option>
+                            <option value="gcash">GCash</option>
+                            <option value="grab_pay">GrabPay</option>
+                            <option value="maya">Maya / PayMaya</option>
+                            <option value="card">Card (Visa / Mastercard / JCB)</option>
+                            <option value="online_banking">Online Banking</option>
+                          </select>
+                          {selectedPaymentMethod === 'gcash' ? (
+                            <img
+                              src="/payment-logos/gcash.svg"
+                              alt="GCash"
+                              className="pointer-events-none absolute right-12 top-1/2 h-4 w-auto -translate-y-1/2"
+                            />
+                          ) : null}
+                          {selectedPaymentMethod === 'maya' ? (
+                            <img
+                              src="/payment-logos/maya.svg"
+                              alt="Maya"
+                              className="pointer-events-none absolute right-12 top-1/2 h-4 w-auto -translate-y-1/2"
+                            />
+                          ) : null}
+                          {selectedPaymentMethod === 'online_banking' ? (
+                            <img
+                              src="/payment-logos/online-banking.svg"
+                              alt="Online Banking"
+                              className="pointer-events-none absolute right-12 top-1/2 h-4 w-auto -translate-y-1/2"
+                            />
+                          ) : null}
+                          {selectedPaymentMethod === 'card' ? (
+                            <div className="pointer-events-none absolute right-12 top-1/2 flex -translate-y-1/2 items-center gap-1">
+                              <img src="/payment-logos/visa.svg" alt="Visa" className="h-3.5 w-auto" />
+                              <img src="/payment-logos/mastercard.svg" alt="Mastercard" className="h-3.5 w-auto" />
+                            </div>
+                          ) : null}
+                          {selectedPaymentMethod === 'grab_pay' ? (
+                            <span className="pointer-events-none absolute right-12 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-[#2853bb]">
+                              GrabPay
+                            </span>
+                          ) : null}
+                          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#2457e7]">
+                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="m6 9 6 6 6-6" />
+                            </svg>
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#dbe4f7] bg-[#f8fbff] p-3">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#6d7fa6]">Available Payment Method:</span>
+                          <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#d6e0f6] bg-white px-2 py-1">
+                            <img src="/payment-logos/gcash.svg" alt="GCash" className="h-4 w-auto" />
+                            <span className="text-[11px] font-semibold text-[#314a84]">Gcash</span>
+                          </div>
+                          <span className="inline-flex items-center rounded-lg border border-[#d6e0f6] bg-white px-2 py-1 text-[11px] font-semibold text-[#2853bb]">
+                            GrabPay
+                          </span>
+                          <div className="inline-flex items-center rounded-lg border border-[#d6e0f6] bg-white px-2 py-1">
+                            <img src="/payment-logos/maya.svg" alt="Maya" className="h-4 w-auto" />
+                          </div>
+                          <div className="inline-flex items-center gap-1 rounded-lg border border-[#d6e0f6] bg-white px-2 py-1">
+                            <img src="/payment-logos/visa.svg" alt="Visa" className="h-4 w-auto" />
+                            <img src="/payment-logos/mastercard.svg" alt="Mastercard" className="h-4 w-auto" />
+                            <span className="text-[10px] font-semibold text-[#314a84]">JCB</span>
+                          </div>
+                          <div className="inline-flex items-center rounded-lg border border-[#d6e0f6] bg-white px-2 py-1">
+                            <img src="/payment-logos/online-banking.svg" alt="Online Banking" className="h-4 w-auto" />
+                          </div>
+                        </div>
+                        {selectedPaymentMethod ? (
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleStartWebstorePayment(selectedPaymentMethod)}
+                              disabled={isCreatingWebstorePaymentSession}
+                              className="inline-flex items-center gap-2 rounded-lg border border-[#bcd0ff] bg-[#eef4ff] px-3.5 py-2 text-xs font-semibold text-[#1f4fc9] transition hover:bg-[#e3ecff] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isCreatingWebstorePaymentSession ? 'Opening checkout...' : `Pay Again with ${webstorePaymentMethodLabel}`}
+                            </button>
+                          </div>
+                        ) : null}
+                        {webstorePaymentCompleted ? (
+                          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                            <span className="inline-flex items-center rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white">
+                              Payment Success
+                            </span>
+                            <p className="text-sm font-semibold text-emerald-900">Your payment is confirmed. The success modal opens automatically and you can download the image receipt.</p>
+                            <button
+                              type="button"
+                              onClick={() => setWebstoreSuccessModalOpen(true)}
+                              className="rounded-full border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                            >
+                              View success details
+                            </button>
+                          </div>
+                        ) : null}
+                        {selectedWebstorePaymentAmount != null ? (
+                          <p className="mt-2 text-xs font-semibold text-[#4c638f]">
+                            {selectedBillingOption === 'monthly'
+                              ? `Monthly installment amount: ₱${selectedWebstorePaymentAmount.toLocaleString()}`
+                              : `Full payment amount: ₱${selectedWebstorePaymentAmount.toLocaleString()}`}
+                          </p>
+                        ) : null}
                       </div>
 
                       <div className="space-y-1.5">
@@ -5424,7 +6112,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0 flex-1 space-y-1">
                                 <p className="text-sm font-semibold text-[#163060]">Upload your payment receipt</p>
-                                <p className="text-xs text-[#7d8fb0]">UI preview only. Click anywhere to add one or more images.</p>
+                                <p className="text-xs text-[#7d8fb0]">Click anywhere to add one or more images.</p>
                               </div>
                               <div className="rounded-full bg-[#eff4ff] px-3 py-1 text-[11px] font-semibold text-[#4968c9]">
                                 {webstoreReceiptFiles.length > 0 ? `${webstoreReceiptFiles.length} selected` : 'Click to upload'}
@@ -5442,7 +6130,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                           type="button"
                                           onClick={(event) => {
                                             event.stopPropagation()
-                                            setWebstoreReceiptFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                                            setWebstoreReceiptFiles((prev) => {
+                                              const removed = prev[index]
+                                              if (removed?.preview?.startsWith('blob:')) URL.revokeObjectURL(removed.preview)
+                                              return prev.filter((_, itemIndex) => itemIndex !== index)
+                                            })
                                           }}
                                           className="rounded-full border border-[#d5def1] bg-white px-2 py-1 text-[11px] font-semibold text-[#355289] hover:bg-[#f6f9ff]"
                                           aria-label={`Remove receipt ${file.name}`}
@@ -5523,10 +6215,15 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                         </div>
                         <button
                           type="submit"
+                          disabled={isSubmittingWebstoreRequest || isCreatingWebstorePaymentSession}
                           className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_25px_rgba(37,99,235,0.35)] transition hover:from-[#1d4ed8] hover:to-[#1e40af]"
                         >
                           <Icon.Package className="h-5 w-5" />
-                          Under Maintenance
+                          {isCreatingWebstorePaymentSession
+                            ? 'Redirecting to PayMongo...'
+                            : isSubmittingWebstoreRequest
+                              ? (isApprovedWebstoreRequest ? 'Uploading Receipt...' : 'Submitting...')
+                              : (isApprovedWebstoreRequest ? 'Upload Webstore Receipt' : 'Submit Webstore Request')}
                           <span aria-hidden>→</span>
                         </button>
                       </div>
@@ -5597,7 +6294,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                     year: 'numeric',
                                     hour: 'numeric',
                                     minute: '2-digit',
-                                  }).replace(',', ' at')
+                                  })
                                 : '-'}
                             </p>
                           </div>
@@ -6047,6 +6744,124 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
             </p>
           </motion.div>
         )}
+
+        {webstoreSuccessModalOpen ? (
+          <motion.div
+            key="webstore-success-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[240] flex items-center justify-center bg-slate-950/55 px-3 py-4 backdrop-blur-sm"
+            onClick={() => setWebstoreSuccessModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 18, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.96, y: 18, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+              onClick={(event) => event.stopPropagation()}
+              className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[30px] border border-emerald-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.35)]"
+            >
+              <button
+                type="button"
+                onClick={() => setWebstoreSuccessModalOpen(false)}
+                className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30"
+                aria-label="Close success modal"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6l-12 12" />
+                </svg>
+              </button>
+
+              <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-6 py-8 text-center text-white md:px-10">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/18">
+                  <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m5 13 4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-3xl font-black tracking-tight">Payment Successful!</h3>
+                <p className="mt-2 text-sm text-white/90 md:text-base">
+                  Your payment is confirmed and your webstore request is ready to continue.
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto bg-white px-5 py-5 md:px-6 md:py-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Checkout ID</p>
+                    <p className="mt-1 break-all text-sm font-semibold text-slate-900">{webstorePaymentCheckoutId || webstoreCheckoutId || '-'}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Status</p>
+                    <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                      {webstorePaymentCompleted ? 'Paid' : 'Verifying'}
+                    </span>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Payment Reference</p>
+                    <p className="mt-1 break-all text-sm font-semibold text-slate-900">{webstorePaymentReferenceId || '-'}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 md:col-span-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Payment Intent</p>
+                    <p className="mt-1 break-all text-sm font-semibold text-slate-900">{webstorePaymentIntentId || '-'}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Customer</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{webstoreForm.fullName || '-'}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Email</p>
+                    <p className="mt-1 break-all text-sm font-semibold text-slate-900">{webstoreForm.email || '-'}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Plan</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{webstorePlanLabel}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Term</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{webstoreTermLabel}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Payment Method</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{webstorePaymentMethodLabel}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Billing</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{webstoreBillingLabel}</p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Subscription Fee</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {selectedWebstoreSubscriptionFee != null ? `PHP ${selectedWebstoreSubscriptionFee.toLocaleString()}` : '-'}
+                    </p>
+                  </div>
+                  <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Monthly Pay</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {webstoreMonthlyPay != null ? `PHP ${webstoreMonthlyPay.toLocaleString()}` : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
+                <p className="text-xs text-slate-500">
+                  You can download this confirmation as a PNG image.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={handleDownloadWebstoreSuccessImage}
+                    className="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                  >
+                    Download as Image
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
       </AnimatePresence>
     </motion.section>
     {partnerStorefront ? (
