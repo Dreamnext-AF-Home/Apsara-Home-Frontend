@@ -68,7 +68,16 @@ export default function WebstoreRequestsPage() {
     username?: string | null
     status?: string | null
     submittedAt?: string | null
+    approvedAt?: string | null
+    plan?: string | null
+    planTerm?: string | null
+    subscriptionFee?: number | null
+    effectiveMonthly?: number | null
+    billingOption?: string | null
+    paymentMethod?: string | null
+    receiptUrls?: string[] | null
   }>({ open: false, id: null, displayName: null, slugName: null, customerName: null, email: null, username: null, status: null, submittedAt: null })
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null)
 
   const rows = useMemo(() => {
     const source = data?.requests ?? []
@@ -128,6 +137,14 @@ export default function WebstoreRequestsPage() {
     username?: string | null
     status?: string | null
     submitted_at?: string | null
+    approved_at?: string | null
+    plan?: string | null
+    plan_term?: string | null
+    subscription_fee?: number | null
+    effective_monthly?: number | null
+    billing_option?: string | null
+    payment_method?: string | null
+    receipt_urls?: string[] | null
   }) => {
     setDetails({
       open: true,
@@ -139,11 +156,38 @@ export default function WebstoreRequestsPage() {
       username: item.username ?? null,
       status: item.status ?? null,
       submittedAt: item.submitted_at ?? null,
+      approvedAt: item.approved_at ?? null,
+      plan: item.plan ?? null,
+      planTerm: item.plan_term ?? null,
+      subscriptionFee: item.subscription_fee ?? null,
+      effectiveMonthly: item.effective_monthly ?? null,
+      billingOption: item.billing_option ?? null,
+      paymentMethod: item.payment_method ?? null,
+      receiptUrls: item.receipt_urls ?? [],
     })
   }
 
   const closeDetails = () => {
-    setDetails({ open: false, id: null, displayName: null, slugName: null, customerName: null, email: null, username: null, status: null, submittedAt: null })
+    setDetails({
+      open: false,
+      id: null,
+      displayName: null,
+      slugName: null,
+      customerName: null,
+      email: null,
+      username: null,
+      status: null,
+      submittedAt: null,
+      approvedAt: null,
+      plan: null,
+      planTerm: null,
+      subscriptionFee: null,
+      effectiveMonthly: null,
+      billingOption: null,
+      paymentMethod: null,
+      receiptUrls: [],
+    })
+    setReceiptPreviewUrl(null)
   }
 
   const handleConfirm = async () => {
@@ -173,6 +217,83 @@ export default function WebstoreRequestsPage() {
       showErrorToast(apiErr?.data?.message || apiErr?.message || 'Failed to process request.')
       closeConfirm()
     }
+  }
+
+  const parseDateSafe = (value?: string | null): Date | null => {
+    if (!value) return null
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const formatDate = (value?: string | null): string => {
+    const date = parseDateSafe(value)
+    if (!date) return '-'
+    return date.toLocaleDateString(undefined, { month: 'long', day: '2-digit', year: 'numeric' })
+  }
+
+  const planTermMonths = (plan?: string | null, term?: string | null): number => {
+    const raw = String(term ?? '').toLowerCase()
+    const matched = raw.match(/(\d+)/)
+    if (matched) return Number(matched[1])
+    const normalizedPlan = String(plan ?? '').toLowerCase()
+    if (normalizedPlan === 'quarterly') return 3
+    if (normalizedPlan === 'semi_annual' || normalizedPlan === 'semi-annual') return 6
+    if (normalizedPlan === 'annual') return 12
+    return 0
+  }
+
+  const formatPlanLabel = (value?: string | null): string => {
+    const v = String(value ?? '').trim()
+    if (!v) return '-'
+    const normalized = v.toLowerCase()
+    if (normalized === 'semi_annual' || normalized === 'semi-annual') return 'Semi-annual'
+    return v
+  }
+
+  const formatSingleCapitalized = (value?: string | null): string => {
+    const v = String(value ?? '').trim()
+    if (!v) return '-'
+    return v.charAt(0).toUpperCase() + v.slice(1)
+  }
+
+  const formatMonthlyLabel = (value?: string | null): string => {
+    const v = String(value ?? '').trim()
+    if (!v) return '-'
+    const normalized = v.toLowerCase()
+    if (normalized === 'monthly') return 'Monthly'
+    return v.charAt(0).toUpperCase() + v.slice(1)
+  }
+
+  const formatPaymentMethodLabel = (value?: string | null): string => {
+    const v = String(value ?? '').trim()
+    if (!v) return '-'
+    const normalized = v.toLowerCase()
+    if (normalized === 'gcash') return 'Gcash'
+    return v.charAt(0).toUpperCase() + v.slice(1)
+  }
+
+  const computeEndDate = (
+    startRaw?: string | null,
+    billing?: string | null,
+    plan?: string | null,
+    term?: string | null,
+  ): string => {
+    const startDate = parseDateSafe(startRaw)
+    if (!startDate) return '-'
+
+    const endDate = new Date(startDate)
+    const normalizedBilling = String(billing ?? '').toLowerCase()
+    const format = (d: Date) => d.toLocaleDateString(undefined, { month: 'long', day: '2-digit', year: 'numeric' })
+
+    if (normalizedBilling === 'monthly') {
+      endDate.setMonth(endDate.getMonth() + 1)
+      return format(endDate)
+    }
+
+    const months = planTermMonths(plan, term)
+    if (months <= 0) return '-'
+    endDate.setMonth(endDate.getMonth() + months)
+    return format(endDate)
   }
 
   return (
@@ -512,12 +633,15 @@ export default function WebstoreRequestsPage() {
 
       {details.open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur">
-          <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <div className="w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">Webstore Request</p>
-                <h3 className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">Subscription Details</h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Preview only for now.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
+                  Webstore Request
+                </p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Subscription Details
+                </h3>
               </div>
               <button
                 type="button"
@@ -529,30 +653,116 @@ export default function WebstoreRequestsPage() {
               </button>
             </div>
 
-            <div className="grid gap-3 px-5 py-5 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Customer</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.customerName || '-'}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Email</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.email || '-'}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Username</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.username ? `@${details.username}` : '-'}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Status</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.status || '-'}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Slug</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.slugName || '-'}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Display Name</p>
-                <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{details.displayName || '-'}</p>
+            <div className="px-5 pb-5">
+              <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 px-5 py-4 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500 shadow-[0_0_0_4px_rgba(6,182,212,0.14)]" />
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Subscription Summary</p>
+                  </div>
+                  <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:text-slate-200 dark:ring-slate-800">
+                    Webstore Receipt
+                  </span>
+                </div>
+
+                <div className="p-5">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex flex-nowrap items-stretch gap-0 border-b border-slate-200/0">
+                      {/* Customer */}
+                      <div className="flex-none border-r border-slate-200 p-4 dark:border-slate-800 flex flex-col items-center text-center">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">Customer</p>
+                        <p className="mt-1 whitespace-nowrap text-sm font-semibold text-[#163060]">
+                          {details.customerName || '-'}
+                        </p>
+                      </div>
+
+                      {/* Plan & Terms */}
+                      <div className="flex-none border-r border-slate-200 p-4 dark:border-slate-800 flex flex-col items-center text-center">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">Plan &amp; Terms</p>
+                        <div className="mt-1 inline-flex flex-col items-center">
+                          <span className="whitespace-nowrap text-center text-sm font-semibold text-[#163060]">
+                            {formatPlanLabel(details.plan)}
+                          </span>
+                          <span className="mt-1 inline-flex w-fit whitespace-nowrap rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/30">
+                            {formatPlanLabel(details.planTerm)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Subscription fee */}
+                      <div className="flex-none border-r border-slate-200 p-4 dark:border-slate-800 flex flex-col items-center text-center">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">Sub fee &amp; Monthly cost</p>
+
+                        <div className="mt-1 inline-flex flex-col items-center">
+                          <span className="whitespace-nowrap text-center text-sm font-semibold text-[#163060]">
+                            {details.subscriptionFee != null ? `₱${Number(details.subscriptionFee).toLocaleString()}` : '-'}
+                          </span>
+                          <span className="mt-1 inline-flex w-fit whitespace-nowrap rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
+                            {details.effectiveMonthly != null ? `₱${Number(details.effectiveMonthly).toLocaleString()}` : '-'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Billing & Payment */}
+                      <div className="flex-none border-r border-slate-200 p-4 dark:border-slate-800 flex flex-col items-center text-center">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">Billing &amp; Payment Method</p>
+
+                        <div className="mt-1 inline-flex flex-col items-center">
+                          <span className="whitespace-nowrap text-center text-sm font-semibold text-[#163060]">
+                            {formatSingleCapitalized(details.billingOption)}
+                          </span>
+                          <span className="mt-1 inline-flex w-fit whitespace-nowrap rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-500/10 dark:text-sky-200 dark:ring-sky-500/30">
+                            {formatPaymentMethodLabel(details.paymentMethod)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Start Date */}
+                      <div className="flex-none border-r border-slate-200 p-4 dark:border-slate-800">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">Start Date</p>
+                        <p className="mt-1 whitespace-nowrap text-sm font-semibold text-[#163060]">
+                          {formatDate(details.approvedAt)}
+                        </p>
+                      </div>
+
+                      {/* End Date */}
+                      <div className="flex-none border-r border-slate-200 p-4 dark:border-slate-800">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">End Date</p>
+                        <p className="mt-1 whitespace-nowrap text-sm font-semibold text-[#163060]">
+                          {computeEndDate(details.approvedAt, details.billingOption, details.plan, details.planTerm)}
+                        </p>
+                      </div>
+
+                      {/* Receipt */}
+                      <div className="flex-none p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-[#6d82ab]">Receipt</p>
+                        <div className="mt-2">
+                          {Array.isArray(details.receiptUrls) && details.receiptUrls.length > 0 ? (
+                            <div className="flex flex-nowrap gap-2">
+                              {details.receiptUrls.slice(0, 1).map((url, index) => (
+                                <button
+                                  key={`${url}-${index}`}
+                                  type="button"
+                                  onClick={() => setReceiptPreviewUrl(url)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700 shadow-sm transition hover:bg-sky-100 active:translate-y-[1px] dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 dark:hover:bg-sky-500/15"
+                                >
+                                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 ring-1 ring-sky-200 dark:bg-slate-950/40 dark:ring-sky-500/30">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 7v10a2 2 0 002 2h12a2 2 0 002-2V7M7 11h10" />
+                                    </svg>
+                                  </span>
+                                  Receipt {index + 1}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm font-semibold text-slate-400">-</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -564,6 +774,37 @@ export default function WebstoreRequestsPage() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {receiptPreviewUrl ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          onClick={() => setReceiptPreviewUrl(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Receipt Preview</p>
+              <button
+                type="button"
+                onClick={() => setReceiptPreviewUrl(null)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Close receipt preview"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[78vh] overflow-auto bg-slate-50 p-4 dark:bg-slate-950/40">
+              <img
+                src={receiptPreviewUrl}
+                alt="Receipt preview"
+                className="mx-auto h-auto max-w-full rounded-xl border border-slate-200 bg-white dark:border-slate-700"
+              />
             </div>
           </div>
         </div>
