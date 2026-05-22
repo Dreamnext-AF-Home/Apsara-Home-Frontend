@@ -39,6 +39,10 @@ export interface CreateCheckoutSessionPayload {
     selected_type?: string | null
     subtotal?: number
     handling_fee?: number
+    source_type?: 'local' | 'zq'
+    zq_product_id?: number | null
+    zq_external_id?: string | null
+    zq_offer_id?: string | null
   }
 }
 

@@ -367,9 +367,8 @@ async function getCategoryProducts(slug: string): Promise<{ label?: string; prod
   }
 }
 
-async function CategoryContent({ slug }: { slug: string }) {
+async function CategoryContent({ slug, navbarCategories }: { slug: string; navbarCategories: Category[] }) {
   const { label, products } = await getCategoryProducts(slug);
-  const navbarCategories = await getNavbarCategories();
 
   return (
     <CategoryListProductMain
@@ -381,12 +380,12 @@ async function CategoryContent({ slug }: { slug: string }) {
   );
 }
 
-function CategoryLoadingFallback({ slug }: { slug: string }) {
+function CategoryLoadingFallback({ slug, navbarCategories }: { slug: string; navbarCategories: Category[] }) {
   return (
     <CategoryListProductMain
       slug={slug}
       isLoading={true}
-      initialCategories={[]}
+      initialCategories={navbarCategories}
       initialProducts={[]}
     />
   );
@@ -405,10 +404,11 @@ function CategoryErrorFallback({ slug }: { slug: string }) {
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const navbarCategories = await getNavbarCategories();
 
   return (
-    <Suspense fallback={<CategoryLoadingFallback slug={slug} />}>
-      <CategoryContent slug={slug} />
+    <Suspense fallback={<CategoryLoadingFallback slug={slug} navbarCategories={navbarCategories} />}>
+      <CategoryContent slug={slug} navbarCategories={navbarCategories} />
     </Suspense>
   );
 }

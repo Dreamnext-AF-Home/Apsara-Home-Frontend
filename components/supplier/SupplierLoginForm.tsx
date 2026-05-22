@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { MoonStar, SunMedium } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { useRouter } from 'next/navigation'
 import Loading from '@/components/Loading'
 import { signIn, signOut } from 'next-auth/react'
 import { clearAccessTokenCache } from '@/store/api/baseApi'
@@ -40,6 +41,7 @@ function parseLockoutError(rawMessage: string): { seconds: number; message: stri
 }
 
 export default function SupplierLoginForm() {
+  const router = useRouter()
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState(() => {
@@ -122,7 +124,7 @@ export default function SupplierLoginForm() {
         }
       }
 
-      window.location.href = '/supplier/dashboard'
+      router.push('/supplier/dashboard')
     } catch {
       setError('Unable to sign in. Please try again')
     } finally {

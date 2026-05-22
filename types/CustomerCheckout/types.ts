@@ -31,6 +31,10 @@ export interface CustomerCheckoutProduct {
   sku?: string;
   prodpv?: number;
   manualCheckoutEnabled?: boolean;
+  sourceType?: 'local' | 'zq';
+  zqProductId?: number;
+  zqExternalId?: string;
+  zqOfferId?: string | null;
   name: string;
   image: string;
   price: number;
@@ -71,6 +75,10 @@ export interface CustomerCheckoutData {
   sourceSlug?: string | null;
   sourceHost?: string | null;
   sourceUrl?: string | null;
+  sourceType?: 'local' | 'zq';
+  zqProductId?: number;
+  zqExternalId?: string;
+  zqOfferId?: string | null;
 }
 
 export type PaymentMethod = 'gcash' | 'maya' | 'online_banking' | 'card';

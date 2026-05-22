@@ -2,13 +2,15 @@
 
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Package, Truck, CheckCircle, Eye } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import OutlineButton from '@/components/ui/buttons/OutlineButton'
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton'
 import ShareModal from '@/components/ui/ShareModal'
+import BuyNowOptionsModal from '@/components/product/BuyNowOptionsModal'
 import toast from 'react-hot-toast'
+import type { CategoryProduct } from '@/libs/CategoryData'
 import type { ZqPublicProductResponse } from '@/store/api/productsApi'
 
 type Product = ZqPublicProductResponse['product']
@@ -43,11 +45,12 @@ interface GlobalProductInfoProps {
 }
 
 export default function GlobalProductInfo({ product, onVariantChange }: GlobalProductInfoProps) {
-  const specs: Spec[] = product.specs ?? []
+  const specs: Spec[] = useMemo(() => product.specs ?? [], [product.specs])
   const [selectedSpec, setSelectedSpec] = useState<Spec | null>(specs[0] ?? null)
   const [quantity, setQuantity] = useState(1)
   const [wishlisted, setWishlisted] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [buyOptionsOpen, setBuyOptionsOpen] = useState(false)
 
   const handleSelectSpec = (spec: Spec) => {
     setSelectedSpec(spec)
@@ -69,12 +72,59 @@ export default function GlobalProductInfo({ product, onVariantChange }: GlobalPr
   // Stock — cached spec-level stock is often 0/unreliable; fall back to product.totalStock
   const specStockSum = specs.reduce((sum, s) => sum + Number(s.stock ?? 0), 0)
   const specStockReliable = specStockSum > 0
-  const getSpecStock = (spec: Spec) => (specStockReliable ? Number(spec.stock ?? 0) : product.totalStock)
+  const getSpecStock = useCallback(
+    (spec: Spec) => (specStockReliable ? Number(spec.stock ?? 0) : product.totalStock),
+    [product.totalStock, specStockReliable],
+  )
   const currentStock = selectedSpec != null ? getSpecStock(selectedSpec) : product.totalStock
   const isInStock = currentStock > 0
 
   // SKU
   const displaySku = selectedSpec?.sku || product.externalId || ''
+
+  const checkoutProduct = useMemo<CategoryProduct>(() => ({
+    id: product.id,
+    name: product.subject,
+    image: selectedSpec?.image || product.primaryImage || product.images?.[0] || '',
+    images: product.images ?? [],
+    price: displayPrice,
+    priceSrp: displayPrice,
+    priceMember: displayPrice,
+    priceDp: displayPrice,
+    originalPrice: comparePrice ?? undefined,
+    prodpv: 0,
+    sku: displaySku,
+    stock: currentStock,
+    brand: 'AF HOME GLOBAL BRAND',
+    type: 1,
+    manualCheckoutEnabled: true,
+    sourceType: 'zq',
+    zqProductId: product.id,
+    zqExternalId: product.externalId,
+    zqOfferId: product.offerId ?? null,
+    description: product.description ?? undefined,
+    specifications: product.categoryName ?? undefined,
+    variants: specs.map((spec, index) => {
+      const variantPrice = Number(spec.priceCents ?? displayPriceCents) / 100
+      return {
+        id: index + 1,
+        sku: spec.sku,
+        name: spec.name,
+        priceSrp: variantPrice,
+        priceMember: variantPrice,
+        priceDp: variantPrice,
+        prodpv: 0,
+        qty: getSpecStock(spec),
+        status: getSpecStock(spec) > 0 ? 1 : 0,
+        images: spec.image ? [spec.image] : undefined,
+      }
+    }),
+  }), [comparePrice, currentStock, displayPrice, displayPriceCents, displaySku, getSpecStock, product, selectedSpec?.image, specs])
+
+  const checkoutSelectedVariant = useMemo(
+    () => checkoutProduct.variants?.find((variant) => variant.sku === selectedSpec?.sku),
+    [checkoutProduct.variants, selectedSpec?.sku],
+  )
 
   // Share URL
   const shareUrl = typeof window !== 'undefined'
@@ -91,7 +141,7 @@ export default function GlobalProductInfo({ product, onVariantChange }: GlobalPr
   }
 
   const handleBuyNow = () => {
-    toast('Sign in to purchase this Global Supplier product.')
+    setBuyOptionsOpen(true)
   }
 
   return (
@@ -271,19 +321,16 @@ export default function GlobalProductInfo({ product, onVariantChange }: GlobalPr
                       active
                         ? 'border-sky-400 text-sky-600 dark:border-sky-500 dark:text-sky-400'
                         : oos
-                          ? 'border-gray-200 text-gray-300 cursor-not-allowed line-through dark:border-gray-700 dark:text-gray-600'
+                          ? 'cursor-not-allowed border-dashed border-gray-200 bg-gray-50 text-gray-400 opacity-75 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-500'
                           : 'border-gray-200 text-slate-600 dark:border-gray-700 dark:text-gray-300 hover:border-sky-200 dark:hover:border-sky-900/50'
                     }`}
                   >
                     <span className="block text-sm font-medium">{spec.name}</span>
                     {spec.priceCents != null && (
-                      <span className="mt-0.5 block text-[11px] text-slate-400 dark:text-gray-500">
+                      <span className={`mt-0.5 block text-[11px] ${oos ? 'text-gray-400 dark:text-gray-500' : 'text-slate-400 dark:text-gray-500'}`}>
                         &#8369;{(Number(spec.priceCents) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                         {oos ? ' · Out of stock' : ` · ${stock.toLocaleString()} left`}
                       </span>
-                    )}
-                    {oos && (
-                      <span className="absolute -top-2 -right-2 rounded-full bg-gray-400 px-1 py-0.5 text-[8px] font-bold text-white">OOS</span>
                     )}
                   </button>
                 )
@@ -365,6 +412,21 @@ export default function GlobalProductInfo({ product, onVariantChange }: GlobalPr
           </PrimaryButton>
         </div>
       </div>
+
+      {/* Share Modal */}
+      <BuyNowOptionsModal
+        isOpen={buyOptionsOpen}
+        onClose={() => setBuyOptionsOpen(false)}
+        product={checkoutProduct}
+        quantity={quantity}
+        selectedVariant={checkoutSelectedVariant}
+        selectedType={selectedSpec?.name}
+        forceRealPrice
+        onVariantSelect={(variant) => {
+          const spec = specs.find((item) => item.sku === variant.sku)
+          if (spec) handleSelectSpec(spec)
+        }}
+      />
 
       {/* Share Modal */}
       <ShareModal
