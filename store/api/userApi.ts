@@ -212,6 +212,9 @@ export interface SubmitWebstoreRequestPayload {
     billing_option: 'full' | 'monthly';
     payment_method: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking';
     receipt_urls: string[];
+    checkout_id?: string | null;
+    payment_reference?: string | null;
+    payment_intent_id?: string | null;
     accepted_terms: boolean;
 }
 
@@ -239,10 +242,20 @@ export interface WebstoreRequest {
     billing_option?: 'full' | 'monthly' | null;
     payment_method?: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null;
     receipt_urls?: string[] | null;
+    base_checkout_id?: string | null;
+    base_payment_reference?: string | null;
+    base_payment_intent_id?: string | null;
     reviewed_at?: string | null;
     created_at?: string | null;
+    payment_count?: number;
+    total_paid_amount?: number;
+    remaining_balance?: number;
     can_sync_account?: boolean;
     partner_sync_status?: 'synced' | 'not_synced';
+    latest_receipt_status?: 'pending_review' | 'approved' | 'rejected' | null;
+    latest_receipt_message?: string | null;
+    latest_receipt_detail_id?: number | null;
+    latest_receipt_submitted_at?: string | null;
 }
 
 export interface UploadWebstoreReceiptResponse {

@@ -19,6 +19,22 @@ export interface AdminUsernameChangeRequestsResponse {
   requests: AdminUsernameChangeRequest[];
 }
 
+export interface AdminWebstoreReceiptItem {
+  id?: number | null;
+  label?: string | null;
+  submitted_at?: string | null;
+  receipt_urls?: string[] | null;
+  billing_option?: string | null;
+  payment_method?: string | null;
+  checkout_id?: string | null;
+  payment_reference?: string | null;
+  payment_intent_id?: string | null;
+  approval_status?: string | null;
+  approved_at?: string | null;
+  approved_by?: number | null;
+  type?: string | null;
+}
+
 export interface AdminWebstoreRequest {
   id: number;
   ticket_id: number;
@@ -36,7 +52,17 @@ export interface AdminWebstoreRequest {
   effective_monthly?: number | null;
   billing_option?: string | null;
   payment_method?: string | null;
+  checkout_id?: string | null;
+  payment_reference?: string | null;
+  payment_intent_id?: string | null;
+  base_checkout_id?: string | null;
+  base_payment_reference?: string | null;
+  base_payment_intent_id?: string | null;
   receipt_urls?: string[] | null;
+  receipt_items?: AdminWebstoreReceiptItem[] | null;
+  remaining_balance?: number | null;
+  payment_count?: number | null;
+  total_paid_amount?: number | null;
   status: WebstoreRequestStatus;
   submitted_at?: string | null;
   approved_at?: string | null;
@@ -83,6 +109,20 @@ export const adminInquiriesApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['AdminNotifications', 'WebstoreRequests', 'User'],
     }),
+    approveWebstoreReceipt: builder.mutation<{ message: string }, { id: number; detailId: number }>({
+      query: ({ id, detailId }) => ({
+        url: `/api/admin/inquiries/webstore-requests/${id}/receipts/${detailId}/approve`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['AdminNotifications', 'WebstoreRequests', 'User'],
+    }),
+    rejectWebstoreReceipt: builder.mutation<{ message: string }, { id: number; detailId: number }>({
+      query: ({ id, detailId }) => ({
+        url: `/api/admin/inquiries/webstore-requests/${id}/receipts/${detailId}/reject`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['AdminNotifications', 'WebstoreRequests', 'User'],
+    }),
     rejectWebstoreRequest: builder.mutation<{ message: string }, { id: number }>({
       query: ({ id }) => ({
         url: `/api/admin/inquiries/webstore-requests/${id}/reject`,
@@ -106,6 +146,8 @@ export const {
   useRejectUsernameChangeMutation,
   useGetWebstoreRequestsQuery,
   useApproveWebstoreRequestMutation,
+  useApproveWebstoreReceiptMutation,
+  useRejectWebstoreReceiptMutation,
   useRejectWebstoreRequestMutation,
   useDeleteWebstoreRequestMutation,
 } = adminInquiriesApi;
