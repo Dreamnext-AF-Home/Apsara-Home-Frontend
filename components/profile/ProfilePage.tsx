@@ -661,6 +661,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const [webstoreSuccessModalOpen, setWebstoreSuccessModalOpen] = useState(false);
   const webstoreSuccessAutoShownRef = useRef(false);
   const [webstoreReceiptFiles, setWebstoreReceiptFiles] = useState<Array<{ name: string; preview: string; file: File }>>([]);
+  const [webstoreReceiptPreview, setWebstoreReceiptPreview] = useState<{ name: string; src: string } | null>(null);
   const [isDraggingReceipt, setIsDraggingReceipt] = useState(false);
   const [webstoreInvalidFields, setWebstoreInvalidFields] = useState<Record<string, boolean>>({});
   const [webstoreLatestRequestPreview, setWebstoreLatestRequestPreview] = useState<{
@@ -672,6 +673,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     created_at?: string | null
     billing_option?: 'full' | 'monthly' | null
     payment_method?: 'gcash' | 'grab_pay' | 'maya' | 'card' | 'online_banking' | null
+    latest_receipt_status?: 'pending_review' | 'approved' | 'rejected' | null
+    latest_receipt_message?: string | null
+    latest_receipt_detail_id?: number | null
+    latest_receipt_submitted_at?: string | null
   } | null>(null);
   const webstoreReceiptInputRef = useRef<HTMLInputElement | null>(null);
   const webstorePlanSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1847,6 +1852,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
   const latestWebstoreRequest = webstoreRequestLatest?.request ?? webstoreLatestRequestPreview ?? null;
   const hasExistingWebstoreRequest = Boolean(latestWebstoreRequest);
   const isApprovedWebstoreRequest = latestWebstoreRequest?.status === 'approved';
+  const latestWebstoreRejectionMessage = latestWebstoreRequest?.latest_receipt_status === 'rejected'
+    ? (latestWebstoreRequest.latest_receipt_message || 'Your payment has been rejected by the admin due to mismatch ID.')
+    : null;
 
   useEffect(() => {
     if (webstoreRequestLatest?.request) {
@@ -1901,9 +1909,18 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
       annual: { full: 150000, monthly: 12500 },
     };
     if (!selectedWebstorePlan || !selectedBillingOption) return null;
-    const amount = planAmounts[selectedWebstorePlan]?.[selectedBillingOption === 'monthly' ? 'monthly' : 'full'];
-    return typeof amount === 'number' ? amount : null;
-  }, [selectedBillingOption, selectedWebstorePlan]);
+    const baseAmount = planAmounts[selectedWebstorePlan]?.[selectedBillingOption === 'monthly' ? 'monthly' : 'full'];
+    const requestRemaining = Number(latestWebstoreRequest?.remaining_balance ?? NaN);
+    if (
+      latestWebstoreRequest?.status === 'approved'
+      && selectedBillingOption === 'full'
+      && Number.isFinite(requestRemaining)
+      && requestRemaining > 0
+    ) {
+      return requestRemaining;
+    }
+    return typeof baseAmount === 'number' ? baseAmount : null;
+  }, [latestWebstoreRequest?.remaining_balance, latestWebstoreRequest?.status, selectedBillingOption, selectedWebstorePlan]);
   const selectedWebstoreSubscriptionFee = useMemo(() => {
     const fullFees: Record<'quarterly' | 'semiAnnual' | 'annual', number> = {
       quarterly: 48000,
@@ -1913,6 +1930,16 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
     if (!selectedWebstorePlan) return null;
     return fullFees[selectedWebstorePlan] ?? null;
   }, [selectedWebstorePlan]);
+  const webstoreRemainingBalance = useMemo(() => {
+    const requestRemaining = Number(latestWebstoreRequest?.remaining_balance ?? NaN);
+    if (Number.isFinite(requestRemaining)) {
+      return Math.max(0, requestRemaining);
+    }
+    if (selectedWebstoreSubscriptionFee != null) {
+      return Math.max(0, selectedWebstoreSubscriptionFee);
+    }
+    return 0;
+  }, [latestWebstoreRequest?.remaining_balance, selectedWebstoreSubscriptionFee]);
   const webstorePlanLabel = selectedWebstorePlan === 'quarterly'
     ? 'Quarterly'
     : selectedWebstorePlan === 'semiAnnual'
@@ -2362,6 +2389,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
         billing_option: selectedBillingOption,
         payment_method: selectedPaymentMethod,
         receipt_urls: receiptUrls,
+        checkout_id: webstorePaymentCheckoutId || webstoreCheckoutId || null,
+        payment_reference: webstorePaymentReferenceId || null,
+        payment_intent_id: webstorePaymentIntentId || null,
         accepted_terms: webstoreAcceptedTerms,
       }).unwrap();
 
@@ -5701,6 +5731,25 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     </div>
 
                     <div className="px-6 py-6 md:px-8">
+                    {latestWebstoreRejectionMessage ? (
+                      <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M12 9v4" />
+                              <path d="M12 17h.01" />
+                              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3l-8.47-14.14a2 2 0 0 0-3.42 0Z" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-rose-800">Payment Rejected</p>
+                            <p className="mt-1 text-xs leading-5 text-rose-700">
+                              {latestWebstoreRejectionMessage}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
 
                     {webstoreMsg && (
                       <div className={`mb-4 rounded-xl px-3.5 py-2.5 text-xs font-semibold ${webstoreMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-700' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-700'}`}>
@@ -5718,6 +5767,10 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                             <p className="text-sm font-extrabold tracking-wide text-[#0f1f44]">Webstore Subscription</p>
                             <p className="text-xs text-[#5f739d]">Fixed duration plan for partner storefront access.</p>
                           </div>
+                        </div>
+                        <div className="min-w-[170px] rounded-2xl border border-[#d9e6ff] bg-white/90 px-4 py-3 text-right shadow-[0_8px_18px_rgba(80,120,220,0.08)]">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#6d82ab]">Remaining Balance</p>
+                          <p className="mt-1 text-lg font-black tracking-tight text-[#0f1f44]">PHP {webstoreRemainingBalance.toLocaleString()}</p>
                         </div>
                       </div>
                       <div className="px-4 py-4 md:px-5">
@@ -6061,7 +6114,9 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                           <p className="mt-2 text-xs font-semibold text-[#4c638f]">
                             {selectedBillingOption === 'monthly'
                               ? `Monthly installment amount: ₱${selectedWebstorePaymentAmount.toLocaleString()}`
-                              : `Full payment amount: ₱${selectedWebstorePaymentAmount.toLocaleString()}`}
+                              : latestWebstoreRequest?.status === 'approved' && Number.isFinite(Number(latestWebstoreRequest?.remaining_balance ?? NaN))
+                                ? `Remaining balance due: ₱${selectedWebstorePaymentAmount.toLocaleString()}`
+                                : `Full payment amount: ₱${selectedWebstorePaymentAmount.toLocaleString()}`}
                           </p>
                         ) : null}
                       </div>
@@ -6123,7 +6178,19 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                               {webstoreReceiptFiles.length > 0 ? (
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                                   {webstoreReceiptFiles.map((file, index) => (
-                                    <div key={`${file.name}-${index}`} className="overflow-hidden rounded-2xl border border-[#d5def1] bg-[#f8fbff] shadow-sm">
+                                    <div
+                                      key={`${file.name}-${index}`}
+                                      onClick={() => setWebstoreReceiptPreview({ name: file.name, src: file.preview })}
+                                      role="button"
+                                      tabIndex={0}
+                                      onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                          event.preventDefault();
+                                          setWebstoreReceiptPreview({ name: file.name, src: file.preview });
+                                        }
+                                      }}
+                                      className="overflow-hidden rounded-2xl border border-[#d5def1] bg-[#f8fbff] text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky-200"
+                                    >
                                       <div className="flex items-center justify-between gap-2 border-b border-[#e7eefb] px-3 py-2">
                                         <p className="truncate text-xs font-semibold text-[#5d739f]">{file.name}</p>
                                         <button
@@ -6146,7 +6213,7 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                                         <img
                                           src={file.preview}
                                           alt={file.name}
-                                          className="h-40 w-full rounded-xl object-contain bg-white"
+                                          className="h-40 w-full rounded-xl bg-white object-contain"
                                         />
                                       </div>
                                     </div>
@@ -6745,6 +6812,53 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
           </motion.div>
         )}
 
+        {webstoreReceiptPreview ? (
+          <motion.div
+            key="webstore-receipt-preview"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[210] flex items-center justify-center bg-black/85 px-4 py-6 backdrop-blur-md"
+            onClick={() => setWebstoreReceiptPreview(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 12 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+              className="w-full max-w-4xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white backdrop-blur-sm">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">Receipt Preview</p>
+                  <p className="truncate text-sm font-bold">{webstoreReceiptPreview.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setWebstoreReceiptPreview(null)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
+                  aria-label="Close receipt preview"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 18 18 6" />
+                    <path d="M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-[28px] border border-white/10 bg-white shadow-[0_28px_80px_rgba(0,0,0,0.35)]">
+                <img
+                  src={webstoreReceiptPreview.src}
+                  alt={webstoreReceiptPreview.name}
+                  className="max-h-[78vh] w-full object-contain bg-[#f8fbff]"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+
         {webstoreSuccessModalOpen ? (
           <motion.div
             key="webstore-success-modal"
@@ -6831,9 +6945,11 @@ const ProfilePage = ({ initialProfile = null, initialCategories = [] }: ProfileP
                     <p className="mt-1 text-sm font-semibold text-slate-900">{webstoreBillingLabel}</p>
                   </div>
                   <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Subscription Fee</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      {latestWebstoreRequest?.status === 'approved' && selectedBillingOption === 'full' ? 'Remaining Balance' : 'Subscription Fee'}
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {selectedWebstoreSubscriptionFee != null ? `PHP ${selectedWebstoreSubscriptionFee.toLocaleString()}` : '-'}
+                      {selectedWebstorePaymentAmount != null ? `PHP ${selectedWebstorePaymentAmount.toLocaleString()}` : '-'}
                     </p>
                   </div>
                   <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3">

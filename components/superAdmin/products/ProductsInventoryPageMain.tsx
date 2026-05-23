@@ -20,6 +20,8 @@ import {
 
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { Product, useGetProductsQuery, useLazyGetProductsQuery, useUpdateProductMutation } from '@/store/api/productsApi'
+import { useGetProductBrandsQuery } from '@/store/api/productBrandsApi'
+
 
 type StockFilter = 'all' | 'in-stock' | 'low-stock' | 'out-of-stock'
 type StockModalMode = 'adjust' | 'restock'
@@ -155,8 +157,10 @@ const buildVariantStockPayload = (product: Product, targetTotalQty: number) => {
 
 export default function ProductsInventoryPageMain() {
   const [filter, setFilter] = useState<StockFilter>('all')
+  const [brandFilter, setBrandFilter] = useState<string>('')
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+
   const [isStockModalOpen, setIsStockModalOpen] = useState(false)
   const [stockModalMode, setStockModalMode] = useState<StockModalMode>('adjust')
   const [selectedProductId, setSelectedProductId] = useState<number | ''>('')
@@ -174,6 +178,9 @@ export default function ProductsInventoryPageMain() {
   const [fetchProductsSummary] = useLazyGetProductsQuery()
   const [updateProduct] = useUpdateProductMutation()
   const searchQuery = search.trim()
+
+  const { data: brandsData } = useGetProductBrandsQuery({ search: '' })
+
   const {
     data,
     isLoading: isProductsLoading,
@@ -185,12 +192,29 @@ export default function ProductsInventoryPageMain() {
       page: currentPage,
       perPage: PAGE_SIZE,
       search: searchQuery || undefined,
+      // backend expects brandType id
+      brandType: (() => {
+        const normalizedBrand = brandFilter.trim().toLowerCase()
+        if (!normalizedBrand) return undefined
+        const match = (brandsData?.brands ?? []).find(
+          (b) => b.status === 0 && b.name.trim().toLowerCase() === normalizedBrand,
+        )
+        return match?.id
+      })(),
     },
     { refetchOnMountOrArgChange: true },
   )
 
   const products = useMemo(() => dedupeAndSortProducts(data?.products ?? []), [data?.products])
   const hasBaseData = Boolean(data)
+
+
+  const allBrands = useMemo(
+    () => (brandsData?.brands ?? []).filter((b) => b.status === 0).map((b) => b.name).sort((a, b) => a.localeCompare(b)),
+    [brandsData?.brands],
+  )
+
+
 
   useEffect(() => {
     if (!hasBaseData || hasProductsError) return
@@ -299,13 +323,35 @@ export default function ProductsInventoryPageMain() {
   }, [products, data?.meta?.total, summaryMetrics])
 
   const filteredProducts = useMemo(() => {
+    const normalizedBrand = brandFilter.trim().toLowerCase()
+
+    // global brand list (name -> id) so we can match either by name or by brandType id
+    const brandNameToId = new Map<string, number>(
+      (brandsData?.brands ?? []).map((b) => [b.name.trim().toLowerCase(), b.id]),
+    )
+
+    const selectedBrandId = normalizedBrand ? brandNameToId.get(normalizedBrand) : undefined
+
     return products.filter((product) => {
       const qty = toQuantity(product)
       const status = getStockStatus(qty)
       const passStatus = filter === 'all' || status === filter
-      return passStatus
+
+      const productBrandName = (product.brand ?? '').trim().toLowerCase()
+      const productBrandId = product.brandType ? Number(product.brandType) : undefined
+
+      const passBrand = !normalizedBrand
+        ? true
+        : productBrandName === normalizedBrand
+          ? true
+          : selectedBrandId !== undefined && productBrandId !== undefined && productBrandId === selectedBrandId
+
+      return passStatus && passBrand
     })
-  }, [products, filter])
+  }, [products, filter, brandFilter, brandsData?.brands])
+
+
+
 
   const selectedProduct = useMemo(
     () => (typeof selectedProductId === 'number' ? (products.find((product) => product.id === selectedProductId) ?? null) : null),
@@ -501,34 +547,59 @@ export default function ProductsInventoryPageMain() {
             })}
           </div>
 
-          <div className="relative w-full md:w-[320px]">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setCurrentPage(1)
-              }}
-              placeholder="Search product or SKU..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-800 outline-none transition-colors focus:border-slate-400 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-orange-500 dark:focus:ring-orange-400/20"
-            />
-            {search.trim() ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch('')
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="w-full sm:w-[220px]">
+
+              <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Brand</label>
+              <select
+                value={brandFilter}
+                onChange={(event) => {
+                  setBrandFilter(event.target.value)
                   setCurrentPage(1)
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                aria-label="Clear search"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 text-sm text-slate-800 outline-none transition-colors focus:border-slate-400 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
-                <X size={14} />
-              </button>
-            ) : null}
+                <option value="">All brands</option>
+                {allBrands.map((brand) => (
+                  <option key={brand} value={brand}>
+                    {brand}
+                  </option>
+                ))}
+
+              </select>
+            </div>
+
+            <div className="relative w-full md:w-[320px]">
+
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Search product or SKU..."
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-800 outline-none transition-colors focus:border-slate-400 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-orange-500 dark:focus:ring-orange-400/20"
+              />
+              {search.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('')
+                    setCurrentPage(1)
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              ) : null}
+            </div>
           </div>
+
         </div>
 
 

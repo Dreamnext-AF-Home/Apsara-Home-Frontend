@@ -492,6 +492,8 @@ export const encashmentApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Encashment'],
     }),
+    // deleteAdminEncashmentRequest removed to disable delete action on /admin/encashment
+
     getAdminAffiliateVouchers: builder.query<AdminVouchersResponse, AdminVouchersQuery | void>({
       query: (params) => ({
         url: '/api/admin/encashment/vouchers/all',
@@ -522,5 +524,7 @@ export const {
   useApproveAdminEncashmentMutation,
   useRejectAdminEncashmentMutation,
   useReleaseAdminEncashmentMutation,
+  // useDeleteAdminEncashmentRequestMutation removed to disable delete action on /admin/encashment
   useGetAdminAffiliateVouchersQuery,
 } = encashmentApi;
+
