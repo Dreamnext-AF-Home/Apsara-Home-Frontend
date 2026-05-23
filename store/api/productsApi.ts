@@ -411,6 +411,11 @@ export interface ZqCachedProduct {
   sourceCreatedAt?: string | null
   sourceUpdatedAt?: string | null
   syncedAt?: string | null
+  dealerPrice?: number | null
+  memberPrice?: number | null
+  pv?: number | null
+  pvTier?: string | null
+  reversedPvMultiplier?: number | null
 }
 
 export interface ZqCachedProductsResponse {
@@ -503,6 +508,76 @@ export interface UpsertZqCategoryMappingResponse {
   }
 }
 
+export interface UpdateZqProductPricingPayload {
+  externalId: string
+  dealer_price?: number | null
+  member_price?: number | null
+  pv?: number | null
+  pv_tier?: string | null
+  reversed_pv_multiplier?: number | null
+}
+
+export interface UpdateZqProductPricingResponse {
+  message: string
+  product: {
+    externalId: string
+    dealerPrice: number | null
+    memberPrice: number | null
+    pv: number | null
+    pvTier: string | null
+    reversedPvMultiplier: number | null
+  }
+}
+
+export interface ZqVariantPricingRow {
+  skuId: string
+  dealerPrice: number | null
+  memberPrice: number | null
+  pv: number | null
+}
+
+export interface GetZqVariantPricingResponse {
+  externalId: string
+  variants: ZqVariantPricingRow[]
+}
+
+export interface UpdateZqVariantPricingPayload {
+  externalId: string
+  variants: Array<{
+    skuId: string
+    dealer_price?: number | null
+    member_price?: number | null
+    pv?: number | null
+  }>
+}
+
+export interface UpdateZqVariantPricingResponse {
+  message: string
+  variants: ZqVariantPricingRow[]
+}
+
+export interface BulkUpdateZqPricingRow {
+  externalId: string
+  dealer_price?: number | null
+  member_price?: number | null
+  pv?: number | null
+  pv_tier?: string | null
+  reversed_pv_multiplier?: number | null
+}
+
+export interface BulkUpdateZqPricingResultRow {
+  row: number
+  externalId: string | null
+  status: 'updated' | 'skipped' | 'error'
+  reason: string | null
+}
+
+export interface BulkUpdateZqPricingResponse {
+  message: string
+  summary: { total: number; updated: number; skipped: number; errors: number }
+  results: BulkUpdateZqPricingResultRow[]
+}
+
 export interface ImportZqToLocalResponse {
   message: string
   product: {
@@ -511,6 +586,19 @@ export interface ImportZqToLocalResponse {
     status: number
     sku: string
   }
+}
+
+export interface ZqInventoryResponse {
+  sku: string
+  available: number
+  total: number
+  locked?: number
+  on_transit?: number
+  variant_count?: number
+  checked_skus?: string[]
+  partial_errors?: Record<string, string>
+  source?: 'order_inventory' | 'product_detail_fallback'
+  raw?: Record<string, unknown>
 }
 
 export interface PublicProductResponse {
@@ -1163,6 +1251,12 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       providesTags: ['Products'],
     }),
+    getZqInventory: builder.query<ZqInventoryResponse, string>({
+      query: (sku) => ({
+        url: `${zqProductsApiBase()}/inventory/${encodeURIComponent(sku)}`,
+        method: 'GET',
+      }),
+    }),
     upsertZqCategoryMapping: builder.mutation<UpsertZqCategoryMappingResponse, UpsertZqCategoryMappingPayload>({
       query: (body) => ({
         url: `${zqProductsApiBase()}/category-mappings`,
@@ -1194,6 +1288,40 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Products'],
     }),
+    updateZqProductPricing: builder.mutation<UpdateZqProductPricingResponse, UpdateZqProductPricingPayload>({
+      query: ({ externalId, ...body }) => ({
+        url: `/api/supplier/products/zq/pricing/${externalId}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['Products'],
+    }),
+    bulkUpdateZqPricing: builder.mutation<BulkUpdateZqPricingResponse, { rows: BulkUpdateZqPricingRow[] }>({
+      query: (body) => ({
+        url: '/api/supplier/products/zq/pricing/bulk-update',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Products'],
+    }),
+    getZqVariantPricing: builder.query<GetZqVariantPricingResponse, string>({
+      query: (externalId) => ({
+        url: `/api/supplier/products/zq/pricing/${externalId}/variants`,
+        method: 'GET',
+      }),
+      providesTags: (_r, _e, externalId) => [{ type: 'Products' as const, id: `zqvp-${externalId}` }],
+    }),
+    updateZqVariantPricing: builder.mutation<UpdateZqVariantPricingResponse, UpdateZqVariantPricingPayload>({
+      query: ({ externalId, ...body }) => ({
+        url: `/api/supplier/products/zq/pricing/${externalId}/variants`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_r, _e, { externalId }) => [
+        'Products',
+        { type: 'Products' as const, id: `zqvp-${externalId}` },
+      ],
+    }),
   }),
 })
 
@@ -1223,8 +1351,14 @@ export const {
   useGetZqProductsSummaryQuery,
   useSyncZqProductsMutation,
   useImportZqToLocalMutation,
+  useLazyGetZqInventoryQuery,
   useGetZqCategoryMappingsQuery,
   useUpsertZqCategoryMappingMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useUpdateZqProductPricingMutation,
+  useBulkUpdateZqPricingMutation,
+  useGetZqVariantPricingQuery,
+  useLazyGetZqVariantPricingQuery,
+  useUpdateZqVariantPricingMutation,
 } = productsApi

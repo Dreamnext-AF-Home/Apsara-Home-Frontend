@@ -425,6 +425,14 @@ const getOrderTotalPv = (order: AdminOrderItem) => {
   return productPv > 0 ? productPv : 0
 }
 
+const hasZqSourceMetadata = (order: AdminOrderItem) => {
+  const payload = order.zq_payload ?? {}
+  return String(payload.source_type ?? '').trim().toLowerCase() === 'zq'
+    || String(payload.zq_external_id ?? '').trim() !== ''
+    || String(payload.zq_product_id ?? '').trim() !== ''
+    || String(payload.zq_offer_id ?? '').trim() !== ''
+}
+
 export default function AdminOrdersPageMain({ initialFilter = 'all', initialData = null }: Props) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -470,10 +478,16 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
   }, [])
 
   const role       = (session?.user?.role ?? '').toLowerCase()
-  const canApprove = role === 'super_admin' || role === 'admin' || role === 'merchant_admin'
-  const canTrack   = canApprove || role === 'csr'
+  const userLevelId = Number((session?.user as { userLevelId?: number } | undefined)?.userLevelId ?? 0)
+  const canApprove = role === 'super_admin'
+    || role === 'admin'
+    || role === 'merchant_admin'
+    || userLevelId === 1
+    || userLevelId === 2
+    || userLevelId === 7
+  const canTrack   = canApprove || role === 'csr' || userLevelId === 3
   const manualCheckoutModeEnabled = Boolean(adminGeneralSettingsData?.settings?.enable_manual_checkout_mode)
-  const availableFulfillmentModeOptions = useMemo(
+  const baseFulfillmentModeOptions = useMemo(
     () => (manualCheckoutModeEnabled
       ? FULFILLMENT_MODE_OPTIONS.filter((option) => option.value === 'manual')
       : FULFILLMENT_MODE_OPTIONS),
@@ -1078,19 +1092,26 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                       const zqStatusKey = String(order.zq_status ?? '').trim().toLowerCase()
                       const zqBadgeClass = ZQ_STATUS_STYLES[zqStatusKey] ?? 'bg-slate-50 text-slate-600 border-slate-200'
                       const hasZqOrder = Boolean(order.zq_platform_order_id || order.zq_order_id || zqStatusKey)
+                      const canUseGlobalSupplierFlow = hasZqSourceMetadata(order) || hasZqOrder
+                      const availableFulfillmentModeOptions = canUseGlobalSupplierFlow
+                        ? baseFulfillmentModeOptions
+                        : baseFulfillmentModeOptions.filter((option) => option.value !== 'zq')
                       const selectedFulfillmentMode = fulfillmentModeByOrder[order.id]
                         ?? (order.fulfillment_mode as FulfillmentMode | undefined)
                         ?? (hasZqOrder ? 'zq' : 'manual')
-                      const isManualMode = selectedFulfillmentMode === 'manual'
-                      const isLocalCourierMode = selectedFulfillmentMode === 'local_courier'
-                      const isZqMode = selectedFulfillmentMode === 'zq'
-                      const fulfillmentModeLabel = FULFILLMENT_MODE_OPTIONS.find((option) => option.value === selectedFulfillmentMode)?.label ?? 'Manual'
+                      const effectiveFulfillmentMode = selectedFulfillmentMode === 'zq' && !canUseGlobalSupplierFlow
+                        ? 'manual'
+                        : selectedFulfillmentMode
+                      const isManualMode = effectiveFulfillmentMode === 'manual'
+                      const isLocalCourierMode = effectiveFulfillmentMode === 'local_courier'
+                      const isZqMode = effectiveFulfillmentMode === 'zq'
+                      const fulfillmentModeLabel = FULFILLMENT_MODE_OPTIONS.find((option) => option.value === effectiveFulfillmentMode)?.label ?? 'Manual'
                       const isFulfillmentModeLocked =
                         effectiveFilter === 'shipped'
                         || order.fulfillment_status === 'shipped'
                         || order.fulfillment_status === 'out_for_delivery'
                         || order.fulfillment_status === 'delivered'
-                      const canPushZq = canTrackThisOrder && isZqMode && !hasZqOrder
+                      const canPushZq = canTrackThisOrder && isZqMode && canUseGlobalSupplierFlow && !hasZqOrder
                       const canUseZqLookup = canTrackThisOrder && isZqMode && hasZqOrder
                       const canUseCourierFlow = canTrackThisOrder && isLocalCourierMode && !hasZqOrder
                       const canUseManualFlow = canTrackThisOrder && isManualMode && !hasZqOrder
@@ -1274,7 +1295,7 @@ export default function AdminOrdersPageMain({ initialFilter = 'all', initialData
                               ) : (
                                 <AdminOrderSelect
                                   ariaLabel={`Fulfillment mode for order ${order.checkout_id}`}
-                                  value={selectedFulfillmentMode}
+                                  value={effectiveFulfillmentMode}
                                   options={availableFulfillmentModeOptions}
                                   isDisabled={isBusy || order.approval_status !== 'approved' || hasZqOrder}
                                   onChange={(value) => handleFulfillmentModeChange(order.id, value as FulfillmentMode)}

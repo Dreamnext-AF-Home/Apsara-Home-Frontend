@@ -22,6 +22,7 @@ import { useLazyGetPublicProductQuery } from "@/store/api/productsApi";
 import type { Category } from '@/store/api/categoriesApi';
 import { User, ArrowLeft } from 'lucide-react';
 import { resolveShippingFee } from "@/libs/shippingRates";
+import { notify } from "@/components/ui/DynamicNotify/DynamicNotify";
 
 const defaultForm: GuestForm = {
     name: '',
@@ -47,6 +48,18 @@ const REQUIRED_FIELD_ORDER: Array<keyof GuestForm> = [
     'city',
     'barangay',
 ];
+
+const FIELD_LABELS: Partial<Record<keyof GuestForm, string>> = {
+    name: 'Full name',
+    email: 'Email address',
+    phone: 'Phone number',
+    address: 'Street / House No.',
+    region: 'Region',
+    province: 'Province',
+    city: 'City / Municipality',
+    barangay: 'Barangay',
+    referred_by: 'Referral code',
+};
 
 const LOCAL_PAYMENT_MODE_HOSTS = new Set(['localhost', '127.0.0.1']);
 
@@ -401,18 +414,31 @@ const CustomerCheckoutMain = ({
 
     const validate = (): FormErrors => {
         const e: FormErrors = {};
-        if (!form.name.trim()) e.name = 'Required';
-        if (!form.email.trim()) e.email = 'Required';
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
-        if (!form.phone.trim()) e.phone = 'Required';
-        if (shouldRequireReferral && !form.referred_by.trim()) e.referred_by = 'Required';
-        if (!form.address.trim()) e.address = 'Required';
-        if (!form.region.trim()) e.region = 'Required';
-        if (!form.barangay.trim()) e.barangay = 'Required';
-        if (!form.city.trim()) e.city = 'Required';
-        if (!form.province.trim()) e.province = 'Required';
+        if (!form.name.trim()) e.name = 'Please enter your full name.';
+        if (!form.email.trim()) e.email = 'Please enter your email address.';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Please enter a valid email address.';
+        if (!form.phone.trim()) e.phone = 'Please enter your phone number.';
+        if (shouldRequireReferral && !form.referred_by.trim()) e.referred_by = 'Please enter a referral code.';
+        if (!form.address.trim()) e.address = 'Please enter your street or house number.';
+        if (!form.region.trim()) e.region = 'Please select your region.';
+        if (!form.barangay.trim()) e.barangay = 'Please select your barangay.';
+        if (!form.city.trim()) e.city = 'Please select your city or municipality.';
+        if (!form.province.trim()) e.province = 'Please select your province.';
         return e;
     }
+
+    const showValidationError = useCallback((validationErrors: FormErrors) => {
+        const firstErrorKey = requiredFieldOrder.find((key) => Boolean(validationErrors[key]));
+        if (!firstErrorKey) return;
+
+        const message = validationErrors[firstErrorKey] || `${FIELD_LABELS[firstErrorKey] ?? 'This field'} is required.`;
+        const missingCount = Object.values(validationErrors).filter(Boolean).length;
+        notify.error(message, {
+            description: missingCount > 1
+                ? `${missingCount} fields need your attention before placing the order.`
+                : 'Please complete this field before placing the order.',
+        });
+    }, [requiredFieldOrder]);
 
     const focusFirstErrorField = useCallback((validationErrors: FormErrors) => {
         const firstErrorKey = requiredFieldOrder.find((key) => Boolean(validationErrors[key]));
@@ -442,21 +468,30 @@ const CustomerCheckoutMain = ({
         const errs = validate();
         if (Object.keys(errs).length > 0) {
             setErrors(errs);
+            showValidationError(errs);
             requestAnimationFrame(() => focusFirstErrorField(errs));
             return;
         }
 
         if (!checkoutData) return;
         if (isShippingRatePending) {
-            alert('Shipping fee is still loading. Please wait a moment.');
+            notify.error('Shipping fee is still loading.', {
+                description: 'Please wait a moment before placing your order.',
+            });
             return;
         }
         if (isShippingRateUnavailable && !canProceedWithoutShippingRate) {
-            alert('No shipping rate is configured for the selected province and city.');
+            notify.error('No shipping rate for this location.', {
+                description: 'Please choose another province or city before placing your order.',
+            });
             return;
         }
         if (form.voucher_coupon.trim() && !voucherInfo) {
-            setVoucherError(voucherError || 'Voucher code is invalid or expired.');
+            const message = voucherError || 'Voucher code is invalid or expired.';
+            setVoucherError(message);
+            notify.error(message, {
+                description: 'Please remove or update the voucher code.',
+            });
             return;
         }
 
@@ -505,7 +540,9 @@ const CustomerCheckoutMain = ({
             }).unwrap();
 
             if (!data.checkout_url) {
-                alert('Failed to create checkout session')
+                notify.error('Failed to create checkout session.', {
+                    description: 'Please try again in a moment.',
+                });
                 return
             }
 
@@ -560,11 +597,16 @@ const CustomerCheckoutMain = ({
             if (referralError) {
                 const nextErrors: FormErrors = { referred_by: referralError };
                 setErrors((current) => ({ ...current, ...nextErrors }));
+                notify.error(referralError, {
+                    description: 'Please check the referral field and try again.',
+                });
                 requestAnimationFrame(() => focusFirstErrorField(nextErrors));
                 return;
             }
             const gatewayError = apiError?.data?.error?.errors?.[0]?.detail;
-            alert(gatewayError || apiError?.data?.message || 'Something went wrong');
+            notify.error(gatewayError || apiError?.data?.message || 'Something went wrong', {
+                description: 'Please review your checkout details and try again.',
+            });
         }
     }
 

@@ -100,6 +100,34 @@ function getApiError(err: unknown, fallback: string) {
   return (err as { data?: { message?: string } })?.data?.message || fallback
 }
 
+function getPayloadText(payload: Record<string, unknown> | null | undefined, keys: string[]) {
+  if (!payload) return ''
+  const stack: unknown[] = [payload]
+  const normalizedKeys = keys.map((key) => key.toLowerCase())
+
+  while (stack.length > 0) {
+    const current = stack.shift()
+    if (!current || typeof current !== 'object') continue
+
+    if (Array.isArray(current)) {
+      stack.push(...current)
+      continue
+    }
+
+    const record = current as Record<string, unknown>
+    for (const [key, value] of Object.entries(record)) {
+      if (normalizedKeys.includes(key.toLowerCase()) && typeof value === 'string' && value.trim() !== '') {
+        return value.trim()
+      }
+      if (value && typeof value === 'object') {
+        stack.push(value)
+      }
+    }
+  }
+
+  return ''
+}
+
 function SpinIcon() {
   return (
     <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -343,6 +371,12 @@ export default function SupplierOrdersPage({ initialData }: { initialData?: Supp
                 const approvalStatus = order.approval_status ?? 'pending_approval'
                 const fulfillStatus  = order.fulfillment_status ?? 'pending'
                 const newOrder = isNew(order.created_at)
+                const isZqOrder = String(order.courier ?? '').trim().toLowerCase() === 'zq'
+                  || Boolean(order.zq_platform_order_id)
+                  || Boolean(order.zq_status)
+                const zqLastMileTracking = order.tracking_no
+                  || getPayloadText(order.shipment_payload, ['trackNumber', 'trackingNumber', 'tracking_no'])
+                const zqFirstMileTracking = getPayloadText(order.shipment_payload, ['trackNumber1', 'firstMileTrackingNumber'])
 
                 return (
                   <tr
@@ -476,36 +510,57 @@ export default function SupplierOrdersPage({ initialData }: { initialData?: Supp
                             <p className="mt-1 font-mono text-[10px] text-violet-600 dark:text-violet-400">ID: {order.zq_platform_order_id}</p>
                           ) : (
                             <p className="mt-1 text-[11px] leading-relaxed text-violet-600 dark:text-violet-400">
-                              {canManage ? 'Enter tracking number from ZQ after they ship.' : 'Approve the order first before updating tracking.'}
+                              {canManage ? 'Push this order to ZQ. Tracking and status will come from ZQ after shipment.' : 'Approve the order first before pushing to ZQ.'}
                             </p>
                           )}
                         </div>
 
-                        {/* Tracking input */}
-                        <input
-                          disabled={!canManage || busy}
-                          value={td.tracking_no}
-                          onChange={e => setTrackDrafts(cur => ({ ...cur, [order.id]: { ...td, tracking_no: e.target.value } }))}
-                          placeholder="Tracking number from ZQ"
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-600 dark:disabled:bg-slate-800/50"
-                        />
-                        <select
-                          disabled={!canManage || busy}
-                          value={td.shipment_status}
-                          onChange={e => setTrackDrafts(cur => ({ ...cur, [order.id]: { ...td, shipment_status: e.target.value as SupplierShipmentStatus } }))}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-violet-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
-                        >
-                          {SHIPMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <button
-                          type="button"
-                          disabled={!canManage || busy}
-                          onClick={() => saveTracking(order.id)}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-violet-500 dark:hover:bg-violet-400 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
-                        >
-                          {busy ? <SpinIcon /> : <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>}
-                          Save Tracking
-                        </button>
+                        {isZqOrder ? (
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/40">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">ZQ Provided Tracking</p>
+                            {zqFirstMileTracking ? (
+                              <p className="mt-1 break-all text-[11px] text-slate-500 dark:text-slate-400">
+                                First-mile: <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{zqFirstMileTracking}</span>
+                              </p>
+                            ) : null}
+                            {zqLastMileTracking ? (
+                              <p className="mt-1 break-all text-[11px] text-slate-500 dark:text-slate-400">
+                                Last-mile: <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{zqLastMileTracking}</span>
+                              </p>
+                            ) : (
+                              <p className="mt-1 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+                                No tracking number yet. It will update from ZQ once available.
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <input
+                              disabled={!canManage || busy}
+                              value={td.tracking_no}
+                              onChange={e => setTrackDrafts(cur => ({ ...cur, [order.id]: { ...td, tracking_no: e.target.value } }))}
+                              placeholder="Tracking number"
+                              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400/30 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-600 dark:disabled:bg-slate-800/50"
+                            />
+                            <select
+                              disabled={!canManage || busy}
+                              value={td.shipment_status}
+                              onChange={e => setTrackDrafts(cur => ({ ...cur, [order.id]: { ...td, shipment_status: e.target.value as SupplierShipmentStatus } }))}
+                              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-violet-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
+                            >
+                              {SHIPMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={!canManage || busy}
+                              onClick={() => saveTracking(order.id)}
+                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-violet-500 dark:hover:bg-violet-400 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
+                            >
+                              {busy ? <SpinIcon /> : <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>}
+                              Save Tracking
+                            </button>
+                          </>
+                        )}
 
                         {order.tracking_no && (
                           <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 dark:border-teal-500/25 dark:bg-teal-500/8">
@@ -525,23 +580,31 @@ export default function SupplierOrdersPage({ initialData }: { initialData?: Supp
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${FULFILLMENT_BADGE[fulfillStatus] ?? FULFILLMENT_BADGE.pending}`}>
                           {fulfillStatus.replace(/_/g, ' ')}
                         </span>
-                        <select
-                          disabled={!canManage || busy}
-                          value={fulfillDrafts[order.id] ?? 'processing'}
-                          onChange={e => setFulfillDrafts(cur => ({ ...cur, [order.id]: e.target.value as SupplierFulfillmentStatus }))}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-cyan-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
-                        >
-                          {FULFILLMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <button
-                          type="button"
-                          disabled={!canManage || busy}
-                          onClick={() => saveFulfillment(order.id)}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
-                        >
-                          {busy ? <SpinIcon /> : <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7"/></svg>}
-                          Save Status
-                        </button>
+                        {isZqOrder ? (
+                          <p className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] leading-relaxed text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/8 dark:text-violet-300">
+                            Status is synced from ZQ. Manual supplier status changes are disabled for dropshipping orders.
+                          </p>
+                        ) : (
+                          <>
+                            <select
+                              disabled={!canManage || busy}
+                              value={fulfillDrafts[order.id] ?? 'processing'}
+                              onChange={e => setFulfillDrafts(cur => ({ ...cur, [order.id]: e.target.value as SupplierFulfillmentStatus }))}
+                              className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-cyan-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:disabled:bg-slate-800/50 dark:disabled:text-slate-500"
+                            >
+                              {FULFILLMENT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            <button
+                              type="button"
+                              disabled={!canManage || busy}
+                              onClick={() => saveFulfillment(order.id)}
+                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+                            >
+                              {busy ? <SpinIcon /> : <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M5 13l4 4L19 7"/></svg>}
+                              Save Status
+                            </button>
+                          </>
+                        )}
                         {!canManage && (
                           <p className="text-[10px] text-slate-400 dark:text-slate-500">Approve order first.</p>
                         )}

@@ -30,7 +30,11 @@ export interface SupplierOrder {
   customer_address?: string | null
   paid_at?: string | null
   zq_platform_order_id?: string | null
+  zq_order_id?: string | null
   zq_status?: string | null
+  zq_payload?: Record<string, unknown> | null
+  zq_response?: Record<string, unknown> | null
+  zq_synced_at?: string | null
   created_at?: string | null
   updated_at?: string | null
 }

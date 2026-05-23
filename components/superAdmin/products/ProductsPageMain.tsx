@@ -7,7 +7,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Fragment } from 'react'
 import { useGetAdminMeQuery } from '@/store/api/authApi'
-import { Product, ZqCachedProduct, ZqCategoryMappingItem, ZqSyncProductsPayload, ZqSyncProductsResponse, useFetchZqImportPreviewMutation, useGetProductsQuery, useGetPublicProductsQuery, useDeleteProductMutation, useGetZqCachedProductsQuery, useGetZqProductsSummaryQuery, useGetZqCategoryMappingsQuery, useUpsertZqCategoryMappingMutation, useManualCheckoutApplyMutation, useSyncZqProductsMutation, ProductsResponse } from "@/store/api/productsApi";
+import { Product, ZqCachedProduct, ZqCategoryMappingItem, ZqSyncProductsPayload, ZqSyncProductsResponse, useFetchZqImportPreviewMutation, useGetProductsQuery, useGetPublicProductsQuery, useDeleteProductMutation, useGetZqCachedProductsQuery, useGetZqProductsSummaryQuery, useGetZqCategoryMappingsQuery, useUpsertZqCategoryMappingMutation, useManualCheckoutApplyMutation, useSyncZqProductsMutation, ProductsResponse } from "@/store/api/productsApi"
+
 import { useGetAdminGeneralSettingsQuery, useUpdateAdminGeneralSettingsMutation } from "@/store/api/adminSettingsApi";
 import { useGetPublicProductBrandsQuery } from "@/store/api/productBrandsApi";
 import { useGetSuppliersQuery } from "@/store/api/suppliersApi";
@@ -18,6 +19,9 @@ import AddProductModal from './AddProductModal'
 import EditProductModal from './EditProductModal'
 import BulkEditProductsModal from './BulkEditProductsModal'
 import ProductActivityLogsModal from './ProductActivityLogsModal'
+import EditZqPricingModal from '@/components/superAdmin/products/EditZqPricingModal'
+import ImportZqPricingModal from '@/components/superAdmin/products/ImportZqPricingModal'
+import * as XLSX from 'xlsx'
 import PrimaryButton from '@/components/ui/buttons/PrimaryButton'
 import { showErrorToast, showSuccessToast } from '@/libs/toast'
 import { revalidateStorefront } from '@/libs/revalidateStorefront'
@@ -128,6 +132,148 @@ const exportToCSV = (products: Product[]) => {
   URL.revokeObjectURL(url)
 
   showSuccessToast(`Exported ${products.length} products to CSV`)
+}
+
+const exportZqToCSV = (products: ZqCachedProduct[]) => {
+  if (products.length === 0) {
+    showErrorToast('No ZQ products to export')
+    return
+  }
+
+  const cents = (v: number | null | undefined) => v != null ? parseFloat((v / 100).toFixed(2)) : null
+
+  const HEADERS = [
+    'External ID', 'Product Name', 'Chinese Name', 'Category', 'Source',
+    'Status', 'Import Status', 'Shipping To', 'Target Currency',
+    'Total Stock', 'Variants',
+    'Member Price (₱)', 'Dealer Price (₱)', 'PV',
+    'PV Tier', 'Reversed PV Multiplier',
+    'Price Min (₱)', 'Price Max (₱)', 'Cost Min (₱)', 'Cost Max (₱)',
+    'Primary Image', 'Product URL', 'Created At', 'Last Synced',
+  ]
+
+  const dataRows = products.map((p) => [
+    p.externalId,
+    p.subject,
+    p.subjectCn ?? '',
+    p.categoryName ?? '',
+    p.sourceType ?? '',
+    p.status ?? '',
+    p.importStatus ?? '',
+    p.shippingTo ?? '',
+    p.targetCurrency ?? '',
+    p.totalStock ?? 0,
+    p.variantCount ?? 0,
+    cents(p.memberPrice),
+    cents(p.dealerPrice),
+    p.pv ?? null,
+    p.pvTier ?? 'low_end',
+    p.reversedPvMultiplier ?? null,
+    cents(p.priceMinCents),
+    cents(p.priceMaxCents),
+    cents(p.costMinCents),
+    cents(p.costMaxCents),
+    p.primaryImage ?? '',
+    p.productUrl ?? '',
+    p.sourceCreatedAt ?? '',
+    p.syncedAt ?? '',
+  ])
+
+  /* ── build worksheet ── */
+  const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...dataRows])
+
+  /* column widths */
+  ws['!cols'] = [
+    { wch: 12 },  // External ID
+    { wch: 48 },  // Product Name
+    { wch: 36 },  // Chinese Name
+    { wch: 22 },  // Category
+    { wch: 10 },  // Source
+    { wch: 10 },  // Status
+    { wch: 14 },  // Import Status
+    { wch: 12 },  // Shipping To
+    { wch: 14 },  // Target Currency
+    { wch: 11 },  // Total Stock
+    { wch: 9  },  // Variants
+    { wch: 16 },  // Member Price
+    { wch: 15 },  // Dealer Price
+    { wch: 8  },  // PV
+    { wch: 11 },  // PV Tier
+    { wch: 20 },  // Reversed PV Multiplier
+    { wch: 13 },  // Price Min
+    { wch: 13 },  // Price Max
+    { wch: 12 },  // Cost Min
+    { wch: 12 },  // Cost Max
+    { wch: 10 },  // Primary Image
+    { wch: 10 },  // Product URL
+    { wch: 20 },  // Created At
+    { wch: 20 },  // Last Synced
+  ]
+
+  /* freeze top row */
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 }
+
+  /* header row style — sky-blue bg, white bold text */
+  const headerFill = { patternType: 'solid', fgColor: { rgb: '0284C7' } }
+  const headerFont = { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 }
+  const headerAlign = { horizontal: 'center', vertical: 'center', wrapText: false }
+  const headerBorder = {
+    bottom: { style: 'medium', color: { rgb: 'FFFFFF' } },
+  }
+
+  /* pricing columns (K-Q = indices 11-16) get light-green tint on data rows */
+  const pricingFill = { patternType: 'solid', fgColor: { rgb: 'F0FDF4' } }
+  const altRowFill  = { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } }
+  const pricingFont = { color: { rgb: '166534' }, sz: 10 }
+  const defaultFont = { sz: 10 }
+
+  const totalCols = HEADERS.length
+  const totalRows = dataRows.length + 1 // +1 for header
+
+  for (let r = 0; r < totalRows; r++) {
+    for (let c = 0; c < totalCols; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c })
+      if (!ws[addr]) ws[addr] = { v: '', t: 's' }
+
+      if (r === 0) {
+        /* header row */
+        ws[addr].s = {
+          fill: headerFill,
+          font: headerFont,
+          alignment: headerAlign,
+          border: headerBorder,
+        }
+      } else {
+        const isPricingCol = c >= 11 && c <= 16
+        const isAltRow = r % 2 === 0
+
+        ws[addr].s = {
+          fill: isPricingCol ? pricingFill : (isAltRow ? altRowFill : undefined),
+          font: isPricingCol ? pricingFont : defaultFont,
+          alignment: { vertical: 'center', wrapText: false },
+          border: {
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+          },
+          numFmt: (isPricingCol && c < 16) ? '#,##0.00' : undefined,
+        }
+      }
+    }
+  }
+
+  /* row height: header 22pt, data rows 18pt */
+  ws['!rows'] = [
+    { hpt: 22 },
+    ...Array(dataRows.length).fill({ hpt: 18 }),
+  ]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'ZQ Products')
+
+  const now = new Date()
+  const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  XLSX.writeFile(wb, `zq-products-${ts}.xlsx`)
+
+  showSuccessToast(`Exported ${products.length} ZQ products to Excel`)
 }
 
 const mapCachedZqProductToLocalRow = (product: ZqCachedProduct): Product => ({
@@ -782,6 +928,9 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
   const [manualSelectionProducts, setManualSelectionProducts] = useState<Product[]>([])
   const [manualSelectionMode, setManualSelectionMode] = useState<'review' | 'view'>('review')
   const [editProduct,     setEditProduct]     = useState<Product | null>(null)
+  const [editZqPricing,   setEditZqPricing]   = useState<ZqCachedProduct | null>(null)
+  const [showImportZq,    setShowImportZq]    = useState(false)
+  const [isExportingZq,  setIsExportingZq]  = useState(false)
   const [showBulkEdit,    setShowBulkEdit]    = useState(false)
   const [showZqSupplierInline, setShowZqSupplierInline] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -1642,6 +1791,26 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
     exportToCSV(visibleProducts)
   }
 
+  const handleExportAllZqCSV = async () => {
+    if (isExportingZq) return
+    setIsExportingZq(true)
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
+      const url = `${apiBase}/api/supplier/products/zq/cached/export`
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${sessionAccessToken}`, Accept: 'application/json' },
+      })
+      if (!res.ok) { showErrorToast('Export failed. Please try again.'); return }
+      const json = await res.json() as { products: ZqCachedProduct[]; total: number }
+      exportZqToCSV(json.products)
+    } catch {
+      showErrorToast('Export failed. Please try again.')
+    } finally {
+      setIsExportingZq(false)
+    }
+  }
+
   const handleExportAllCSV = () => {
     downloadExportCSV({
       supplier_id: isSupplierPortal && linkedSupplierId > 0 ? linkedSupplierId : undefined,
@@ -2051,12 +2220,32 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
                   </div>
                 </div>
               </div>
-              <PrimaryButton onClick={handleExportCSV} className="!px-5 !py-2.5 !text-sm">
-                Export CSV
-              </PrimaryButton>
-              <PrimaryButton onClick={handleExportAllCSV} disabled={isExporting} className="!px-5 !py-2.5 !text-sm">
-                {isExporting ? 'Exporting...' : 'Export All CSV'}
-              </PrimaryButton>
+              {zqInlineActive ? (
+                <>
+                  <PrimaryButton
+                    onClick={() => void handleExportAllZqCSV()}
+                    disabled={isExportingZq}
+                    className="!px-5 !py-2.5 !text-sm"
+                  >
+                    {isExportingZq ? 'Exporting…' : 'Export ZQ Excel'}
+                  </PrimaryButton>
+                  <PrimaryButton
+                    onClick={() => setShowImportZq(true)}
+                    className="!px-5 !py-2.5 !text-sm"
+                  >
+                    Import CSV
+                  </PrimaryButton>
+                </>
+              ) : (
+                <>
+                  <PrimaryButton onClick={handleExportCSV} className="!px-5 !py-2.5 !text-sm">
+                    Export CSV
+                  </PrimaryButton>
+                  <PrimaryButton onClick={handleExportAllCSV} disabled={isExporting} className="!px-5 !py-2.5 !text-sm">
+                    {isExporting ? 'Exporting...' : 'Export All CSV'}
+                  </PrimaryButton>
+                </>
+              )}
             </div>
           </div>
 
@@ -2102,6 +2291,23 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
               to={visibleMeta?.to ?? null}
               onPageChange={setPage}
               onEdit={setEditProduct}
+              onEditPricing={(product) => {
+                const externalId = product.sku ?? ''
+                const cached = zqCachedData?.products.find((p) => p.externalId === externalId)
+                if (cached) {
+                  setEditZqPricing(cached)
+                } else {
+                  setEditZqPricing({
+                    id: Math.abs(product.id),
+                    externalId,
+                    subject: product.name,
+                    sourceType: product.supplierName,
+                    primaryImage: product.image,
+                    totalStock: 0,
+                    variantCount: 0,
+                  })
+                }
+              }}
               onDelete={handleDelete}
               isDeletingIds={deletingIds}
               selectedIds={selectedIds}
@@ -2136,6 +2342,12 @@ export default function ProductsPageMain({ initialData = null, initialBrandType 
       />
       <ProductActivityLogsModal isOpen={showActivityLogs} onClose={() => setShowActivityLogs(false)} />
       <EditProductModal product={editProduct} onClose={() => setEditProduct(null)} onSaved={handleProductsSaved}/>
+      <EditZqPricingModal product={editZqPricing} onClose={() => setEditZqPricing(null)} />
+      <ImportZqPricingModal
+        isOpen={showImportZq}
+        onClose={() => setShowImportZq(false)}
+        onSuccess={() => void refetchZqCachedProducts()}
+      />
       <BulkEditProductsModal
         products={showBulkEdit ? selectedProducts : []}
         onClose={() => setShowBulkEdit(false)}

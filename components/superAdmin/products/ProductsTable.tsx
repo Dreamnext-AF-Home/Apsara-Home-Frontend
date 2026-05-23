@@ -4,7 +4,7 @@ import { cn } from 'tailwind-variants'
 import { Eye, Pencil, Trash2, TriangleAlert } from 'lucide-react'
 import Image from 'next/image'
 import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Product } from '@/store/api/productsApi'
+import { Product, useLazyGetZqInventoryQuery } from '@/store/api/productsApi'
 
 interface ProductsTableProps {
   rows: Product[]
@@ -21,6 +21,7 @@ interface ProductsTableProps {
   onToggleSelect: (id: number) => void
   onToggleSelectAll: () => void
   onViewProduct: (product: Product) => void
+  onEditPricing?: (product: Product) => void
   readOnly?: boolean
   isLoading?: boolean
   tableMode?: 'local' | 'zq'
@@ -238,6 +239,46 @@ function StockCell({ qty }: { qty: number }) {
   return <span className="whitespace-nowrap text-slate-600 dark:text-slate-300">{qty.toLocaleString()}</span>
 }
 
+function ZqStockCell({ qty, sku }: { qty: number; sku: string }) {
+  const [checkInventory, { data, isFetching, isError }] = useLazyGetZqInventoryQuery()
+  const hasResult = data !== undefined || isError
+
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <StockCell qty={qty} />
+      <button
+        type="button"
+        disabled={isFetching || !sku}
+        onClick={() => checkInventory(sku)}
+        className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/15"
+      >
+        {isFetching ? (
+          <>
+            <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Checking...
+          </>
+        ) : hasResult ? 'Refresh' : 'Check Live'}
+      </button>
+      {isError ? (
+        <span className="text-[10px] text-red-500">Failed</span>
+      ) : data ? (
+        <div className="rounded-lg border border-violet-200/70 bg-violet-50/60 px-2 py-1 text-right dark:border-violet-500/20 dark:bg-violet-500/8">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-violet-400 dark:text-violet-500">ZQ Live</p>
+          <p className={cn(
+            'text-xs font-semibold',
+            data.available === 0 ? 'text-red-500' : data.available <= 5 ? 'text-orange-500' : 'text-emerald-600 dark:text-emerald-400',
+          )}>
+            {data.available.toLocaleString()} avail
+          </p>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function EmptyProductsState() {
   return (
     <div className="flex flex-col items-center gap-2 py-16 text-center">
@@ -308,6 +349,7 @@ export default function ProductsTable({
   onToggleSelect,
   onToggleSelectAll,
   onViewProduct,
+  onEditPricing,
   readOnly = false,
   isLoading = false,
   tableMode = 'local',
@@ -563,11 +605,7 @@ export default function ProductsTable({
                         <p className="line-clamp-1 text-sm font-medium text-slate-700 dark:text-slate-200">
                           {isZqMode ? (product.brand?.trim() || 'AF HOME GLOBAL SUPPLIER') : (product.supplierName?.trim() || product.brand?.trim() || 'No supplier')}
                         </p>
-                        {isZqMode ? (
-                          <p className="line-clamp-1 text-[11px] text-slate-400 dark:text-slate-500">
-                            {product.supplierName?.trim() || 'Supplier source unavailable'}
-                          </p>
-                        ) : product.supplierId ? (
+                        {!isZqMode && product.supplierId ? (
                           <p className="line-clamp-1 text-[11px] text-slate-400 dark:text-slate-500">Supplier #{product.supplierId}</p>
                         ) : product.brand ? (
                           <p className="line-clamp-1 text-[11px] text-slate-400 dark:text-slate-500">Brand</p>
@@ -608,8 +646,14 @@ export default function ProductsTable({
                       </td>
                     ) : null}
 
-                    <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-right dark:border-slate-800/70">
-                      <StockCell qty={effectiveStockQty} />
+                    <td className="border-b border-slate-100 px-4 py-4 text-right dark:border-slate-800/70">
+                      {isZqMode ? (
+                        <ZqStockCell qty={effectiveStockQty} sku={product.sku} />
+                      ) : (
+                        <span className="whitespace-nowrap">
+                          <StockCell qty={effectiveStockQty} />
+                        </span>
+                      )}
                     </td>
 
                     <td className="min-w-[140px] border-b border-slate-100 px-4 py-4 dark:border-slate-800/70">
@@ -678,6 +722,17 @@ export default function ProductsTable({
                         >
                           <Eye className="h-4 w-4" />
                         </ActionButton>
+                        {isZqMode && onEditPricing ? (
+                          <ActionButton
+                            ariaLabel={`Edit pricing for ${product.name}`}
+                            onClick={() => {
+                              setConfirmId(null)
+                              onEditPricing(product)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </ActionButton>
+                        ) : null}
                         {!readOnly ? (
                           <>
                             <ActionButton

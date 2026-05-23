@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Pusher from 'pusher-js'
 import { useAppDispatch } from '@/store/hooks'
 import { supplierOrdersApi, type SupplierNotificationItem } from '@/store/api/supplierOrdersApi'
 
@@ -17,18 +18,15 @@ export function useSupplierRealtimeOrders({ accessToken, supplierId, onNotificat
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Reuse the Pusher constructor already set globally by useEchoSetup (Providers.tsx)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const PusherClass = (window as any).Pusher
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER
     const apiBaseUrl = (process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? '').replace(/\/+$/, '')
 
-    if (!PusherClass || !pusherKey || !pusherCluster || !apiBaseUrl || !accessToken || !supplierId) return
+    if (!pusherKey || !pusherCluster || !apiBaseUrl || !accessToken || !supplierId) return
 
     const channelName = `private-supplier-${supplierId}`
 
-    const pusher = new PusherClass(pusherKey, {
+    const pusher = new Pusher(pusherKey, {
       cluster: pusherCluster,
       channelAuthorization: {
         endpoint: `${apiBaseUrl}/api/supplier/realtime/pusher/auth`,
@@ -54,6 +52,7 @@ export function useSupplierRealtimeOrders({ accessToken, supplierId, onNotificat
       description?: string
       href?: string
       created_at?: string
+      payload?: Record<string, unknown> | null
     }) => {
       const newItem: SupplierNotificationItem = {
         id: String(event.order_id ?? Date.now()),
@@ -62,6 +61,7 @@ export function useSupplierRealtimeOrders({ accessToken, supplierId, onNotificat
         count: 1,
         href: event.href ?? '/supplier/orders',
         updated_at: event.created_at ?? new Date().toISOString(),
+        payload: event.payload ?? null,
       }
 
       // Optimistically push the notification into the RTK Query cache immediately

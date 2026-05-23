@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { useFetchZqImportPreviewMutation } from '@/store/api/productsApi'
 import { showErrorToast } from '@/libs/toast'
+import EditZqPricingModal from '@/components/superAdmin/products/EditZqPricingModal'
+import { type ZqCachedProduct } from '@/store/api/productsApi'
 
 type ZqLiveProduct = {
   id: string
@@ -108,6 +110,7 @@ export default function ZqSupplierProductsPageMain({
   const backHref = scope === 'supplier' ? '/supplier/products' : '/admin/products'
 
   const [fetchZqImportPreview, { isLoading }] = useFetchZqImportPreviewMutation()
+  const [editingProduct, setEditingProduct] = useState<ZqCachedProduct | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [draftSearch, setDraftSearch] = useState('')
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -181,6 +184,10 @@ export default function ZqSupplierProductsPageMain({
 
   return (
     <div className="space-y-6">
+      <EditZqPricingModal
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+      />
       {!embedded ? (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -346,6 +353,15 @@ export default function ZqSupplierProductsPageMain({
                     key={product.id}
                     product={product}
                     previewHref={`${previewBasePath}/${product.id}`}
+                    onEdit={() => setEditingProduct({
+                      id: 0,
+                      externalId: product.id,
+                      subject: product.subject,
+                      sourceType: product.sourceType ?? undefined,
+                      primaryImage: product.primaryImage ?? undefined,
+                      totalStock: 0,
+                      variantCount: 0,
+                    })}
                   />
                 ))}
               </tbody>
@@ -398,9 +414,11 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function ProductRow({
   product,
   previewHref,
+  onEdit,
 }: {
   product: ZqLiveProduct
   previewHref: string
+  onEdit: () => void
 }) {
   return (
     <tr>
@@ -432,12 +450,21 @@ function ProductRow({
       </td>
       <td className="px-5 py-4 align-top text-xs text-slate-500">{formatDate(product.createdAt)}</td>
       <td className="px-5 py-4 text-right align-top">
-        <Link
-          href={previewHref}
-          className="inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
-        >
-          View Preview
-        </Link>
+        <div className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+          >
+            Edit Pricing
+          </button>
+          <Link
+            href={previewHref}
+            className="inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+          >
+            View Preview
+          </Link>
+        </div>
       </td>
     </tr>
   )

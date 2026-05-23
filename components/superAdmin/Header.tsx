@@ -313,6 +313,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             href?: string;
             severity?: string;
             created_at?: string;
+            payload?: AdminNotificationItem['payload'];
         }) => {
             const neededPermission = permissionForAdminHref(event?.href);
             if (effectiveUserLevelId !== 1 && neededPermission && !effectivePermissions.includes(neededPermission)) {
@@ -334,7 +335,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                             severity: (event.severity as AdminNotificationItem['severity']) ?? 'info',
                             href: event.href ?? '/admin/orders',
                             updated_at: event.created_at ?? new Date().toISOString(),
-                            payload: null,
+                            payload: event.payload ?? null,
                         };
 
                         if (existingIndex >= 0) {
@@ -354,7 +355,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
                     severity: (event.severity as AdminNotificationItem['severity']) ?? 'info',
                     href: event.href ?? '/admin/orders',
                     updated_at: event.created_at ?? new Date().toISOString(),
-                    payload: null,
+                    payload: event.payload ?? null,
                 };
                 const readKey = getAdminNotificationReadKey(nextItem);
                 setSurfacedNotificationKeys((current) => (current.includes(readKey) ? current : [...current, readKey]));
